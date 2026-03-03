@@ -1,8 +1,12 @@
 "use client";
 
+import { useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAutoSync } from "@repo/offline/hooks";
 import { cn } from "@/lib/utils";
+import { syncAll } from "@/lib/offline";
+import { OfflineIndicator } from "@/components/shared/offline-indicator";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: "Home" },
@@ -57,6 +61,8 @@ function NavIcon({ name }: { name: string }) {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const stableSyncAll = useCallback(() => syncAll(), []);
+  useAutoSync(stableSyncAll, 60_000);
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -94,6 +100,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span className="text-sm font-medium text-muted-foreground md:hidden">Meridian</span>
           </div>
           <div className="flex items-center gap-3">
+            <OfflineIndicator />
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
               U
             </div>
