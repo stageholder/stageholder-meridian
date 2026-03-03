@@ -21,8 +21,9 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await apiClient.post<{ user: AuthUser }>("/auth/login", { email, password });
-      setUser(res.data.user);
+      const res = await apiClient.post<AuthUser>("/auth/login", { email, password });
+      setUser(res.data);
+      document.cookie = "logged_in=1; path=/; max-age=604800; samesite=lax";
       router.push("/dashboard");
     } catch {
       setError("Invalid email or password. Please try again.");

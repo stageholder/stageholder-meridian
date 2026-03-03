@@ -2,92 +2,14 @@ import Dexie, { type EntityTable, type Table } from 'dexie';
 import type {
   Workspace,
   WorkspaceMember,
+  TodoList,
+  Todo,
+  Journal,
+  Habit,
+  HabitEntry,
+  Tag,
+  AppNotification,
 } from '@repo/core/types';
-
-export interface TodoList {
-  id: string;
-  workspaceId: string;
-  name: string;
-  color?: string;
-  icon?: string;
-  isShared: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Todo {
-  id: string;
-  workspaceId: string;
-  listId: string;
-  title: string;
-  description?: string;
-  status: 'todo' | 'in_progress' | 'done';
-  priority: 'none' | 'low' | 'medium' | 'high' | 'urgent';
-  dueDate?: string;
-  assigneeId?: string;
-  order: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Journal {
-  id: string;
-  workspaceId: string;
-  title: string;
-  content: string;
-  mood?: number;
-  tags: string[];
-  date: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Habit {
-  id: string;
-  workspaceId: string;
-  name: string;
-  description?: string;
-  frequency: 'daily' | 'weekly' | 'custom';
-  targetCount: number;
-  unit?: string;
-  color?: string;
-  icon?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface HabitEntry {
-  id: string;
-  habitId: string;
-  workspaceId: string;
-  date: string;
-  value: number;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Tag {
-  id: string;
-  workspaceId: string;
-  name: string;
-  color: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface AppNotification {
-  id: string;
-  workspaceId: string;
-  recipientId: string;
-  type: string;
-  title: string;
-  message: string;
-  entityType?: string;
-  entityId?: string;
-  read: boolean;
-  createdAt: string;
-}
 
 export interface PendingMutation {
   id?: number;

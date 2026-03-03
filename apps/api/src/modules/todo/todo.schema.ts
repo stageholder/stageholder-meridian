@@ -21,6 +21,9 @@ export class TodoModel {
   @Prop({ type: String, index: true }) assignee_id: string;
   @Prop({ type: String, required: true }) creator_id: string;
   @Prop({ type: Number, default: 0 }) order: number;
+  @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 
 export const TodoSchema = SchemaFactory.createForClass(TodoModel);
+TodoSchema.index({ workspace_id: 1, list_id: 1, order: 1 });
+TodoSchema.index({ workspace_id: 1, status: 1 });

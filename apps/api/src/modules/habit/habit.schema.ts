@@ -20,6 +20,7 @@ export class HabitModel {
   @Prop({ type: String }) icon: string;
   @Prop({ type: String, required: true, index: true }) workspace_id: string;
   @Prop({ type: String, required: true }) creator_id: string;
+  @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 
 export const HabitSchema = SchemaFactory.createForClass(HabitModel);

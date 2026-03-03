@@ -14,16 +14,16 @@ export class WorkspaceRepository {
   }
 
   async findById(id: string): Promise<Workspace | null> {
-    const doc = await this.model.findById(id).lean();
+    const doc = await this.model.findById(id).where({ deleted_at: null }).lean();
     return doc ? this.toDomain(doc) : null;
   }
 
   async findBySlug(slug: string): Promise<Workspace | null> {
-    const doc = await this.model.findOne({ slug }).lean();
+    const doc = await this.model.findOne({ slug, deleted_at: null }).lean();
     return doc ? this.toDomain(doc) : null;
   }
 
-  async delete(id: string): Promise<void> { await this.model.deleteOne({ _id: id }); }
+  async delete(id: string): Promise<void> { await this.model.updateOne({ _id: id }, { $set: { deleted_at: new Date() } }); }
 
   private toDomain(doc: any): Workspace {
     return Workspace.reconstitute({ name: doc.name, slug: doc.slug, description: doc.description, ownerId: doc.owner_id, createdAt: doc.created_at, updatedAt: doc.updated_at }, doc._id);

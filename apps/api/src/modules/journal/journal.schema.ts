@@ -18,6 +18,8 @@ export class JournalModel {
   @Prop({ type: String, required: true, index: true }) workspace_id: string;
   @Prop({ type: String, required: true, index: true }) author_id: string;
   @Prop({ type: String, required: true, index: true }) date: string;
+  @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 
 export const JournalSchema = SchemaFactory.createForClass(JournalModel);
+JournalSchema.index({ workspace_id: 1, date: -1 });

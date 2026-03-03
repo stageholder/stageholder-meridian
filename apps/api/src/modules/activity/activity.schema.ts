@@ -23,3 +23,4 @@ export class ActivityModel {
 
 export const ActivitySchema = SchemaFactory.createForClass(ActivityModel);
 ActivitySchema.index({ entity_type: 1, entity_id: 1 });
+ActivitySchema.index({ workspace_id: 1, created_at: -1 });

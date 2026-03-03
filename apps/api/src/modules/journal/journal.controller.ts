@@ -15,8 +15,8 @@ export class JournalController {
   }
 
   @Get()
-  async list(@Param('workspaceId') workspaceId: string, @CurrentUserId() userId: string, @Query('startDate') startDate?: string, @Query('endDate') endDate?: string) {
-    return (await this.service.listByWorkspace(workspaceId, userId, startDate, endDate)).map((j) => j.toObject());
+  async list(@Param('workspaceId') workspaceId: string, @CurrentUserId() userId: string, @Query('startDate') startDate?: string, @Query('endDate') endDate?: string, @Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.service.listByWorkspace(workspaceId, userId, startDate, endDate, page ? +page : undefined, limit ? +limit : undefined);
   }
 
   @Get(':id')

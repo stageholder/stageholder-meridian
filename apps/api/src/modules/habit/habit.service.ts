@@ -3,6 +3,7 @@ import { HabitRepository } from './habit.repository';
 import { Habit, HabitFrequency } from './habit.entity';
 import { CreateHabitDto, UpdateHabitDto } from './habit.dto';
 import { WorkspaceMemberService } from '../workspace-member/workspace-member.service';
+import { PaginatedResult, buildPaginationMeta, DEFAULT_PAGE, DEFAULT_LIMIT, MAX_LIMIT } from '../../shared';
 
 @Injectable()
 export class HabitService {
@@ -19,6 +20,14 @@ export class HabitService {
   async findByWorkspace(workspaceId: string, userId: string): Promise<Habit[]> {
     await this.memberService.requireRole(workspaceId, userId, ['owner', 'admin', 'member']);
     return this.repository.findByWorkspace(workspaceId);
+  }
+
+  async listByWorkspace(workspaceId: string, userId: string, page?: number, limit?: number) {
+    await this.memberService.requireRole(workspaceId, userId, ['owner', 'admin', 'member']);
+    const p = Math.max(page || DEFAULT_PAGE, 1);
+    const l = Math.min(Math.max(limit || DEFAULT_LIMIT, 1), MAX_LIMIT);
+    const { docs, total } = await this.repository.findByWorkspacePaginated(workspaceId, p, l);
+    return { data: docs.map((d) => d.toObject()), meta: buildPaginationMeta(total, p, l) };
   }
 
   async findById(id: string, workspaceId: string, userId: string): Promise<Habit> {

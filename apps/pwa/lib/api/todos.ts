@@ -12,7 +12,7 @@ export function useTodoLists() {
       const res = await apiClient.get(
         workspacePath("/todo-lists")
       );
-      return res.data;
+      return res.data?.data ?? res.data;
     },
     enabled: !!activeWorkspaceId,
   });

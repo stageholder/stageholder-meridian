@@ -28,9 +28,10 @@ export class WorkspaceService {
     return workspaces;
   }
 
-  async findById(id: string): Promise<Workspace> {
+  async findById(id: string, userId?: string): Promise<Workspace> {
     const ws = await this.repository.findById(id);
     if (!ws) throw new NotFoundException('Workspace not found');
+    if (userId) await this.memberService.requireRole(id, userId, ['owner', 'admin', 'member', 'viewer']);
     return ws;
   }
 

@@ -14,21 +14,27 @@ export class JournalRepository {
   }
 
   async findById(id: string): Promise<Journal | null> {
-    const doc = await this.model.findById(id).lean();
+    const doc = await this.model.findById(id).where({ deleted_at: null }).lean();
     return doc ? this.toDomain(doc) : null;
   }
 
   async findByWorkspace(workspaceId: string): Promise<Journal[]> {
-    const docs = await this.model.find({ workspace_id: workspaceId }).sort({ date: -1 }).lean();
+    const docs = await this.model.find({ workspace_id: workspaceId, deleted_at: null }).sort({ date: -1 }).lean();
     return docs.map((doc) => this.toDomain(doc));
+  }
+
+  async findByWorkspacePaginated(workspaceId: string, page: number, limit: number): Promise<{ docs: Journal[]; total: number }> {
+    const total = await this.model.countDocuments({ workspace_id: workspaceId, deleted_at: null });
+    const docs = await this.model.find({ workspace_id: workspaceId, deleted_at: null }).sort({ created_at: -1 }).skip((page - 1) * limit).limit(limit).lean();
+    return { docs: docs.map((doc) => this.toDomain(doc)), total };
   }
 
   async findByDateRange(workspaceId: string, startDate: string, endDate: string): Promise<Journal[]> {
-    const docs = await this.model.find({ workspace_id: workspaceId, date: { $gte: startDate, $lte: endDate } }).sort({ date: -1 }).lean();
+    const docs = await this.model.find({ workspace_id: workspaceId, deleted_at: null, date: { $gte: startDate, $lte: endDate } }).sort({ date: -1 }).lean();
     return docs.map((doc) => this.toDomain(doc));
   }
 
-  async delete(id: string): Promise<void> { await this.model.deleteOne({ _id: id }); }
+  async delete(id: string): Promise<void> { await this.model.updateOne({ _id: id }, { $set: { deleted_at: new Date() } }); }
 
   private toDomain(doc: any): Journal {
     return Journal.reconstitute({ title: doc.title, content: doc.content, mood: doc.mood, tags: doc.tags || [], workspaceId: doc.workspace_id, authorId: doc.author_id, date: doc.date, createdAt: doc.created_at, updatedAt: doc.updated_at }, doc._id);

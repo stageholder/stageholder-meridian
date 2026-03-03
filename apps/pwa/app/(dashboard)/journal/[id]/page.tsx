@@ -6,6 +6,7 @@ import { JournalEditor } from "@/components/journal/journal-editor";
 import { MoodPicker } from "@/components/journal/mood-picker";
 import { useJournal, useUpdateJournal, useDeleteJournal } from "@/lib/api/journals";
 import { toast } from "sonner";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 export default function JournalEntryPage() {
   const params = useParams<{ id: string }>();
@@ -193,7 +194,7 @@ export default function JournalEntryPage() {
           </div>
           <div
             className="prose prose-sm dark:prose-invert max-w-none"
-            dangerouslySetInnerHTML={{ __html: journal.content }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(journal.content) }}
           />
         </div>
       )}

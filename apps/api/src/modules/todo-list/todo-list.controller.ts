@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query } from '@nestjs/common';
 import { TodoListService } from './todo-list.service';
 import { CreateTodoListDto, UpdateTodoListDto } from './todo-list.dto';
 import { CreateTodoListDto as CreateSchema, UpdateTodoListDto as UpdateSchema } from './todo-list.dto';
@@ -15,8 +15,8 @@ export class TodoListController {
   }
 
   @Get()
-  async list(@Param('workspaceId') workspaceId: string, @CurrentUserId() userId: string) {
-    return (await this.service.findByWorkspace(workspaceId, userId)).map((l) => l.toObject());
+  async list(@Param('workspaceId') workspaceId: string, @CurrentUserId() userId: string, @Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.service.findByWorkspace(workspaceId, userId, page ? +page : undefined, limit ? +limit : undefined);
   }
 
   @Get(':id')

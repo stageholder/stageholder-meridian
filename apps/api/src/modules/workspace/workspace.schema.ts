@@ -15,6 +15,7 @@ export class WorkspaceModel {
   @Prop({ type: String, required: true, unique: true, lowercase: true }) slug: string;
   @Prop({ type: String }) description: string;
   @Prop({ type: String, required: true, index: true }) owner_id: string;
+  @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 
 export const WorkspaceSchema = SchemaFactory.createForClass(WorkspaceModel);

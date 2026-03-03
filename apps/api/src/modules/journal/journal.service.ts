@@ -3,6 +3,7 @@ import { JournalRepository } from './journal.repository';
 import { Journal } from './journal.entity';
 import { CreateJournalDto, UpdateJournalDto } from './journal.dto';
 import { WorkspaceMemberService } from '../workspace-member/workspace-member.service';
+import { PaginatedResult, buildPaginationMeta, DEFAULT_PAGE, DEFAULT_LIMIT, MAX_LIMIT } from '../../shared';
 
 @Injectable()
 export class JournalService {
@@ -23,12 +24,16 @@ export class JournalService {
     return journal;
   }
 
-  async listByWorkspace(workspaceId: string, userId: string, startDate?: string, endDate?: string): Promise<Journal[]> {
+  async listByWorkspace(workspaceId: string, userId: string, startDate?: string, endDate?: string, page?: number, limit?: number): Promise<PaginatedResult<ReturnType<Journal['toObject']>>> {
     await this.memberService.requireRole(workspaceId, userId, ['owner', 'admin', 'member']);
     if (startDate && endDate) {
-      return this.repository.findByDateRange(workspaceId, startDate, endDate);
+      const journals = await this.repository.findByDateRange(workspaceId, startDate, endDate);
+      return { data: journals.map((j) => j.toObject()), meta: buildPaginationMeta(journals.length, 1, journals.length || 1) };
     }
-    return this.repository.findByWorkspace(workspaceId);
+    const p = Math.max(page || DEFAULT_PAGE, 1);
+    const l = Math.min(Math.max(limit || DEFAULT_LIMIT, 1), MAX_LIMIT);
+    const { docs, total } = await this.repository.findByWorkspacePaginated(workspaceId, p, l);
+    return { data: docs.map((d) => d.toObject()), meta: buildPaginationMeta(total, p, l) };
   }
 
   async update(id: string, workspaceId: string, userId: string, dto: UpdateJournalDto): Promise<Journal> {

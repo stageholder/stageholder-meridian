@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query } from '@nestjs/common';
 import { WorkspaceMemberService } from './workspace-member.service';
 import { InviteMemberDto, UpdateMemberRoleDto, InviteMemberDto as InviteSchema, UpdateMemberRoleDto as UpdateRoleSchema } from './workspace-member.dto';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
@@ -17,9 +17,9 @@ export class WorkspaceMemberController {
   }
 
   @Get()
-  async list(@Param('workspaceId') workspaceId: string, @CurrentUserId() userId: string) {
+  async list(@Param('workspaceId') workspaceId: string, @CurrentUserId() userId: string, @Query('page') page?: string, @Query('limit') limit?: string) {
     await this.service.requireRole(workspaceId, userId, ['owner', 'admin', 'member', 'viewer']);
-    return (await this.service.listMembers(workspaceId)).map((m) => m.toObject());
+    return this.service.listMembersPaginated(workspaceId, page ? +page : undefined, limit ? +limit : undefined);
   }
 
   @Patch(':memberId')

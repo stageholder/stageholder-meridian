@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query } from '@nestjs/common';
 import { HabitService } from './habit.service';
 import { CreateHabitDto, UpdateHabitDto } from './habit.dto';
 import { CreateHabitDto as CreateSchema, UpdateHabitDto as UpdateSchema } from './habit.dto';
@@ -15,8 +15,8 @@ export class HabitController {
   }
 
   @Get()
-  async list(@Param('workspaceId') workspaceId: string, @CurrentUserId() userId: string) {
-    return (await this.service.findByWorkspace(workspaceId, userId)).map((h) => h.toObject());
+  async list(@Param('workspaceId') wsId: string, @CurrentUserId() userId: string, @Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.service.listByWorkspace(wsId, userId, page ? +page : undefined, limit ? +limit : undefined);
   }
 
   @Get(':id')

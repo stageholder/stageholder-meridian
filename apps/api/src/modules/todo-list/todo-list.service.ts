@@ -3,6 +3,7 @@ import { TodoListRepository } from './todo-list.repository';
 import { TodoList } from './todo-list.entity';
 import { CreateTodoListDto, UpdateTodoListDto } from './todo-list.dto';
 import { WorkspaceMemberService } from '../workspace-member/workspace-member.service';
+import { PaginatedResult, buildPaginationMeta, DEFAULT_PAGE, DEFAULT_LIMIT, MAX_LIMIT } from '../../shared';
 
 @Injectable()
 export class TodoListService {
@@ -16,9 +17,12 @@ export class TodoListService {
     return result.value;
   }
 
-  async findByWorkspace(workspaceId: string, userId: string): Promise<TodoList[]> {
+  async findByWorkspace(workspaceId: string, userId: string, page?: number, limit?: number): Promise<PaginatedResult<ReturnType<TodoList['toObject']>>> {
     await this.memberService.requireRole(workspaceId, userId, ['owner', 'admin', 'member']);
-    return this.repository.findByWorkspace(workspaceId);
+    const p = Math.max(page || DEFAULT_PAGE, 1);
+    const l = Math.min(Math.max(limit || DEFAULT_LIMIT, 1), MAX_LIMIT);
+    const { docs, total } = await this.repository.findByWorkspacePaginated(workspaceId, p, l);
+    return { data: docs.map((d) => d.toObject()), meta: buildPaginationMeta(total, p, l) };
   }
 
   async findById(id: string, workspaceId: string, userId: string): Promise<TodoList> {

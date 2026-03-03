@@ -14,16 +14,22 @@ export class TodoListRepository {
   }
 
   async findById(id: string): Promise<TodoList | null> {
-    const doc = await this.model.findById(id).lean();
+    const doc = await this.model.findById(id).where({ deleted_at: null }).lean();
     return doc ? this.toDomain(doc) : null;
   }
 
   async findByWorkspace(workspaceId: string): Promise<TodoList[]> {
-    const docs = await this.model.find({ workspace_id: workspaceId }).lean();
+    const docs = await this.model.find({ workspace_id: workspaceId, deleted_at: null }).lean();
     return docs.map((doc) => this.toDomain(doc));
   }
 
-  async delete(id: string): Promise<void> { await this.model.deleteOne({ _id: id }); }
+  async findByWorkspacePaginated(workspaceId: string, page: number, limit: number): Promise<{ docs: TodoList[]; total: number }> {
+    const total = await this.model.countDocuments({ workspace_id: workspaceId, deleted_at: null });
+    const docs = await this.model.find({ workspace_id: workspaceId, deleted_at: null }).sort({ created_at: -1 }).skip((page - 1) * limit).limit(limit).lean();
+    return { docs: docs.map((doc) => this.toDomain(doc)), total };
+  }
+
+  async delete(id: string): Promise<void> { await this.model.updateOne({ _id: id }, { $set: { deleted_at: new Date() } }); }
 
   private toDomain(doc: any): TodoList {
     return TodoList.reconstitute({ name: doc.name, color: doc.color, icon: doc.icon, workspaceId: doc.workspace_id, isShared: doc.is_shared, creatorId: doc.creator_id, createdAt: doc.created_at, updatedAt: doc.updated_at }, doc._id);

@@ -16,7 +16,9 @@ export class HabitEntryModel {
   @Prop({ type: Number, required: true }) value: number;
   @Prop({ type: String }) notes: string;
   @Prop({ type: String, required: true, index: true }) workspace_id: string;
+  @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 
 export const HabitEntrySchema = SchemaFactory.createForClass(HabitEntryModel);
 HabitEntrySchema.index({ habit_id: 1, date: 1 }, { unique: true });
+HabitEntrySchema.index({ habit_id: 1, date: -1 });

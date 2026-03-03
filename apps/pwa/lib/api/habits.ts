@@ -10,7 +10,7 @@ export function useHabits() {
     queryKey: ["habits", activeWorkspaceId],
     queryFn: async () => {
       const res = await apiClient.get(workspacePath("/habits"));
-      return res.data;
+      return res.data?.data ?? res.data;
     },
     enabled: !!activeWorkspaceId,
   });

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query } from '@nestjs/common';
 import { TagService } from './tag.service';
 import { CreateTagDto, UpdateTagDto } from './tag.dto';
 import { CreateTagDto as CreateSchema, UpdateTagDto as UpdateSchema } from './tag.dto';
@@ -15,8 +15,8 @@ export class TagController {
   }
 
   @Get()
-  async list(@Param('workspaceId') workspaceId: string, @CurrentUserId() userId: string) {
-    return (await this.service.findByWorkspace(workspaceId, userId)).map((t) => t.toObject());
+  async list(@Param('workspaceId') wsId: string, @CurrentUserId() userId: string, @Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.service.listByWorkspace(wsId, userId, page ? +page : undefined, limit ? +limit : undefined);
   }
 
   @Get(':id')

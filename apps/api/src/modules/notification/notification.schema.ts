@@ -21,6 +21,8 @@ export class NotificationModel {
   @Prop({ type: Boolean, default: false, index: true }) read: boolean;
   @Prop({ type: Date }) read_at: Date;
   @Prop({ type: String, required: true, index: true }) workspace_id: string;
+  @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 
 export const NotificationSchema = SchemaFactory.createForClass(NotificationModel);
+NotificationSchema.index({ recipient_id: 1, read: 1, created_at: -1 });

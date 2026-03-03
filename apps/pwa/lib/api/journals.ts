@@ -10,7 +10,7 @@ export function useJournals(params?: { startDate?: string; endDate?: string }) {
     queryKey: ["journals", activeWorkspaceId, params],
     queryFn: async () => {
       const res = await apiClient.get(workspacePath("/journals"), { params });
-      return res.data;
+      return res.data?.data ?? res.data;
     },
     enabled: !!activeWorkspaceId,
   });

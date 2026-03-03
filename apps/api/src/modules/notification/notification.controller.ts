@@ -7,9 +7,9 @@ export class NotificationController {
   constructor(private readonly service: NotificationService) {}
 
   @Get()
-  async list(@CurrentUserId() userId: string, @Query('unread') unread?: string) {
+  async list(@CurrentUserId() userId: string, @Query('unread') unread?: string, @Query('page') page?: string, @Query('limit') limit?: string) {
     const unreadOnly = unread === 'true';
-    return (await this.service.listForUser(userId, unreadOnly)).map((n) => n.toObject());
+    return this.service.listForUserPaginated(userId, unreadOnly, page ? +page : undefined, limit ? +limit : undefined);
   }
 
   @Get('unread-count')

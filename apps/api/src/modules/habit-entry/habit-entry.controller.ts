@@ -15,7 +15,10 @@ export class HabitEntryController {
   }
 
   @Get()
-  async list(@Param('workspaceId') workspaceId: string, @Param('habitId') habitId: string, @CurrentUserId() userId: string, @Query('startDate') startDate?: string, @Query('endDate') endDate?: string) {
+  async list(@Param('workspaceId') workspaceId: string, @Param('habitId') habitId: string, @CurrentUserId() userId: string, @Query('startDate') startDate?: string, @Query('endDate') endDate?: string, @Query('page') page?: string, @Query('limit') limit?: string) {
+    if (page || limit) {
+      return this.service.listByHabitPaginated(habitId, workspaceId, userId, page ? +page : undefined, limit ? +limit : undefined);
+    }
     return (await this.service.listByHabit(habitId, workspaceId, userId, startDate, endDate)).map((e) => e.toObject());
   }
 

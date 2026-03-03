@@ -2,11 +2,13 @@
 
 import { useCallback } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAutoSync } from "@repo/offline/hooks";
 import { cn } from "@/lib/utils";
 import { syncAll } from "@/lib/offline";
 import { OfflineIndicator } from "@/components/shared/offline-indicator";
+import apiClient from "@/lib/api-client";
+import { useAuthStore } from "@/stores/auth-store";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: "Home" },
@@ -61,8 +63,20 @@ function NavIcon({ name }: { name: string }) {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const clearUser = useAuthStore((s) => s.clearUser);
+  const user = useAuthStore((s) => s.user);
   const stableSyncAll = useCallback(() => syncAll(), []);
   useAutoSync(stableSyncAll, 60_000);
+
+  async function handleLogout() {
+    try { await apiClient.post("/auth/logout"); } catch { /* ignore */ }
+    clearUser();
+    localStorage.removeItem("auth-storage");
+    localStorage.removeItem("workspace-storage");
+    document.cookie = "logged_in=; path=/; max-age=0";
+    router.push("/login");
+  }
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -102,8 +116,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-3">
             <OfflineIndicator />
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-              U
+              {user?.name?.charAt(0).toUpperCase() || "U"}
             </div>
+            <button
+              onClick={handleLogout}
+              className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              Sign out
+            </button>
           </div>
         </header>
 

@@ -14,6 +14,8 @@ export class TagModel {
   @Prop({ type: String, required: true, trim: true }) name: string;
   @Prop({ type: String, default: '#6B7280' }) color: string;
   @Prop({ type: String, required: true, index: true }) workspace_id: string;
+  @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 
 export const TagSchema = SchemaFactory.createForClass(TagModel);
+TagSchema.index({ workspace_id: 1, name: 1 }, { unique: true });

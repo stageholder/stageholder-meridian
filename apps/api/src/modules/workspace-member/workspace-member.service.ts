@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { WorkspaceMemberRepository } from './workspace-member.repository';
 import { WorkspaceMember, MemberRole } from './workspace-member.entity';
 import { InviteMemberDto, UpdateMemberRoleDto } from './workspace-member.dto';
+import { PaginatedResult, buildPaginationMeta, DEFAULT_PAGE, DEFAULT_LIMIT, MAX_LIMIT } from '../../shared';
 
 @Injectable()
 export class WorkspaceMemberService {
@@ -36,6 +37,13 @@ export class WorkspaceMemberService {
   }
 
   async listMembers(workspaceId: string): Promise<WorkspaceMember[]> { return this.repository.findByWorkspace(workspaceId); }
+
+  async listMembersPaginated(workspaceId: string, page?: number, limit?: number): Promise<PaginatedResult<ReturnType<WorkspaceMember['toObject']>>> {
+    const p = Math.max(page || DEFAULT_PAGE, 1);
+    const l = Math.min(Math.max(limit || DEFAULT_LIMIT, 1), MAX_LIMIT);
+    const { docs, total } = await this.repository.findByWorkspacePaginated(workspaceId, p, l);
+    return { data: docs.map((d) => d.toObject()), meta: buildPaginationMeta(total, p, l) };
+  }
 
   async updateRole(memberId: string, workspaceId: string, dto: UpdateMemberRoleDto): Promise<WorkspaceMember> {
     const member = await this.repository.findById(memberId);

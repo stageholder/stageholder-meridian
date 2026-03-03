@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { QueryProvider } from "@/lib/query-provider";
 import { Toaster } from "sonner";
+import { ServiceWorkerRegister } from "@/components/shared/sw-register";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -41,6 +42,7 @@ export default function RootLayout({
           <QueryProvider>
             {children}
             <Toaster />
+            <ServiceWorkerRegister />
           </QueryProvider>
         </ThemeProvider>
       </body>

@@ -15,11 +15,11 @@ export class TodoController {
   }
 
   @Get()
-  async list(@Param('workspaceId') workspaceId: string, @CurrentUserId() userId: string, @Query('listId') listId?: string) {
+  async list(@Param('workspaceId') workspaceId: string, @CurrentUserId() userId: string, @Query('listId') listId?: string, @Query('page') page?: string, @Query('limit') limit?: string) {
     if (listId) {
       return (await this.service.listByList(listId, workspaceId, userId)).map((t) => t.toObject());
     }
-    return (await this.service.listByWorkspace(workspaceId, userId)).map((t) => t.toObject());
+    return this.service.listByWorkspace(workspaceId, userId, page ? +page : undefined, limit ? +limit : undefined);
   }
 
   @Get(':id')
