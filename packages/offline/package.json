@@ -1,0 +1,36 @@
+{
+  "name": "@repo/offline",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "lint": "eslint"
+  },
+  "exports": {
+    "./db": "./src/db/index.ts",
+    "./sync/*": "./src/sync/*.ts",
+    "./network": "./src/network/index.ts",
+    "./hooks": "./src/hooks/index.ts"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "@repo/core": "*",
+    "@tanstack/react-query": "^5.0.0",
+    "axios": "^1.0.0"
+  },
+  "dependencies": {
+    "dexie": "^4.0.11",
+    "dexie-react-hooks": "^1.1.7"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "*",
+    "@repo/typescript-config": "*",
+    "@repo/core": "*",
+    "@tanstack/react-query": "^5.62.0",
+    "@types/react": "^19",
+    "axios": "^1.7.9",
+    "react": "^19.1.0",
+    "typescript": "^5"
+  }
+}
