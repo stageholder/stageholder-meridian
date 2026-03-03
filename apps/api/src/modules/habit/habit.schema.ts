@@ -1,0 +1,25 @@
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose';
+import { randomUUID } from 'crypto';
+
+export type HabitDocument = HabitModel & Document<string>;
+
+@Schema({
+  collection: 'habits',
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+  toJSON: { transform: (_doc: any, ret: any) => { ret.id = ret._id; delete ret.__v; return ret; } },
+})
+export class HabitModel {
+  @Prop({ type: String, default: () => randomUUID() }) _id: string;
+  @Prop({ type: String, required: true, trim: true }) name: string;
+  @Prop({ type: String }) description: string;
+  @Prop({ type: String, required: true, default: 'daily' }) frequency: string;
+  @Prop({ type: Number, required: true, default: 1 }) target_count: number;
+  @Prop({ type: String }) unit: string;
+  @Prop({ type: String }) color: string;
+  @Prop({ type: String }) icon: string;
+  @Prop({ type: String, required: true, index: true }) workspace_id: string;
+  @Prop({ type: String, required: true }) creator_id: string;
+}
+
+export const HabitSchema = SchemaFactory.createForClass(HabitModel);

@@ -7,6 +7,14 @@ import { UserModule } from './modules/user/user.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { WorkspaceModule } from './modules/workspace/workspace.module';
 import { WorkspaceMemberModule } from './modules/workspace-member/workspace-member.module';
+import { TagModule } from './modules/tag/tag.module';
+import { TodoListModule } from './modules/todo-list/todo-list.module';
+import { TodoModule } from './modules/todo/todo.module';
+import { JournalModule } from './modules/journal/journal.module';
+import { HabitModule } from './modules/habit/habit.module';
+import { HabitEntryModule } from './modules/habit-entry/habit-entry.module';
+import { ActivityModule } from './modules/activity/activity.module';
+import { NotificationModule } from './modules/notification/notification.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -24,6 +32,14 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     AuthModule,
     WorkspaceModule,
     WorkspaceMemberModule,
+    TagModule,
+    TodoListModule,
+    TodoModule,
+    JournalModule,
+    HabitModule,
+    HabitEntryModule,
+    ActivityModule,
+    NotificationModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
