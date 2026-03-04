@@ -20,6 +20,7 @@ import type { Workspace } from "@repo/core/types";
 import { cn } from "@/lib/utils";
 import { syncAll } from "@/lib/offline";
 import { OfflineIndicator } from "@/components/shared/offline-indicator";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
 import apiClient from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
@@ -261,8 +262,9 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
             <div className="flex-1" />
 
             {/* Right side */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <OfflineIndicator />
+              <ThemeToggle />
 
               {/* User menu */}
               <DropdownMenu>
