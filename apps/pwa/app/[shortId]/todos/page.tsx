@@ -20,7 +20,7 @@ export default function TodosPage() {
     <div className="flex h-[calc(100vh-7rem)]">
       <TodoListSidebar />
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4">
         {firstListId ? (
           <>
             <div className="mb-6 flex items-center justify-between">
