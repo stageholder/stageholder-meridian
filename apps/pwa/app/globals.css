@@ -124,3 +124,16 @@
 body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
+
+button,
+[role="button"],
+[type="button"],
+[type="submit"],
+[type="reset"],
+a,
+label[for],
+select,
+summary,
+[tabindex]:not([tabindex="-1"]) {
+  cursor: pointer;
+}
