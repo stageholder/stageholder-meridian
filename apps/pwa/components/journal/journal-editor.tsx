@@ -8,9 +8,10 @@ interface JournalEditorProps {
   content: string;
   onChange: (content: string) => void;
   placeholder?: string;
+  autoFocus?: boolean;
 }
 
-export function JournalEditor({ content, onChange, placeholder }: JournalEditorProps) {
+export function JournalEditor({ content, onChange, placeholder, autoFocus }: JournalEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -19,6 +20,7 @@ export function JournalEditor({ content, onChange, placeholder }: JournalEditorP
       }),
     ],
     content,
+    autofocus: autoFocus ? "end" : false,
     onUpdate: ({ editor: e }) => {
       onChange(e.getHTML());
     },
