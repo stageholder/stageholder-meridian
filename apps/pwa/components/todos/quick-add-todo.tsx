@@ -11,6 +11,7 @@ interface QuickAddTodoProps {
 
 export function QuickAddTodo({ listId }: QuickAddTodoProps) {
   const [title, setTitle] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
   const [showFullDialog, setShowFullDialog] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const createTodo = useCreateTodo();
@@ -33,6 +34,56 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
     );
   }
 
+  function handleActivate() {
+    setIsEditing(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  }
+
+  function handleBlur() {
+    if (!title.trim()) {
+      setIsEditing(false);
+    }
+  }
+
+  if (!isEditing) {
+    return (
+      <>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleActivate}
+            className="flex flex-1 items-center gap-2 rounded-lg border border-dashed border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14" />
+              <path d="M12 5v14" />
+            </svg>
+            Add a todo...
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowFullDialog(true)}
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+            aria-label="Add todo with details"
+            title="Add with details"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z" />
+            </svg>
+            More
+          </button>
+        </div>
+
+        <CreateTodoDialog
+          open={showFullDialog}
+          onOpenChange={setShowFullDialog}
+          listId={listId}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <form onSubmit={handleSubmit} className="flex items-center gap-2">
@@ -42,6 +93,7 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            onBlur={handleBlur}
             placeholder="Add a todo..."
             className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-16 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
@@ -66,7 +118,7 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
             <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
             <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z" />
           </svg>
-          Details
+          More
         </button>
       </form>
 
