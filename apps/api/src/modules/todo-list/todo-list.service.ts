@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { TodoListRepository } from './todo-list.repository';
 import { TodoList } from './todo-list.entity';
 import { CreateTodoListDto, UpdateTodoListDto } from './todo-list.dto';
@@ -8,6 +8,19 @@ import { PaginatedResult, buildPaginationMeta, DEFAULT_PAGE, DEFAULT_LIMIT, MAX_
 @Injectable()
 export class TodoListService {
   constructor(private readonly repository: TodoListRepository, private readonly memberService: WorkspaceMemberService) {}
+
+  private async ensureDefaultList(workspaceId: string, userId: string): Promise<void> {
+    const existing = await this.repository.findDefaultByWorkspace(workspaceId);
+    if (existing) return;
+    const result = TodoList.create({ name: 'Inbox', color: '#3b82f6', workspaceId, isDefault: true, isShared: false, creatorId: userId });
+    if (!result.ok) return;
+    try {
+      await this.repository.save(result.value);
+    } catch (err: any) {
+      if (err?.code === 11000) return;
+      throw err;
+    }
+  }
 
   async create(workspaceId: string, userId: string, dto: CreateTodoListDto): Promise<TodoList> {
     await this.memberService.requireRole(workspaceId, userId, ['owner', 'admin', 'member']);
@@ -19,6 +32,7 @@ export class TodoListService {
 
   async findByWorkspace(workspaceId: string, userId: string, page?: number, limit?: number): Promise<PaginatedResult<ReturnType<TodoList['toObject']>>> {
     await this.memberService.requireRole(workspaceId, userId, ['owner', 'admin', 'member']);
+    await this.ensureDefaultList(workspaceId, userId);
     const p = Math.max(page || DEFAULT_PAGE, 1);
     const l = Math.min(Math.max(limit || DEFAULT_LIMIT, 1), MAX_LIMIT);
     const { docs, total } = await this.repository.findByWorkspacePaginated(workspaceId, p, l);
@@ -43,7 +57,8 @@ export class TodoListService {
   }
 
   async delete(id: string, workspaceId: string, userId: string): Promise<void> {
-    await this.findById(id, workspaceId, userId);
+    const list = await this.findById(id, workspaceId, userId);
+    if (list.isDefault) throw new ForbiddenException('Cannot delete the default Inbox list');
     await this.repository.delete(id);
   }
 }

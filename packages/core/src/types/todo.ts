@@ -5,6 +5,7 @@ export interface TodoList {
   color?: string;
   icon?: string;
   isShared: boolean;
+  isDefault: boolean;
   creatorId: string;
   createdAt: string;
   updatedAt: string;

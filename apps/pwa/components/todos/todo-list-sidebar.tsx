@@ -15,6 +15,12 @@ export function TodoListSidebar() {
   const { data: lists, isLoading } = useTodoLists();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
+  const sortedLists = lists
+    ? [...lists].sort((a, b) =>
+        a.isDefault === b.isDefault ? 0 : a.isDefault ? -1 : 1
+      )
+    : [];
+
   return (
     <div className="flex h-full w-64 flex-col border-r border-border bg-card">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -32,50 +38,41 @@ export function TodoListSidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-        <Link
-          href={`/${workspace.shortId}/todos`}
-          className={cn(
-            "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-            pathname === `/${workspace.shortId}/todos`
-              ? "bg-accent text-accent-foreground"
-              : "text-muted-foreground hover:bg-accent hover:text-foreground"
-          )}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect width="18" height="18" x="3" y="3" rx="2" />
-            <path d="m9 12 2 2 4-4" />
-          </svg>
-          All Todos
-        </Link>
-
         {isLoading && (
           <div className="px-3 py-2 text-xs text-muted-foreground">Loading...</div>
         )}
 
-        {lists?.map((list: TodoList) => (
+        {sortedLists.map((list: TodoList) => (
           <Link
             key={list.id}
-            href={`/${workspace.shortId}/todos/${list.id}`}
+            href={
+              list.isDefault
+                ? `/${workspace.shortId}/todos`
+                : `/${workspace.shortId}/todos/${list.id}`
+            }
             className={cn(
               "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-              pathname === `/${workspace.shortId}/todos/${list.id}`
+              (list.isDefault
+                ? pathname === `/${workspace.shortId}/todos`
+                : pathname === `/${workspace.shortId}/todos/${list.id}`)
                 ? "bg-accent text-accent-foreground"
                 : "text-muted-foreground hover:bg-accent hover:text-foreground"
             )}
           >
-            <span
-              className="inline-block h-3 w-3 rounded-full"
-              style={{ backgroundColor: list.color || "#6b7280" }}
-            />
+            {list.isDefault ? (
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+                <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+              </svg>
+            ) : (
+              <span
+                className="inline-block h-3 w-3 rounded-full"
+                style={{ backgroundColor: list.color || "#6b7280" }}
+              />
+            )}
             {list.name}
           </Link>
         ))}
-
-        {!isLoading && lists?.length === 0 && (
-          <p className="px-3 py-4 text-center text-xs text-muted-foreground">
-            No lists yet. Create one to get started.
-          </p>
-        )}
       </nav>
 
       <CreateListDialog

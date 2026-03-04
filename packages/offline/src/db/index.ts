@@ -48,7 +48,7 @@ class MeridianDB extends Dexie {
     this.version(1).stores({
       workspaces: 'id, ownerId',
       members: 'id, workspaceId, userId',
-      todoLists: 'id, workspaceId',
+      todoLists: 'id, workspaceId, isDefault',
       todos: 'id, workspaceId, listId, status, assigneeId, dueDate',
       journals: 'id, workspaceId, date',
       habits: 'id, workspaceId',
