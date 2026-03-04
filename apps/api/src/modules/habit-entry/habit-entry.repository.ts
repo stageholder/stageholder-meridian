@@ -39,6 +39,11 @@ export class HabitEntryRepository {
     return docs.map((doc) => this.toDomain(doc));
   }
 
+  async findByWorkspaceAndDateRange(workspaceId: string, startDate: string, endDate: string): Promise<HabitEntry[]> {
+    const docs = await this.model.find({ workspace_id: workspaceId, deleted_at: null, date: { $gte: startDate, $lte: endDate } }).sort({ date: -1 }).lean();
+    return docs.map((doc) => this.toDomain(doc));
+  }
+
   async delete(id: string): Promise<void> { await this.model.updateOne({ _id: id }, { $set: { deleted_at: new Date() } }); }
 
   private toDomain(doc: any): HabitEntry {

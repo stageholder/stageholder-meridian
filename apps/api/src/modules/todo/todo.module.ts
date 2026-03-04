@@ -13,6 +13,6 @@ import { WorkspaceMemberModule } from '../workspace-member/workspace-member.modu
   ],
   controllers: [TodoController],
   providers: [TodoRepository, TodoService],
-  exports: [TodoService],
+  exports: [TodoService, TodoRepository],
 })
 export class TodoModule {}

@@ -13,6 +13,6 @@ import { WorkspaceMemberModule } from '../workspace-member/workspace-member.modu
   ],
   controllers: [JournalController],
   providers: [JournalRepository, JournalService],
-  exports: [JournalService],
+  exports: [JournalService, JournalRepository],
 })
 export class JournalModule {}

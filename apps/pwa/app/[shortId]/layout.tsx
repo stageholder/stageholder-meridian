@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import {
   Home,
+  CalendarDays,
   CheckSquare,
   BookOpen,
   Target,
@@ -49,6 +50,7 @@ import { Separator } from "@/components/ui/separator";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
+  { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/todos", label: "Todos", icon: CheckSquare },
   { href: "/journal", label: "Journal", icon: BookOpen },
   { href: "/habits", label: "Habits", icon: Target },

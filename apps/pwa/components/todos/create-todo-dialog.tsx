@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCreateTodo } from "@/lib/api/todos";
 import { DatePicker } from "@/components/ui/date-picker";
 import { toast } from "sonner";
@@ -9,14 +10,22 @@ interface CreateTodoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   listId: string;
+  defaultDueDate?: string;
 }
 
-export function CreateTodoDialog({ open, onOpenChange, listId }: CreateTodoDialogProps) {
+export function CreateTodoDialog({ open, onOpenChange, listId, defaultDueDate }: CreateTodoDialogProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("none");
-  const [dueDate, setDueDate] = useState("");
+  const [dueDate, setDueDate] = useState(defaultDueDate || "");
+  const queryClient = useQueryClient();
   const createTodo = useCreateTodo();
+
+  useEffect(() => {
+    if (open && defaultDueDate) {
+      setDueDate(defaultDueDate);
+    }
+  }, [open, defaultDueDate]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,6 +49,7 @@ export function CreateTodoDialog({ open, onOpenChange, listId }: CreateTodoDialo
           setPriority("none");
           setDueDate("");
           onOpenChange(false);
+          void queryClient.invalidateQueries({ queryKey: ["calendar"] });
         },
         onError: () => {
           toast.error("Failed to create todo");

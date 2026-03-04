@@ -13,6 +13,6 @@ import { WorkspaceMemberModule } from '../workspace-member/workspace-member.modu
   ],
   controllers: [HabitController],
   providers: [HabitRepository, HabitService],
-  exports: [HabitService],
+  exports: [HabitService, HabitRepository],
 })
 export class HabitModule {}

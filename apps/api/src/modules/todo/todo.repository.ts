@@ -28,6 +28,14 @@ export class TodoRepository {
     return docs.map((doc) => this.toDomain(doc));
   }
 
+  async findByWorkspaceAndDateRange(workspaceId: string, startDate: string, endDate: string): Promise<Todo[]> {
+    const nextDay = new Date(endDate);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+    const endExclusive = nextDay.toISOString().split('T')[0]!;
+    const docs = await this.model.find({ workspace_id: workspaceId, deleted_at: null, due_date: { $gte: startDate, $lt: endExclusive } }).sort({ due_date: 1 }).lean();
+    return docs.map((doc) => this.toDomain(doc));
+  }
+
   async findByWorkspacePaginated(workspaceId: string, page: number, limit: number): Promise<{ docs: Todo[]; total: number }> {
     const total = await this.model.countDocuments({ workspace_id: workspaceId, deleted_at: null });
     const docs = await this.model.find({ workspace_id: workspaceId, deleted_at: null }).sort({ created_at: -1 }).skip((page - 1) * limit).limit(limit).lean();

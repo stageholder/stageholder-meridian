@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import { JournalEditor } from "@/components/journal/journal-editor";
 import { MoodPicker } from "@/components/journal/mood-picker";
@@ -17,11 +17,13 @@ function formatDefaultTitle(isoDate: string): string {
 export default function NewJournalPage() {
   const { workspace } = useWorkspace();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const dateParam = searchParams.get("date");
   const today = new Date().toISOString().split("T")[0]!;
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [mood, setMood] = useState<number | undefined>(undefined);
-  const [date, setDate] = useState(today);
+  const [date, setDate] = useState(dateParam || today);
   const createJournal = useCreateJournal();
 
   const effectiveTitle = title.trim() || formatDefaultTitle(date);
