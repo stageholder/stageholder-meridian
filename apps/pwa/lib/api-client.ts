@@ -1,11 +1,12 @@
 import { createApiClient } from "@repo/core/api/client";
-import { LocalStorageAdapter } from "@repo/core/platform";
+import { LocalStorageAdapter, detectPlatform } from "@repo/core/platform";
 
 const storage = new LocalStorageAdapter();
+export const isDesktop = detectPlatform() === "desktop";
 
 const apiClient = createApiClient({
   apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1",
-  authStrategy: "cookie",
+  authStrategy: isDesktop ? "bearer" : "cookie",
   storage,
   onLogout: () => {
     if (typeof window !== "undefined") {

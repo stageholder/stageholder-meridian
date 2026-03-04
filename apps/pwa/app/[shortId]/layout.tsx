@@ -22,6 +22,7 @@ import { syncAll } from "@/lib/offline";
 import { OfflineIndicator } from "@/components/shared/offline-indicator";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import apiClient from "@/lib/api-client";
+import { clearLoggedInFlag } from "@/lib/auth-helpers";
 import { useAuthStore } from "@/stores/auth-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { WorkspaceProvider } from "@/lib/workspace-context";
@@ -126,7 +127,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
     clearUser();
     localStorage.removeItem("auth-storage");
     localStorage.removeItem("workspace-storage");
-    document.cookie = "logged_in=; path=/; max-age=0";
+    clearLoggedInFlag();
     router.push("/login");
   }
 

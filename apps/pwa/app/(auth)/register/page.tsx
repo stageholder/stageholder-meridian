@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import apiClient from "@/lib/api-client";
+import { setLoggedInFlag } from "@/lib/auth-helpers";
 import { useAuthStore } from "@/stores/auth-store";
 import type { AuthUser } from "@repo/core/types";
 
@@ -24,7 +25,7 @@ export default function RegisterPage() {
     try {
       const res = await apiClient.post<AuthUser>("/auth/register", { name, email, password });
       setUser(res.data);
-      document.cookie = "logged_in=1; path=/; max-age=604800; samesite=lax";
+      setLoggedInFlag();
       router.push("/workspaces");
     } catch {
       setError("Registration failed. Please try again.");
