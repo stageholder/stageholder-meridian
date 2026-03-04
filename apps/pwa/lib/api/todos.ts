@@ -114,6 +114,7 @@ export function useCreateTodo() {
         status?: string;
         priority?: string;
         dueDate?: string;
+        doDate?: string;
         assigneeId?: string;
       };
     }) => {
@@ -149,6 +150,7 @@ export function useUpdateTodo() {
         status?: string;
         priority?: string;
         dueDate?: string;
+        doDate?: string;
         assigneeId?: string;
       };
     }) => {

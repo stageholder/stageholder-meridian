@@ -9,6 +9,7 @@ export interface TodoProps extends EntityProps {
   status: TodoStatus;
   priority: TodoPriority;
   dueDate?: string;
+  doDate?: string;
   listId: string;
   workspaceId: string;
   assigneeId?: string;
@@ -24,6 +25,7 @@ export class Todo extends Entity<TodoProps> {
   get status(): TodoStatus { return this.get('status'); }
   get priority(): TodoPriority { return this.get('priority'); }
   get dueDate(): string | undefined { return this.get('dueDate'); }
+  get doDate(): string | undefined { return this.get('doDate'); }
   get listId(): string { return this.get('listId'); }
   get workspaceId(): string { return this.get('workspaceId'); }
   get assigneeId(): string | undefined { return this.get('assigneeId'); }
@@ -35,6 +37,7 @@ export class Todo extends Entity<TodoProps> {
   updateStatus(status: TodoStatus): void { this.set('status', status); }
   updatePriority(priority: TodoPriority): void { this.set('priority', priority); }
   updateDueDate(dueDate: string | undefined): void { this.set('dueDate', dueDate); }
+  updateDoDate(doDate: string | undefined): void { this.set('doDate', doDate); }
   updateAssigneeId(assigneeId: string | undefined): void { this.set('assigneeId', assigneeId); }
   updateOrder(order: number): void { this.set('order', order); }
 

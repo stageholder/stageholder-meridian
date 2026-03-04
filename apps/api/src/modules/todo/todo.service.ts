@@ -12,7 +12,7 @@ export class TodoService {
   async create(workspaceId: string, userId: string, dto: CreateTodoDto): Promise<Todo> {
     await this.memberService.requireRole(workspaceId, userId, ['owner', 'admin', 'member']);
     const order = await this.repository.countByList(dto.listId);
-    const result = Todo.create({ title: dto.title, description: dto.description, status: dto.status || 'todo', priority: dto.priority || 'none', dueDate: dto.dueDate, listId: dto.listId, workspaceId, assigneeId: dto.assigneeId, creatorId: userId, order });
+    const result = Todo.create({ title: dto.title, description: dto.description, status: dto.status || 'todo', priority: dto.priority || 'none', dueDate: dto.dueDate, doDate: dto.doDate, listId: dto.listId, workspaceId, assigneeId: dto.assigneeId, creatorId: userId, order });
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);
     return result.value;
@@ -45,6 +45,7 @@ export class TodoService {
     if (dto.status) todo.updateStatus(dto.status as TodoStatus);
     if (dto.priority) todo.updatePriority(dto.priority);
     if (dto.dueDate !== undefined) todo.updateDueDate(dto.dueDate || undefined);
+    if (dto.doDate !== undefined) todo.updateDoDate(dto.doDate || undefined);
     if (dto.assigneeId !== undefined) todo.updateAssigneeId(dto.assigneeId || undefined);
     await this.repository.save(todo);
     return todo;

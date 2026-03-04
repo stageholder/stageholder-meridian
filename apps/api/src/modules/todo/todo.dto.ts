@@ -6,6 +6,7 @@ export const CreateTodoDto = z.object({
   status: z.enum(['todo', 'in_progress', 'done']).optional().default('todo'),
   priority: z.enum(['none', 'low', 'medium', 'high', 'urgent']).optional().default('none'),
   dueDate: z.string().optional(),
+  doDate: z.string().optional(),
   listId: z.string().min(1, 'List is required'),
   assigneeId: z.string().optional(),
 });
@@ -17,6 +18,7 @@ export const UpdateTodoDto = z.object({
   status: z.enum(['todo', 'in_progress', 'done']).optional(),
   priority: z.enum(['none', 'low', 'medium', 'high', 'urgent']).optional(),
   dueDate: z.string().nullable().optional(),
+  doDate: z.string().nullable().optional(),
   assigneeId: z.string().nullable().optional(),
 });
 export type UpdateTodoDto = z.infer<typeof UpdateTodoDto>;

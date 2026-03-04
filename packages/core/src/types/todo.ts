@@ -20,6 +20,7 @@ export interface Todo {
   status: 'todo' | 'in_progress' | 'done';
   priority: 'none' | 'low' | 'medium' | 'high' | 'urgent';
   dueDate?: string;
+  doDate?: string;
   assigneeId?: string;
   creatorId: string;
   order: number;

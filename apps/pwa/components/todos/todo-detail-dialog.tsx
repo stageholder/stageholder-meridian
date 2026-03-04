@@ -58,6 +58,15 @@ export function TodoDetailDialog({ open, onOpenChange, todo, listId }: TodoDetai
       })
     : null;
 
+  const formattedDoDate = todo.doDate
+    ? new Date(todo.doDate).toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
+
   const isOverdue =
     todo.dueDate && !isDone && new Date(todo.dueDate) < new Date();
 
@@ -187,10 +196,20 @@ export function TodoDetailDialog({ open, onOpenChange, todo, listId }: TodoDetai
               )}
             </div>
 
-            {/* Created */}
+            {/* Do Date */}
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Created</p>
-              <p className="mt-1.5 text-sm text-foreground">{formattedCreatedAt}</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Do Date</p>
+              {formattedDoDate ? (
+                <p className="mt-1.5 flex items-center gap-1.5 text-sm text-foreground">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  {formattedDoDate}
+                </p>
+              ) : (
+                <p className="mt-1.5 text-sm text-muted-foreground">No do date</p>
+              )}
             </div>
           </div>
         </div>

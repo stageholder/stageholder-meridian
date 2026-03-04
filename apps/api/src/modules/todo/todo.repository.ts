@@ -10,7 +10,7 @@ export class TodoRepository {
 
   async save(todo: Todo): Promise<void> {
     const data = todo.toObject();
-    await this.model.updateOne({ _id: data.id }, { $set: { title: data.title, description: data.description, status: data.status, priority: data.priority, due_date: data.dueDate, list_id: data.listId, workspace_id: data.workspaceId, assignee_id: data.assigneeId, creator_id: data.creatorId, order: data.order } }, { upsert: true });
+    await this.model.updateOne({ _id: data.id }, { $set: { title: data.title, description: data.description, status: data.status, priority: data.priority, due_date: data.dueDate, do_date: data.doDate, list_id: data.listId, workspace_id: data.workspaceId, assignee_id: data.assigneeId, creator_id: data.creatorId, order: data.order } }, { upsert: true });
   }
 
   async findById(id: string): Promise<Todo | null> {
@@ -32,7 +32,8 @@ export class TodoRepository {
     const nextDay = new Date(endDate);
     nextDay.setUTCDate(nextDay.getUTCDate() + 1);
     const endExclusive = nextDay.toISOString().split('T')[0]!;
-    const docs = await this.model.find({ workspace_id: workspaceId, deleted_at: null, due_date: { $gte: startDate, $lt: endExclusive } }).sort({ due_date: 1 }).lean();
+    const dateRange = { $gte: startDate, $lt: endExclusive };
+    const docs = await this.model.find({ workspace_id: workspaceId, deleted_at: null, $or: [{ due_date: dateRange }, { do_date: dateRange }] }).sort({ due_date: 1 }).lean();
     return docs.map((doc) => this.toDomain(doc));
   }
 
@@ -49,6 +50,6 @@ export class TodoRepository {
   async delete(id: string): Promise<void> { await this.model.updateOne({ _id: id }, { $set: { deleted_at: new Date() } }); }
 
   private toDomain(doc: any): Todo {
-    return Todo.reconstitute({ title: doc.title, description: doc.description, status: doc.status, priority: doc.priority, dueDate: doc.due_date, listId: doc.list_id, workspaceId: doc.workspace_id, assigneeId: doc.assignee_id, creatorId: doc.creator_id, order: doc.order, createdAt: doc.created_at, updatedAt: doc.updated_at }, doc._id);
+    return Todo.reconstitute({ title: doc.title, description: doc.description, status: doc.status, priority: doc.priority, dueDate: doc.due_date, doDate: doc.do_date, listId: doc.list_id, workspaceId: doc.workspace_id, assigneeId: doc.assignee_id, creatorId: doc.creator_id, order: doc.order, createdAt: doc.created_at, updatedAt: doc.updated_at }, doc._id);
   }
 }

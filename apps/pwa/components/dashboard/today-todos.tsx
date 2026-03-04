@@ -17,9 +17,11 @@ export function TodayTodos() {
 
   const todayTodos = (todos || []).filter((t: Todo) => {
     if (t.status === "done") return false;
-    if (!t.dueDate) return false;
-    const dueDateStr = t.dueDate.split("T")[0];
-    return dueDateStr !== undefined && dueDateStr <= today;
+    const dueDateStr = t.dueDate?.split("T")[0];
+    const doDateStr = t.doDate?.split("T")[0];
+    const hasDueToday = dueDateStr !== undefined && dueDateStr <= today;
+    const hasDoToday = doDateStr !== undefined && doDateStr <= today;
+    return hasDueToday || hasDoToday;
   });
 
   function handleToggle(todo: Todo) {

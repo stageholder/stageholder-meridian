@@ -58,6 +58,10 @@ class MeridianDB extends Dexie {
       pendingMutations: '++id, entityType, status, timestamp',
       syncMeta: '[entityType+workspaceId]',
     });
+
+    this.version(2).stores({
+      todos: 'id, workspaceId, listId, status, assigneeId, dueDate, doDate',
+    });
   }
 }
 

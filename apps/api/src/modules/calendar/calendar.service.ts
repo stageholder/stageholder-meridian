@@ -6,7 +6,7 @@ import { HabitRepository } from '../habit/habit.repository';
 import { WorkspaceMemberService } from '../workspace-member/workspace-member.service';
 
 export interface CalendarDayData {
-  todos: Array<{ id: string; title: string; status: string; priority: string; dueDate: string; listId: string }>;
+  todos: Array<{ id: string; title: string; status: string; priority: string; dueDate?: string; doDate?: string; listId: string }>;
   journals: Array<{ id: string; title: string; date: string }>;
   habitEntries: Array<{ id: string; habitId: string; habitName: string; value: number; date: string }>;
 }
@@ -39,11 +39,20 @@ export class CalendarService {
       return result[date];
     };
 
+    const seenTodoOnDay = new Set<string>();
     for (const todo of todos) {
       const obj = todo.toObject();
+      const todoData = { id: obj.id, title: obj.title, status: obj.status, priority: obj.priority, dueDate: obj.dueDate, doDate: obj.doDate, listId: obj.listId };
       if (obj.dueDate) {
         const day = obj.dueDate.split('T')[0] || obj.dueDate;
-        getDay(day).todos.push({ id: obj.id, title: obj.title, status: obj.status, priority: obj.priority, dueDate: obj.dueDate, listId: obj.listId });
+        seenTodoOnDay.add(`${obj.id}:${day}`);
+        getDay(day).todos.push(todoData);
+      }
+      if (obj.doDate) {
+        const day = obj.doDate.split('T')[0] || obj.doDate;
+        if (!seenTodoOnDay.has(`${obj.id}:${day}`)) {
+          getDay(day).todos.push(todoData);
+        }
       }
     }
 

@@ -6,6 +6,8 @@ import { useCreateTodo } from "@/lib/api/todos";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { format, addDays, nextMonday } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface CreateTodoDialogProps {
   open: boolean;
@@ -19,6 +21,7 @@ export function CreateTodoDialog({ open, onOpenChange, listId, defaultDueDate }:
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("none");
   const [dueDate, setDueDate] = useState(defaultDueDate || "");
+  const [doDate, setDoDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const queryClient = useQueryClient();
   const createTodo = useCreateTodo();
 
@@ -40,6 +43,7 @@ export function CreateTodoDialog({ open, onOpenChange, listId, defaultDueDate }:
           description: description.trim() || undefined,
           priority,
           dueDate: dueDate || undefined,
+          doDate: doDate || undefined,
         },
       },
       {
@@ -49,6 +53,7 @@ export function CreateTodoDialog({ open, onOpenChange, listId, defaultDueDate }:
           setDescription("");
           setPriority("none");
           setDueDate("");
+          setDoDate(format(new Date(), "yyyy-MM-dd"));
           onOpenChange(false);
           void queryClient.invalidateQueries({ queryKey: ["calendar"] });
         },
@@ -96,57 +101,124 @@ export function CreateTodoDialog({ open, onOpenChange, listId, defaultDueDate }:
             />
           </div>
 
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-foreground">
-                Priority
-              </label>
-              <div className="mt-1">
-                <Select value={priority} onValueChange={setPriority}>
-                  <SelectTrigger className="w-full rounded-lg border-border bg-background">
-                    <SelectValue placeholder="None" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="low">
-                      <span className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-blue-500" />
-                        Low
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="medium">
-                      <span className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-yellow-500" />
-                        Medium
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="high">
-                      <span className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-orange-500" />
-                        High
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="urgent">
-                      <span className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-red-500" />
-                        Urgent
-                      </span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+          <div>
+            <label className="block text-sm font-medium text-foreground">
+              Priority
+            </label>
+            <div className="mt-1">
+              <Select value={priority} onValueChange={setPriority}>
+                <SelectTrigger className="w-full rounded-lg border-border bg-background">
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="low">
+                    <span className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-blue-500" />
+                      Low
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="medium">
+                    <span className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-yellow-500" />
+                      Medium
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="high">
+                    <span className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-orange-500" />
+                      High
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="urgent">
+                    <span className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-red-500" />
+                      Urgent
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <div className="flex items-center gap-3">
+                <label className="block text-sm font-medium text-foreground w-20 shrink-0">
+                  Due Date
+                </label>
+                <div className="flex-1">
+                  <DatePicker
+                    value={dueDate}
+                    onChange={setDueDate}
+                    placeholder="No due date"
+                  />
+                </div>
+              </div>
+              <div className="mt-1.5 ml-[calc(5rem+0.75rem)] flex flex-wrap gap-1.5">
+                {[
+                  { label: "Today", date: new Date() },
+                  { label: "Tomorrow", date: addDays(new Date(), 1) },
+                  { label: "Next Week", date: nextMonday(new Date()) },
+                ].map((shortcut) => {
+                  const iso = format(shortcut.date, "yyyy-MM-dd");
+                  const isActive = dueDate === iso;
+                  return (
+                    <button
+                      key={shortcut.label}
+                      type="button"
+                      onClick={() => setDueDate(isActive ? "" : iso)}
+                      className={cn(
+                        "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
+                        isActive
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+                      )}
+                    >
+                      {shortcut.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-foreground">
-                Due Date
-              </label>
-              <div className="mt-1">
-                <DatePicker
-                  value={dueDate}
-                  onChange={setDueDate}
-                  placeholder="No due date"
-                />
+            <div>
+              <div className="flex items-center gap-3">
+                <label className="block text-sm font-medium text-foreground w-20 shrink-0">
+                  Do Date
+                </label>
+                <div className="flex-1">
+                  <DatePicker
+                    value={doDate}
+                    onChange={setDoDate}
+                    placeholder="No do date"
+                  />
+                </div>
+              </div>
+              <div className="mt-1.5 ml-[calc(5rem+0.75rem)] flex flex-wrap gap-1.5">
+                {[
+                  { label: "Today", date: new Date() },
+                  { label: "Tomorrow", date: addDays(new Date(), 1) },
+                  { label: "Next Week", date: nextMonday(new Date()) },
+                ].map((shortcut) => {
+                  const iso = format(shortcut.date, "yyyy-MM-dd");
+                  const isActive = doDate === iso;
+                  return (
+                    <button
+                      key={`do-${shortcut.label}`}
+                      type="button"
+                      onClick={() => setDoDate(isActive ? "" : iso)}
+                      className={cn(
+                        "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
+                        isActive
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+                      )}
+                    >
+                      {shortcut.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

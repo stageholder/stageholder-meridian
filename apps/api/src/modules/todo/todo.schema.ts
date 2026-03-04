@@ -16,6 +16,7 @@ export class TodoModel {
   @Prop({ type: String, required: true, index: true, default: 'todo' }) status: string;
   @Prop({ type: String, required: true, default: 'none' }) priority: string;
   @Prop({ type: String, index: true }) due_date: string;
+  @Prop({ type: String, index: true }) do_date: string;
   @Prop({ type: String, required: true, index: true }) list_id: string;
   @Prop({ type: String, required: true, index: true }) workspace_id: string;
   @Prop({ type: String, index: true }) assignee_id: string;

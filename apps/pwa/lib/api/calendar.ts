@@ -3,7 +3,7 @@ import apiClient from "@/lib/api-client";
 import { useWorkspace } from "@/lib/workspace-context";
 
 export interface CalendarDayData {
-  todos: Array<{ id: string; title: string; status: string; priority: string; dueDate: string; listId: string }>;
+  todos: Array<{ id: string; title: string; status: string; priority: string; dueDate?: string; doDate?: string; listId: string }>;
   journals: Array<{ id: string; title: string; date: string }>;
   habitEntries: Array<{ id: string; habitId: string; habitName: string; value: number; date: string }>;
 }

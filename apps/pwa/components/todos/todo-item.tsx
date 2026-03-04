@@ -47,6 +47,13 @@ export function TodoItem({ todo, listId }: TodoItemProps) {
       })
     : null;
 
+  const formattedDoDate = todo.doDate
+    ? new Date(todo.doDate).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      })
+    : null;
+
   const isOverdue =
     todo.dueDate && !isDone && new Date(todo.dueDate) < new Date();
 
@@ -86,7 +93,7 @@ export function TodoItem({ todo, listId }: TodoItemProps) {
               {todo.description}
             </p>
           )}
-          {(priority.label || formattedDueDate) && (
+          {(priority.label || formattedDueDate || formattedDoDate) && (
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
               {priority.label && (
                 <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-medium", priority.className)}>
@@ -107,6 +114,15 @@ export function TodoItem({ todo, listId }: TodoItemProps) {
                     <line x1="3" x2="21" y1="10" y2="10" />
                   </svg>
                   {formattedDueDate}
+                </span>
+              )}
+              {formattedDoDate && (
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  {formattedDoDate}
                 </span>
               )}
             </div>
