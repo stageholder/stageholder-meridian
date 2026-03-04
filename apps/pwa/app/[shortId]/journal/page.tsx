@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useJournals } from "@/lib/api/journals";
 import { JournalList } from "@/components/journal/journal-list";
 import { DatePicker } from "@/components/ui/date-picker";
+import { useWorkspace } from "@/lib/workspace-context";
 import type { Journal } from "@repo/core/types";
 
 const moodOptions = [
@@ -17,6 +18,7 @@ const moodOptions = [
 ];
 
 export default function JournalPage() {
+  const { workspace } = useWorkspace();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [moodFilter, setMoodFilter] = useState(0);
@@ -46,7 +48,7 @@ export default function JournalPage() {
           </p>
         </div>
         <Link
-          href="/journal/new"
+          href={`/${workspace.shortId}/journal/new`}
           className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
