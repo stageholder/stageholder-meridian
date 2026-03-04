@@ -31,15 +31,17 @@ export default function TodosPage() {
               </p>
             </div>
 
+            <QuickAddTodo listId={firstListId} />
+
             {isLoading ? (
-              <div className="text-sm text-muted-foreground">Loading todos...</div>
+              <div className="mt-3 text-sm text-muted-foreground">Loading todos...</div>
             ) : (
-              <div className="space-y-2">
+              <div className="mt-3 space-y-2">
                 {pendingTodos.map((todo: Todo) => (
                   <TodoItem key={todo.id} todo={todo} listId={firstListId} />
                 ))}
                 {doneTodos.length > 0 && (
-                  <div className="pt-4">
+                  <div className="space-y-2 pt-4">
                     <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Completed ({doneTodos.length})
                     </h3>
@@ -51,14 +53,12 @@ export default function TodosPage() {
                 {pendingTodos.length === 0 && doneTodos.length === 0 && (
                   <div className="py-12 text-center">
                     <p className="text-sm text-muted-foreground">
-                      No todos yet. Type below to add one.
+                      No todos yet. Add one above!
                     </p>
                   </div>
                 )}
               </div>
             )}
-
-            <QuickAddTodo listId={firstListId} />
           </>
         ) : (
           <div className="flex h-full items-center justify-center">

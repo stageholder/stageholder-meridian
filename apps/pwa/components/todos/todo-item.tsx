@@ -46,23 +46,26 @@ export function TodoItem({ todo, listId }: TodoItemProps) {
     todo.dueDate && !isDone && new Date(todo.dueDate) < new Date();
 
   return (
-    <div className="group flex items-start gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:bg-accent/50">
-      <button
-        onClick={handleToggle}
+    <div
+      onClick={handleToggle}
+      className="group flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:bg-accent/50"
+      role="button"
+      aria-label={isDone ? "Mark as incomplete" : "Mark as complete"}
+    >
+      <div
         className={cn(
-          "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+          "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
           isDone
             ? "border-primary bg-primary text-primary-foreground"
-            : "border-muted-foreground/40 hover:border-primary"
+            : "border-muted-foreground/40 group-hover:border-primary"
         )}
-        aria-label={isDone ? "Mark as incomplete" : "Mark as complete"}
       >
         {isDone && (
           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
           </svg>
         )}
-      </button>
+      </div>
 
       <div className="flex-1 min-w-0">
         <p className={cn("text-sm font-medium text-foreground", isDone && "line-through text-muted-foreground")}>
@@ -73,34 +76,39 @@ export function TodoItem({ todo, listId }: TodoItemProps) {
             {todo.description}
           </p>
         )}
-        <div className="mt-1.5 flex flex-wrap items-center gap-2">
-          {priority.label && (
-            <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-medium", priority.className)}>
-              {priority.label}
-            </span>
-          )}
-          {formattedDueDate && (
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 text-xs",
-                isOverdue ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
-              )}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-                <line x1="16" x2="16" y1="2" y2="6" />
-                <line x1="8" x2="8" y1="2" y2="6" />
-                <line x1="3" x2="21" y1="10" y2="10" />
-              </svg>
-              {formattedDueDate}
-            </span>
-          )}
-        </div>
+        {(priority.label || formattedDueDate) && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            {priority.label && (
+              <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-medium", priority.className)}>
+                {priority.label}
+              </span>
+            )}
+            {formattedDueDate && (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 text-xs",
+                  isOverdue ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
+                )}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+                  <line x1="16" x2="16" y1="2" y2="6" />
+                  <line x1="8" x2="8" y1="2" y2="6" />
+                  <line x1="3" x2="21" y1="10" y2="10" />
+                </svg>
+                {formattedDueDate}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       <button
-        onClick={handleDelete}
-        className="mt-0.5 hidden h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive group-hover:flex"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleDelete();
+        }}
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
         aria-label="Delete todo"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
