@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "wait-on http://localhost:3000 && tauri dev",
     "build": "tauri build",
+    "build:production": "tauri build --config '{\"build\":{\"frontendDist\":\"'\"${MERIDIAN_FRONTEND_URL:-https://app.meridian.example.com}\"'\"}}'",
     "tauri": "tauri"
   },
   "dependencies": {

@@ -12,7 +12,9 @@
     "./types/*": "./src/types/*.ts",
     "./api/*": "./src/api/*.ts",
     "./stores/*": "./src/stores/*.ts",
-    "./platform": "./src/platform/index.ts"
+    "./platform": "./src/platform/index.ts",
+    "./platform/notifications": "./src/platform/notifications.ts",
+    "./platform/updater": "./src/platform/updater.ts"
   },
   "peerDependencies": {
     "react": "^19.0.0"
@@ -24,6 +26,8 @@
   "devDependencies": {
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
+    "@tauri-apps/plugin-notification": "^2",
+    "@tauri-apps/plugin-updater": "^2",
     "@types/react": "^19",
     "typescript": "^5"
   }

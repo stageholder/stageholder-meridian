@@ -1,5 +1,6 @@
 import { db } from "@repo/offline/db";
 import { fullSync } from "@repo/offline/sync/sync-manager";
+import { sendNativeNotification } from "@repo/core/platform/notifications";
 import { createTodosApi } from "@repo/core/api/todos";
 import { createJournalsApi } from "@repo/core/api/journals";
 import { createHabitsApi } from "@repo/core/api/habits";
@@ -58,10 +59,16 @@ export async function syncAll(): Promise<void> {
     notifications: db.notifications,
   };
 
-  await fullSync(
-    workspaceId,
-    apiClient,
-    fetchers as Record<string, () => Promise<{ id: string }[]>>,
-    tables as Record<string, (typeof tables)[keyof typeof tables]>,
-  );
+  try {
+    await fullSync(
+      workspaceId,
+      apiClient,
+      fetchers as Record<string, () => Promise<{ id: string }[]>>,
+      tables as Record<string, (typeof tables)[keyof typeof tables]>,
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    sendNativeNotification('Sync failed', message);
+    throw error;
+  }
 }

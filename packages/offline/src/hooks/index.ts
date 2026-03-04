@@ -111,9 +111,11 @@ export function usePendingCount(): number {
 
 export function useAutoSync(
   syncFn: () => Promise<void>,
-  intervalMs = 60000,
+  options: { intervalMs?: number; isOnline?: boolean } = {},
 ) {
-  const isOnline = useNetworkStatus();
+  const { intervalMs = 60000, isOnline: isOnlineOverride } = options;
+  const browserOnline = useNetworkStatus();
+  const isOnline = isOnlineOverride ?? browserOnline;
 
   useEffect(() => {
     if (!isOnline) return;
@@ -124,7 +126,7 @@ export function useAutoSync(
     window.addEventListener('online', handleOnline);
 
     const id = setInterval(() => {
-      if (navigator.onLine) syncFn();
+      if (isOnline) syncFn();
     }, intervalMs);
 
     return () => {
@@ -132,4 +134,12 @@ export function useAutoSync(
       clearInterval(id);
     };
   }, [isOnline, syncFn, intervalMs]);
+}
+
+export function useSyncOnFocus(syncFn: () => Promise<void>) {
+  useEffect(() => {
+    const handleFocus = () => { syncFn(); };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [syncFn]);
 }

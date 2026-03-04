@@ -15,7 +15,9 @@ import {
   Plus,
   Check,
 } from "lucide-react";
-import { useAutoSync } from "@repo/offline/hooks";
+import { useAutoSync, useSyncOnFocus } from "@repo/offline/hooks";
+import { useNetworkStatusWithHeartbeat } from "@repo/offline/network";
+import { isDesktop } from "@repo/core/platform";
 import type { Workspace } from "@repo/core/types";
 import { cn } from "@/lib/utils";
 import { syncAll } from "@/lib/offline";
@@ -90,7 +92,11 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
   const user = useAuthStore((s) => s.user);
   const setActiveWorkspace = useWorkspaceStore((s) => s.setActiveWorkspace);
   const stableSyncAll = useCallback(() => syncAll(), []);
-  useAutoSync(stableSyncAll, 60_000);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+  const heartbeatOnline = useNetworkStatusWithHeartbeat(`${apiUrl}/health`);
+  const syncIntervalMs = isDesktop() ? 30_000 : 60_000;
+  useAutoSync(stableSyncAll, { intervalMs: syncIntervalMs, isOnline: heartbeatOnline });
+  useSyncOnFocus(stableSyncAll);
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);

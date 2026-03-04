@@ -3,7 +3,12 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
+    "build:pwa": "turbo run build --filter=pwa",
+    "build:desktop": "turbo run build --filter=desktop",
+    "build:desktop:production": "turbo run build:production --filter=desktop",
     "dev": "turbo run dev",
+    "dev:pwa": "turbo run dev --filter=pwa",
+    "dev:desktop": "turbo run dev --filter=pwa --filter=desktop --filter=api",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types"

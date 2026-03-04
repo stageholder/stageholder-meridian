@@ -19,6 +19,10 @@ export function detectPlatform(): 'web' | 'desktop' {
   return 'web';
 }
 
+export function isDesktop(): boolean {
+  return detectPlatform() === 'desktop';
+}
+
 export class LocalStorageAdapter implements StorageAdapter {
   async getItem(key: string): Promise<string | null> {
     if (typeof window === 'undefined') return null;
