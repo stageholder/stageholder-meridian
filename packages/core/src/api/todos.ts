@@ -13,7 +13,7 @@ export function createTodosApi(client: AxiosInstance, getWorkspaceId: () => stri
     },
     listLists: async (): Promise<TodoList[]> => {
       const res = await client.get(wp('/todo-lists'));
-      return res.data;
+      return res.data?.data ?? res.data;
     },
     getList: async (listId: string): Promise<TodoList> => {
       const res = await client.get(wp(`/todo-lists/${listId}`));
@@ -41,7 +41,7 @@ export function createTodosApi(client: AxiosInstance, getWorkspaceId: () => stri
     },
     listTodos: async (listId: string): Promise<Todo[]> => {
       const res = await client.get(wp('/todos'), { params: { listId } });
-      return res.data;
+      return res.data?.data ?? res.data;
     },
     getTodo: async (_listId: string, todoId: string): Promise<Todo> => {
       const res = await client.get(wp(`/todos/${todoId}`));

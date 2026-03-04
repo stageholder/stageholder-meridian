@@ -28,7 +28,7 @@ export function createWorkspacesApi(client: AxiosInstance) {
     },
     listMembers: async (workspaceId: string): Promise<WorkspaceMember[]> => {
       const res = await client.get(`/workspaces/${workspaceId}/members`);
-      return res.data;
+      return res.data?.data ?? res.data;
     },
     updateMemberRole: async (workspaceId: string, memberId: string, data: { role: string }): Promise<WorkspaceMember> => {
       const res = await client.patch(`/workspaces/${workspaceId}/members/${memberId}`, data);

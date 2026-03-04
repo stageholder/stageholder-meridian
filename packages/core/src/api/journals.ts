@@ -18,7 +18,7 @@ export function createJournalsApi(client: AxiosInstance, getWorkspaceId: () => s
     },
     list: async (params?: { startDate?: string; endDate?: string }): Promise<Journal[]> => {
       const res = await client.get(wp('/journals'), { params });
-      return res.data;
+      return res.data?.data ?? res.data;
     },
     get: async (id: string): Promise<Journal> => {
       const res = await client.get(wp(`/journals/${id}`));

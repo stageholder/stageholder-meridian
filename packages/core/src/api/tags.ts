@@ -12,7 +12,7 @@ export function createTagsApi(client: AxiosInstance, getWorkspaceId: () => strin
     },
     list: async (): Promise<Tag[]> => {
       const res = await client.get(wp('/tags'));
-      return res.data;
+      return res.data?.data ?? res.data;
     },
     update: async (id: string, data: { name?: string; color?: string }): Promise<Tag> => {
       const res = await client.patch(wp(`/tags/${id}`), data);

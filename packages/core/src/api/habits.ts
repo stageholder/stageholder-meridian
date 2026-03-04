@@ -21,7 +21,7 @@ export function createHabitsApi(client: AxiosInstance, getWorkspaceId: () => str
     },
     list: async (): Promise<Habit[]> => {
       const res = await client.get(wp('/habits'));
-      return res.data;
+      return res.data?.data ?? res.data;
     },
     get: async (id: string): Promise<Habit> => {
       const res = await client.get(wp(`/habits/${id}`));
@@ -54,7 +54,7 @@ export function createHabitsApi(client: AxiosInstance, getWorkspaceId: () => str
     },
     listEntries: async (habitId: string, params?: { startDate?: string; endDate?: string }): Promise<HabitEntry[]> => {
       const res = await client.get(wp(`/habits/${habitId}/entries`), { params });
-      return res.data;
+      return res.data?.data ?? res.data;
     },
     updateEntry: async (habitId: string, entryId: string, data: {
       value?: number;
