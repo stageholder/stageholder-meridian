@@ -1,31 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import apiClient, { workspacePath } from "@/lib/api-client";
-import { useWorkspaceStore } from "@/stores/workspace-store";
+import apiClient from "@/lib/api-client";
+import { useWorkspace } from "@/lib/workspace-context";
 import type { Habit, HabitEntry } from "@repo/core/types";
 
 export function useHabits() {
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useQuery<Habit[]>({
-    queryKey: ["habits", activeWorkspaceId],
+    queryKey: ["habits", workspace.id],
     queryFn: async () => {
-      const res = await apiClient.get(workspacePath("/habits"));
+      const res = await apiClient.get(`/workspaces/${workspace.id}/habits`);
       return res.data?.data ?? res.data;
     },
-    enabled: !!activeWorkspaceId,
   });
 }
 
 export function useHabit(id: string) {
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useQuery<Habit>({
-    queryKey: ["habit", activeWorkspaceId, id],
+    queryKey: ["habit", workspace.id, id],
     queryFn: async () => {
-      const res = await apiClient.get(workspacePath(`/habits/${id}`));
+      const res = await apiClient.get(`/workspaces/${workspace.id}/habits/${id}`);
       return res.data;
     },
-    enabled: !!activeWorkspaceId && !!id,
+    enabled: !!id,
   });
 }
 
@@ -33,24 +32,24 @@ export function useHabitEntries(
   habitId: string,
   params?: { startDate?: string; endDate?: string }
 ) {
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useQuery<HabitEntry[]>({
-    queryKey: ["habitEntries", activeWorkspaceId, habitId, params],
+    queryKey: ["habitEntries", workspace.id, habitId, params],
     queryFn: async () => {
       const res = await apiClient.get(
-        workspacePath(`/habits/${habitId}/entries`),
+        `/workspaces/${workspace.id}/habits/${habitId}/entries`,
         { params }
       );
       return res.data;
     },
-    enabled: !!activeWorkspaceId && !!habitId,
+    enabled: !!habitId,
   });
 }
 
 export function useCreateHabit() {
   const queryClient = useQueryClient();
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useMutation({
     mutationFn: async (data: {
@@ -62,18 +61,18 @@ export function useCreateHabit() {
       color?: string;
       icon?: string;
     }) => {
-      const res = await apiClient.post(workspacePath("/habits"), data);
+      const res = await apiClient.post(`/workspaces/${workspace.id}/habits`, data);
       return res.data as Habit;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["habits", activeWorkspaceId] });
+      void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
     },
   });
 }
 
 export function useUpdateHabit() {
   const queryClient = useQueryClient();
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useMutation({
     mutationFn: async ({
@@ -91,32 +90,32 @@ export function useUpdateHabit() {
         icon?: string;
       };
     }) => {
-      const res = await apiClient.patch(workspacePath(`/habits/${id}`), data);
+      const res = await apiClient.patch(`/workspaces/${workspace.id}/habits/${id}`, data);
       return res.data as Habit;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["habits", activeWorkspaceId] });
+      void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
     },
   });
 }
 
 export function useDeleteHabit() {
   const queryClient = useQueryClient();
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      await apiClient.delete(workspacePath(`/habits/${id}`));
+      await apiClient.delete(`/workspaces/${workspace.id}/habits/${id}`);
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["habits", activeWorkspaceId] });
+      void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
     },
   });
 }
 
 export function useCreateHabitEntry() {
   const queryClient = useQueryClient();
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useMutation({
     mutationFn: async ({
@@ -127,16 +126,16 @@ export function useCreateHabitEntry() {
       data: { date: string; value: number; notes?: string };
     }) => {
       const res = await apiClient.post(
-        workspacePath(`/habits/${habitId}/entries`),
+        `/workspaces/${workspace.id}/habits/${habitId}/entries`,
         data
       );
       return res.data as HabitEntry;
     },
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
-        queryKey: ["habitEntries", activeWorkspaceId, variables.habitId],
+        queryKey: ["habitEntries", workspace.id, variables.habitId],
       });
-      void queryClient.invalidateQueries({ queryKey: ["habits", activeWorkspaceId] });
+      void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
     },
   });
 }

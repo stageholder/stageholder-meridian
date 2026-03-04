@@ -3,40 +3,39 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api-client";
-import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useWorkspace } from "@/lib/workspace-context";
 import { toast } from "sonner";
 import type { Workspace } from "@repo/core/types";
 
 export function WorkspaceSettings() {
   const queryClient = useQueryClient();
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
-  const { data: workspace, isLoading } = useQuery<Workspace>({
-    queryKey: ["workspace", activeWorkspaceId],
+  const { data: workspaceData, isLoading } = useQuery<Workspace>({
+    queryKey: ["workspace", workspace.id],
     queryFn: async () => {
-      const res = await apiClient.get(`/workspaces/${activeWorkspaceId}`);
+      const res = await apiClient.get(`/workspaces/${workspace.id}`);
       return res.data;
     },
-    enabled: !!activeWorkspaceId,
   });
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
   useEffect(() => {
-    if (workspace) {
-      setName(workspace.name);
-      setDescription(workspace.description || "");
+    if (workspaceData) {
+      setName(workspaceData.name);
+      setDescription(workspaceData.description || "");
     }
-  }, [workspace]);
+  }, [workspaceData]);
 
   const updateWorkspace = useMutation({
     mutationFn: async (data: { name?: string; description?: string }) => {
-      const res = await apiClient.patch(`/workspaces/${activeWorkspaceId}`, data);
+      const res = await apiClient.patch(`/workspaces/${workspace.id}`, data);
       return res.data as Workspace;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["workspace", activeWorkspaceId] });
+      void queryClient.invalidateQueries({ queryKey: ["workspace", workspace.id] });
       toast.success("Workspace updated");
     },
     onError: () => {
@@ -54,10 +53,6 @@ export function WorkspaceSettings() {
       name: name.trim(),
       description: description.trim() || undefined,
     });
-  }
-
-  if (!activeWorkspaceId) {
-    return <p className="text-sm text-muted-foreground">No workspace selected.</p>;
   }
 
   if (isLoading) {

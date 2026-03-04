@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useJournals } from "@/lib/api/journals";
+import { useWorkspace } from "@/lib/workspace-context";
 import { MoodDisplay } from "@/components/journal/mood-picker";
 import type { Journal } from "@repo/core/types";
 
 export function RecentJournals() {
+  const { workspace } = useWorkspace();
   const { data: journals, isLoading } = useJournals();
   const recentJournals = (journals || []).slice(0, 5);
 
@@ -13,7 +15,7 @@ export function RecentJournals() {
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground">Recent Journal Entries</h3>
-        <Link href="/journal" className="text-xs text-primary hover:underline">
+        <Link href={`/${workspace.shortId}/journal`} className="text-xs text-primary hover:underline">
           View all
         </Link>
       </div>
@@ -31,7 +33,7 @@ export function RecentJournals() {
             return (
               <Link
                 key={journal.id}
-                href={`/journal/${journal.id}`}
+                href={`/${workspace.shortId}/journal/${journal.id}`}
                 className="block rounded-lg p-2 transition-colors hover:bg-accent/50"
               >
                 <div className="flex items-center justify-between">

@@ -24,7 +24,7 @@ export default function LoginPage() {
       const res = await apiClient.post<AuthUser>("/auth/login", { email, password });
       setUser(res.data);
       document.cookie = "logged_in=1; path=/; max-age=604800; samesite=lax";
-      router.push("/dashboard");
+      router.push("/workspaces");
     } catch {
       setError("Invalid email or password. Please try again.");
     } finally {

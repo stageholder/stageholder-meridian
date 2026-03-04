@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { JournalEditor } from "@/components/journal/journal-editor";
 import { MoodPicker } from "@/components/journal/mood-picker";
 import { useCreateJournal } from "@/lib/api/journals";
+import { useWorkspace } from "@/lib/workspace-context";
 import { toast } from "sonner";
 
 export default function NewJournalPage() {
+  const { workspace } = useWorkspace();
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -32,7 +34,7 @@ export default function NewJournalPage() {
       {
         onSuccess: () => {
           toast.success("Journal entry created");
-          router.push("/journal");
+          router.push(`/${workspace.shortId}/journal`);
         },
         onError: () => {
           toast.error("Failed to create journal entry");
@@ -46,7 +48,7 @@ export default function NewJournalPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">New Journal Entry</h1>
         <button
-          onClick={() => router.push("/journal")}
+          onClick={() => router.push(`/${workspace.shortId}/journal`)}
           className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
         >
           Cancel

@@ -1,37 +1,36 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import apiClient, { workspacePath } from "@/lib/api-client";
-import { useWorkspaceStore } from "@/stores/workspace-store";
+import apiClient from "@/lib/api-client";
+import { useWorkspace } from "@/lib/workspace-context";
 import type { Journal } from "@repo/core/types";
 
 export function useJournals(params?: { startDate?: string; endDate?: string }) {
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useQuery<Journal[]>({
-    queryKey: ["journals", activeWorkspaceId, params],
+    queryKey: ["journals", workspace.id, params],
     queryFn: async () => {
-      const res = await apiClient.get(workspacePath("/journals"), { params });
+      const res = await apiClient.get(`/workspaces/${workspace.id}/journals`, { params });
       return res.data?.data ?? res.data;
     },
-    enabled: !!activeWorkspaceId,
   });
 }
 
 export function useJournal(id: string) {
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useQuery<Journal>({
-    queryKey: ["journal", activeWorkspaceId, id],
+    queryKey: ["journal", workspace.id, id],
     queryFn: async () => {
-      const res = await apiClient.get(workspacePath(`/journals/${id}`));
+      const res = await apiClient.get(`/workspaces/${workspace.id}/journals/${id}`);
       return res.data;
     },
-    enabled: !!activeWorkspaceId && !!id,
+    enabled: !!id,
   });
 }
 
 export function useCreateJournal() {
   const queryClient = useQueryClient();
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useMutation({
     mutationFn: async (data: {
@@ -41,18 +40,18 @@ export function useCreateJournal() {
       tags?: string[];
       date?: string;
     }) => {
-      const res = await apiClient.post(workspacePath("/journals"), data);
+      const res = await apiClient.post(`/workspaces/${workspace.id}/journals`, data);
       return res.data as Journal;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["journals", activeWorkspaceId] });
+      void queryClient.invalidateQueries({ queryKey: ["journals", workspace.id] });
     },
   });
 }
 
 export function useUpdateJournal() {
   const queryClient = useQueryClient();
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useMutation({
     mutationFn: async ({
@@ -67,26 +66,26 @@ export function useUpdateJournal() {
         tags?: string[];
       };
     }) => {
-      const res = await apiClient.patch(workspacePath(`/journals/${id}`), data);
+      const res = await apiClient.patch(`/workspaces/${workspace.id}/journals/${id}`, data);
       return res.data as Journal;
     },
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ["journals", activeWorkspaceId] });
-      void queryClient.invalidateQueries({ queryKey: ["journal", activeWorkspaceId, variables.id] });
+      void queryClient.invalidateQueries({ queryKey: ["journals", workspace.id] });
+      void queryClient.invalidateQueries({ queryKey: ["journal", workspace.id, variables.id] });
     },
   });
 }
 
 export function useDeleteJournal() {
   const queryClient = useQueryClient();
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      await apiClient.delete(workspacePath(`/journals/${id}`));
+      await apiClient.delete(`/workspaces/${workspace.id}/journals/${id}`);
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["journals", activeWorkspaceId] });
+      void queryClient.invalidateQueries({ queryKey: ["journals", workspace.id] });
     },
   });
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useHabits, useHabitEntries } from "@/lib/api/habits";
+import { useWorkspace } from "@/lib/workspace-context";
 import type { Habit, HabitEntry } from "@repo/core/types";
 
 function HabitSummaryItem({ habit }: { habit: Habit }) {
@@ -47,13 +48,14 @@ function HabitSummaryItem({ habit }: { habit: Habit }) {
 }
 
 export function HabitSummary() {
+  const { workspace } = useWorkspace();
   const { data: habits, isLoading } = useHabits();
 
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground">Habits Today</h3>
-        <Link href="/habits" className="text-xs text-primary hover:underline">
+        <Link href={`/${workspace.shortId}/habits`} className="text-xs text-primary hover:underline">
           View all
         </Link>
       </div>

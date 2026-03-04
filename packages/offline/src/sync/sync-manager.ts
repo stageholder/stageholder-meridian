@@ -17,6 +17,7 @@ export async function syncEntity<T extends SyncableEntity>(
   fetchFn: () => Promise<T[]>,
 ): Promise<void> {
   const serverData = await fetchFn();
+  if (!Array.isArray(serverData)) return;
 
   await db.transaction('rw', table, db.syncMeta, async () => {
     for (const item of serverData) {

@@ -5,10 +5,12 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useTodoLists } from "@/lib/api/todos";
+import { useWorkspace } from "@/lib/workspace-context";
 import { CreateListDialog } from "./create-list-dialog";
 import type { TodoList } from "@repo/core/types";
 
 export function TodoListSidebar() {
+  const { workspace } = useWorkspace();
   const pathname = usePathname();
   const { data: lists, isLoading } = useTodoLists();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -31,10 +33,10 @@ export function TodoListSidebar() {
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-2">
         <Link
-          href="/todos"
+          href={`/${workspace.shortId}/todos`}
           className={cn(
             "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-            pathname === "/todos"
+            pathname === `/${workspace.shortId}/todos`
               ? "bg-accent text-accent-foreground"
               : "text-muted-foreground hover:bg-accent hover:text-foreground"
           )}
@@ -53,10 +55,10 @@ export function TodoListSidebar() {
         {lists?.map((list: TodoList) => (
           <Link
             key={list.id}
-            href={`/todos/${list.id}`}
+            href={`/${workspace.shortId}/todos/${list.id}`}
             className={cn(
               "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-              pathname === `/todos/${list.id}`
+              pathname === `/${workspace.shortId}/todos/${list.id}`
                 ? "bg-accent text-accent-foreground"
                 : "text-muted-foreground hover:bg-accent hover:text-foreground"
             )}

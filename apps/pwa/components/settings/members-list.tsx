@@ -3,35 +3,34 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api-client";
-import { useWorkspaceStore } from "@/stores/workspace-store";
+import { useWorkspace } from "@/lib/workspace-context";
 import { toast } from "sonner";
 import type { WorkspaceMember } from "@repo/core/types";
 
 export function MembersList() {
   const queryClient = useQueryClient();
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
 
   const { data: members, isLoading } = useQuery<WorkspaceMember[]>({
-    queryKey: ["workspaceMembers", activeWorkspaceId],
+    queryKey: ["workspaceMembers", workspace.id],
     queryFn: async () => {
-      const res = await apiClient.get(`/workspaces/${activeWorkspaceId}/members`);
+      const res = await apiClient.get(`/workspaces/${workspace.id}/members`);
       return res.data;
     },
-    enabled: !!activeWorkspaceId,
   });
 
   const inviteMember = useMutation({
     mutationFn: async (data: { email: string; role?: string }) => {
       const res = await apiClient.post(
-        `/workspaces/${activeWorkspaceId}/members/invite`,
+        `/workspaces/${workspace.id}/members/invite`,
         data
       );
       return res.data as WorkspaceMember;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["workspaceMembers", activeWorkspaceId] });
+      void queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspace.id] });
       toast.success("Invitation sent");
       setInviteEmail("");
       setInviteRole("member");
@@ -44,13 +43,13 @@ export function MembersList() {
   const updateRole = useMutation({
     mutationFn: async ({ memberId, role }: { memberId: string; role: string }) => {
       const res = await apiClient.patch(
-        `/workspaces/${activeWorkspaceId}/members/${memberId}`,
+        `/workspaces/${workspace.id}/members/${memberId}`,
         { role }
       );
       return res.data as WorkspaceMember;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["workspaceMembers", activeWorkspaceId] });
+      void queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspace.id] });
       toast.success("Role updated");
     },
     onError: () => {
@@ -60,10 +59,10 @@ export function MembersList() {
 
   const removeMember = useMutation({
     mutationFn: async (memberId: string) => {
-      await apiClient.delete(`/workspaces/${activeWorkspaceId}/members/${memberId}`);
+      await apiClient.delete(`/workspaces/${workspace.id}/members/${memberId}`);
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["workspaceMembers", activeWorkspaceId] });
+      void queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspace.id] });
       toast.success("Member removed");
     },
     onError: () => {
@@ -79,10 +78,6 @@ export function MembersList() {
       email: inviteEmail.trim(),
       role: inviteRole,
     });
-  }
-
-  if (!activeWorkspaceId) {
-    return <p className="text-sm text-muted-foreground">No workspace selected.</p>;
   }
 
   return (

@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useTodoLists, useTodos, useUpdateTodo } from "@/lib/api/todos";
+import { useWorkspace } from "@/lib/workspace-context";
 import type { TodoList, Todo } from "@repo/core/types";
 
 export function TodayTodos() {
+  const { workspace } = useWorkspace();
   const { data: lists } = useTodoLists();
   const firstListId = lists?.[0]?.id || "";
   const { data: todos, isLoading } = useTodos(firstListId);
@@ -32,7 +34,7 @@ export function TodayTodos() {
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground">Today&apos;s Todos</h3>
-        <Link href="/todos" className="text-xs text-primary hover:underline">
+        <Link href={`/${workspace.shortId}/todos`} className="text-xs text-primary hover:underline">
           View all
         </Link>
       </div>

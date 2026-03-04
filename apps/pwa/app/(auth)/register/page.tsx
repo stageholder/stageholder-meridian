@@ -25,7 +25,7 @@ export default function RegisterPage() {
       const res = await apiClient.post<AuthUser>("/auth/register", { name, email, password });
       setUser(res.data);
       document.cookie = "logged_in=1; path=/; max-age=604800; samesite=lax";
-      router.push("/dashboard");
+      router.push("/workspaces");
     } catch {
       setError("Registration failed. Please try again.");
     } finally {

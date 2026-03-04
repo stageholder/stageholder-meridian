@@ -14,18 +14,19 @@ describe('Workspace Entity', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.name).toBe('My Workspace');
-        expect(result.value.slug).toBe('my-workspace');
+        expect(result.value.shortId).toHaveLength(12);
         expect(result.value.description).toBe('A test workspace');
         expect(result.value.ownerId).toBe('owner-123');
         expect(result.value.id).toBeDefined();
       }
     });
 
-    it('should auto-generate slug from name', () => {
+    it('should auto-generate a 12-char shortId', () => {
       const result = Workspace.create({ ...validProps, name: 'Hello World Project' });
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value.slug).toBe('hello-world-project');
+        expect(result.value.shortId).toHaveLength(12);
+        expect(typeof result.value.shortId).toBe('string');
       }
     });
 
@@ -70,14 +71,14 @@ describe('Workspace Entity', () => {
       const id = 'existing-ws-id';
       const props = {
         ...validProps,
-        slug: 'my-workspace',
+        shortId: 'Kx7Tz9mQ5p2R',
         createdAt: new Date('2024-01-01'),
         updatedAt: new Date('2024-01-02'),
       };
       const workspace = Workspace.reconstitute(props, id);
       expect(workspace.id).toBe(id);
       expect(workspace.name).toBe('My Workspace');
-      expect(workspace.slug).toBe('my-workspace');
+      expect(workspace.shortId).toBe('Kx7Tz9mQ5p2R');
       expect(workspace.ownerId).toBe('owner-123');
       expect(workspace.createdAt).toEqual(new Date('2024-01-01'));
       expect(workspace.updatedAt).toEqual(new Date('2024-01-02'));
@@ -92,7 +93,7 @@ describe('Workspace Entity', () => {
         const obj = result.value.toObject();
         expect(obj.id).toBeDefined();
         expect(obj.name).toBe('My Workspace');
-        expect(obj.slug).toBe('my-workspace');
+        expect(obj.shortId).toHaveLength(12);
         expect(obj.description).toBe('A test workspace');
         expect(obj.ownerId).toBe('owner-123');
         expect(obj.createdAt).toBeInstanceOf(Date);
@@ -103,24 +104,15 @@ describe('Workspace Entity', () => {
   });
 
   describe('Business methods', () => {
-    it('should update name and regenerate slug', () => {
+    it('should update name without changing shortId', () => {
       const result = Workspace.create(validProps);
       expect(result.ok).toBe(true);
       if (result.ok) {
         const workspace = result.value;
+        const originalShortId = workspace.shortId;
         workspace.updateName('New Workspace Name');
         expect(workspace.name).toBe('New Workspace Name');
-        expect(workspace.slug).toBe('new-workspace-name');
-      }
-    });
-
-    it('should update slug directly', () => {
-      const result = Workspace.create(validProps);
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        const workspace = result.value;
-        workspace.updateSlug('custom-slug');
-        expect(workspace.slug).toBe('custom-slug');
+        expect(workspace.shortId).toBe(originalShortId);
       }
     });
 
@@ -134,28 +126,6 @@ describe('Workspace Entity', () => {
         expect(workspace.description).toBe('Updated description');
         expect(workspace.updatedAt.getTime()).toBeGreaterThanOrEqual(originalUpdatedAt.getTime());
       }
-    });
-  });
-
-  describe('generateSlug()', () => {
-    it('should convert to lowercase', () => {
-      expect(Workspace.generateSlug('HELLO')).toBe('hello');
-    });
-
-    it('should replace spaces with hyphens', () => {
-      expect(Workspace.generateSlug('hello world')).toBe('hello-world');
-    });
-
-    it('should remove special characters', () => {
-      expect(Workspace.generateSlug('hello@world!')).toBe('hello-world');
-    });
-
-    it('should remove leading and trailing hyphens', () => {
-      expect(Workspace.generateSlug('--hello--')).toBe('hello');
-    });
-
-    it('should handle multiple consecutive special characters', () => {
-      expect(Workspace.generateSlug('a   b   c')).toBe('a-b-c');
     });
   });
 
@@ -189,19 +159,19 @@ describe('Workspace Entity', () => {
   describe('equals()', () => {
     it('should return true for entities with the same id', () => {
       const id = 'same-id';
-      const ws1 = Workspace.reconstitute({ ...validProps, slug: 'my-workspace' }, id);
-      const ws2 = Workspace.reconstitute({ ...validProps, slug: 'my-workspace', name: 'Different' }, id);
+      const ws1 = Workspace.reconstitute({ ...validProps, shortId: 'Kx7Tz9mQ5p2R' }, id);
+      const ws2 = Workspace.reconstitute({ ...validProps, shortId: 'Kx7Tz9mQ5p2R', name: 'Different' }, id);
       expect(ws1.equals(ws2)).toBe(true);
     });
 
     it('should return false for entities with different ids', () => {
-      const ws1 = Workspace.reconstitute({ ...validProps, slug: 'my-workspace' }, 'id-1');
-      const ws2 = Workspace.reconstitute({ ...validProps, slug: 'my-workspace' }, 'id-2');
+      const ws1 = Workspace.reconstitute({ ...validProps, shortId: 'Kx7Tz9mQ5p2R' }, 'id-1');
+      const ws2 = Workspace.reconstitute({ ...validProps, shortId: 'Ab3Cd5eF7g8H' }, 'id-2');
       expect(ws1.equals(ws2)).toBe(false);
     });
 
     it('should return false when compared with undefined', () => {
-      const ws = Workspace.reconstitute({ ...validProps, slug: 'my-workspace' }, 'id-1');
+      const ws = Workspace.reconstitute({ ...validProps, shortId: 'Kx7Tz9mQ5p2R' }, 'id-1');
       expect(ws.equals(undefined)).toBe(false);
     });
   });

@@ -1,106 +1,106 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import apiClient, { workspacePath } from "@/lib/api-client";
-import { useWorkspaceStore } from "@/stores/workspace-store";
+import apiClient from "@/lib/api-client";
+import { useWorkspace } from "@/lib/workspace-context";
 import type { TodoList, Todo } from "@repo/core/types";
 
 export function useTodoLists() {
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useQuery<TodoList[]>({
-    queryKey: ["todoLists", activeWorkspaceId],
+    queryKey: ["todoLists", workspace.id],
     queryFn: async () => {
       const res = await apiClient.get(
-        workspacePath("/todo-lists")
+        `/workspaces/${workspace.id}/todo-lists`
       );
       return res.data?.data ?? res.data;
     },
-    enabled: !!activeWorkspaceId,
   });
 }
 
 export function useTodoList(listId: string) {
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useQuery<TodoList>({
-    queryKey: ["todoList", activeWorkspaceId, listId],
+    queryKey: ["todoList", workspace.id, listId],
     queryFn: async () => {
       const res = await apiClient.get(
-        workspacePath(`/todo-lists/${listId}`)
+        `/workspaces/${workspace.id}/todo-lists/${listId}`
       );
       return res.data;
     },
-    enabled: !!activeWorkspaceId && !!listId,
+    enabled: !!listId,
   });
 }
 
 export function useTodos(listId: string) {
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useQuery<Todo[]>({
-    queryKey: ["todos", activeWorkspaceId, listId],
+    queryKey: ["todos", workspace.id, listId],
     queryFn: async () => {
       const res = await apiClient.get(
-        workspacePath(`/todo-lists/${listId}/todos`)
+        `/workspaces/${workspace.id}/todos`,
+        { params: { listId } }
       );
       return res.data;
     },
-    enabled: !!activeWorkspaceId && !!listId,
+    enabled: !!listId,
   });
 }
 
 export function useCreateTodoList() {
   const queryClient = useQueryClient();
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useMutation({
     mutationFn: async (data: { name: string; color?: string; icon?: string; isShared?: boolean }) => {
       const res = await apiClient.post(
-        workspacePath("/todo-lists"),
+        `/workspaces/${workspace.id}/todo-lists`,
         data
       );
       return res.data as TodoList;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["todoLists", activeWorkspaceId] });
+      void queryClient.invalidateQueries({ queryKey: ["todoLists", workspace.id] });
     },
   });
 }
 
 export function useUpdateTodoList() {
   const queryClient = useQueryClient();
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useMutation({
     mutationFn: async ({ listId, data }: { listId: string; data: { name?: string; color?: string; icon?: string; isShared?: boolean } }) => {
       const res = await apiClient.patch(
-        workspacePath(`/todo-lists/${listId}`),
+        `/workspaces/${workspace.id}/todo-lists/${listId}`,
         data
       );
       return res.data as TodoList;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["todoLists", activeWorkspaceId] });
+      void queryClient.invalidateQueries({ queryKey: ["todoLists", workspace.id] });
     },
   });
 }
 
 export function useDeleteTodoList() {
   const queryClient = useQueryClient();
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useMutation({
     mutationFn: async (listId: string) => {
-      await apiClient.delete(workspacePath(`/todo-lists/${listId}`));
+      await apiClient.delete(`/workspaces/${workspace.id}/todo-lists/${listId}`);
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["todoLists", activeWorkspaceId] });
+      void queryClient.invalidateQueries({ queryKey: ["todoLists", workspace.id] });
     },
   });
 }
 
 export function useCreateTodo() {
   const queryClient = useQueryClient();
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useMutation({
     mutationFn: async ({
@@ -118,14 +118,14 @@ export function useCreateTodo() {
       };
     }) => {
       const res = await apiClient.post(
-        workspacePath(`/todo-lists/${listId}/todos`),
-        data
+        `/workspaces/${workspace.id}/todos`,
+        { ...data, listId }
       );
       return res.data as Todo;
     },
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
-        queryKey: ["todos", activeWorkspaceId, variables.listId],
+        queryKey: ["todos", workspace.id, variables.listId],
       });
     },
   });
@@ -133,7 +133,7 @@ export function useCreateTodo() {
 
 export function useUpdateTodo() {
   const queryClient = useQueryClient();
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useMutation({
     mutationFn: async ({
@@ -153,14 +153,14 @@ export function useUpdateTodo() {
       };
     }) => {
       const res = await apiClient.patch(
-        workspacePath(`/todo-lists/${listId}/todos/${todoId}`),
+        `/workspaces/${workspace.id}/todos/${todoId}`,
         data
       );
       return res.data as Todo;
     },
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
-        queryKey: ["todos", activeWorkspaceId, variables.listId],
+        queryKey: ["todos", workspace.id, variables.listId],
       });
     },
   });
@@ -168,17 +168,17 @@ export function useUpdateTodo() {
 
 export function useDeleteTodo() {
   const queryClient = useQueryClient();
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { workspace } = useWorkspace();
 
   return useMutation({
     mutationFn: async ({ listId, todoId }: { listId: string; todoId: string }) => {
       await apiClient.delete(
-        workspacePath(`/todo-lists/${listId}/todos/${todoId}`)
+        `/workspaces/${workspace.id}/todos/${todoId}`
       );
     },
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
-        queryKey: ["todos", activeWorkspaceId, variables.listId],
+        queryKey: ["todos", workspace.id, variables.listId],
       });
     },
   });

@@ -7,27 +7,19 @@ export interface WorkspaceState {
   sidebarOpen: boolean;
   mobileSidebarOpen: boolean;
   setActiveWorkspace: (workspaceId: string) => void;
-  clearWorkspace: () => void;
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   setMobileSidebarOpen: (open: boolean) => void;
 }
 
-export function createWorkspaceStore(
-  storage: StorageAdapter,
-  onSwitch?: (workspaceId: string) => void,
-) {
+export function createWorkspaceStore(storage: StorageAdapter) {
   return create<WorkspaceState>()(
     persist(
       (set) => ({
         activeWorkspaceId: null,
         sidebarOpen: true,
         mobileSidebarOpen: false,
-        setActiveWorkspace: (workspaceId: string) => {
-          onSwitch?.(workspaceId);
-          set({ activeWorkspaceId: workspaceId });
-        },
-        clearWorkspace: () => set({ activeWorkspaceId: null }),
+        setActiveWorkspace: (workspaceId: string) => set({ activeWorkspaceId: workspaceId }),
         toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
         setSidebarOpen: (open: boolean) => set({ sidebarOpen: open }),
         setMobileSidebarOpen: (open: boolean) => set({ mobileSidebarOpen: open }),

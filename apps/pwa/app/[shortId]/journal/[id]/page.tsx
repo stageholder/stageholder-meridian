@@ -5,10 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import { JournalEditor } from "@/components/journal/journal-editor";
 import { MoodPicker } from "@/components/journal/mood-picker";
 import { useJournal, useUpdateJournal, useDeleteJournal } from "@/lib/api/journals";
+import { useWorkspace } from "@/lib/workspace-context";
 import { toast } from "sonner";
 import { sanitizeHtml } from "@/lib/sanitize";
 
 export default function JournalEntryPage() {
+  const { workspace } = useWorkspace();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { data: journal, isLoading } = useJournal(params.id);
@@ -61,7 +63,7 @@ export default function JournalEntryPage() {
     deleteJournal.mutate(params.id, {
       onSuccess: () => {
         toast.success("Journal entry deleted");
-        router.push("/journal");
+        router.push(`/${workspace.shortId}/journal`);
       },
       onError: () => {
         toast.error("Failed to delete journal entry");
@@ -92,7 +94,7 @@ export default function JournalEntryPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex items-center justify-between">
         <button
-          onClick={() => router.push("/journal")}
+          onClick={() => router.push(`/${workspace.shortId}/journal`)}
           className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

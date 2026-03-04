@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useWorkspace } from "@/lib/workspace-context";
 import { MoodDisplay } from "./mood-picker";
 import type { Journal } from "@repo/core/types";
 
@@ -10,6 +11,7 @@ interface JournalListProps {
 }
 
 export function JournalList({ journals, isLoading }: JournalListProps) {
+  const { workspace } = useWorkspace();
   if (isLoading) {
     return <div className="text-sm text-muted-foreground">Loading journal entries...</div>;
   }
@@ -41,7 +43,7 @@ export function JournalList({ journals, isLoading }: JournalListProps) {
         return (
           <Link
             key={journal.id}
-            href={`/journal/${journal.id}`}
+            href={`/${workspace.shortId}/journal/${journal.id}`}
             className="block rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent/50"
           >
             <div className="flex items-start justify-between gap-3">

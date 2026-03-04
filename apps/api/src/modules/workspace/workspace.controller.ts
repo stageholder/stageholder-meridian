@@ -18,8 +18,8 @@ export class WorkspaceController {
   @Get()
   async list(@CurrentUserId() userId: string) { return (await this.service.findByUser(userId)).map((ws) => ws.toObject()); }
 
-  @Get(':id')
-  async get(@Param('id') id: string, @CurrentUserId() userId: string) { return (await this.service.findById(id, userId)).toObject(); }
+  @Get(':identifier')
+  async get(@Param('identifier') identifier: string, @CurrentUserId() userId: string) { return (await this.service.resolve(identifier, userId)).toObject(); }
 
   @Patch(':id')
   async update(@Param('id') id: string, @CurrentUserId() userId: string, @Body(new ZodValidationPipe(UpdateSchema)) dto: UpdateWorkspaceDto) {

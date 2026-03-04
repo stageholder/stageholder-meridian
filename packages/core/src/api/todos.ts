@@ -36,18 +36,18 @@ export function createTodosApi(client: AxiosInstance, getWorkspaceId: () => stri
       dueDate?: string;
       assigneeId?: string;
     }): Promise<Todo> => {
-      const res = await client.post(wp(`/todo-lists/${listId}/todos`), data);
+      const res = await client.post(wp('/todos'), { ...data, listId });
       return res.data;
     },
     listTodos: async (listId: string): Promise<Todo[]> => {
-      const res = await client.get(wp(`/todo-lists/${listId}/todos`));
+      const res = await client.get(wp('/todos'), { params: { listId } });
       return res.data;
     },
-    getTodo: async (listId: string, todoId: string): Promise<Todo> => {
-      const res = await client.get(wp(`/todo-lists/${listId}/todos/${todoId}`));
+    getTodo: async (_listId: string, todoId: string): Promise<Todo> => {
+      const res = await client.get(wp(`/todos/${todoId}`));
       return res.data;
     },
-    updateTodo: async (listId: string, todoId: string, data: {
+    updateTodo: async (_listId: string, todoId: string, data: {
       title?: string;
       description?: string;
       status?: string;
@@ -55,14 +55,14 @@ export function createTodosApi(client: AxiosInstance, getWorkspaceId: () => stri
       dueDate?: string;
       assigneeId?: string;
     }): Promise<Todo> => {
-      const res = await client.patch(wp(`/todo-lists/${listId}/todos/${todoId}`), data);
+      const res = await client.patch(wp(`/todos/${todoId}`), data);
       return res.data;
     },
-    deleteTodo: async (listId: string, todoId: string): Promise<void> => {
-      await client.delete(wp(`/todo-lists/${listId}/todos/${todoId}`));
+    deleteTodo: async (_listId: string, todoId: string): Promise<void> => {
+      await client.delete(wp(`/todos/${todoId}`));
     },
-    reorderTodos: async (listId: string, data: { todoIds: string[] }): Promise<void> => {
-      await client.post(wp(`/todo-lists/${listId}/todos/reorder`), data);
+    reorderTodos: async (_listId: string, data: { todoIds: string[] }): Promise<void> => {
+      await client.post(wp('/todos/reorder'), data);
     },
   };
 }

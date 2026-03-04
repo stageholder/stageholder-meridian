@@ -11,11 +11,6 @@ export class WorkspaceService {
   async create(userId: string, email: string, dto: CreateWorkspaceDto): Promise<Workspace> {
     const result = Workspace.create({ name: dto.name, description: dto.description, ownerId: userId });
     if (!result.ok) throw result.error;
-    const baseSlug = result.value.slug;
-    let slug = baseSlug;
-    let attempt = 0;
-    while (await this.repository.findBySlug(slug)) { attempt++; slug = `${baseSlug}-${attempt}`; }
-    if (slug !== baseSlug) result.value.updateSlug(slug);
     await this.repository.save(result.value);
     await this.memberService.addOwner(result.value.id, userId, email);
     return result.value;
@@ -32,6 +27,22 @@ export class WorkspaceService {
     const ws = await this.repository.findById(id);
     if (!ws) throw new NotFoundException('Workspace not found');
     if (userId) await this.memberService.requireRole(id, userId, ['owner', 'admin', 'member', 'viewer']);
+    return ws;
+  }
+
+  async findByShortId(shortId: string, userId: string): Promise<Workspace> {
+    const ws = await this.repository.findByShortId(shortId);
+    if (!ws) throw new NotFoundException('Workspace not found');
+    await this.memberService.requireRole(ws.id, userId, ['owner', 'admin', 'member', 'viewer']);
+    return ws;
+  }
+
+  async resolve(identifier: string, userId: string): Promise<Workspace> {
+    const ws = identifier.includes('-')
+      ? await this.repository.findById(identifier)
+      : await this.repository.findByShortId(identifier);
+    if (!ws) throw new NotFoundException('Workspace not found');
+    await this.memberService.requireRole(ws.id, userId, ['owner', 'admin', 'member', 'viewer']);
     return ws;
   }
 
