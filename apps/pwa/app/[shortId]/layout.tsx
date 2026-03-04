@@ -12,6 +12,8 @@ import {
   LogOut,
   Menu,
   ChevronsUpDown,
+  Plus,
+  Check,
 } from "lucide-react";
 import { useAutoSync } from "@repo/offline/hooks";
 import type { Workspace } from "@repo/core/types";
@@ -89,6 +91,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
   useAutoSync(stableSyncAll, 60_000);
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -97,10 +100,15 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
 
     async function fetchWorkspace() {
       try {
-        const res = await apiClient.get<Workspace>(`/workspaces/${shortId}`);
+        const [wsRes, listRes] = await Promise.all([
+          apiClient.get<Workspace>(`/workspaces/${shortId}`),
+          apiClient.get<Workspace[]>("/workspaces"),
+        ]);
         if (cancelled) return;
-        setWorkspace(res.data);
-        setActiveWorkspace(res.data.id);
+        setWorkspace(wsRes.data);
+        setActiveWorkspace(wsRes.data.id);
+        const list = Array.isArray(listRes.data) ? listRes.data : [];
+        setWorkspaces(list);
       } catch {
         if (!cancelled) router.replace("/workspaces");
       } finally {
@@ -140,14 +148,41 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
       <div className="flex min-h-screen bg-background">
         {/* Desktop sidebar */}
         <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
-          {/* Logo */}
-          <div className="flex h-12 items-center px-4">
-            <Link href={`/${shortId}/dashboard`} className="flex items-center gap-2">
-              <div className="flex size-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
-                M
-              </div>
-              <span className="text-sm font-semibold text-sidebar-foreground">Meridian</span>
-            </Link>
+          {/* Workspace selector */}
+          <div className="p-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm hover:bg-sidebar-accent/50 transition-colors">
+                  <div className="flex size-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
+                    {workspace.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="flex-1 truncate text-sm font-semibold text-sidebar-foreground">
+                    {workspace.name}
+                  </span>
+                  <ChevronsUpDown className="size-3.5 shrink-0 text-sidebar-foreground/40" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52">
+                <DropdownMenuLabel className="text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
+                {workspaces.map((ws) => (
+                  <DropdownMenuItem
+                    key={ws.id}
+                    onClick={() => router.push(`/${ws.shortId}/dashboard`)}
+                  >
+                    <div className="flex size-5 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
+                      {ws.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="flex-1 truncate">{ws.name}</span>
+                    {ws.id === workspace.id && <Check className="size-4 text-primary" />}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => router.push("/workspaces")}>
+                  <Plus className="size-4" />
+                  Create workspace
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <Separator className="bg-sidebar-border" />
@@ -155,41 +190,6 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
           {/* Nav */}
           <div className="flex-1 overflow-y-auto py-1">
             <SidebarNav shortId={shortId} pathname={pathname} />
-          </div>
-
-          <Separator className="bg-sidebar-border" />
-
-          {/* User footer */}
-          <div className="p-3">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm hover:bg-sidebar-accent/50 transition-colors">
-                  <Avatar className="size-7">
-                    <AvatarFallback className="bg-primary text-[10px] font-medium text-primary-foreground">
-                      {user?.name?.charAt(0).toUpperCase() || "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 truncate">
-                    <p className="truncate text-xs font-medium text-sidebar-foreground">{user?.name || "User"}</p>
-                    <p className="truncate text-[11px] text-sidebar-foreground/50">{user?.email || ""}</p>
-                  </div>
-                  <ChevronsUpDown className="size-3.5 shrink-0 text-sidebar-foreground/40" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" side="top" className="w-56">
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col gap-0.5">
-                    <p className="text-sm font-medium">{user?.name || "User"}</p>
-                    <p className="text-xs text-muted-foreground">{user?.email || ""}</p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
-                  <LogOut className="size-4" />
-                  Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         </aside>
 
@@ -206,12 +206,41 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-60 p-0">
-                <SheetHeader className="px-4 py-3">
-                  <SheetTitle className="flex items-center gap-2 text-sm">
-                    <div className="flex size-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
-                      M
-                    </div>
-                    Meridian
+                <SheetHeader className="p-3">
+                  <SheetTitle asChild>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm hover:bg-sidebar-accent/50 transition-colors">
+                          <div className="flex size-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
+                            {workspace.name.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="flex-1 truncate text-sm font-semibold">
+                            {workspace.name}
+                          </span>
+                          <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-52">
+                        <DropdownMenuLabel className="text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
+                        {workspaces.map((ws) => (
+                          <DropdownMenuItem
+                            key={ws.id}
+                            onClick={() => { setMobileOpen(false); router.push(`/${ws.shortId}/dashboard`); }}
+                          >
+                            <div className="flex size-5 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
+                              {ws.name.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="flex-1 truncate">{ws.name}</span>
+                            {ws.id === workspace.id && <Check className="size-4 text-primary" />}
+                          </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => { setMobileOpen(false); router.push("/workspaces"); }}>
+                          <Plus className="size-4" />
+                          Create workspace
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </SheetTitle>
                 </SheetHeader>
                 <Separator />
@@ -235,10 +264,10 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
             <div className="flex items-center gap-2">
               <OfflineIndicator />
 
-              {/* Mobile user menu */}
+              {/* User menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon-sm" className="md:hidden">
+                  <Button variant="ghost" size="icon-sm">
                     <Avatar className="size-6">
                       <AvatarFallback className="bg-primary text-[10px] font-medium text-primary-foreground">
                         {user?.name?.charAt(0).toUpperCase() || "U"}
@@ -254,7 +283,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                  <DropdownMenuItem variant="destructive" onClick={handleLogout}>
                     <LogOut className="size-4" />
                     Sign out
                   </DropdownMenuItem>
