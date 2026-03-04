@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useJournals } from "@/lib/api/journals";
 import { JournalList } from "@/components/journal/journal-list";
+import { DatePicker } from "@/components/ui/date-picker";
 import type { Journal } from "@repo/core/types";
 
 const moodOptions = [
@@ -59,23 +60,21 @@ export default function JournalPage() {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
-          <label htmlFor="start-date" className="text-sm text-muted-foreground">From</label>
-          <input
-            id="start-date"
-            type="date"
+          <span className="text-sm text-muted-foreground">From</span>
+          <DatePicker
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            onChange={setStartDate}
+            placeholder="Start date"
+            className="w-auto"
           />
         </div>
         <div className="flex items-center gap-2">
-          <label htmlFor="end-date" className="text-sm text-muted-foreground">To</label>
-          <input
-            id="end-date"
-            type="date"
+          <span className="text-sm text-muted-foreground">To</span>
+          <DatePicker
             value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            onChange={setEndDate}
+            placeholder="End date"
+            className="w-auto"
           />
         </div>
         <div className="flex items-center gap-2">

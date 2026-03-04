@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { JournalEditor } from "@/components/journal/journal-editor";
 import { MoodPicker } from "@/components/journal/mood-picker";
+import { DatePicker } from "@/components/ui/date-picker";
 import { useCreateJournal } from "@/lib/api/journals";
 import { useWorkspace } from "@/lib/workspace-context";
 import { toast } from "sonner";
@@ -73,16 +74,16 @@ export default function NewJournalPage() {
 
         <div className="flex items-center gap-6">
           <div>
-            <label htmlFor="journal-date" className="block text-sm font-medium text-foreground">
+            <label className="block text-sm font-medium text-foreground">
               Date
             </label>
-            <input
-              id="journal-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="mt-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            />
+            <div className="mt-1">
+              <DatePicker
+                value={date}
+                onChange={setDate}
+                clearable={false}
+              />
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground">

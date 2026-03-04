@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useCreateTodo } from "@/lib/api/todos";
+import { DatePicker } from "@/components/ui/date-picker";
 import { toast } from "sonner";
 
 interface CreateTodoDialogProps {
@@ -104,16 +105,16 @@ export function CreateTodoDialog({ open, onOpenChange, listId }: CreateTodoDialo
             </div>
 
             <div className="flex-1">
-              <label htmlFor="todo-due-date" className="block text-sm font-medium text-foreground">
+              <label className="block text-sm font-medium text-foreground">
                 Due Date
               </label>
-              <input
-                id="todo-due-date"
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              />
+              <div className="mt-1">
+                <DatePicker
+                  value={dueDate}
+                  onChange={setDueDate}
+                  placeholder="No due date"
+                />
+              </div>
             </div>
           </div>
 
