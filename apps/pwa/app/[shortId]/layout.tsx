@@ -3,6 +3,16 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
+import {
+  Home,
+  CheckSquare,
+  BookOpen,
+  Target,
+  Settings,
+  LogOut,
+  Menu,
+  ChevronsUpDown,
+} from "lucide-react";
 import { useAutoSync } from "@repo/offline/hooks";
 import type { Workspace } from "@repo/core/types";
 import { cn } from "@/lib/utils";
@@ -12,56 +22,59 @@ import apiClient from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { WorkspaceProvider } from "@/lib/workspace-context";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: "Home" },
-  { href: "/todos", label: "Todos", icon: "CheckSquare" },
-  { href: "/journal", label: "Journal", icon: "BookOpen" },
-  { href: "/habits", label: "Habits", icon: "Target" },
-  { href: "/settings", label: "Settings", icon: "Settings" },
+  { href: "/dashboard", label: "Dashboard", icon: Home },
+  { href: "/todos", label: "Todos", icon: CheckSquare },
+  { href: "/journal", label: "Journal", icon: BookOpen },
+  { href: "/habits", label: "Habits", icon: Target },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-function NavIcon({ name }: { name: string }) {
-  switch (name) {
-    case "Home":
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" />
-          <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-        </svg>
-      );
-    case "CheckSquare":
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect width="18" height="18" x="3" y="3" rx="2" />
-          <path d="m9 12 2 2 4-4" />
-        </svg>
-      );
-    case "BookOpen":
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 7v14" />
-          <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />
-        </svg>
-      );
-    case "Target":
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10" />
-          <circle cx="12" cy="12" r="6" />
-          <circle cx="12" cy="12" r="2" />
-        </svg>
-      );
-    case "Settings":
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-          <circle cx="12" cy="12" r="3" />
-        </svg>
-      );
-    default:
-      return null;
-  }
+function SidebarNav({ shortId, pathname, onNavigate }: { shortId: string; pathname: string; onNavigate?: () => void }) {
+  return (
+    <nav className="flex flex-col gap-1 px-3 py-2">
+      {navItems.map((item) => {
+        const fullHref = `/${shortId}${item.href}`;
+        const isActive = pathname === fullHref || pathname.startsWith(fullHref + "/");
+        const Icon = item.icon;
+        return (
+          <Link
+            key={item.href}
+            href={fullHref}
+            onClick={onNavigate}
+            className={cn(
+              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              isActive
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
+            )}
+          >
+            <Icon className="size-4" />
+            {item.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
 }
 
 export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
@@ -77,6 +90,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -107,6 +121,10 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
     router.push("/login");
   }
 
+  const currentPage = navItems.find(
+    (item) => pathname === `/${shortId}${item.href}` || pathname.startsWith(`/${shortId}${item.href}/`)
+  );
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -120,54 +138,128 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
   return (
     <WorkspaceProvider workspace={workspace}>
       <div className="flex min-h-screen bg-background">
-        {/* Sidebar */}
-        <aside className="hidden w-64 shrink-0 border-r border-sidebar-border bg-sidebar md:block">
-          <div className="flex h-14 items-center border-b border-sidebar-border px-6">
-            <Link href={`/${shortId}/dashboard`} className="text-lg font-bold text-sidebar-foreground">
-              Meridian
+        {/* Desktop sidebar */}
+        <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
+          {/* Logo */}
+          <div className="flex h-12 items-center px-4">
+            <Link href={`/${shortId}/dashboard`} className="flex items-center gap-2">
+              <div className="flex size-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
+                M
+              </div>
+              <span className="text-sm font-semibold text-sidebar-foreground">Meridian</span>
             </Link>
           </div>
-          <nav className="space-y-1 p-3">
-            {navItems.map((item) => {
-              const fullHref = `/${shortId}${item.href}`;
-              const isActive = pathname === fullHref || pathname.startsWith(fullHref + "/");
-              return (
-                <Link
-                  key={item.href}
-                  href={fullHref}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                  )}
-                >
-                  <NavIcon name={item.icon} />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+
+          <Separator className="bg-sidebar-border" />
+
+          {/* Nav */}
+          <div className="flex-1 overflow-y-auto py-1">
+            <SidebarNav shortId={shortId} pathname={pathname} />
+          </div>
+
+          <Separator className="bg-sidebar-border" />
+
+          {/* User footer */}
+          <div className="p-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm hover:bg-sidebar-accent/50 transition-colors">
+                  <Avatar className="size-7">
+                    <AvatarFallback className="bg-primary text-[10px] font-medium text-primary-foreground">
+                      {user?.name?.charAt(0).toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 truncate">
+                    <p className="truncate text-xs font-medium text-sidebar-foreground">{user?.name || "User"}</p>
+                    <p className="truncate text-[11px] text-sidebar-foreground/50">{user?.email || ""}</p>
+                  </div>
+                  <ChevronsUpDown className="size-3.5 shrink-0 text-sidebar-foreground/40" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" side="top" className="w-56">
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col gap-0.5">
+                    <p className="text-sm font-medium">{user?.name || "User"}</p>
+                    <p className="text-xs text-muted-foreground">{user?.email || ""}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                  <LogOut className="size-4" />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </aside>
 
-        {/* Main content */}
+        {/* Main content area */}
         <div className="flex flex-1 flex-col">
-          {/* Header */}
-          <header className="flex h-14 items-center justify-between border-b border-border bg-card px-6">
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-medium text-muted-foreground md:hidden">Meridian</span>
+          {/* Top header */}
+          <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-background px-4">
+            {/* Mobile menu trigger */}
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon-sm" className="md:hidden">
+                  <Menu className="size-4" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-60 p-0">
+                <SheetHeader className="px-4 py-3">
+                  <SheetTitle className="flex items-center gap-2 text-sm">
+                    <div className="flex size-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
+                      M
+                    </div>
+                    Meridian
+                  </SheetTitle>
+                </SheetHeader>
+                <Separator />
+                <SidebarNav shortId={shortId} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+              </SheetContent>
+            </Sheet>
+
+            {/* Page title */}
+            <div className="flex items-center gap-2">
+              {currentPage && (
+                <>
+                  <currentPage.icon className="size-4 text-muted-foreground" />
+                  <h1 className="text-sm font-medium text-foreground">{currentPage.label}</h1>
+                </>
+              )}
             </div>
-            <div className="flex items-center gap-3">
+
+            <div className="flex-1" />
+
+            {/* Right side */}
+            <div className="flex items-center gap-2">
               <OfflineIndicator />
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-                {user?.name?.charAt(0).toUpperCase() || "U"}
-              </div>
-              <button
-                onClick={handleLogout}
-                className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
-              >
-                Sign out
-              </button>
+
+              {/* Mobile user menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon-sm" className="md:hidden">
+                    <Avatar className="size-6">
+                      <AvatarFallback className="bg-primary text-[10px] font-medium text-primary-foreground">
+                        {user?.name?.charAt(0).toUpperCase() || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col gap-0.5">
+                      <p className="text-sm font-medium">{user?.name || "User"}</p>
+                      <p className="text-xs text-muted-foreground">{user?.email || ""}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                    <LogOut className="size-4" />
+                    Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </header>
 
