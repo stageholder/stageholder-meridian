@@ -2,15 +2,13 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { useTodoLists, useTodos, useUpdateTodo } from "@/lib/api/todos";
+import { useAllTodos, useUpdateTodo } from "@/lib/api/todos";
 import { useWorkspace } from "@/lib/workspace-context";
-import type { TodoList, Todo } from "@repo/core/types";
+import type { Todo } from "@repo/core/types";
 
 export function TodayTodos() {
   const { workspace } = useWorkspace();
-  const { data: lists } = useTodoLists();
-  const firstListId = lists?.[0]?.id || "";
-  const { data: todos, isLoading } = useTodos(firstListId);
+  const { data: todos, isLoading } = useAllTodos();
   const updateTodo = useUpdateTodo();
 
   const today = new Date().toISOString().split("T")[0]!;

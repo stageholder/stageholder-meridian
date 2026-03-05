@@ -48,6 +48,21 @@ export function useTodos(listId: string) {
   });
 }
 
+export function useAllTodos() {
+  const { workspace } = useWorkspace();
+
+  return useQuery<Todo[]>({
+    queryKey: ["allTodos", workspace.id],
+    queryFn: async () => {
+      const res = await apiClient.get(
+        `/workspaces/${workspace.id}/todos`,
+        { params: { limit: 100 } }
+      );
+      return res.data?.data ?? res.data;
+    },
+  });
+}
+
 export function useCreateTodoList() {
   const queryClient = useQueryClient();
   const { workspace } = useWorkspace();
@@ -128,6 +143,9 @@ export function useCreateTodo() {
       void queryClient.invalidateQueries({
         queryKey: ["todos", workspace.id, variables.listId],
       });
+      void queryClient.invalidateQueries({
+        queryKey: ["allTodos", workspace.id],
+      });
     },
   });
 }
@@ -164,6 +182,9 @@ export function useUpdateTodo() {
       void queryClient.invalidateQueries({
         queryKey: ["todos", workspace.id, variables.listId],
       });
+      void queryClient.invalidateQueries({
+        queryKey: ["allTodos", workspace.id],
+      });
     },
   });
 }
@@ -181,6 +202,9 @@ export function useDeleteTodo() {
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
         queryKey: ["todos", workspace.id, variables.listId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["allTodos", workspace.id],
       });
     },
   });

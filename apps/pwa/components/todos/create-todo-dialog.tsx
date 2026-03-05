@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCreateTodo } from "@/lib/api/todos";
+import { useCreateTodo, useTodoLists } from "@/lib/api/todos";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ interface CreateTodoDialogProps {
 }
 
 export function CreateTodoDialog({ open, onOpenChange, listId, defaultDueDate }: CreateTodoDialogProps) {
+  const [selectedListId, setSelectedListId] = useState(listId);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("none");
@@ -24,12 +25,14 @@ export function CreateTodoDialog({ open, onOpenChange, listId, defaultDueDate }:
   const [doDate, setDoDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const queryClient = useQueryClient();
   const createTodo = useCreateTodo();
+  const { data: lists } = useTodoLists();
 
   useEffect(() => {
-    if (open && defaultDueDate) {
-      setDueDate(defaultDueDate);
+    if (open) {
+      setSelectedListId(listId || lists?.find((l) => l.isDefault)?.id || lists?.[0]?.id || "");
+      if (defaultDueDate) setDueDate(defaultDueDate);
     }
-  }, [open, defaultDueDate]);
+  }, [open, listId, defaultDueDate, lists]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,7 +40,7 @@ export function CreateTodoDialog({ open, onOpenChange, listId, defaultDueDate }:
 
     createTodo.mutate(
       {
-        listId,
+        listId: selectedListId,
         data: {
           title: title.trim(),
           description: description.trim() || undefined,
@@ -72,6 +75,43 @@ export function CreateTodoDialog({ open, onOpenChange, listId, defaultDueDate }:
       <div className="relative z-50 w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
         <h2 className="text-lg font-semibold text-foreground">New Todo</h2>
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          {lists && lists.length > 1 && (
+            <div>
+              <label className="block text-sm font-medium text-foreground">
+                List
+              </label>
+              <div className="mt-1">
+                <Select value={selectedListId} onValueChange={setSelectedListId}>
+                  <SelectTrigger className="w-full rounded-lg border-border bg-background">
+                    <SelectValue placeholder="Select list" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {lists.map((list) => (
+                      <SelectItem key={list.id} value={list.id}>
+                        <span className="flex items-center gap-2">
+                          <span className="flex h-3 w-3 shrink-0 items-center justify-center">
+                            {list.isDefault ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                                <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+                                <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+                              </svg>
+                            ) : (
+                              <span
+                                className="h-2 w-2 rounded-full"
+                                style={{ backgroundColor: list.color || "#6b7280" }}
+                              />
+                            )}
+                          </span>
+                          {list.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
           <div>
             <label htmlFor="todo-title" className="block text-sm font-medium text-foreground">
               Title
