@@ -15,6 +15,8 @@ export function TodoListSidebar() {
   const { data: lists, isLoading } = useTodoLists();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
+  const basePath = `/${workspace.shortId}/todos`;
+
   const sortedLists = lists
     ? [...lists].sort((a, b) =>
         a.isDefault === b.isDefault ? 0 : a.isDefault ? -1 : 1
@@ -42,11 +44,56 @@ export function TodoListSidebar() {
           <div className="px-3 py-2 text-xs text-muted-foreground">Loading...</div>
         )}
 
+        {/* Today */}
         <Link
-          href={`/${workspace.shortId}/todos`}
+          href={basePath}
           className={cn(
             "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-            pathname === `/${workspace.shortId}/todos`
+            pathname === basePath
+              ? "bg-accent text-accent-foreground"
+              : "text-muted-foreground hover:bg-accent hover:text-foreground"
+          )}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2" />
+            <path d="M12 20v2" />
+            <path d="m4.93 4.93 1.41 1.41" />
+            <path d="m17.66 17.66 1.41 1.41" />
+            <path d="M2 12h2" />
+            <path d="M20 12h2" />
+            <path d="m6.34 17.66-1.41 1.41" />
+            <path d="m19.07 4.93-1.41 1.41" />
+          </svg>
+          Today
+        </Link>
+
+        {/* Upcoming */}
+        <Link
+          href={`${basePath}/upcoming`}
+          className={cn(
+            "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+            pathname === `${basePath}/upcoming`
+              ? "bg-accent text-accent-foreground"
+              : "text-muted-foreground hover:bg-accent hover:text-foreground"
+          )}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
+            <path d="M8 2v4" />
+            <path d="M16 2v4" />
+            <rect width="18" height="18" x="3" y="4" rx="2" />
+            <path d="M3 10h18" />
+            <path d="m14 14 2 2 4-4" />
+          </svg>
+          Upcoming
+        </Link>
+
+        {/* Inbox */}
+        <Link
+          href={`${basePath}/inbox`}
+          className={cn(
+            "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+            pathname === `${basePath}/inbox`
               ? "bg-accent text-accent-foreground"
               : "text-muted-foreground hover:bg-accent hover:text-foreground"
           )}
@@ -61,10 +108,10 @@ export function TodoListSidebar() {
         {sortedLists.filter((list: TodoList) => !list.isDefault).map((list: TodoList) => (
           <Link
             key={list.id}
-            href={`/${workspace.shortId}/todos/${list.id}`}
+            href={`${basePath}/${list.id}`}
             className={cn(
               "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-              pathname === `/${workspace.shortId}/todos/${list.id}`
+              pathname === `${basePath}/${list.id}`
                 ? "bg-accent text-accent-foreground"
                 : "text-muted-foreground hover:bg-accent hover:text-foreground"
             )}
