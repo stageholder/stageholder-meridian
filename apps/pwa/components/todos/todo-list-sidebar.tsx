@@ -58,7 +58,7 @@ export function TodoListSidebar() {
           Inbox
         </Link>
 
-        {sortedLists.map((list: TodoList) => (
+        {sortedLists.filter((list: TodoList) => !list.isDefault).map((list: TodoList) => (
           <Link
             key={list.id}
             href={`/${workspace.shortId}/todos/${list.id}`}
@@ -69,10 +69,12 @@ export function TodoListSidebar() {
                 : "text-muted-foreground hover:bg-accent hover:text-foreground"
             )}
           >
-            <span
-              className="inline-block h-3 w-3 rounded-full"
-              style={{ backgroundColor: list.color || "#6b7280" }}
-            />
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+              <span
+                className="inline-block h-3 w-3 rounded-full"
+                style={{ backgroundColor: list.color || "#6b7280" }}
+              />
+            </span>
             {list.name}
           </Link>
         ))}
