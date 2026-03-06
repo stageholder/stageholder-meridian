@@ -1,16 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useCreateTodo, useTodoLists } from "@/lib/api/todos";
 import { CreateTodoDialog } from "./create-todo-dialog";
-import { DatePicker } from "@/components/ui/date-picker";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Popover,
   PopoverContent,
@@ -42,6 +34,7 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
   const [priority, setPriority] = useState("none");
   const [selectedListId, setSelectedListId] = useState(listId);
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const createTodo = useCreateTodo();
   const { data: lists } = useTodoLists();
 
@@ -53,8 +46,12 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
     setSelectedListId(listId);
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function handleCancel() {
+    setIsEditing(false);
+    resetForm();
+  }
+
+  const handleSubmit = useCallback(() => {
     if (!title.trim() || createTodo.isPending) return;
 
     createTodo.mutate(
@@ -77,7 +74,7 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
         },
       }
     );
-  }
+  }, [title, selectedListId, priority, doDate, dueDate, createTodo.isPending]);
 
   function handleActivate() {
     setIsEditing(true);
@@ -85,21 +82,38 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
     setTimeout(() => inputRef.current?.focus(), 0);
   }
 
-  function handleBlur(e: React.FocusEvent) {
-    // Don't collapse if focus moves within the quick-add container
-    const container = e.currentTarget.closest("[data-quick-add]");
-    const relatedTarget = e.relatedTarget as HTMLElement | null;
-    if (container && relatedTarget && container.contains(relatedTarget)) return;
-    // Don't collapse if a popover is open (focus moves to portal)
-    if (relatedTarget?.closest("[data-slot='popover-content']")) return;
-    if (relatedTarget?.closest("[data-slot='select-content']")) return;
-    if (!title.trim()) {
-      setIsEditing(false);
-      resetForm();
+  // Close on Escape key
+  useEffect(() => {
+    if (!isEditing) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        handleCancel();
+      }
     }
-  }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isEditing]);
 
-  const hasOptions = doDate || dueDate || priority !== "none" || selectedListId !== listId;
+  // Click outside to close (portal-aware)
+  useEffect(() => {
+    if (!isEditing) return;
+    function onPointerDown(e: PointerEvent) {
+      const target = e.target as HTMLElement;
+      // Inside the quick-add container
+      if (containerRef.current?.contains(target)) return;
+      // Inside a popover portal
+      if (target.closest("[data-slot='popover-content']")) return;
+      // Inside a select portal
+      if (target.closest("[data-slot='select-content']")) return;
+      // Clicked outside — collapse only if empty
+      if (!title.trim()) {
+        handleCancel();
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [isEditing, title]);
+
   const currentPriority = PRIORITIES.find((p) => p.value === priority) || PRIORITIES[0];
   const selectedList = lists?.find((l) => l.id === selectedListId);
 
@@ -144,8 +158,13 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
 
   return (
     <>
-      <div data-quick-add onBlur={handleBlur} className="rounded-lg border border-border bg-background p-2">
-        <form onSubmit={handleSubmit}>
+      <div ref={containerRef} className="rounded-lg border border-border bg-background p-2">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSubmit();
+          }}
+        >
           <input
             ref={inputRef}
             type="text"
@@ -170,7 +189,6 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                     : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}
               >
-                {/* Sun icon */}
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="4" />
                   <path d="M12 2v2" />
@@ -243,7 +261,6 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                     : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}
               >
-                {/* Calendar icon */}
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M8 2v4" />
                   <path d="M16 2v4" />
@@ -315,7 +332,6 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                   priority === "urgent" && "text-red-500"
                 )}
               >
-                {/* Flag icon */}
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
                   <line x1="4" x2="4" y1="22" y2="15" />
@@ -358,7 +374,6 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                       : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
                   )}
                 >
-                  {/* List icon */}
                   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="8" x2="21" y1="6" y2="6" />
                     <line x1="8" x2="21" y1="12" y2="12" />
@@ -415,21 +430,14 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
             </button>
             <button
               type="button"
-              onClick={() => {
-                setIsEditing(false);
-                resetForm();
-              }}
+              onClick={handleCancel}
               className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
             >
               Cancel
             </button>
             <button
               type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                if (!title.trim() || createTodo.isPending) return;
-                handleSubmit(e as unknown as React.FormEvent);
-              }}
+              onClick={handleSubmit}
               disabled={!title.trim() || createTodo.isPending}
               className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
