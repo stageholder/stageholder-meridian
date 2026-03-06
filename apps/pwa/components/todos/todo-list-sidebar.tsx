@@ -25,18 +25,8 @@ export function TodoListSidebar() {
 
   return (
     <div className="flex h-full w-64 flex-col border-r border-border bg-card">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <h2 className="text-sm font-semibold text-foreground">Lists</h2>
-        <button
-          onClick={() => setShowCreateDialog(true)}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-          aria-label="Create list"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12h14" />
-            <path d="M12 5v14" />
-          </svg>
-        </button>
+      <div className="border-b border-border px-4 py-3">
+        <h2 className="text-sm font-semibold text-foreground">Todos</h2>
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-2">
@@ -121,6 +111,22 @@ export function TodoListSidebar() {
           </svg>
           Completed
         </Link>
+
+        <div className="mx-3 my-1.5 h-px bg-border" />
+
+        <div className="flex items-center justify-between px-3 py-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Lists</span>
+          <button
+            onClick={() => setShowCreateDialog(true)}
+            className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+            aria-label="Create list"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14" />
+              <path d="M12 5v14" />
+            </svg>
+          </button>
+        </div>
 
         {sortedLists.filter((list: TodoList) => !list.isDefault).map((list: TodoList) => (
           <Link
