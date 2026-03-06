@@ -21,7 +21,6 @@ export function TodoListContent({
   const { data: todos, isLoading } = useTodos(listId);
 
   const pendingTodos = todos?.filter((t: Todo) => t.status !== "done") || [];
-  const doneTodos = todos?.filter((t: Todo) => t.status === "done") || [];
 
   return (
     <>
@@ -36,7 +35,7 @@ export function TodoListContent({
           <div>
             <h1 className="text-xl font-bold text-foreground">{listName}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {pendingTodos.length} pending, {doneTodos.length} completed
+              {pendingTodos.length} todo{pendingTodos.length !== 1 ? "s" : ""}
             </p>
           </div>
         </div>
@@ -51,17 +50,7 @@ export function TodoListContent({
           {pendingTodos.map((todo: Todo) => (
             <TodoItem key={todo.id} todo={todo} listId={listId} />
           ))}
-          {doneTodos.length > 0 && (
-            <div className="space-y-2 pt-4">
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Completed ({doneTodos.length})
-              </h3>
-              {doneTodos.map((todo: Todo) => (
-                <TodoItem key={todo.id} todo={todo} listId={listId} />
-              ))}
-            </div>
-          )}
-          {pendingTodos.length === 0 && doneTodos.length === 0 && (
+          {pendingTodos.length === 0 && (
             <div className="py-12 text-center">
               <p className="text-sm text-muted-foreground">
                 No todos yet. Add one above!

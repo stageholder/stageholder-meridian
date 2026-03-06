@@ -105,6 +105,23 @@ export function TodoListSidebar() {
           Inbox
         </Link>
 
+        {/* Completed */}
+        <Link
+          href={`${basePath}/completed`}
+          className={cn(
+            "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+            pathname === `${basePath}/completed`
+              ? "bg-accent text-accent-foreground"
+              : "text-muted-foreground hover:bg-accent hover:text-foreground"
+          )}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-500">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
+          Completed
+        </Link>
+
         {sortedLists.filter((list: TodoList) => !list.isDefault).map((list: TodoList) => (
           <Link
             key={list.id}

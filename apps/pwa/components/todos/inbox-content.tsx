@@ -17,7 +17,6 @@ export function InboxContent() {
   }
 
   const pendingTodos = (todos || []).filter((t) => t.status !== "done");
-  const doneTodos = (todos || []).filter((t) => t.status === "done");
 
   // Group pending todos by list
   const groupedByList = new Map<string, Todo[]>();
@@ -43,7 +42,7 @@ export function InboxContent() {
       <div className="mb-6">
         <h1 className="text-xl font-bold text-foreground">Inbox</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {pendingTodos.length} pending, {doneTodos.length} completed
+          {pendingTodos.length} todo{pendingTodos.length !== 1 ? "s" : ""}
         </p>
       </div>
 
@@ -79,18 +78,7 @@ export function InboxContent() {
             );
           })}
 
-          {doneTodos.length > 0 && (
-            <div className="space-y-2 pt-4">
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Completed ({doneTodos.length})
-              </h3>
-              {doneTodos.map((todo) => (
-                <TodoItem key={todo.id} todo={todo} listId={todo.listId} />
-              ))}
-            </div>
-          )}
-
-          {pendingTodos.length === 0 && doneTodos.length === 0 && (
+          {pendingTodos.length === 0 && (
             <div className="py-12 text-center">
               <p className="text-sm text-muted-foreground">
                 No todos yet. Add one above!
