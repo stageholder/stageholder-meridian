@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api-client";
 import { useWorkspace } from "@/lib/workspace-context";
 import type { TodoList, Todo } from "@repo/core/types";
+import { lightKeys } from "./light";
 
 export function useTodoLists() {
   const { workspace } = useWorkspace();
@@ -185,6 +186,7 @@ export function useUpdateTodo() {
       void queryClient.invalidateQueries({
         queryKey: ["allTodos", workspace.id],
       });
+      void queryClient.invalidateQueries({ queryKey: lightKeys.me });
     },
   });
 }
