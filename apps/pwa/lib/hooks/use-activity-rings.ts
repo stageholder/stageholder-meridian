@@ -24,8 +24,8 @@ export function computeActivityRings(
 
 export function useActivityRings(date: string) {
   const month = date.slice(0, 7); // yyyy-MM
-  const { data: calendarData, isLoading: calLoading } = useCalendarData(month);
-  const { data: habits, isLoading: habitsLoading } = useHabits();
+  const { data: calendarData, isLoading: calLoading, isFetched: calFetched } = useCalendarData(month);
+  const { data: habits, isLoading: habitsLoading, isFetched: habitsFetched } = useHabits();
 
   const totalHabits = habits?.length ?? 0;
   const dayData = calendarData?.[date];
@@ -43,5 +43,7 @@ export function useActivityRings(date: string) {
     return { todoDone, todoTotal, habitDone, habitTotal: totalHabits, hasJournal };
   }, [dayData, totalHabits]);
 
-  return { data, isLoading: calLoading || habitsLoading, details };
+  // Only show loading on first fetch, not on background refetches
+  const isInitialLoading = (calLoading && !calFetched) || (habitsLoading && !habitsFetched);
+  return { data, isLoading: isInitialLoading, details };
 }

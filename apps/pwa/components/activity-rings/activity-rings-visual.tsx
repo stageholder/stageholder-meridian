@@ -69,14 +69,13 @@ export function ActivityRingsVisual({ data, size = "md", animate = true, star, c
   const { px, stroke, gap } = SIZE_CONFIG[size];
   const rings = computeRings(stroke, gap, data);
   const [mounted, setMounted] = useState(!animate);
-  const hasAnimated = useRef(false);
 
   useEffect(() => {
-    if (!animate || hasAnimated.current) return;
-    hasAnimated.current = true;
+    if (!animate || mounted) return;
     const raf = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(raf);
-  }, [animate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const label = `Activity: Todos ${Math.round(data.todo)}%, Habits ${Math.round(data.habit)}%, Journal ${data.journal > 0 ? "complete" : "incomplete"}`;
 
@@ -122,8 +121,7 @@ export function ActivityRingsVisual({ data, size = "md", animate = true, star, c
               strokeDashoffset={offset}
               transform="rotate(-90 50 50)"
               style={animate ? {
-                transition: `stroke-dashoffset 800ms cubic-bezier(0.34, 1.56, 0.64, 1)`,
-                transitionDelay: `${ring.delay}ms`,
+                transition: `stroke-dashoffset 600ms ease-out`,
               } : undefined}
             />
           </g>
