@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "wait-on http://localhost:3000 && tauri dev",
+    "dev": "wait-on http://localhost:3000 http://localhost:4000/api/v1 && tauri dev",
     "build": "tauri build",
     "build:production": "tauri build --config '{\"build\":{\"frontendDist\":\"'\"${MERIDIAN_FRONTEND_URL:-https://app.meridian.example.com}\"'\"}}'",
     "tauri": "tauri"
