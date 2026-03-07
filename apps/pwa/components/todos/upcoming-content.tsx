@@ -31,7 +31,7 @@ export function UpcomingContent() {
 
   const isLoading = todosLoading || listsLoading;
 
-  const today = new Date().toISOString().split("T")[0]!;
+  const today = format(new Date(), "yyyy-MM-dd");
 
   const hasCustomRange = customRange?.from != null;
   const customFrom = customRange?.from ? format(customRange.from, "yyyy-MM-dd") : null;
@@ -89,7 +89,7 @@ export function UpcomingContent() {
     const date = new Date(dateStr + "T00:00:00");
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split("T")[0];
+    const tomorrowStr = format(tomorrow, "yyyy-MM-dd");
     if (dateStr === tomorrowStr) return "Tomorrow";
     return date.toLocaleDateString("en-US", {
       weekday: "short",

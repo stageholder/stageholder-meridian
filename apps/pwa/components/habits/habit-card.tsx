@@ -1,5 +1,6 @@
 "use client";
 
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { HabitStreak } from "./habit-streak";
 import { useCreateHabitEntry, useHabitEntries } from "@/lib/api/habits";
@@ -11,7 +12,7 @@ interface HabitCardProps {
 }
 
 export function HabitCard({ habit }: HabitCardProps) {
-  const today = new Date().toISOString().split("T")[0]!;
+  const today = format(new Date(), "yyyy-MM-dd");
   const { data: entries } = useHabitEntries(habit.id, {
     startDate: getWeekStart(),
     endDate: today,
@@ -106,7 +107,7 @@ function getWeekStart(): string {
   const dayOfWeek = now.getDay();
   const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
   const monday = new Date(now.setDate(diff));
-  return monday.toISOString().split("T")[0]!;
+  return format(monday, "yyyy-MM-dd");
 }
 
 function calculateStreak(entries: HabitEntry[]): number {
@@ -123,7 +124,7 @@ function calculateStreak(entries: HabitEntry[]): number {
   for (let i = 0; i < sortedDates.length; i++) {
     const expected = new Date(today);
     expected.setDate(today.getDate() - i);
-    const expectedStr = expected.toISOString().split("T")[0];
+    const expectedStr = format(expected, "yyyy-MM-dd");
 
     if (sortedDates[i] === expectedStr) {
       streak++;

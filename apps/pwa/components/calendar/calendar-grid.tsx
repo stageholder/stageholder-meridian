@@ -18,10 +18,11 @@ interface CalendarGridProps {
   currentMonth: Date;
   selectedDate: Date | null;
   calendarData: CalendarData;
+  totalHabits: number;
   onSelectDate: (date: Date) => void;
 }
 
-export function CalendarGrid({ currentMonth, selectedDate, calendarData, onSelectDate }: CalendarGridProps) {
+export function CalendarGrid({ currentMonth, selectedDate, calendarData, totalHabits, onSelectDate }: CalendarGridProps) {
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const gridStart = startOfWeek(monthStart);
@@ -51,6 +52,7 @@ export function CalendarGrid({ currentMonth, selectedDate, calendarData, onSelec
               currentMonth={currentMonth}
               isSelected={selectedDate ? isSameDay(day, selectedDate) : false}
               dayData={calendarData[dateKey]}
+              totalHabits={totalHabits}
               onClick={() => onSelectDate(day)}
             />
           );

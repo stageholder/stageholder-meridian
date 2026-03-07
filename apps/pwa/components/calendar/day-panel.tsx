@@ -9,6 +9,8 @@ import { useUpdateTodo, useTodoLists } from "@/lib/api/todos";
 import { useWorkspace } from "@/lib/workspace-context";
 import { CreateTodoDialog } from "@/components/todos/create-todo-dialog";
 import type { CalendarDayData } from "@/lib/api/calendar";
+import { ActivityRingsVisual } from "@/components/activity-rings";
+import { computeActivityRings } from "@/components/activity-rings";
 import Link from "next/link";
 
 const priorityConfig: Record<string, { label: string; className: string }> = {
@@ -22,9 +24,10 @@ const priorityConfig: Record<string, { label: string; className: string }> = {
 interface DayPanelProps {
   date: Date;
   dayData: CalendarDayData;
+  totalHabits: number;
 }
 
-export function DayPanel({ date, dayData }: DayPanelProps) {
+export function DayPanel({ date, dayData, totalHabits }: DayPanelProps) {
   const { workspace } = useWorkspace();
   const queryClient = useQueryClient();
   const updateTodo = useUpdateTodo();
@@ -43,9 +46,12 @@ export function DayPanel({ date, dayData }: DayPanelProps) {
 
   return (
     <div className="rounded-xl border border-border bg-card p-5">
-      <h3 className="text-sm font-semibold text-foreground">
-        {format(date, "EEEE, MMMM d, yyyy")}
-      </h3>
+      <div className="flex items-center gap-3">
+        <ActivityRingsVisual data={computeActivityRings(dayData, totalHabits)} size="md" />
+        <h3 className="text-sm font-semibold text-foreground">
+          {format(date, "EEEE, MMMM d, yyyy")}
+        </h3>
+      </div>
 
       {/* Todos Section */}
       <div className="mt-4">

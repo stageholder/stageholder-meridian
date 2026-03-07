@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useHabits, useHabitEntries } from "@/lib/api/habits";
 import { useWorkspace } from "@/lib/workspace-context";
 import type { Habit, HabitEntry } from "@repo/core/types";
 
 function HabitSummaryItem({ habit }: { habit: Habit }) {
-  const today = new Date().toISOString().split("T")[0]!;
+  const today = format(new Date(), "yyyy-MM-dd");
   const { data: entries } = useHabitEntries(habit.id, {
     startDate: today,
     endDate: today,

@@ -19,7 +19,7 @@ export default function NewJournalPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dateParam = searchParams.get("date");
-  const today = new Date().toISOString().split("T")[0]!;
+  const today = format(new Date(), "yyyy-MM-dd");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [mood, setMood] = useState<number | undefined>(undefined);

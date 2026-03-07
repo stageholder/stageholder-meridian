@@ -2,6 +2,8 @@
 
 import { cn } from "@/lib/utils";
 import { isToday, isSameMonth } from "date-fns";
+import { ActivityRingsVisual } from "@/components/activity-rings";
+import { computeActivityRings } from "@/components/activity-rings";
 import type { CalendarDayData } from "@/lib/api/calendar";
 
 interface CalendarCellProps {
@@ -9,16 +11,19 @@ interface CalendarCellProps {
   currentMonth: Date;
   isSelected: boolean;
   dayData?: CalendarDayData;
+  totalHabits: number;
   onClick: () => void;
 }
 
-export function CalendarCell({ date, currentMonth, isSelected, dayData, onClick }: CalendarCellProps) {
+export function CalendarCell({ date, currentMonth, isSelected, dayData, totalHabits, onClick }: CalendarCellProps) {
   const today = isToday(date);
   const inMonth = isSameMonth(date, currentMonth);
 
-  const hasTodos = (dayData?.todos?.length ?? 0) > 0;
-  const hasJournals = (dayData?.journals?.length ?? 0) > 0;
-  const hasHabits = (dayData?.habitEntries?.length ?? 0) > 0;
+  const hasData = (dayData?.todos?.length ?? 0) > 0
+    || (dayData?.journals?.length ?? 0) > 0
+    || (dayData?.habitEntries?.length ?? 0) > 0;
+
+  const ringsData = hasData ? computeActivityRings(dayData, totalHabits) : null;
 
   return (
     <button
@@ -39,11 +44,11 @@ export function CalendarCell({ date, currentMonth, isSelected, dayData, onClick 
       >
         {date.getDate()}
       </span>
-      <div className="flex items-center gap-1">
-        {hasTodos && <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />}
-        {hasJournals && <span className="h-1.5 w-1.5 rounded-full bg-green-500" />}
-        {hasHabits && <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />}
-      </div>
+      {ringsData ? (
+        <ActivityRingsVisual data={ringsData} size="xs" animate={false} />
+      ) : (
+        <div className="h-6" />
+      )}
     </button>
   );
 }

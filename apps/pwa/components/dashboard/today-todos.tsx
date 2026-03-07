@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useAllTodos, useUpdateTodo } from "@/lib/api/todos";
 import { useWorkspace } from "@/lib/workspace-context";
@@ -11,7 +12,7 @@ export function TodayTodos() {
   const { data: todos, isLoading } = useAllTodos();
   const updateTodo = useUpdateTodo();
 
-  const today = new Date().toISOString().split("T")[0]!;
+  const today = format(new Date(), "yyyy-MM-dd");
 
   const todayTodos = (todos || []).filter((t: Todo) => {
     if (t.status === "done") return false;

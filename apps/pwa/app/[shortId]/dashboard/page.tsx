@@ -1,10 +1,14 @@
 "use client";
 
+import { format } from "date-fns";
+import { ActivityRings } from "@/components/activity-rings";
 import { TodayTodos } from "@/components/dashboard/today-todos";
 import { HabitSummary } from "@/components/dashboard/habit-summary";
 import { RecentJournals } from "@/components/dashboard/recent-journals";
 
 export default function DashboardPage() {
+  const today = format(new Date(), "yyyy-MM-dd");
+
   return (
     <div className="space-y-6 p-4">
       <div>
@@ -13,6 +17,8 @@ export default function DashboardPage() {
           Your personal productivity overview.
         </p>
       </div>
+
+      <ActivityRings date={today} size="xl" showLabels />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <TodayTodos />

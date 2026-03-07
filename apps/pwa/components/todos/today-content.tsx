@@ -1,5 +1,6 @@
 "use client";
 
+import { format } from "date-fns";
 import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
@@ -11,7 +12,7 @@ export function TodayContent() {
 
   const isLoading = todosLoading || listsLoading;
 
-  const today = new Date().toISOString().split("T")[0]!;
+  const today = format(new Date(), "yyyy-MM-dd");
 
   const listMap = new Map<string, TodoList>();
   for (const list of lists || []) {
