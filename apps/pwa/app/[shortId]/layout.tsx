@@ -15,6 +15,7 @@ import {
   ChevronsUpDown,
   Plus,
   Check,
+  LayoutGrid,
 } from "lucide-react";
 import { useAutoSync, useSyncOnFocus } from "@repo/offline/hooks";
 import { useNetworkStatusWithHeartbeat } from "@repo/offline/network";
@@ -46,7 +47,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Separator } from "@/components/ui/separator";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -56,6 +56,58 @@ const navItems = [
   { href: "/habits", label: "Habits", icon: Target },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
+
+function WorkspaceSelector({
+  workspace,
+  workspaces,
+  onNavigate,
+}: {
+  workspace: Workspace;
+  workspaces: Workspace[];
+  onNavigate?: () => void;
+}) {
+  const router = useRouter();
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm hover:bg-sidebar-accent/50 transition-colors">
+          <div className="flex size-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
+            {workspace.name.charAt(0).toUpperCase()}
+          </div>
+          <span className="flex-1 truncate text-sm font-semibold text-sidebar-foreground">
+            {workspace.name}
+          </span>
+          <ChevronsUpDown className="size-3.5 shrink-0 text-sidebar-foreground/40" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-52">
+        <DropdownMenuLabel className="text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
+        {workspaces.map((ws) => (
+          <DropdownMenuItem
+            key={ws.id}
+            onClick={() => { onNavigate?.(); router.push(`/${ws.shortId}/dashboard`); }}
+          >
+            <div className="flex size-5 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
+              {ws.name.charAt(0).toUpperCase()}
+            </div>
+            <span className="flex-1 truncate">{ws.name}</span>
+            {ws.id === workspace.id && <Check className="size-4 text-primary" />}
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => { onNavigate?.(); router.push("/workspaces"); }}>
+          <LayoutGrid className="size-4" />
+          All workspaces
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => { onNavigate?.(); router.push("/workspaces"); }}>
+          <Plus className="size-4" />
+          Create workspace
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 function SidebarNav({ shortId, pathname, onNavigate }: { shortId: string; pathname: string; onNavigate?: () => void }) {
   return (
@@ -160,42 +212,8 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
         <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
           {/* Workspace selector */}
           <div className="p-3">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm hover:bg-sidebar-accent/50 transition-colors">
-                  <div className="flex size-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
-                    {workspace.name.charAt(0).toUpperCase()}
-                  </div>
-                  <span className="flex-1 truncate text-sm font-semibold text-sidebar-foreground">
-                    {workspace.name}
-                  </span>
-                  <ChevronsUpDown className="size-3.5 shrink-0 text-sidebar-foreground/40" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-52">
-                <DropdownMenuLabel className="text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
-                {workspaces.map((ws) => (
-                  <DropdownMenuItem
-                    key={ws.id}
-                    onClick={() => router.push(`/${ws.shortId}/dashboard`)}
-                  >
-                    <div className="flex size-5 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
-                      {ws.name.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="flex-1 truncate">{ws.name}</span>
-                    {ws.id === workspace.id && <Check className="size-4 text-primary" />}
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push("/workspaces")}>
-                  <Plus className="size-4" />
-                  Create workspace
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <WorkspaceSelector workspace={workspace} workspaces={workspaces} />
           </div>
-
-          <Separator className="bg-sidebar-border" />
 
           {/* Nav */}
           <div className="flex-1 overflow-y-auto py-1">
@@ -218,42 +236,13 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
               <SheetContent side="left" className="w-60 p-0">
                 <SheetHeader className="p-3">
                   <SheetTitle asChild>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm hover:bg-sidebar-accent/50 transition-colors">
-                          <div className="flex size-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
-                            {workspace.name.charAt(0).toUpperCase()}
-                          </div>
-                          <span className="flex-1 truncate text-sm font-semibold">
-                            {workspace.name}
-                          </span>
-                          <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="w-52">
-                        <DropdownMenuLabel className="text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
-                        {workspaces.map((ws) => (
-                          <DropdownMenuItem
-                            key={ws.id}
-                            onClick={() => { setMobileOpen(false); router.push(`/${ws.shortId}/dashboard`); }}
-                          >
-                            <div className="flex size-5 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
-                              {ws.name.charAt(0).toUpperCase()}
-                            </div>
-                            <span className="flex-1 truncate">{ws.name}</span>
-                            {ws.id === workspace.id && <Check className="size-4 text-primary" />}
-                          </DropdownMenuItem>
-                        ))}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => { setMobileOpen(false); router.push("/workspaces"); }}>
-                          <Plus className="size-4" />
-                          Create workspace
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <WorkspaceSelector
+                      workspace={workspace}
+                      workspaces={workspaces}
+                      onNavigate={() => setMobileOpen(false)}
+                    />
                   </SheetTitle>
                 </SheetHeader>
-                <Separator />
                 <SidebarNav shortId={shortId} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
               </SheetContent>
             </Sheet>
