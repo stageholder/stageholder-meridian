@@ -9,6 +9,7 @@ import {
   CheckSquare,
   BookOpen,
   Target,
+  Star,
   Settings,
   LogOut,
   Menu,
@@ -56,6 +57,7 @@ const navItems = [
   { href: "/todos", label: "Todos", icon: CheckSquare },
   { href: "/journal", label: "Journal", icon: BookOpen },
   { href: "/habits", label: "Habits", icon: Target },
+  { href: "/journey", label: "My Journey", icon: Star },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
