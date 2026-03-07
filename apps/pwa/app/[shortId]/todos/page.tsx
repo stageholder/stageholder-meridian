@@ -5,7 +5,7 @@ import { TodayContent } from "@/components/todos/today-content";
 
 export default function TodosPage() {
   return (
-    <div className="flex h-[calc(100vh-7rem)]">
+    <div className="flex h-full">
       <TodoListSidebar />
 
       <div className="flex-1 overflow-y-auto p-4">
