@@ -23,6 +23,8 @@ import { isDesktop } from "@repo/core/platform";
 import type { Workspace } from "@repo/core/types";
 import { cn } from "@/lib/utils";
 import { syncAll } from "@/lib/offline";
+import { useUserLight } from "@/lib/api/light";
+import { StarVisual } from "@/components/light/star-visual";
 import { OfflineIndicator } from "@/components/shared/offline-indicator";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import apiClient from "@/lib/api-client";
@@ -152,6 +154,8 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
   useAutoSync(stableSyncAll, { intervalMs: syncIntervalMs, isOnline: heartbeatOnline });
   useSyncOnFocus(stableSyncAll);
 
+  const { data: userLight } = useUserLight();
+
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
@@ -263,6 +267,13 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
             <div className="flex items-center gap-1">
               <OfflineIndicator />
               <ThemeToggle />
+
+              {/* Light star badge */}
+              {userLight && (
+                <div title={`${userLight.currentTitle} · ${userLight.totalLight} Light`}>
+                  <StarVisual tier={userLight.currentTier} size="sm" />
+                </div>
+              )}
 
               {/* User menu */}
               <DropdownMenu>
