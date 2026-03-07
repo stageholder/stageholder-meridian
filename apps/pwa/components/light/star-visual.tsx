@@ -26,7 +26,7 @@ const SIZES = { sm: 24, md: 40, lg: 56, xl: 80 };
 
 export function StarVisual({ tier, size = 'md', animate = true, className }: StarVisualProps) {
   const clampedTier = Math.max(1, Math.min(10, tier));
-  const colors = TIER_COLORS[clampedTier];
+  const colors = TIER_COLORS[clampedTier]!;
   const px = SIZES[size];
   const id = `star-${clampedTier}-${size}`;
 

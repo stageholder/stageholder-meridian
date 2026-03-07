@@ -132,6 +132,7 @@ export function ActivityRingsVisual({ data, size = "md", animate = true, star, c
       })}
       {star && (() => {
         const innerRing = rings[rings.length - 1];
+        if (!innerRing) return null;
         const centerSpace = (innerRing.radius - stroke / 2) * 2;
         const starSize = STAR_SIZE_MAP[size];
         const offset = 50 - centerSpace / 2;
