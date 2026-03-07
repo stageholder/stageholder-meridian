@@ -6,3 +6,5 @@ export type { Habit, HabitEntry } from './habit';
 export type { Tag } from './tag';
 export type { Activity } from './activity';
 export type { AppNotification } from './notification';
+export type { UserLight, LightEvent, LightTier } from './light';
+export { LIGHT_TIERS, getNextTier, getTierProgress } from './light';
