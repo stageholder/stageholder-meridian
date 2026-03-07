@@ -27,12 +27,14 @@ async function bootstrap() {
     credentials: true,
   });
 
-  const httpAdapter = app.getHttpAdapter();
+  const express = app.getHttpAdapter().getInstance();
   const healthHandler = (_req: any, res: any) => {
     res.status(200).json({ status: 'ok' });
   };
-  httpAdapter.get('/health', healthHandler);
-  httpAdapter.get('/api/v1/health', healthHandler);
+  express.get('/health', healthHandler);
+  express.head('/health', healthHandler);
+  express.get('/api/v1/health', healthHandler);
+  express.head('/api/v1/health', healthHandler);
 
   const port = process.env.PORT || 4000;
   await app.listen(port);
