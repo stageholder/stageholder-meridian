@@ -3,11 +3,12 @@ import { TodoRepository } from './todo.repository';
 import { Todo, TodoStatus } from './todo.entity';
 import { CreateTodoDto, UpdateTodoDto, ReorderTodosDto } from './todo.dto';
 import { WorkspaceMemberService } from '../workspace-member/workspace-member.service';
+import { LightService } from '../light/light.service';
 import { PaginatedResult, buildPaginationMeta, DEFAULT_PAGE, DEFAULT_LIMIT, MAX_LIMIT } from '../../shared';
 
 @Injectable()
 export class TodoService {
-  constructor(private readonly repository: TodoRepository, private readonly memberService: WorkspaceMemberService) {}
+  constructor(private readonly repository: TodoRepository, private readonly memberService: WorkspaceMemberService, private readonly lightService: LightService) {}
 
   async create(workspaceId: string, userId: string, dto: CreateTodoDto): Promise<Todo> {
     await this.memberService.requireRole(workspaceId, userId, ['owner', 'admin', 'member']);
@@ -48,6 +49,9 @@ export class TodoService {
     if (dto.doDate !== undefined) todo.updateDoDate(dto.doDate || undefined);
     if (dto.assigneeId !== undefined) todo.updateAssigneeId(dto.assigneeId || undefined);
     await this.repository.save(todo);
+    if (dto.status === 'done') {
+      this.lightService.awardTodoComplete(userId, workspaceId, id, todo.priority).catch(() => {});
+    }
     return todo;
   }
 
@@ -55,6 +59,9 @@ export class TodoService {
     const todo = await this.findById(id, workspaceId, userId);
     todo.updateStatus(status);
     await this.repository.save(todo);
+    if (status === 'done') {
+      this.lightService.awardTodoComplete(userId, workspaceId, id, todo.priority).catch(() => {});
+    }
     return todo;
   }
 

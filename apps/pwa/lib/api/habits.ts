@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api-client";
 import { useWorkspace } from "@/lib/workspace-context";
 import type { Habit, HabitEntry } from "@repo/core/types";
+import { lightKeys } from "./light";
 
 export function useHabits() {
   const { workspace } = useWorkspace();
@@ -136,6 +137,7 @@ export function useCreateHabitEntry() {
         queryKey: ["habitEntries", workspace.id, variables.habitId],
       });
       void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
+      void queryClient.invalidateQueries({ queryKey: lightKeys.me });
     },
   });
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { StarVisual } from "@/components/light/star-visual";
 
 export interface ActivityRingsData {
   todo: number;   // 0-100
@@ -15,6 +16,7 @@ interface ActivityRingsVisualProps {
   data: ActivityRingsData;
   size?: ActivityRingsSize;
   animate?: boolean;
+  star?: { tier: number };
   className?: string;
 }
 
@@ -55,7 +57,15 @@ function computeRings(stroke: number, gap: number, data: ActivityRingsData): Rin
 
 export { RING_COLORS };
 
-export function ActivityRingsVisual({ data, size = "md", animate = true, className }: ActivityRingsVisualProps) {
+const STAR_SIZE_MAP: Record<ActivityRingsSize, 'sm' | 'md' | 'lg' | 'xl'> = {
+  xs: 'sm',
+  sm: 'sm',
+  md: 'md',
+  lg: 'lg',
+  xl: 'xl',
+};
+
+export function ActivityRingsVisual({ data, size = "md", animate = true, star, className }: ActivityRingsVisualProps) {
   const { px, stroke, gap } = SIZE_CONFIG[size];
   const rings = computeRings(stroke, gap, data);
   const [mounted, setMounted] = useState(!animate);
@@ -120,6 +130,20 @@ export function ActivityRingsVisual({ data, size = "md", animate = true, classNa
           </g>
         );
       })}
+      {star && (() => {
+        const innerRing = rings[rings.length - 1];
+        if (!innerRing) return null;
+        const centerSpace = (innerRing.radius - stroke / 2) * 2;
+        const starSize = STAR_SIZE_MAP[size];
+        const offset = 50 - centerSpace / 2;
+        return (
+          <foreignObject x={offset} y={offset} width={centerSpace} height={centerSpace}>
+            <div className="flex h-full w-full items-center justify-center">
+              <StarVisual tier={star.tier} size={starSize} animate={animate} />
+            </div>
+          </foreignObject>
+        );
+      })()}
     </svg>
   );
 }

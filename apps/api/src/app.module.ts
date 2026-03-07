@@ -16,6 +16,7 @@ import { HabitEntryModule } from './modules/habit-entry/habit-entry.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
+import { LightModule } from './modules/light/light.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
 
@@ -43,6 +44,7 @@ import { RequestLoggerMiddleware } from './common/middleware/request-logger.midd
     ActivityModule,
     NotificationModule,
     CalendarModule,
+    LightModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

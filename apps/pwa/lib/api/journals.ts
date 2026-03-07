@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api-client";
 import { useWorkspace } from "@/lib/workspace-context";
 import type { Journal } from "@repo/core/types";
+import { lightKeys } from "./light";
 
 export function useJournals(params?: { startDate?: string; endDate?: string }) {
   const { workspace } = useWorkspace();
@@ -45,6 +46,7 @@ export function useCreateJournal() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["journals", workspace.id] });
+      void queryClient.invalidateQueries({ queryKey: lightKeys.me });
     },
   });
 }
