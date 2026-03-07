@@ -24,6 +24,10 @@ export class LightEventRepository {
     return !!doc;
   }
 
+  async countByUserActionDate(userId: string, action: string, date: string): Promise<number> {
+    return this.model.countDocuments({ user_id: userId, action, date });
+  }
+
   private toDomain(doc: any): LightEvent {
     return LightEvent.reconstitute({ userId: doc.user_id, workspaceId: doc.workspace_id, action: doc.action, baseLight: doc.base_light, multiplier: doc.multiplier, totalLight: doc.total_light, date: doc.date, metadata: doc.metadata, createdAt: doc.created_at, updatedAt: doc.updated_at }, doc._id);
   }

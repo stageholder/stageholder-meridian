@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { format, subDays } from 'date-fns';
 import { UserLightRepository } from './repository/user-light.repository';
 import { LightEventRepository } from './repository/light-event.repository';
+import { HabitRepository } from '../habit/habit.repository';
 import { UserLight } from './domain/user-light.entity';
 import { LightEvent, LightAction } from './domain/light-event.entity';
 import {
@@ -16,6 +17,7 @@ export class LightService {
   constructor(
     private readonly userLightRepo: UserLightRepository,
     private readonly lightEventRepo: LightEventRepository,
+    private readonly habitRepo: HabitRepository,
   ) {}
 
   async getOrCreateUserLight(userId: string): Promise<UserLight> {
@@ -102,11 +104,22 @@ export class LightService {
     userId: string,
     workspaceId: string,
     rings: { todo: boolean; habit: boolean; journal: boolean },
+    dateOverride?: string,
   ): Promise<void> {
     const userLight = await this.getOrCreateUserLight(userId);
-    const date = this.getToday();
-    const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
-    const isConsecutive = userLight.lastActiveDate === yesterday;
+    await this.evaluateDayForEntity(userLight, userId, workspaceId, rings, dateOverride);
+  }
+
+  private async evaluateDayForEntity(
+    userLight: UserLight,
+    userId: string,
+    workspaceId: string,
+    rings: { todo: boolean; habit: boolean; journal: boolean },
+    dateOverride?: string,
+  ): Promise<void> {
+    const date = dateOverride ?? this.getToday();
+    const previousDay = format(subDays(new Date(date + 'T00:00:00'), 1), 'yyyy-MM-dd');
+    const isConsecutive = userLight.lastActiveDate === previousDay;
 
     const todoRingStreak = rings.todo ? (isConsecutive ? userLight.todoRingStreak + 1 : 1) : 0;
     const habitRingStreak = rings.habit ? (isConsecutive ? userLight.habitRingStreak + 1 : 1) : 0;
@@ -188,6 +201,12 @@ export class LightService {
     metadata?: Record<string, unknown>,
   ): Promise<void> {
     const userLight = await this.getOrCreateUserLight(userId);
+
+    // Lazy evaluation: if this is a new day, evaluate the previous day first
+    if (userLight.lastActiveDate && userLight.lastActiveDate !== date) {
+      await this.evaluatePreviousDay(userLight, userId, workspaceId, userLight.lastActiveDate);
+    }
+
     const multiplier = getMultiplier(userLight.perfectDayStreak);
     const totalLight = Math.round(baseLight * multiplier);
 
@@ -205,9 +224,48 @@ export class LightService {
 
     await this.lightEventRepo.save(eventResult.value);
     userLight.addLight(totalLight);
+
+    // Ensure lastActiveDate is set to today so subsequent calls
+    // within the same day don't re-trigger lazy evaluation
+    if (userLight.lastActiveDate !== date) {
+      userLight.setLastActiveDate(date);
+    }
+
     await this.userLightRepo.save(userLight);
   }
 
+  private async evaluatePreviousDay(
+    userLight: UserLight,
+    userId: string,
+    workspaceId: string,
+    previousDate: string,
+  ): Promise<void> {
+    const rings = await this.computeRingCompletion(userId, previousDate);
+    await this.evaluateDayForEntity(userLight, userId, workspaceId, rings, previousDate);
+  }
+
+  private async computeRingCompletion(
+    userId: string,
+    date: string,
+  ): Promise<{ todo: boolean; habit: boolean; journal: boolean }> {
+    const [todoEvents, habitEvents, journalEvents, totalHabits] =
+      await Promise.all([
+        this.lightEventRepo.countByUserActionDate(userId, 'todo_complete', date),
+        this.lightEventRepo.countByUserActionDate(userId, 'habit_checkin', date),
+        this.lightEventRepo.countByUserActionDate(userId, 'journal_entry', date),
+        this.habitRepo.countByCreator(userId),
+      ]);
+
+    return {
+      todo: todoEvents > 0,
+      // Habit ring complete if all habits checked in, or no habits exist
+      habit: totalHabits === 0 || habitEvents >= totalHabits,
+      journal: journalEvents > 0,
+    };
+  }
+
+  // TODO: getToday() uses server UTC time. When user timezone plumbing is available,
+  // accept an optional timezone parameter and compute the local date accordingly.
   private getToday(): string {
     return format(new Date(), 'yyyy-MM-dd');
   }

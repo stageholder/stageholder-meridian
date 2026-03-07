@@ -57,6 +57,10 @@ export class UserLight extends Entity<UserLightProps> {
     }
   }
 
+  setLastActiveDate(date: string): void {
+    this.set('lastActiveDate', date);
+  }
+
   incrementPerfectDays(): void {
     this.set('perfectDaysTotal', this.perfectDaysTotal + 1);
   }
