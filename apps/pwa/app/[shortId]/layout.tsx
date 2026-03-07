@@ -9,7 +9,6 @@ import {
   CheckSquare,
   BookOpen,
   Target,
-  Star,
   Settings,
   LogOut,
   Menu,
@@ -26,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { syncAll } from "@/lib/offline";
 import { useUserLight } from "@/lib/api/light";
 import { StarVisual } from "@/components/light/star-visual";
+import { getTierProgress, getNextTier } from "@repo/core/types/light";
 import { OfflineIndicator } from "@/components/shared/offline-indicator";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import apiClient from "@/lib/api-client";
@@ -50,6 +50,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -57,7 +62,6 @@ const navItems = [
   { href: "/todos", label: "Todos", icon: CheckSquare },
   { href: "/journal", label: "Journal", icon: BookOpen },
   { href: "/habits", label: "Habits", icon: Target },
-  { href: "/journey", label: "My Journey", icon: Star },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -266,16 +270,76 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
             <div className="flex-1" />
 
             {/* Right side */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <OfflineIndicator />
-              <ThemeToggle />
 
-              {/* Light star badge */}
-              {userLight && (
-                <div title={`${userLight.currentTitle} · ${userLight.totalLight} Light`}>
-                  <StarVisual tier={userLight.currentTier} size="sm" />
-                </div>
-              )}
+              {/* Journey progress popover */}
+              {userLight && (() => {
+                const progress = getTierProgress(userLight.totalLight, userLight.currentTier);
+                const nextTier = getNextTier(userLight.currentTier);
+                return (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="relative flex size-9 items-center justify-center rounded-md transition-colors hover:bg-accent">
+                        {/* Progress ring around the star */}
+                        <svg className="absolute inset-0 size-9 -rotate-90" viewBox="0 0 36 36">
+                          {progress > 0 && (
+                            <circle cx={18} cy={18} r={16} fill="none" stroke="#f59e0b" strokeWidth={1.5} strokeLinecap="round" strokeDasharray={`${Math.max(8, (progress / 100) * 2 * Math.PI * 16)} ${2 * Math.PI * 16}`} />
+                          )}
+                        </svg>
+                        <StarVisual tier={userLight.currentTier} size="sm" className="relative" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-64 p-0">
+                      <div className="flex flex-col items-center gap-2 px-4 pt-4 pb-3">
+                        <StarVisual tier={userLight.currentTier} size="lg" animate />
+                        <p className="text-sm font-bold">{userLight.currentTitle}</p>
+                        {nextTier ? (
+                          <div className="w-full space-y-1">
+                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                              <div
+                                className="h-full rounded-full bg-amber-500 transition-all"
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                            <p className="text-center text-[11px] text-muted-foreground">
+                              <span className="font-medium text-foreground">{userLight.totalLight}</span>
+                              {" / "}
+                              {nextTier.lightRequired} Light
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-muted-foreground">
+                            {userLight.totalLight.toLocaleString()} Light — Max tier reached
+                          </p>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-3 border-t border-border/50 text-center">
+                        <div className="border-r border-border/50 py-2.5">
+                          <p className="text-xs font-bold">{userLight.perfectDayStreak}d</p>
+                          <p className="text-[10px] text-muted-foreground">Streak</p>
+                        </div>
+                        <div className="border-r border-border/50 py-2.5">
+                          <p className="text-xs font-bold">{userLight.perfectDaysTotal}</p>
+                          <p className="text-[10px] text-muted-foreground">Perfect</p>
+                        </div>
+                        <div className="py-2.5">
+                          <p className="text-xs font-bold">{userLight.longestPerfectStreak}d</p>
+                          <p className="text-[10px] text-muted-foreground">Best</p>
+                        </div>
+                      </div>
+                      <Link
+                        href={`/${shortId}/journey`}
+                        className="flex w-full items-center justify-center gap-1.5 border-t border-border/50 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      >
+                        My Journey →
+                      </Link>
+                    </PopoverContent>
+                  </Popover>
+                );
+              })()}
+
+              <ThemeToggle />
 
               {/* User menu */}
               <DropdownMenu>
