@@ -3,11 +3,12 @@ import { HabitEntryRepository } from './habit-entry.repository';
 import { HabitEntry } from './habit-entry.entity';
 import { CreateHabitEntryDto, UpdateHabitEntryDto } from './habit-entry.dto';
 import { WorkspaceMemberService } from '../workspace-member/workspace-member.service';
+import { LightService } from '../light/light.service';
 import { PaginatedResult, buildPaginationMeta, DEFAULT_PAGE, DEFAULT_LIMIT, MAX_LIMIT } from '../../shared';
 
 @Injectable()
 export class HabitEntryService {
-  constructor(private readonly repository: HabitEntryRepository, private readonly memberService: WorkspaceMemberService) {}
+  constructor(private readonly repository: HabitEntryRepository, private readonly memberService: WorkspaceMemberService, private readonly lightService: LightService) {}
 
   async create(habitId: string, workspaceId: string, userId: string, dto: CreateHabitEntryDto): Promise<HabitEntry> {
     await this.memberService.requireRole(workspaceId, userId, ['owner', 'admin', 'member']);
@@ -16,6 +17,7 @@ export class HabitEntryService {
     const result = HabitEntry.create({ habitId, date: dto.date, value: dto.value, notes: dto.notes, workspaceId });
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);
+    this.lightService.awardHabitCheckin(userId, workspaceId, habitId, result.value.id).catch(() => {});
     return result.value;
   }
 

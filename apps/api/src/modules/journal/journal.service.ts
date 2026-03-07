@@ -3,17 +3,19 @@ import { JournalRepository } from './journal.repository';
 import { Journal } from './journal.entity';
 import { CreateJournalDto, UpdateJournalDto } from './journal.dto';
 import { WorkspaceMemberService } from '../workspace-member/workspace-member.service';
+import { LightService } from '../light/light.service';
 import { PaginatedResult, buildPaginationMeta, DEFAULT_PAGE, DEFAULT_LIMIT, MAX_LIMIT } from '../../shared';
 
 @Injectable()
 export class JournalService {
-  constructor(private readonly repository: JournalRepository, private readonly memberService: WorkspaceMemberService) {}
+  constructor(private readonly repository: JournalRepository, private readonly memberService: WorkspaceMemberService, private readonly lightService: LightService) {}
 
   async create(workspaceId: string, userId: string, dto: CreateJournalDto): Promise<Journal> {
     await this.memberService.requireRole(workspaceId, userId, ['owner', 'admin', 'member']);
     const result = Journal.create({ title: dto.title, content: dto.content, mood: dto.mood, tags: dto.tags || [], workspaceId, authorId: userId, date: dto.date });
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);
+    this.lightService.awardJournalEntry(userId, workspaceId, result.value.id).catch(() => {});
     return result.value;
   }
 
