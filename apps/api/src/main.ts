@@ -1,7 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
-import mongoose from 'mongoose';
 import { AppModule } from './app.module';
 import { validateEnv } from './config/env.validation';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
@@ -19,13 +18,6 @@ async function bootstrap() {
   validateEnv();
   const app = await NestFactory.create(AppModule);
 
-  const httpAdapter = app.getHttpAdapter();
-  httpAdapter.get('/health', (_req: any, res: any) => {
-    const dbState = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
-    const status = dbState === 'connected' ? 200 : 503;
-    res.status(status).json({ status: status === 200 ? 'ok' : 'degraded', db: dbState });
-  });
-
   app.useGlobalFilters(new GlobalExceptionFilter());
   app.use(helmet());
   app.use(cookieParser());
@@ -34,6 +26,13 @@ async function bootstrap() {
     origin: parseOrigins(process.env.FRONTEND_URL),
     credentials: true,
   });
+
+  const httpAdapter = app.getHttpAdapter();
+  const healthHandler = (_req: any, res: any) => {
+    res.status(200).json({ status: 'ok' });
+  };
+  httpAdapter.get('/health', healthHandler);
+  httpAdapter.get('/api/v1/health', healthHandler);
 
   const port = process.env.PORT || 4000;
   await app.listen(port);
