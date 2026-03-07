@@ -24,8 +24,8 @@ const SIZE_CONFIG: Record<ActivityRingsSize, { px: number; stroke: number; gap: 
   xs: { px: 24, stroke: 2.5, gap: 1 },
   sm: { px: 32, stroke: 3, gap: 1.5 },
   md: { px: 48, stroke: 4, gap: 2 },
-  lg: { px: 96, stroke: 6, gap: 3 },
-  xl: { px: 160, stroke: 8, gap: 4 },
+  lg: { px: 96, stroke: 5, gap: 3 },
+  xl: { px: 160, stroke: 6, gap: 4 },
 };
 
 // Direct colors — blue for todos, orange for habits, green for journal
@@ -69,14 +69,13 @@ export function ActivityRingsVisual({ data, size = "md", animate = true, star, c
   const { px, stroke, gap } = SIZE_CONFIG[size];
   const rings = computeRings(stroke, gap, data);
   const [mounted, setMounted] = useState(!animate);
-  const rafRef = useRef<number>(0);
+  const hasAnimated = useRef(false);
 
   useEffect(() => {
-    if (!animate) return;
-    rafRef.current = requestAnimationFrame(() => {
-      setMounted(true);
-    });
-    return () => cancelAnimationFrame(rafRef.current);
+    if (!animate || hasAnimated.current) return;
+    hasAnimated.current = true;
+    const raf = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(raf);
   }, [animate]);
 
   const label = `Activity: Todos ${Math.round(data.todo)}%, Habits ${Math.round(data.habit)}%, Journal ${data.journal > 0 ? "complete" : "incomplete"}`;

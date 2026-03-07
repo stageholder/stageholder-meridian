@@ -225,11 +225,20 @@ export class LightService {
     await this.lightEventRepo.save(eventResult.value);
     userLight.addLight(totalLight);
 
-    // Ensure lastActiveDate is set to today so subsequent calls
-    // within the same day don't re-trigger lazy evaluation
-    if (userLight.lastActiveDate !== date) {
-      userLight.setLastActiveDate(date);
-    }
+    // Update streaks in real-time based on current day's ring completion
+    const currentRings = await this.computeRingCompletion(userId, date);
+    const previousDay = format(subDays(new Date(date + 'T00:00:00'), 1), 'yyyy-MM-dd');
+    const wasConsecutive = userLight.lastActiveDate === previousDay || userLight.lastActiveDate === date;
+
+    userLight.updateStreaks({
+      todoRingStreak: currentRings.todo ? (wasConsecutive ? Math.max(userLight.todoRingStreak, 1) : 1) : 0,
+      habitRingStreak: currentRings.habit ? (wasConsecutive ? Math.max(userLight.habitRingStreak, 1) : 1) : 0,
+      journalRingStreak: currentRings.journal ? (wasConsecutive ? Math.max(userLight.journalRingStreak, 1) : 1) : 0,
+      perfectDayStreak: currentRings.todo && currentRings.habit && currentRings.journal
+        ? (wasConsecutive ? Math.max(userLight.perfectDayStreak, 1) : 1)
+        : userLight.perfectDayStreak,
+      lastActiveDate: date,
+    });
 
     await this.userLightRepo.save(userLight);
   }

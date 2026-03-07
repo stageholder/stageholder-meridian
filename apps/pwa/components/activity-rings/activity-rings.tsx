@@ -2,7 +2,6 @@
 
 import { cn } from "@/lib/utils";
 import { useActivityRings } from "@/lib/hooks/use-activity-rings";
-import { useUserLight } from "@/lib/api/light";
 import { ActivityRingsVisual, RING_COLORS } from "./activity-rings-visual";
 import type { ActivityRingsSize } from "./activity-rings-visual";
 
@@ -21,7 +20,6 @@ const CATEGORIES = [
 
 export function ActivityRings({ date, size = "xl", showLabels, className }: ActivityRingsProps) {
   const { data, isLoading, details } = useActivityRings(date);
-  const { data: userLight } = useUserLight();
 
   if (isLoading) {
     return (
@@ -32,7 +30,7 @@ export function ActivityRings({ date, size = "xl", showLabels, className }: Acti
   }
 
   if (!showLabels) {
-    return <ActivityRingsVisual data={data} size={size} star={{ tier: userLight?.currentTier ?? 1 }} className={className} />;
+    return <ActivityRingsVisual data={data} size={size} className={className} />;
   }
 
   const fractions: Record<string, string> = {
@@ -50,7 +48,7 @@ export function ActivityRings({ date, size = "xl", showLabels, className }: Acti
   return (
     <div className={cn("rounded-xl border border-border bg-card p-5", className)}>
       <div className="flex flex-col items-center gap-5 sm:flex-row">
-        <ActivityRingsVisual data={data} size={size} star={{ tier: userLight?.currentTier ?? 1 }} />
+        <ActivityRingsVisual data={data} size={size} />
         <div className="flex min-w-[180px] flex-col gap-4">
           {CATEGORIES.map(({ key, label, color }) => (
             <div key={key} className="flex items-center gap-3">
