@@ -213,7 +213,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
 
   return (
     <WorkspaceProvider workspace={workspace}>
-      <div className="flex min-h-screen bg-background">
+      <div className="flex h-screen bg-background">
         {/* Desktop sidebar */}
         <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
           {/* Workspace selector */}
@@ -306,7 +306,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
           </header>
 
           {/* Page content */}
-          <main className="flex-1 overflow-auto">{children}</main>
+          <main className="flex-1 overflow-y-auto">{children}</main>
         </div>
       </div>
     </WorkspaceProvider>
