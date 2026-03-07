@@ -24,15 +24,15 @@ const SIZE_CONFIG: Record<ActivityRingsSize, { px: number; stroke: number; gap: 
   xs: { px: 24, stroke: 2.5, gap: 1 },
   sm: { px: 32, stroke: 3, gap: 1.5 },
   md: { px: 48, stroke: 4, gap: 2 },
-  lg: { px: 96, stroke: 5, gap: 3 },
-  xl: { px: 160, stroke: 6, gap: 4 },
+  lg: { px: 96, stroke: 4, gap: 4 },
+  xl: { px: 160, stroke: 4.5, gap: 5 },
 };
 
-// Direct colors — blue for todos, orange for habits, green for journal
+// Progressive cool scheme — blue → teal → green
 const RING_COLORS = {
-  todo:         { color: "#3b82f6", track: "rgba(59, 130, 246, 0.2)" },
-  habit:        { color: "#f97316", track: "rgba(249, 115, 22, 0.2)" },
-  journal:      { color: "#22c55e", track: "rgba(34, 197, 94, 0.2)" },
+  todo:         { color: "var(--ring-todo)", track: "var(--ring-todo-track)" },
+  habit:        { color: "var(--ring-habit)", track: "var(--ring-habit-track)" },
+  journal:      { color: "var(--ring-journal)", track: "var(--ring-journal-track)" },
 };
 
 interface RingConfig {
@@ -121,7 +121,7 @@ export function ActivityRingsVisual({ data, size = "md", animate = true, star, c
               strokeDashoffset={offset}
               transform="rotate(-90 50 50)"
               style={animate ? {
-                transition: `stroke-dashoffset 600ms ease-out`,
+                transition: `stroke-dashoffset 1200ms ease-out`,
               } : undefined}
             />
           </g>

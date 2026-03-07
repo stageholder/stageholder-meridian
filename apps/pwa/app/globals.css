@@ -39,12 +39,12 @@
   --sidebar-accent-foreground: oklch(0.14 0.02 210);
   --sidebar-border: oklch(0.92 0.008 210);
   --sidebar-ring: oklch(0.50 0.15 210);
-  --ring-todo: oklch(0.55 0.18 250);
-  --ring-habit: oklch(0.65 0.20 35);
-  --ring-journal: oklch(0.62 0.19 145);
-  --ring-todo-track: oklch(0.55 0.18 250 / 20%);
-  --ring-habit-track: oklch(0.65 0.20 35 / 20%);
-  --ring-journal-track: oklch(0.62 0.19 145 / 20%);
+  --ring-todo: oklch(0.60 0.15 230);
+  --ring-habit: oklch(0.62 0.14 190);
+  --ring-journal: oklch(0.65 0.15 160);
+  --ring-todo-track: oklch(0.60 0.15 230 / 20%);
+  --ring-habit-track: oklch(0.62 0.14 190 / 20%);
+  --ring-journal-track: oklch(0.65 0.15 160 / 20%);
 }
 
 .dark {
@@ -82,12 +82,12 @@
   --sidebar-accent-foreground: oklch(0.98 0.008 210);
   --sidebar-border: oklch(0.98 0.008 210 / 10%);
   --sidebar-ring: oklch(0.58 0.15 210);
-  --ring-todo: oklch(0.65 0.17 250);
-  --ring-habit: oklch(0.72 0.18 35);
-  --ring-journal: oklch(0.68 0.17 145);
-  --ring-todo-track: oklch(0.65 0.17 250 / 15%);
-  --ring-habit-track: oklch(0.72 0.18 35 / 15%);
-  --ring-journal-track: oklch(0.68 0.17 145 / 15%);
+  --ring-todo: oklch(0.65 0.17 230);
+  --ring-habit: oklch(0.68 0.15 190);
+  --ring-journal: oklch(0.72 0.16 160);
+  --ring-todo-track: oklch(0.65 0.17 230 / 15%);
+  --ring-habit-track: oklch(0.68 0.15 190 / 15%);
+  --ring-journal-track: oklch(0.72 0.16 160 / 15%);
 }
 
 @theme inline {
