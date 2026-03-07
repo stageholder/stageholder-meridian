@@ -10,47 +10,38 @@ interface JourneyTierMapProps {
 
 export function JourneyTierMap({ currentTier }: JourneyTierMapProps) {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-y-4">
-      {LIGHT_TIERS.map((tier, index) => {
+    <div className="grid grid-cols-5 gap-4">
+      {LIGHT_TIERS.map((tier) => {
         const isCompleted = tier.tier < currentTier;
         const isCurrent = tier.tier === currentTier;
         const isFuture = tier.tier > currentTier;
 
         return (
-          <div key={tier.tier} className="flex items-center">
-            <div
-              className={cn(
-                'flex flex-col items-center gap-1',
-                isFuture && 'opacity-30',
-              )}
-            >
-              <StarVisual
-                tier={tier.tier}
-                size="sm"
-                animate={isCurrent}
-                className={cn(isCurrent && 'animate-pulse')}
-              />
-              <span
+          <div
+            key={tier.tier}
+            className={cn(
+              'flex flex-col items-center gap-2 rounded-lg border p-3 transition-all',
+              isCurrent && 'border-amber-500/50 bg-amber-500/5',
+              isCompleted && 'border-border bg-muted/30',
+              isFuture && 'border-border/50 opacity-40',
+            )}
+          >
+            <StarVisual tier={tier.tier} size="md" animate={isCurrent} />
+            <div className="text-center">
+              <p
                 className={cn(
-                  'text-[10px] leading-tight',
-                  isCurrent
-                    ? 'font-bold text-foreground'
-                    : 'text-muted-foreground',
+                  'text-xs font-medium',
+                  isCurrent && 'text-amber-500',
+                  isCompleted && 'text-muted-foreground',
+                  isFuture && 'text-muted-foreground',
                 )}
               >
                 {tier.title}
-              </span>
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                {tier.lightRequired.toLocaleString()}
+              </p>
             </div>
-
-            {/* Connecting line between tiers */}
-            {index < LIGHT_TIERS.length - 1 && (
-              <div
-                className={cn(
-                  'mx-1 h-px w-4',
-                  isCompleted ? 'bg-amber-500' : 'bg-border',
-                )}
-              />
-            )}
           </div>
         );
       })}
