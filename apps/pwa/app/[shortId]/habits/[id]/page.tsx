@@ -224,110 +224,128 @@ export default function HabitDetailPage() {
         <StatCard label="Completion Rate" value={stats.completionRate} suffix="%" />
       </div>
 
-      {/* Monthly Calendar Heatmap */}
-      <div className="rounded-xl border border-border bg-card p-5">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => setCalendarMonth(subMonths(calendarMonth, 1))}
-            className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <ChevronLeft className="size-4" />
-          </button>
-          <h3 className="text-sm font-semibold text-foreground">
-            {format(calendarMonth, "MMMM yyyy")}
-          </h3>
-          <button
-            onClick={() => setCalendarMonth(addMonths(calendarMonth, 1))}
-            className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-          >
-            <ChevronRight className="size-4" />
-          </button>
-        </div>
+      {/* Calendar + Recent Entries — two-column on desktop, stacked on mobile */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {/* Monthly Calendar Heatmap */}
+        <div className="rounded-xl border border-border bg-card p-5">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setCalendarMonth(subMonths(calendarMonth, 1))}
+              className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            <h3 className="text-sm font-semibold text-foreground">
+              {format(calendarMonth, "MMMM yyyy")}
+            </h3>
+            <button
+              onClick={() => setCalendarMonth(addMonths(calendarMonth, 1))}
+              className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <ChevronRight className="size-4" />
+            </button>
+          </div>
 
-        <div className="mt-3 grid grid-cols-7 gap-1 text-center">
-          {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
-            <span key={i} className="text-[10px] font-medium text-muted-foreground">
-              {d}
-            </span>
-          ))}
-          {/* Offset empty cells */}
-          {Array.from({ length: calendarDays.offset }).map((_, i) => (
-            <div key={`empty-${i}`} />
-          ))}
-          {calendarDays.days.map((day) => {
-            const dateStr = format(day, "yyyy-MM-dd");
-            const value = monthEntryMap.get(dateStr) ?? 0;
-            const ratio = habit.targetCount > 0 ? value / habit.targetCount : 0;
-            const isToday = dateStr === today;
-            const dow = getDay(day);
-            const hasSchedule = habit.scheduledDays && habit.scheduledDays.length > 0;
-            const isScheduled = !hasSchedule || habit.scheduledDays!.includes(dow);
+          <div className="mt-3 grid grid-cols-7 gap-1.5 text-center">
+            {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+              <span key={i} className="text-[10px] font-medium text-muted-foreground">
+                {d}
+              </span>
+            ))}
+            {/* Offset empty cells */}
+            {Array.from({ length: calendarDays.offset }).map((_, i) => (
+              <div key={`empty-${i}`} />
+            ))}
+            {calendarDays.days.map((day) => {
+              const dateStr = format(day, "yyyy-MM-dd");
+              const value = monthEntryMap.get(dateStr) ?? 0;
+              const ratio = habit.targetCount > 0 ? value / habit.targetCount : 0;
+              const isComplete = ratio >= 1;
+              const isPartial = ratio > 0 && ratio < 1;
+              const isToday = dateStr === today;
+              const dow = getDay(day);
+              const hasSchedule = habit.scheduledDays && habit.scheduledDays.length > 0;
+              const isScheduled = !hasSchedule || habit.scheduledDays!.includes(dow);
 
-            return (
-              <div
-                key={dateStr}
-                className={cn(
-                  "flex h-8 w-full items-center justify-center rounded-md text-xs",
-                  isToday && "ring-1 ring-primary",
-                  !isScheduled && "opacity-30"
-                )}
-                style={
-                  ratio >= 1
-                    ? { backgroundColor: habitColor, color: "white" }
-                    : ratio > 0
-                      ? { backgroundColor: habitColor + "40" }
-                      : undefined
-                }
-                title={`${dateStr}: ${value}/${habit.targetCount}${!isScheduled ? " (rest day)" : ""}`}
-              >
-                {day.getDate()}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Recent Entries */}
-      <div className="rounded-xl border border-border bg-card p-5">
-        <h3 className="text-sm font-semibold text-foreground">Recent Entries</h3>
-        {recentEntries.length === 0 ? (
-          <p className="mt-3 text-xs text-muted-foreground">No entries yet.</p>
-        ) : (
-          <div className="mt-3 space-y-2">
-            {recentEntries.map((entry: HabitEntry) => {
-              const dateStr = entry.date.split("T")[0]!;
-              const isComplete = entry.value >= habit.targetCount;
               return (
                 <div
-                  key={entry.id}
-                  className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2"
+                  key={dateStr}
+                  className="flex items-center justify-center"
                 >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={cn(
-                        "h-2 w-2 rounded-full",
-                        isComplete ? "bg-green-500" : "bg-orange-400"
-                      )}
-                    />
-                    <span className="text-sm text-foreground">
-                      {format(new Date(dateStr), "MMM d, yyyy")}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {entry.value}/{habit.targetCount}
-                    </span>
-                    {entry.notes && (
-                      <span className="max-w-[120px] truncate text-xs text-muted-foreground">
-                        {entry.notes}
-                      </span>
+                  <div
+                    className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-full text-[11px]",
+                      !isScheduled && "opacity-25",
+                      isToday && "ring-2 ring-primary",
+                      isComplete && "text-white font-semibold",
+                      !isComplete && !isPartial && "text-muted-foreground",
+                      isPartial && "font-medium text-foreground",
+                    )}
+                    style={
+                      isComplete
+                        ? { backgroundColor: habitColor }
+                        : isPartial
+                          ? { backgroundColor: habitColor + "25" }
+                          : undefined
+                    }
+                    title={`${dateStr}: ${value}/${habit.targetCount}${!isScheduled ? " (rest day)" : ""}`}
+                  >
+                    {isComplete ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    ) : (
+                      day.getDate()
                     )}
                   </div>
                 </div>
               );
             })}
           </div>
-        )}
+        </div>
+
+        {/* Recent Entries */}
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h3 className="text-sm font-semibold text-foreground">Recent Entries</h3>
+          {recentEntries.length === 0 ? (
+            <p className="mt-3 text-xs text-muted-foreground">No entries yet.</p>
+          ) : (
+            <div className="mt-3 space-y-1.5 overflow-y-auto max-h-[320px] pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-track]:bg-transparent">
+              {recentEntries.map((entry: HabitEntry) => {
+                const dateStr = entry.date.split("T")[0]!;
+                const isComplete = entry.value >= habit.targetCount;
+                return (
+                  <div
+                    key={entry.id}
+                    className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={cn(
+                          "h-2 w-2 rounded-full",
+                          isComplete ? "bg-green-500" : "bg-orange-400"
+                        )}
+                      />
+                      <span className="text-sm text-foreground">
+                        {format(new Date(dateStr), "MMM d, yyyy")}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {entry.value}/{habit.targetCount}
+                      </span>
+                      {entry.notes && (
+                        <span className="max-w-[120px] truncate text-xs text-muted-foreground">
+                          {entry.notes}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       <EditHabitSheet habit={habit} open={editOpen} onOpenChange={setEditOpen} />
