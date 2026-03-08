@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { JournalEditor } from "@/components/journal/journal-editor";
 import { MoodPicker } from "@/components/journal/mood-picker";
 import { useJournal, useUpdateJournal, useDeleteJournal } from "@/lib/api/journals";
 import { useWorkspace } from "@/lib/workspace-context";
+import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { toast } from "sonner";
 import { sanitizeHtml } from "@/lib/sanitize";
 
@@ -17,6 +19,7 @@ export default function JournalEntryPage() {
   const updateJournal = useUpdateJournal();
   const deleteJournal = useDeleteJournal();
 
+  const isDesktop = useMediaQuery("(min-width: 768px)");
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -91,19 +94,18 @@ export default function JournalEntryPage() {
   });
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-4">
+    <div className="space-y-6 p-4">
       <div className="flex items-center justify-between">
-        <button
-          onClick={() => router.push(`/${workspace.shortId}/journal`)}
-          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m12 19-7-7 7-7" />
-            <path d="M19 12H5" />
-          </svg>
-          Back to Journal
-        </button>
-        <div className="flex items-center gap-2">
+        {!isDesktop && (
+          <button
+            onClick={() => router.push(`/${workspace.shortId}/journal`)}
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="size-4" />
+            Back
+          </button>
+        )}
+        <div className={`flex items-center gap-2 ${isDesktop ? "" : "ml-auto"}`}>
           {!isEditing ? (
             <>
               <button

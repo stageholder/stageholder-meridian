@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { format, parseISO } from "date-fns";
+import { ArrowLeft } from "lucide-react";
 import { JournalEditor } from "@/components/journal/journal-editor";
 import { MoodPicker } from "@/components/journal/mood-picker";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useCreateJournal } from "@/lib/api/journals";
 import { useWorkspace } from "@/lib/workspace-context";
+import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { toast } from "sonner";
 
 function formatDefaultTitle(isoDate: string): string {
@@ -25,6 +27,7 @@ export default function NewJournalPage() {
   const [mood, setMood] = useState<number | undefined>(undefined);
   const [date, setDate] = useState(dateParam || today);
   const createJournal = useCreateJournal();
+  const isDesktop = useMediaQuery("(min-width: 768px)");
 
   const effectiveTitle = title.trim() || formatDefaultTitle(date);
 
@@ -39,9 +42,9 @@ export default function NewJournalPage() {
         date,
       },
       {
-        onSuccess: () => {
+        onSuccess: (newJournal) => {
           toast.success("Journal entry created");
-          router.push(`/${workspace.shortId}/journal`);
+          router.push(`/${workspace.shortId}/journal/${newJournal.id}`);
         },
         onError: () => {
           toast.error("Failed to create journal entry");
@@ -51,16 +54,18 @@ export default function NewJournalPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">New Journal Entry</h1>
+    <div className="space-y-6 p-4">
+      {!isDesktop && (
         <button
           onClick={() => router.push(`/${workspace.shortId}/journal`)}
-          className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
+          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
-          Cancel
+          <ArrowLeft className="size-4" />
+          Back
         </button>
-      </div>
+      )}
+
+      <h1 className="text-2xl font-bold text-foreground">New Journal Entry</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>

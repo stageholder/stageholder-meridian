@@ -2,15 +2,17 @@
 
 import Link from "next/link";
 import { useWorkspace } from "@/lib/workspace-context";
+import { cn } from "@/lib/utils";
 import { MoodDisplay } from "./mood-picker";
 import type { Journal } from "@repo/core/types";
 
 interface JournalListProps {
   journals: Journal[];
   isLoading: boolean;
+  activeId?: string;
 }
 
-export function JournalList({ journals, isLoading }: JournalListProps) {
+export function JournalList({ journals, isLoading, activeId }: JournalListProps) {
   const { workspace } = useWorkspace();
   if (isLoading) {
     return <div className="text-sm text-muted-foreground">Loading journal entries...</div>;
@@ -44,7 +46,12 @@ export function JournalList({ journals, isLoading }: JournalListProps) {
           <Link
             key={journal.id}
             href={`/${workspace.shortId}/journal/${journal.id}`}
-            className="block rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent/50"
+            className={cn(
+              "block rounded-lg border p-4 transition-colors",
+              journal.id === activeId
+                ? "border-primary/50 bg-primary/5"
+                : "border-border bg-card hover:bg-accent/50"
+            )}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
