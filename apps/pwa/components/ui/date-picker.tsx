@@ -21,6 +21,8 @@ interface DatePickerProps {
   placeholder?: string
   /** Allow clearing the date */
   clearable?: boolean
+  /** Disable dates after this */
+  maxDate?: Date
   className?: string
   id?: string
 }
@@ -30,6 +32,7 @@ function DatePicker({
   onChange,
   placeholder = "Pick a date",
   clearable = true,
+  maxDate,
   className,
   id,
 }: DatePickerProps) {
@@ -78,6 +81,7 @@ function DatePicker({
           selected={selected}
           onSelect={handleSelect}
           defaultMonth={selected}
+          disabled={maxDate ? { after: maxDate } : undefined}
         />
       </PopoverContent>
     </Popover>

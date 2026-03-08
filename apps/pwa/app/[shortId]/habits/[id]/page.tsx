@@ -11,13 +11,17 @@ import {
   getDay,
   addMonths,
   subMonths,
+  isFuture,
+  isToday as isTodayFn,
 } from "date-fns";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EditHabitSheet } from "@/components/habits/edit-habit-sheet";
 import {
   useHabit,
   useHabitEntries,
+  useCreateHabitEntry,
+  useUpdateHabitEntry,
   useDeleteHabit,
 } from "@/lib/api/habits";
 import { useWorkspace } from "@/lib/workspace-context";
@@ -31,8 +35,11 @@ export default function HabitDetailPage() {
 
   const { data: habit, isLoading } = useHabit(params.id);
   const deleteHabit = useDeleteHabit();
+  const createEntry = useCreateHabitEntry();
+  const updateEntry = useUpdateHabitEntry();
   const [editOpen, setEditOpen] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const today = format(new Date(), "yyyy-MM-dd");
   const ninetyDaysAgo = format(subDays(new Date(), 90), "yyyy-MM-dd");
@@ -65,6 +72,16 @@ export default function HabitDetailPage() {
     for (const e of monthEntries || []) {
       const dateStr = e.date.split("T")[0]!;
       map.set(dateStr, (map.get(dateStr) ?? 0) + e.value);
+    }
+    return map;
+  }, [monthEntries]);
+
+  // Map date -> entry object (for PATCH/undo)
+  const monthEntryObjMap = useMemo(() => {
+    const map = new Map<string, HabitEntry>();
+    for (const e of monthEntries || []) {
+      const dateStr = e.date.split("T")[0]!;
+      map.set(dateStr, e);
     }
     return map;
   }, [monthEntries]);
@@ -136,6 +153,49 @@ export default function HabitDetailPage() {
       .sort((a, b) => b.date.localeCompare(a.date))
       .slice(0, 20);
   }, [allEntries]);
+
+  const isMutating = createEntry.isPending || updateEntry.isPending;
+
+  function handleDateCheckIn(dateStr: string) {
+    if (!habit) return;
+    const existing = monthEntryObjMap.get(dateStr);
+    const currentVal = monthEntryMap.get(dateStr) ?? 0;
+
+    if (currentVal >= habit.targetCount) {
+      toast.info("Already completed for this date");
+      return;
+    }
+
+    const onSuccess = () => toast.success(`Recorded for ${dateStr}`);
+    const onError = () => toast.error("Failed to record");
+
+    if (!existing) {
+      createEntry.mutate(
+        { habitId: habit.id, data: { date: dateStr, value: 1 } },
+        { onSuccess, onError }
+      );
+    } else {
+      updateEntry.mutate(
+        { habitId: habit.id, entryId: existing.id, data: { value: currentVal + 1 } },
+        { onSuccess, onError }
+      );
+    }
+  }
+
+  function handleDateUndo(dateStr: string) {
+    if (!habit) return;
+    const existing = monthEntryObjMap.get(dateStr);
+    const currentVal = monthEntryMap.get(dateStr) ?? 0;
+    if (!existing || currentVal <= 0) return;
+
+    updateEntry.mutate(
+      { habitId: habit.id, entryId: existing.id, data: { value: currentVal - 1 } },
+      {
+        onSuccess: () => toast.success(`Undid for ${dateStr}`),
+        onError: () => toast.error("Failed to undo"),
+      }
+    );
+  }
 
   function handleDelete() {
     if (!window.confirm(`Delete "${habit?.name}"? This cannot be undone.`)) return;
@@ -262,7 +322,9 @@ export default function HabitDetailPage() {
               const ratio = habit.targetCount > 0 ? value / habit.targetCount : 0;
               const isComplete = ratio >= 1;
               const isPartial = ratio > 0 && ratio < 1;
-              const isToday = dateStr === today;
+              const isDayToday = dateStr === today;
+              const isFutureDay = isFuture(day) && !isTodayFn(day);
+              const isSelected = selectedDate === dateStr;
               const dow = getDay(day);
               const hasSchedule = habit.scheduledDays && habit.scheduledDays.length > 0;
               const isScheduled = !hasSchedule || habit.scheduledDays!.includes(dow);
@@ -272,14 +334,19 @@ export default function HabitDetailPage() {
                   key={dateStr}
                   className="flex items-center justify-center"
                 >
-                  <div
+                  <button
+                    onClick={() => !isFutureDay && setSelectedDate(isSelected ? null : dateStr)}
+                    disabled={isFutureDay}
                     className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-full text-[11px]",
+                      "flex h-8 w-8 items-center justify-center rounded-full text-[11px] transition-all",
                       !isScheduled && "opacity-25",
-                      isToday && "ring-2 ring-primary",
+                      isDayToday && !isSelected && "ring-2 ring-primary",
+                      isSelected && "ring-2 ring-foreground scale-110",
                       isComplete && "text-white font-semibold",
                       !isComplete && !isPartial && "text-muted-foreground",
                       isPartial && "font-medium text-foreground",
+                      !isFutureDay && "cursor-pointer hover:scale-110",
+                      isFutureDay && "opacity-20 cursor-not-allowed",
                     )}
                     style={
                       isComplete
@@ -288,7 +355,7 @@ export default function HabitDetailPage() {
                           ? { backgroundColor: habitColor + "25" }
                           : undefined
                     }
-                    title={`${dateStr}: ${value}/${habit.targetCount}${!isScheduled ? " (rest day)" : ""}`}
+                    title={`${dateStr}: ${value}/${habit.targetCount}${!isScheduled ? " (rest day)" : ""}${isFutureDay ? " (future)" : ""}`}
                   >
                     {isComplete ? (
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -297,11 +364,62 @@ export default function HabitDetailPage() {
                     ) : (
                       day.getDate()
                     )}
-                  </div>
+                  </button>
                 </div>
               );
             })}
           </div>
+
+          {/* Selected date action panel */}
+          {selectedDate && (() => {
+            const selValue = monthEntryMap.get(selectedDate) ?? 0;
+            const selComplete = habit.targetCount > 0 && selValue >= habit.targetCount;
+            const selDow = getDay(new Date(selectedDate + "T00:00:00"));
+            const hasSchedule = habit.scheduledDays && habit.scheduledDays.length > 0;
+            const selScheduled = !hasSchedule || habit.scheduledDays!.includes(selDow);
+
+            return (
+              <div className="mt-4 flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-foreground">
+                    {format(new Date(selectedDate + "T00:00:00"), "MMM d, yyyy")}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {selValue}/{habit.targetCount}
+                    {!selScheduled && " · Rest day"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {selValue > 0 && (
+                    <button
+                      onClick={() => handleDateUndo(selectedDate)}
+                      disabled={isMutating}
+                      className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+                    >
+                      <Undo2 className="size-3" />
+                      Undo
+                    </button>
+                  )}
+                  {selComplete ? (
+                    <span className="flex items-center gap-1 rounded-md bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      Done
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => handleDateCheckIn(selectedDate)}
+                      disabled={isMutating}
+                      className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      {isMutating ? "..." : "Record"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Recent Entries */}

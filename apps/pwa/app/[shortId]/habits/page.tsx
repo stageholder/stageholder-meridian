@@ -1,14 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { format } from "date-fns";
 import { useHabits } from "@/lib/api/habits";
 import { HabitCard } from "@/components/habits/habit-card";
 import { CreateHabitDialog } from "@/components/habits/create-habit-dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 import type { Habit } from "@repo/core/types";
 
 export default function HabitsPage() {
   const { data: habits, isLoading } = useHabits();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const [selectedDate, setSelectedDate] = useState(todayStr);
+
+  const isViewingToday = selectedDate === todayStr;
 
   return (
     <div className="space-y-6 p-4">
@@ -29,6 +35,31 @@ export default function HabitsPage() {
           </svg>
           New Habit
         </button>
+      </div>
+
+      {/* Date selector */}
+      <div className="flex items-center gap-3">
+        <DatePicker
+          value={selectedDate}
+          onChange={(v) => setSelectedDate(v || todayStr)}
+          placeholder="Select date"
+          clearable={false}
+          maxDate={new Date()}
+          className="w-auto"
+        />
+        {!isViewingToday && (
+          <button
+            onClick={() => setSelectedDate(todayStr)}
+            className="rounded-md px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10"
+          >
+            Back to today
+          </button>
+        )}
+        {!isViewingToday && (
+          <span className="text-xs text-muted-foreground">
+            Viewing: {format(new Date(selectedDate + "T00:00:00"), "EEEE, MMM d, yyyy")}
+          </span>
+        )}
       </div>
 
       {isLoading ? (
@@ -63,7 +94,11 @@ export default function HabitsPage() {
       ) : habits && habits.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {habits.map((habit: Habit) => (
-            <HabitCard key={habit.id} habit={habit} />
+            <HabitCard
+              key={habit.id}
+              habit={habit}
+              selectedDate={isViewingToday ? undefined : selectedDate}
+            />
           ))}
         </div>
       ) : (

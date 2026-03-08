@@ -25,11 +25,15 @@ import {
 
 interface HabitCardProps {
   habit: Habit;
+  /** When set, the card shows status for this date instead of today */
+  selectedDate?: string;
 }
 
-export function HabitCard({ habit }: HabitCardProps) {
+export function HabitCard({ habit, selectedDate }: HabitCardProps) {
   const { workspace } = useWorkspace();
   const today = format(new Date(), "yyyy-MM-dd");
+  const activeDate = selectedDate || today;
+  const isViewingToday = !selectedDate || selectedDate === today;
   const ninetyDaysAgo = format(subDays(new Date(), 90), "yyyy-MM-dd");
 
   const { data: entries } = useHabitEntries(habit.id, {
@@ -44,13 +48,14 @@ export function HabitCard({ habit }: HabitCardProps) {
   const [bouncing, setBouncing] = useState(false);
   const [completing, setCompleting] = useState(false);
 
-  const todayEntry = entries?.find(
-    (e: HabitEntry) => e.date.split("T")[0] === today
+  const activeDateEntry = entries?.find(
+    (e: HabitEntry) => e.date.split("T")[0] === activeDate
   );
-  const todayValue = todayEntry?.value ?? 0;
-  const isComplete = todayValue >= habit.targetCount;
-  const todayDow = new Date().getDay(); // 0=Sun, 1=Mon, ...
-  const isScheduledToday = !habit.scheduledDays || habit.scheduledDays.length === 0 || habit.scheduledDays.includes(todayDow);
+  const activeDateValue = activeDateEntry?.value ?? 0;
+  const isComplete = activeDateValue >= habit.targetCount;
+  const activeDateObj = selectedDate ? new Date(selectedDate + "T00:00:00") : new Date();
+  const activeDow = activeDateObj.getDay();
+  const isScheduledOnActiveDate = !habit.scheduledDays || habit.scheduledDays.length === 0 || habit.scheduledDays.includes(activeDow);
   const streak = calculateStreak(entries || [], habit.targetCount, habit.scheduledDays);
 
   // Week dots data
@@ -71,29 +76,30 @@ export function HabitCard({ habit }: HabitCardProps) {
   });
 
   function handleCheckIn() {
-    if (isComplete || !isScheduledToday) return;
+    if (isComplete || !isScheduledOnActiveDate) return;
 
+    const dateLabel = isViewingToday ? habit.name : `${habit.name} (${activeDate})`;
     const onSuccess = () => {
-      toast.success(`Checked in for ${habit.name}`);
+      toast.success(`Checked in for ${dateLabel}`);
       setBouncing(true);
       setTimeout(() => setBouncing(false), 500);
-      if (todayValue + 1 >= habit.targetCount) {
+      if (activeDateValue + 1 >= habit.targetCount) {
         setCompleting(true);
         setTimeout(() => setCompleting(false), 1000);
       }
     };
 
-    if (!todayEntry) {
+    if (!activeDateEntry) {
       createEntry.mutate(
-        { habitId: habit.id, data: { date: today, value: 1 } },
+        { habitId: habit.id, data: { date: activeDate, value: 1 } },
         { onSuccess, onError: () => toast.error("Failed to check in") }
       );
     } else {
       updateEntry.mutate(
         {
           habitId: habit.id,
-          entryId: todayEntry.id,
-          data: { value: todayValue + 1 },
+          entryId: activeDateEntry.id,
+          data: { value: activeDateValue + 1 },
         },
         { onSuccess, onError: () => toast.error("Failed to check in") }
       );
@@ -101,13 +107,13 @@ export function HabitCard({ habit }: HabitCardProps) {
   }
 
   function handleUndo() {
-    if (!todayEntry || todayValue <= 0) return;
+    if (!activeDateEntry || activeDateValue <= 0) return;
 
-    const newValue = todayValue - 1;
+    const newValue = activeDateValue - 1;
     updateEntry.mutate(
       {
         habitId: habit.id,
-        entryId: todayEntry.id,
+        entryId: activeDateEntry.id,
         data: { value: newValue },
       },
       {
@@ -178,7 +184,7 @@ export function HabitCard({ habit }: HabitCardProps) {
 
         <div className="mt-4">
           <HabitProgress
-            value={todayValue}
+            value={activeDateValue}
             targetCount={habit.targetCount}
             color={habit.color}
             streak={streak}
@@ -226,7 +232,7 @@ export function HabitCard({ habit }: HabitCardProps) {
               : `${habit.targetCount}x target`}
           </span>
           <div className="flex items-center gap-1.5">
-            {todayValue > 0 && (
+            {activeDateValue > 0 && (
               <button
                 onClick={handleUndo}
                 disabled={isPending}
@@ -236,7 +242,7 @@ export function HabitCard({ habit }: HabitCardProps) {
                 <Undo2 className="size-3" />
               </button>
             )}
-            {!isScheduledToday && !isComplete ? (
+            {!isScheduledOnActiveDate && !isComplete ? (
               <span className="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground">
                 Rest day
               </span>
@@ -272,7 +278,7 @@ export function HabitCard({ habit }: HabitCardProps) {
               ) : isPending ? (
                 "Checking..."
               ) : habit.targetCount > 1 ? (
-                `${todayValue}/${habit.targetCount}`
+                `${activeDateValue}/${habit.targetCount}`
               ) : (
                 "Check In"
               )}
