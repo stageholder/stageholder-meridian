@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import { ArrowLeft } from "lucide-react";
 import { JournalEditor } from "@/components/journal/journal-editor";
 import { MoodPicker } from "@/components/journal/mood-picker";
+import { TagInput } from "@/components/journal/tag-input";
 import { DatePicker } from "@/components/ui/date-picker";
-import { useCreateJournal } from "@/lib/api/journals";
+import { useCreateJournal, useJournals } from "@/lib/api/journals";
 import { useWorkspace } from "@/lib/workspace-context";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { toast } from "sonner";
@@ -25,11 +26,25 @@ export default function NewJournalPage() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [mood, setMood] = useState<number | undefined>(undefined);
+  const [tags, setTags] = useState<string[]>([]);
   const [date, setDate] = useState(dateParam || today);
   const createJournal = useCreateJournal();
   const isDesktop = useMediaQuery("(min-width: 768px)");
+  const { data: existingEntries } = useJournals({ startDate: date, endDate: date });
 
   const effectiveTitle = title.trim() || formatDefaultTitle(date);
+
+  // Unsaved changes warning
+  const hasContent = !!(title.trim() || content.trim() || mood !== undefined || tags.length > 0);
+
+  useEffect(() => {
+    if (!hasContent) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hasContent]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,6 +54,7 @@ export default function NewJournalPage() {
         title: effectiveTitle,
         content,
         mood,
+        tags,
         date,
       },
       {
@@ -93,6 +109,12 @@ export default function NewJournalPage() {
                 onChange={setDate}
                 clearable={false}
               />
+              {existingEntries && existingEntries.length > 0 && (
+                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                  You already have {existingEntries.length}{" "}
+                  {existingEntries.length === 1 ? "entry" : "entries"} for this date
+                </p>
+              )}
             </div>
           </div>
           <div>
@@ -105,6 +127,8 @@ export default function NewJournalPage() {
           </div>
         </div>
 
+        <TagInput tags={tags} onChange={setTags} />
+
         <div>
           <label className="mb-1 block text-sm font-medium text-foreground">Content</label>
           <JournalEditor
@@ -112,6 +136,7 @@ export default function NewJournalPage() {
             onChange={setContent}
             placeholder="What's on your mind?"
             autoFocus
+            date={date}
           />
         </div>
 

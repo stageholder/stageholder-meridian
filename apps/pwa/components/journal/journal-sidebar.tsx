@@ -2,8 +2,8 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Plus } from "lucide-react";
-import { useJournals } from "@/lib/api/journals";
+import { Plus, Loader2 } from "lucide-react";
+import { useJournals, useJournalsPaginated } from "@/lib/api/journals";
 import { JournalList } from "@/components/journal/journal-list";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useWorkspace } from "@/lib/workspace-context";
@@ -28,6 +28,8 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
   const [endDate, setEndDate] = useState("");
   const [moodFilter, setMoodFilter] = useState(0);
 
+  const hasDateFilter = !!(startDate || endDate);
+
   const queryParams = useMemo(() => {
     const params: { startDate?: string; endDate?: string } = {};
     if (startDate) params.startDate = startDate;
@@ -35,10 +37,20 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
     return params;
   }, [startDate, endDate]);
 
-  const { data: journals, isLoading } = useJournals(queryParams);
+  const dateRangeQuery = useJournals(hasDateFilter ? queryParams : undefined, { enabled: hasDateFilter });
+  const paginatedQuery = useJournalsPaginated();
+
+  const journals: Journal[] = useMemo(() => {
+    if (hasDateFilter) {
+      return dateRangeQuery.data ?? [];
+    }
+    if (!paginatedQuery.data) return [];
+    return paginatedQuery.data.pages.flatMap((page) => page.data);
+  }, [hasDateFilter, dateRangeQuery.data, paginatedQuery.data]);
+
+  const isLoading = hasDateFilter ? dateRangeQuery.isLoading : paginatedQuery.isLoading;
 
   const filteredJournals = useMemo(() => {
-    if (!journals) return [];
     if (moodFilter === 0) return journals;
     return journals.filter((j: Journal) => j.mood === moodFilter);
   }, [journals, moodFilter]);
@@ -116,6 +128,24 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
           isLoading={isLoading}
           activeId={activeId}
         />
+        {!hasDateFilter && paginatedQuery.hasNextPage && (
+          <div className="mt-2 flex justify-center">
+            <button
+              onClick={() => paginatedQuery.fetchNextPage()}
+              disabled={paginatedQuery.isFetchingNextPage}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+            >
+              {paginatedQuery.isFetchingNextPage ? (
+                <>
+                  <Loader2 className="size-3 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                "Load more"
+              )}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { countWords } from "@repo/core/utils/text";
 import { useUserLight } from "@/lib/api/light";
+import { useJournals } from "@/lib/api/journals";
 import { cn } from "@/lib/utils";
 
 interface JournalEditorProps {
@@ -13,12 +14,28 @@ interface JournalEditorProps {
   onChange: (content: string) => void;
   placeholder?: string;
   autoFocus?: boolean;
+  date?: string;
+  excludeJournalId?: string;
 }
 
-export function JournalEditor({ content, onChange, placeholder, autoFocus }: JournalEditorProps) {
+export function JournalEditor({ content, onChange, placeholder, autoFocus, date, excludeJournalId }: JournalEditorProps) {
   const { data: userLight } = useUserLight();
   const target = userLight?.journalTargetDailyWords ?? 150;
   const [wordCount, setWordCount] = useState(() => countWords(content));
+
+  // Fetch all entries for the same day to compute cumulative word count
+  const { data: dailyEntries } = useJournals(
+    date ? { startDate: date, endDate: date } : undefined,
+  );
+
+  const otherWordsToday = useMemo(() => {
+    if (!dailyEntries) return 0;
+    return dailyEntries
+      .filter((entry) => entry.id !== excludeJournalId)
+      .reduce((sum, entry) => sum + entry.wordCount, 0);
+  }, [dailyEntries, excludeJournalId]);
+
+  const totalWords = wordCount + otherWordsToday;
 
   const handleUpdate = useCallback(
     (html: string) => {
@@ -52,8 +69,8 @@ export function JournalEditor({ content, onChange, placeholder, autoFocus }: Jou
     return null;
   }
 
-  const pct = Math.min(100, (wordCount / target) * 100);
-  const metTarget = wordCount >= target;
+  const pct = Math.min(100, (totalWords / target) * 100);
+  const metTarget = totalWords >= target;
 
   return (
     <div className="rounded-lg border border-border bg-background">
@@ -160,7 +177,7 @@ export function JournalEditor({ content, onChange, placeholder, autoFocus }: Jou
             "shrink-0 text-xs tabular-nums",
             metTarget ? "font-medium text-[var(--ring-journal)]" : "text-muted-foreground",
           )}>
-            {wordCount}/{target} words
+            {totalWords} words today / {target} target
           </span>
         </div>
       </div>

@@ -4,7 +4,8 @@
       "Bash(ls:*)",
       "Bash(find:*)",
       "WebFetch(domain:ui.shadcn.com)",
-      "Bash(bunx tsc:*)"
+      "Bash(bunx tsc:*)",
+      "Bash(grep:*)"
     ]
   }
 }

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { JournalEditor } from "@/components/journal/journal-editor";
 import { MoodPicker } from "@/components/journal/mood-picker";
+import { TagInput } from "@/components/journal/tag-input";
 import { useJournal, useUpdateJournal, useDeleteJournal } from "@/lib/api/journals";
 import { useWorkspace } from "@/lib/workspace-context";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
@@ -24,14 +25,34 @@ export default function JournalEntryPage() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [mood, setMood] = useState<number | undefined>(undefined);
+  const [tags, setTags] = useState<string[]>([]);
 
   useEffect(() => {
     if (journal) {
       setTitle(journal.title);
       setContent(journal.content);
       setMood(journal.mood);
+      setTags(journal.tags);
     }
   }, [journal]);
+
+  // Unsaved changes warning when editing
+  const isDirty =
+    isEditing &&
+    journal != null &&
+    (title !== journal.title ||
+      content !== journal.content ||
+      mood !== journal.mood ||
+      JSON.stringify(tags) !== JSON.stringify(journal.tags));
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
 
   function handleSave() {
     if (!title.trim()) {
@@ -46,6 +67,7 @@ export default function JournalEntryPage() {
           title: title.trim(),
           content,
           mood,
+          tags,
         },
       },
       {
@@ -93,6 +115,9 @@ export default function JournalEntryPage() {
     day: "numeric",
   });
 
+  // Content is sanitized via sanitizeHtml before rendering
+  const sanitizedContent = sanitizeHtml(journal.content);
+
   return (
     <div className="space-y-6 p-4">
       <div className="flex items-center justify-between">
@@ -128,6 +153,7 @@ export default function JournalEntryPage() {
                   setTitle(journal.title);
                   setContent(journal.content);
                   setMood(journal.mood);
+                  setTags(journal.tags);
                   setIsEditing(false);
                 }}
                 className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
@@ -166,9 +192,15 @@ export default function JournalEntryPage() {
               <MoodPicker value={mood} onChange={setMood} />
             </div>
           </div>
+          <TagInput tags={tags} onChange={setTags} />
           <div>
             <label className="mb-1 block text-sm font-medium text-foreground">Content</label>
-            <JournalEditor content={content} onChange={setContent} />
+            <JournalEditor
+              content={content}
+              onChange={setContent}
+              date={journal.date}
+              excludeJournalId={params.id}
+            />
           </div>
         </div>
       ) : (
@@ -198,7 +230,7 @@ export default function JournalEntryPage() {
           </div>
           <div
             className="prose prose-sm dark:prose-invert max-w-none"
-            dangerouslySetInnerHTML={{ __html: sanitizeHtml(journal.content) }}
+            dangerouslySetInnerHTML={{ __html: sanitizedContent }}
           />
         </div>
       )}
