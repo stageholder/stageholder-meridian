@@ -279,23 +279,75 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
             {/* Right side */}
             <div className="flex items-center gap-1.5">
               <DailyTargetRings />
+              <div className="mx-0.5 h-4 w-px bg-border" />
               <OfflineIndicator />
 
               {/* Journey progress popover */}
               {userLight && (() => {
                 const progress = getTierProgress(userLight.totalLight, userLight.currentTier);
                 const nextTier = getNextTier(userLight.currentTier);
+                // Tier-specific color palettes matching star-visual.tsx
+                const tierColors: Record<number, { ring: [string, string, string]; track: string; glow: string }> = {
+                  1:  { ring: ["#94a3b8", "#cbd5e1", "#94a3b8"], track: "rgba(148,163,184,0.15)", glow: "#cbd5e1" },  // Stargazer — silver
+                  2:  { ring: ["#ef4444", "#fca5a5", "#ef4444"], track: "rgba(239,68,68,0.15)", glow: "#ef4444" },     // Spark — red
+                  3:  { ring: ["#dc2626", "#f59e0b", "#fbbf24"], track: "rgba(245,158,11,0.15)", glow: "#f59e0b" },    // Ember — red to amber
+                  4:  { ring: ["#dc2626", "#f97316", "#fbbf24"], track: "rgba(249,115,22,0.15)", glow: "#f97316" },    // Flame — red-orange-yellow
+                  5:  { ring: ["#ea580c", "#f97316", "#fbbf24"], track: "rgba(249,115,22,0.15)", glow: "#f97316" },    // Radiant — orange-gold
+                  6:  { ring: ["#a16207", "#eab308", "#fde68a"], track: "rgba(234,179,8,0.15)", glow: "#eab308" },     // Flare — deep gold
+                  7:  { ring: ["#a16207", "#fbbf24", "#fef9c3"], track: "rgba(251,191,36,0.15)", glow: "#fbbf24" },    // Nova — gold to white
+                  8:  { ring: ["#ca8a04", "#fde68a", "#ffffff"], track: "rgba(253,230,138,0.15)", glow: "#fde68a" },   // Pulsar — gold-white
+                  9:  { ring: ["#854d0e", "#eab308", "#fde68a"], track: "rgba(234,179,8,0.15)", glow: "#eab308" },     // Supernova — deep gold
+                  10: { ring: ["#f59e0b", "#fbbf24", "#ffffff"], track: "rgba(251,191,36,0.15)", glow: "#fbbf24" },    // Meridian — gold to white
+                };
+                const colors = (tierColors[userLight.currentTier] ?? tierColors[1])!;
                 return (
                   <Popover>
                     <PopoverTrigger asChild>
-                      <button className="relative flex size-9 items-center justify-center rounded-md transition-colors hover:bg-accent">
-                        {/* Progress ring around the star */}
-                        <svg className="absolute inset-0 size-9 -rotate-90" viewBox="0 0 36 36">
-                          {progress > 0 && (
-                            <circle cx={18} cy={18} r={16} fill="none" stroke="#f59e0b" strokeWidth={1.5} strokeLinecap="round" strokeDasharray={`${Math.max(8, (progress / 100) * 2 * Math.PI * 16)} ${2 * Math.PI * 16}`} />
-                          )}
-                        </svg>
-                        <StarVisual tier={userLight.currentTier} size="sm" className="relative" />
+                      <button className="group relative flex items-center gap-1.5 rounded-md py-1 pl-2 pr-1 transition-colors hover:bg-accent">
+                        {/* Title text with shimmer — left side */}
+                        <span
+                          className="relative text-[11px] font-semibold tracking-wide"
+                          style={{
+                            background: `linear-gradient(90deg, ${colors.ring[0]}, ${colors.ring[1]}, ${colors.ring[2]}, ${colors.ring[1]}, ${colors.ring[0]})`,
+                            backgroundSize: "200% 100%",
+                            WebkitBackgroundClip: "text",
+                            WebkitTextFillColor: "transparent",
+                            animation: "shimmer 3s ease-in-out infinite",
+                          }}
+                        >
+                          {userLight.currentTitle}
+                        </span>
+                        {/* Ring + star — right side, same size as daily target rings */}
+                        <div className="relative inline-flex shrink-0 items-center justify-center" style={{ width: 28, height: 28 }}>
+                          {/* Ambient glow */}
+                          <span
+                            className="pointer-events-none absolute inset-0 m-auto size-6 rounded-full opacity-0 blur-md transition-opacity duration-500 group-hover:opacity-40"
+                            style={{ background: `radial-gradient(circle, ${colors.glow} 0%, transparent 70%)` }}
+                          />
+                          <svg className="absolute inset-0 -rotate-90" width={28} height={28} viewBox="0 0 28 28">
+                            <defs>
+                              <linearGradient id="light-ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor={colors.ring[0]} />
+                                <stop offset="50%" stopColor={colors.ring[1]} />
+                                <stop offset="100%" stopColor={colors.ring[2]} />
+                              </linearGradient>
+                            </defs>
+                            <circle cx={14} cy={14} r={12.75} fill="none" stroke={colors.track} strokeWidth={2.5} />
+                            {progress > 0 && (
+                              <circle
+                                cx={14} cy={14} r={12.75}
+                                fill="none"
+                                stroke="url(#light-ring-grad)"
+                                strokeWidth={2.5}
+                                strokeLinecap="round"
+                                strokeDasharray={`${2 * Math.PI * 12.75}`}
+                                strokeDashoffset={`${2 * Math.PI * 12.75 * (1 - Math.min(100, progress) / 100)}`}
+                                className="transition-all duration-700"
+                              />
+                            )}
+                          </svg>
+                          <StarVisual tier={userLight.currentTier} size="xs" className="relative" />
+                        </div>
                       </button>
                     </PopoverTrigger>
                     <PopoverContent align="end" className="w-64 p-0">

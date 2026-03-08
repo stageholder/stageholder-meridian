@@ -165,3 +165,8 @@ summary,
 [tabindex]:not([tabindex="-1"]) {
   cursor: pointer;
 }
+
+@keyframes shimmer {
+  0%, 100% { background-position: 200% 50%; }
+  50% { background-position: 0% 50%; }
+}
