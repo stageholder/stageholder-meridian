@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { CheckSquare, Target, BookOpen } from "lucide-react";
 import { StarVisual } from "@/components/light/star-visual";
-import { Check, Zap, PenLine } from "lucide-react";
 
 export interface ActivityRingsData {
   todo: number;   // 0-100
@@ -70,9 +70,9 @@ const STAR_SIZE_MAP: Record<ActivityRingsSize, 'sm' | 'md' | 'lg' | 'xl'> = {
 };
 
 const RING_ICONS: Record<RingType, React.ComponentType<React.SVGProps<SVGSVGElement> & { size?: number }>> = {
-  todo: Check,
-  habit: Zap,
-  journal: PenLine,
+  todo: CheckSquare,
+  habit: Target,
+  journal: BookOpen,
 };
 
 function getArcEndpoint(radius: number, percent: number) {
@@ -181,7 +181,7 @@ export function ActivityRingsVisual({ data, size = "md", animate = true, star, c
               height={capR * 2}
             >
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}>
-                <Icon size={iconPx} color="rgba(0,0,0,0.7)" strokeWidth={3} />
+                <Icon size={iconPx} color="rgba(0,0,0,0.7)" strokeWidth={2.5} />
               </div>
             </foreignObject>
           </g>
