@@ -61,8 +61,8 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/todos", label: "Todos", icon: CheckSquare },
-  { href: "/journal", label: "Journal", icon: BookOpen },
   { href: "/habits", label: "Habits", icon: Target },
+  { href: "/journal", label: "Journal", icon: BookOpen },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
