@@ -15,6 +15,7 @@ export class WorkspaceModel {
   @Prop({ type: String, required: true, unique: true, index: true }) short_id: string;
   @Prop({ type: String }) description: string;
   @Prop({ type: String, required: true, index: true }) owner_id: string;
+  @Prop({ type: Boolean, default: false }) is_personal: boolean;
   @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 

@@ -11,7 +11,7 @@ export class WorkspaceRepository {
 
   async save(workspace: Workspace): Promise<void> {
     const data = workspace.toObject();
-    await this.model.updateOne({ _id: data.id }, { $set: { name: data.name, short_id: data.shortId, description: data.description, owner_id: data.ownerId } }, { upsert: true });
+    await this.model.updateOne({ _id: data.id }, { $set: { name: data.name, short_id: data.shortId, description: data.description, owner_id: data.ownerId, is_personal: data.isPersonal ?? false } }, { upsert: true });
   }
 
   async findById(id: string): Promise<Workspace | null> {
@@ -26,6 +26,11 @@ export class WorkspaceRepository {
     return doc ? this.toDomain(doc) : null;
   }
 
+  async findPersonalByOwner(ownerId: string): Promise<Workspace | null> {
+    const doc = await this.model.findOne({ owner_id: ownerId, is_personal: true, deleted_at: null }).lean();
+    return doc ? this.toDomain(doc) : null;
+  }
+
   async delete(id: string): Promise<void> { await this.model.updateOne({ _id: id }, { $set: { deleted_at: new Date() } }); }
 
   private async backfillShortId(doc: any): Promise<void> {
@@ -36,6 +41,6 @@ export class WorkspaceRepository {
   }
 
   private toDomain(doc: any): Workspace {
-    return Workspace.reconstitute({ name: doc.name, shortId: doc.short_id, description: doc.description, ownerId: doc.owner_id, createdAt: doc.created_at, updatedAt: doc.updated_at }, doc._id);
+    return Workspace.reconstitute({ name: doc.name, shortId: doc.short_id, description: doc.description, ownerId: doc.owner_id, isPersonal: doc.is_personal ?? false, createdAt: doc.created_at, updatedAt: doc.updated_at }, doc._id);
   }
 }

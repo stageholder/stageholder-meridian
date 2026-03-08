@@ -25,34 +25,34 @@ export class AuthController {
   @Public()
   @Post('register')
   async register(@Body(new ZodValidationPipe(RegisterSchema)) dto: RegisterDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const { user, tokens } = await this.authService.register(dto);
+    const { user, tokens, personalWorkspaceShortId } = await this.authService.register(dto);
     if (isBearerClient(req)) {
-      return { ...toUserResponse(user), accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
+      return { ...toUserResponse(user), personalWorkspaceShortId, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
     }
     setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
-    return toUserResponse(user);
+    return { ...toUserResponse(user), personalWorkspaceShortId };
   }
 
   @Public()
   @Post('login')
   async login(@Body(new ZodValidationPipe(LoginSchema)) dto: LoginDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const { user, tokens } = await this.authService.login(dto);
+    const { user, tokens, personalWorkspaceShortId } = await this.authService.login(dto);
     if (isBearerClient(req)) {
-      return { ...toUserResponse(user), accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
+      return { ...toUserResponse(user), personalWorkspaceShortId, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
     }
     setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
-    return toUserResponse(user);
+    return { ...toUserResponse(user), personalWorkspaceShortId };
   }
 
   @Public()
   @Post('social')
   async socialLogin(@Body(new ZodValidationPipe(SocialLoginSchema)) dto: SocialLoginDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const { user, tokens } = await this.authService.socialLogin(dto);
+    const { user, tokens, personalWorkspaceShortId } = await this.authService.socialLogin(dto);
     if (isBearerClient(req)) {
-      return { ...toUserResponse(user), accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
+      return { ...toUserResponse(user), personalWorkspaceShortId, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
     }
     setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
-    return toUserResponse(user);
+    return { ...toUserResponse(user), personalWorkspaceShortId };
   }
 
   @Public()

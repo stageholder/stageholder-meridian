@@ -8,6 +8,20 @@ import { WorkspaceMemberService } from '../workspace-member/workspace-member.ser
 export class WorkspaceService {
   constructor(private readonly repository: WorkspaceRepository, private readonly memberService: WorkspaceMemberService) {}
 
+  async createPersonal(userId: string, email: string, userName: string): Promise<Workspace> {
+    const existing = await this.repository.findPersonalByOwner(userId);
+    if (existing) return existing;
+    const result = Workspace.create({ name: 'Personal', ownerId: userId, isPersonal: true });
+    if (!result.ok) throw result.error;
+    await this.repository.save(result.value);
+    await this.memberService.addOwner(result.value.id, userId, email);
+    return result.value;
+  }
+
+  async findPersonalByOwner(userId: string): Promise<Workspace | null> {
+    return this.repository.findPersonalByOwner(userId);
+  }
+
   async create(userId: string, email: string, dto: CreateWorkspaceDto): Promise<Workspace> {
     const result = Workspace.create({ name: dto.name, description: dto.description, ownerId: userId });
     if (!result.ok) throw result.error;
@@ -57,6 +71,7 @@ export class WorkspaceService {
 
   async delete(id: string, userId: string): Promise<void> {
     const ws = await this.findById(id);
+    if (ws.isPersonal) throw new ForbiddenException('Personal workspace cannot be deleted');
     if (ws.ownerId !== userId) throw new ForbiddenException('Only the owner can delete a workspace');
     await this.repository.delete(id);
   }

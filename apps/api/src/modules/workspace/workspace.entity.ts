@@ -5,6 +5,7 @@ export interface WorkspaceProps extends EntityProps {
   shortId: string;
   description?: string;
   ownerId: string;
+  isPersonal?: boolean;
 }
 
 export class Workspace extends Entity<WorkspaceProps> {
@@ -14,6 +15,7 @@ export class Workspace extends Entity<WorkspaceProps> {
   get shortId(): string { return this.get('shortId'); }
   get description(): string | undefined { return this.get('description'); }
   get ownerId(): string { return this.get('ownerId'); }
+  get isPersonal(): boolean { return this.get('isPersonal') ?? false; }
 
   updateName(name: string): void { this.set('name', name); }
   updateDescription(description: string): void { this.set('description', description); }
@@ -22,7 +24,7 @@ export class Workspace extends Entity<WorkspaceProps> {
     if (!props.name || props.name.trim().length === 0) return Err(new Error('Workspace name is required'));
     if (!props.ownerId) return Err(new Error('Owner is required'));
     const shortId = generateShortId();
-    return Ok(new Workspace({ ...props, shortId } as WorkspaceProps));
+    return Ok(new Workspace({ ...props, shortId, isPersonal: props.isPersonal ?? false } as WorkspaceProps));
   }
 
   static reconstitute(props: WorkspaceProps, id: string): Workspace { return new Workspace(props, id); }

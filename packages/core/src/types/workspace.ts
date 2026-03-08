@@ -4,6 +4,7 @@ export interface Workspace {
   shortId: string;
   description?: string;
   ownerId: string;
+  isPersonal?: boolean;
   createdAt: string;
   updatedAt: string;
 }

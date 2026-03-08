@@ -10,6 +10,7 @@ import { UserService } from '../user/user.service';
 import { User } from '../user/user.entity';
 import { UserModel, UserDocument } from '../user/user.schema';
 import { RegisterDto, LoginDto, SocialLoginDto } from './auth.dto';
+import { WorkspaceService } from '../workspace/workspace.service';
 
 interface TokenPair { accessToken: string; refreshToken: string; }
 interface JwtPayload { sub: string; email: string; }
@@ -23,6 +24,7 @@ export class AuthService {
 
   constructor(
     private readonly userService: UserService,
+    private readonly workspaceService: WorkspaceService,
     private readonly config: ConfigService,
     @InjectModel(UserModel.name) private userModel: Model<UserDocument>,
   ) {
@@ -32,23 +34,25 @@ export class AuthService {
     this.googleClient = new OAuth2Client(this.config.get<string>('GOOGLE_CLIENT_ID'));
   }
 
-  async register(dto: RegisterDto): Promise<{ user: User; tokens: TokenPair }> {
+  async register(dto: RegisterDto): Promise<{ user: User; tokens: TokenPair; personalWorkspaceShortId: string }> {
     const hash = await bcrypt.hash(dto.password, 12);
     const user = await this.userService.createLocal(dto.email, dto.name, hash);
+    const personalWs = await this.workspaceService.createPersonal(user.id, user.email, user.name);
     const tokens = await this.generateTokenPair(user);
-    return { user, tokens };
+    return { user, tokens, personalWorkspaceShortId: personalWs.shortId };
   }
 
-  async login(dto: LoginDto): Promise<{ user: User; tokens: TokenPair }> {
+  async login(dto: LoginDto): Promise<{ user: User; tokens: TokenPair; personalWorkspaceShortId?: string }> {
     const user = await this.userService.findByEmail(dto.email);
     if (!user || !user.passwordHash) throw new UnauthorizedException('Invalid email or password');
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) throw new UnauthorizedException('Invalid email or password');
+    const personalWs = await this.workspaceService.findPersonalByOwner(user.id);
     const tokens = await this.generateTokenPair(user);
-    return { user, tokens };
+    return { user, tokens, personalWorkspaceShortId: personalWs?.shortId };
   }
 
-  async socialLogin(dto: SocialLoginDto): Promise<{ user: User; tokens: TokenPair }> {
+  async socialLogin(dto: SocialLoginDto): Promise<{ user: User; tokens: TokenPair; personalWorkspaceShortId: string }> {
     if (dto.provider !== 'google') throw new BadRequestException('Unsupported provider');
     const googleClientId = this.config.get<string>('GOOGLE_CLIENT_ID');
     if (!googleClientId) throw new BadRequestException('Google OAuth not configured');
@@ -64,8 +68,9 @@ export class AuthService {
       payload.sub,
       payload.picture,
     );
+    const personalWs = await this.workspaceService.createPersonal(user.id, user.email, user.name);
     const tokens = await this.generateTokenPair(user);
-    return { user, tokens };
+    return { user, tokens, personalWorkspaceShortId: personalWs.shortId };
   }
 
   async refreshToken(refreshToken: string): Promise<{ user: User; tokens: TokenPair }> {

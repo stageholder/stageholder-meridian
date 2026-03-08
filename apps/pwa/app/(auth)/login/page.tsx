@@ -25,7 +25,7 @@ export default function LoginPage() {
       const res = await apiClient.post<AuthUser>("/auth/login", { email, password });
       setUser(res.data);
       setLoggedInFlag();
-      router.push("/workspaces");
+      router.push(res.data.personalWorkspaceShortId ? `/${res.data.personalWorkspaceShortId}/dashboard` : "/workspaces");
     } catch {
       setError("Invalid email or password. Please try again.");
     } finally {

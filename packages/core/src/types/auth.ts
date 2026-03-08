@@ -7,4 +7,5 @@ export interface AuthUser {
   provider: 'local' | 'google';
   emailVerified: boolean;
   createdAt: string;
+  personalWorkspaceShortId?: string;
 }

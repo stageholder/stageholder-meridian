@@ -24,8 +24,8 @@ export default function WorkspacesPage() {
     try {
       const res = await apiClient.get<Workspace[]>("/workspaces");
       const list = Array.isArray(res.data) ? res.data : [];
+      list.sort((a, b) => (a.isPersonal === b.isPersonal ? 0 : a.isPersonal ? -1 : 1));
       setWorkspaces(list);
-      if (list.length === 0) setShowCreate(true);
     } catch {
       setError("Failed to load workspaces");
     } finally {
@@ -67,7 +67,7 @@ export default function WorkspacesPage() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-foreground">Welcome{user?.name ? `, ${user.name}` : ""}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {workspaces.length > 0 ? "Select a workspace to continue" : "Create your first workspace to get started"}
+            {workspaces.length > 0 ? "Select a workspace to continue" : "Create a workspace to get started"}
           </p>
         </div>
 
@@ -82,7 +82,14 @@ export default function WorkspacesPage() {
                 className="flex w-full items-center justify-between rounded-lg border border-border bg-card p-4 text-left transition-colors hover:bg-accent"
               >
                 <div>
-                  <p className="font-medium text-foreground">{ws.name}</p>
+                  <p className="font-medium text-foreground">
+                    {ws.name}
+                    {ws.isPersonal && (
+                      <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                        Personal
+                      </span>
+                    )}
+                  </p>
                   {ws.description && (
                     <p className="mt-0.5 text-sm text-muted-foreground">{ws.description}</p>
                   )}
