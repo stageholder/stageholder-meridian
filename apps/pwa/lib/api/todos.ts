@@ -147,6 +147,7 @@ export function useCreateTodo() {
       void queryClient.invalidateQueries({
         queryKey: ["allTodos", workspace.id],
       });
+      void queryClient.invalidateQueries({ queryKey: ["calendar", workspace.id] });
     },
   });
 }
@@ -187,6 +188,7 @@ export function useUpdateTodo() {
         queryKey: ["allTodos", workspace.id],
       });
       void queryClient.invalidateQueries({ queryKey: lightKeys.me });
+      void queryClient.invalidateQueries({ queryKey: ["calendar", workspace.id] });
     },
   });
 }
@@ -208,6 +210,7 @@ export function useDeleteTodo() {
       void queryClient.invalidateQueries({
         queryKey: ["allTodos", workspace.id],
       });
+      void queryClient.invalidateQueries({ queryKey: ["calendar", workspace.id] });
     },
   });
 }

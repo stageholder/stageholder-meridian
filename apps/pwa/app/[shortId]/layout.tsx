@@ -27,6 +27,7 @@ import { useUserLight } from "@/lib/api/light";
 import { StarVisual } from "@/components/light/star-visual";
 import { getTierProgress, getNextTier } from "@repo/core/types/light";
 import { OfflineIndicator } from "@/components/shared/offline-indicator";
+import { DailyTargetRings } from "@/components/shared/daily-target-rings";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import apiClient from "@/lib/api-client";
 import { clearLoggedInFlag } from "@/lib/auth-helpers";
@@ -271,6 +272,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
 
             {/* Right side */}
             <div className="flex items-center gap-1.5">
+              <DailyTargetRings />
               <OfflineIndicator />
 
               {/* Journey progress popover */}

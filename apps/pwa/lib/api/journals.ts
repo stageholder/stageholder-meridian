@@ -47,6 +47,7 @@ export function useCreateJournal() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["journals", workspace.id] });
       void queryClient.invalidateQueries({ queryKey: lightKeys.me });
+      void queryClient.invalidateQueries({ queryKey: ["calendar", workspace.id] });
     },
   });
 }
@@ -74,6 +75,7 @@ export function useUpdateJournal() {
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["journals", workspace.id] });
       void queryClient.invalidateQueries({ queryKey: ["journal", workspace.id, variables.id] });
+      void queryClient.invalidateQueries({ queryKey: ["calendar", workspace.id] });
     },
   });
 }
@@ -88,6 +90,7 @@ export function useDeleteJournal() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["journals", workspace.id] });
+      void queryClient.invalidateQueries({ queryKey: ["calendar", workspace.id] });
     },
   });
 }
