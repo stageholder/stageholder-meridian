@@ -1,8 +1,12 @@
 "use client";
 
+import { useState, useCallback } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
+import { countWords } from "@repo/core/utils/text";
+import { useUserLight } from "@/lib/api/light";
+import { cn } from "@/lib/utils";
 
 interface JournalEditorProps {
   content: string;
@@ -12,6 +16,18 @@ interface JournalEditorProps {
 }
 
 export function JournalEditor({ content, onChange, placeholder, autoFocus }: JournalEditorProps) {
+  const { data: userLight } = useUserLight();
+  const target = userLight?.journalTargetDailyWords ?? 150;
+  const [wordCount, setWordCount] = useState(() => countWords(content));
+
+  const handleUpdate = useCallback(
+    (html: string) => {
+      setWordCount(countWords(html));
+      onChange(html);
+    },
+    [onChange],
+  );
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -22,7 +38,7 @@ export function JournalEditor({ content, onChange, placeholder, autoFocus }: Jou
     content,
     autofocus: autoFocus ? "end" : false,
     onUpdate: ({ editor: e }) => {
-      onChange(e.getHTML());
+      handleUpdate(e.getHTML());
     },
     editorProps: {
       attributes: {
@@ -35,6 +51,9 @@ export function JournalEditor({ content, onChange, placeholder, autoFocus }: Jou
   if (!editor) {
     return null;
   }
+
+  const pct = Math.min(100, (wordCount / target) * 100);
+  const metTarget = wordCount >= target;
 
   return (
     <div className="rounded-lg border border-border bg-background">
@@ -125,6 +144,26 @@ export function JournalEditor({ content, onChange, placeholder, autoFocus }: Jou
         </button>
       </div>
       <EditorContent editor={editor} />
+      {/* Word count footer */}
+      <div className="border-t border-border px-4 py-1.5">
+        <div className="flex items-center gap-2">
+          <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-300",
+                metTarget ? "bg-[var(--ring-journal)]" : "bg-[var(--ring-journal)]/60",
+              )}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <span className={cn(
+            "shrink-0 text-xs tabular-nums",
+            metTarget ? "font-medium text-[var(--ring-journal)]" : "text-muted-foreground",
+          )}>
+            {wordCount}/{target} words
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
