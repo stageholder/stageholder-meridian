@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Body, Req, Res, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Query, Req, Res, UnauthorizedException } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto, SocialLoginDto } from './auth.dto';
@@ -53,6 +53,24 @@ export class AuthController {
     }
     setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
     return { ...toUserResponse(user), personalWorkspaceShortId };
+  }
+
+  @Public()
+  @Get('google')
+  async googleRedirect(@Query('redirect_uri') redirectUri: string, @Res() res: Response) {
+    const url = this.authService.getGoogleAuthUrl(redirectUri);
+    res.redirect(url);
+  }
+
+  @Public()
+  @Get('google/callback')
+  async googleCallback(@Query('code') code: string, @Query('state') state: string, @Res() res: Response) {
+    const { user, tokens, personalWorkspaceShortId } = await this.authService.exchangeGoogleCode(code, state);
+    setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+    const frontendUrl = this.authService.getFrontendUrl();
+    const redirectPath = personalWorkspaceShortId ? `/${personalWorkspaceShortId}/dashboard` : '/workspaces';
+    const userJson = encodeURIComponent(JSON.stringify(toUserResponse(user)));
+    res.redirect(`${frontendUrl}/auth/google/callback?user=${userJson}&redirect=${encodeURIComponent(redirectPath)}`);
   }
 
   @Public()

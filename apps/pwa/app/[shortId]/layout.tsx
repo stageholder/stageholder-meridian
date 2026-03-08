@@ -35,7 +35,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { WorkspaceProvider } from "@/lib/workspace-context";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -348,6 +348,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon-sm">
                     <Avatar className="size-6">
+                      {user?.avatar && <AvatarImage src={user.avatar} alt={user?.name || "User"} />}
                       <AvatarFallback className="bg-primary text-[10px] font-medium text-primary-foreground">
                         {user?.name?.charAt(0).toUpperCase() || "U"}
                       </AvatarFallback>

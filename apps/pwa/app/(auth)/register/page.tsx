@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import apiClient from "@/lib/api-client";
 import { setLoggedInFlag } from "@/lib/auth-helpers";
 import { useAuthStore } from "@/stores/auth-store";
+import { GoogleSignInButton } from "@/components/shared/google-sign-in-button";
 import type { AuthUser } from "@repo/core/types";
 
 export default function RegisterPage() {
@@ -93,6 +94,17 @@ export default function RegisterPage() {
       >
         {loading ? "Creating account..." : "Create account"}
       </button>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+        </div>
+      </div>
+
+      <GoogleSignInButton />
 
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import apiClient from "@/lib/api-client";
 import { setLoggedInFlag } from "@/lib/auth-helpers";
 import { useAuthStore } from "@/stores/auth-store";
+import { GoogleSignInButton } from "@/components/shared/google-sign-in-button";
 import type { AuthUser } from "@repo/core/types";
 
 export default function LoginPage() {
@@ -86,13 +87,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <button
-        type="button"
-        disabled
-        className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm font-medium text-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        Google (coming soon)
-      </button>
+      <GoogleSignInButton />
 
       <p className="text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{" "}

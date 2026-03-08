@@ -56,17 +56,96 @@ export class AuthService {
     if (dto.provider !== 'google') throw new BadRequestException('Unsupported provider');
     const googleClientId = this.config.get<string>('GOOGLE_CLIENT_ID');
     if (!googleClientId) throw new BadRequestException('Google OAuth not configured');
-    const ticket = await this.googleClient.verifyIdToken({
-      idToken: dto.idToken,
-      audience: googleClientId,
-    }).catch(() => { throw new UnauthorizedException('Invalid Google ID token'); });
-    const payload = ticket.getPayload();
-    if (!payload || !payload.email || !payload.sub) throw new UnauthorizedException('Invalid Google token payload');
+
+    let email: string;
+    let name: string;
+    let sub: string;
+    let picture: string | undefined;
+
+    if (dto.idToken) {
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken: dto.idToken,
+        audience: googleClientId,
+      }).catch(() => { throw new UnauthorizedException('Invalid Google ID token'); });
+      const payload = ticket.getPayload();
+      if (!payload || !payload.email || !payload.sub) throw new UnauthorizedException('Invalid Google token payload');
+      email = payload.email;
+      name = payload.name || payload.email.split('@')[0];
+      sub = payload.sub;
+      picture = payload.picture;
+    } else if (dto.accessToken) {
+      const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${dto.accessToken}` },
+      });
+      if (!res.ok) throw new UnauthorizedException('Invalid Google access token');
+      const profile = await res.json();
+      if (!profile.email || !profile.sub) throw new UnauthorizedException('Invalid Google profile');
+      email = profile.email;
+      name = profile.name || profile.email.split('@')[0];
+      sub = profile.sub;
+      picture = profile.picture;
+    } else {
+      throw new BadRequestException('Either idToken or accessToken is required');
+    }
+
+    const user = await this.userService.findOrCreateGoogle(email, name, sub, picture);
+    const personalWs = await this.workspaceService.createPersonal(user.id, user.email, user.name);
+    const tokens = await this.generateTokenPair(user);
+    return { user, tokens, personalWorkspaceShortId: personalWs.shortId };
+  }
+
+  getFrontendUrl(): string {
+    return this.config.get<string>('FRONTEND_URL', 'http://localhost:3000');
+  }
+
+  getGoogleAuthUrl(redirectUri: string): string {
+    const googleClientId = this.config.get<string>('GOOGLE_CLIENT_ID');
+    if (!googleClientId) throw new BadRequestException('Google OAuth not configured');
+    const callbackUrl = this.config.get<string>('API_URL', `http://localhost:${this.config.get('PORT', '4000')}`) + '/api/v1/auth/google/callback';
+    const params = new URLSearchParams({
+      client_id: googleClientId,
+      redirect_uri: callbackUrl,
+      response_type: 'code',
+      scope: 'openid email profile',
+      access_type: 'offline',
+      prompt: 'select_account',
+      state: redirectUri || '',
+    });
+    return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+  }
+
+  async exchangeGoogleCode(code: string, redirectUri: string): Promise<{ user: User; tokens: TokenPair; personalWorkspaceShortId: string }> {
+    const googleClientId = this.config.get<string>('GOOGLE_CLIENT_ID');
+    const googleClientSecret = this.config.get<string>('GOOGLE_CLIENT_SECRET');
+    if (!googleClientId || !googleClientSecret) throw new BadRequestException('Google OAuth not configured');
+    const callbackUrl = this.config.get<string>('API_URL', `http://localhost:${this.config.get('PORT', '4000')}`) + '/api/v1/auth/google/callback';
+
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: googleClientId,
+        client_secret: googleClientSecret,
+        redirect_uri: callbackUrl,
+        grant_type: 'authorization_code',
+      }),
+    });
+    const tokenData = await tokenRes.json();
+    if (!tokenData.access_token) throw new UnauthorizedException('Failed to exchange Google authorization code');
+
+    const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+    if (!profileRes.ok) throw new UnauthorizedException('Failed to fetch Google profile');
+    const profile = await profileRes.json();
+    if (!profile.email || !profile.sub) throw new UnauthorizedException('Invalid Google profile');
+
     const user = await this.userService.findOrCreateGoogle(
-      payload.email,
-      payload.name || payload.email.split('@')[0],
-      payload.sub,
-      payload.picture,
+      profile.email,
+      profile.name || profile.email.split('@')[0],
+      profile.sub,
+      profile.picture,
     );
     const personalWs = await this.workspaceService.createPersonal(user.id, user.email, user.name);
     const tokens = await this.generateTokenPair(user);

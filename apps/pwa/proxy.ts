@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const STATIC_ROUTES = new Set(["login", "register", "workspaces", "_next", "api"]);
+const STATIC_ROUTES = new Set(["login", "register", "workspaces", "auth", "_next", "api"]);
 const STATIC_FILES = new Set(["favicon.ico", "manifest.json", "sw.js"]);
 
 export function proxy(request: NextRequest) {

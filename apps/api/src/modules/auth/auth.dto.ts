@@ -15,6 +15,9 @@ export type LoginDto = z.infer<typeof LoginDto>;
 
 export const SocialLoginDto = z.object({
   provider: z.literal('google'),
-  idToken: z.string().min(1, 'ID token is required'),
+  idToken: z.string().optional(),
+  accessToken: z.string().optional(),
+}).refine((data) => data.idToken || data.accessToken, {
+  message: 'Either idToken or accessToken is required',
 });
 export type SocialLoginDto = z.infer<typeof SocialLoginDto>;
