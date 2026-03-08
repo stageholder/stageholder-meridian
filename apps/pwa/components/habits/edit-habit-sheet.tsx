@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { useCreateHabit } from "@/lib/api/habits";
+import { useState, useEffect } from "react";
+import { useUpdateHabit } from "@/lib/api/habits";
 import { toast } from "sonner";
+import type { Habit } from "@repo/core/types";
 import {
   Sheet,
   SheetContent,
@@ -10,7 +11,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 
-interface CreateHabitDialogProps {
+interface EditHabitSheetProps {
+  habit: Habit;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -28,7 +30,6 @@ const colorOptions = [
 ];
 
 const iconOptions: { emoji: string; keywords: string }[] = [
-  // Health & Fitness
   { emoji: "💧", keywords: "water drink hydrate" },
   { emoji: "🏃", keywords: "run jog exercise cardio" },
   { emoji: "🧘", keywords: "yoga meditate stretch calm" },
@@ -41,7 +42,6 @@ const iconOptions: { emoji: string; keywords: string }[] = [
   { emoji: "🧗", keywords: "climb rock" },
   { emoji: "🚶", keywords: "walk step" },
   { emoji: "🏋️", keywords: "weight lift gym" },
-  // Mind & Learning
   { emoji: "📚", keywords: "read book study learn" },
   { emoji: "🧠", keywords: "brain think focus mind" },
   { emoji: "✍️", keywords: "write journal pen" },
@@ -52,7 +52,6 @@ const iconOptions: { emoji: string; keywords: string }[] = [
   { emoji: "📖", keywords: "read book story" },
   { emoji: "🎓", keywords: "study learn school education" },
   { emoji: "🧩", keywords: "puzzle game brain" },
-  // Creative
   { emoji: "🎨", keywords: "art paint draw creative" },
   { emoji: "🎵", keywords: "music song listen" },
   { emoji: "🎸", keywords: "guitar music play instrument" },
@@ -61,7 +60,6 @@ const iconOptions: { emoji: string; keywords: string }[] = [
   { emoji: "🖊️", keywords: "pen write draw" },
   { emoji: "🪡", keywords: "sew craft stitch" },
   { emoji: "🎭", keywords: "theater act perform" },
-  // Wellness & Self-care
   { emoji: "💤", keywords: "sleep rest nap bed" },
   { emoji: "🧖", keywords: "spa relax self-care skin" },
   { emoji: "💊", keywords: "medicine vitamin supplement pill" },
@@ -70,35 +68,30 @@ const iconOptions: { emoji: string; keywords: string }[] = [
   { emoji: "🕯️", keywords: "candle relax calm" },
   { emoji: "☕", keywords: "coffee morning drink" },
   { emoji: "🍵", keywords: "tea drink calm" },
-  // Nutrition
   { emoji: "🍎", keywords: "apple fruit eat healthy" },
   { emoji: "🥗", keywords: "salad eat healthy food" },
   { emoji: "🥤", keywords: "drink smoothie juice" },
   { emoji: "🍳", keywords: "cook breakfast egg meal" },
   { emoji: "🥑", keywords: "avocado healthy food" },
   { emoji: "🫐", keywords: "berry fruit healthy" },
-  // Productivity & Home
   { emoji: "🧹", keywords: "clean sweep tidy home" },
   { emoji: "💰", keywords: "money save budget finance" },
   { emoji: "📅", keywords: "calendar plan schedule" },
   { emoji: "✅", keywords: "check done task complete" },
   { emoji: "🏡", keywords: "home house chore" },
   { emoji: "👔", keywords: "work professional dress" },
-  // Nature & Outdoors
   { emoji: "🌱", keywords: "plant grow garden nature" },
   { emoji: "☀️", keywords: "sun morning outdoor" },
   { emoji: "🌙", keywords: "moon night evening" },
   { emoji: "🌊", keywords: "ocean wave swim outdoor" },
   { emoji: "🌿", keywords: "nature leaf green outdoor" },
   { emoji: "🐕", keywords: "dog pet walk" },
-  // Social & Spiritual
   { emoji: "❤️", keywords: "love heart care" },
   { emoji: "🙏", keywords: "pray grateful meditate spiritual" },
   { emoji: "👥", keywords: "social people friend group" },
   { emoji: "💬", keywords: "chat talk communicate" },
   { emoji: "📞", keywords: "call phone contact" },
   { emoji: "🤝", keywords: "handshake connect network" },
-  // Extra
   { emoji: "🎮", keywords: "game play fun" },
   { emoji: "✈️", keywords: "travel fly trip" },
   { emoji: "🧸", keywords: "toy play kid" },
@@ -109,83 +102,86 @@ const iconOptions: { emoji: string; keywords: string }[] = [
   { emoji: "🪥", keywords: "toothbrush teeth hygiene brush" },
 ];
 
-export function CreateHabitDialog({ open, onOpenChange }: CreateHabitDialogProps) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [frequency, setFrequency] = useState("daily");
-  const [targetCount, setTargetCount] = useState(1);
-  const [unit, setUnit] = useState("");
-  const [color, setColor] = useState("#3b82f6");
-  const [icon, setIcon] = useState("🎯");
+export function EditHabitSheet({ habit, open, onOpenChange }: EditHabitSheetProps) {
+  const [name, setName] = useState(habit.name);
+  const [description, setDescription] = useState(habit.description || "");
+  const [frequency, setFrequency] = useState(habit.frequency);
+  const [targetCount, setTargetCount] = useState(habit.targetCount);
+  const [unit, setUnit] = useState(habit.unit || "");
+  const [color, setColor] = useState(habit.color || "#3b82f6");
+  const [icon, setIcon] = useState(habit.icon || "");
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [iconSearch, setIconSearch] = useState("");
-  const createHabit = useCreateHabit();
+  const updateHabit = useUpdateHabit();
 
-  function resetForm() {
-    setName("");
-    setDescription("");
-    setFrequency("daily");
-    setTargetCount(1);
-    setUnit("");
-    setColor("#3b82f6");
-    setIcon("🎯");
-  }
+  useEffect(() => {
+    if (open) {
+      setName(habit.name);
+      setDescription(habit.description || "");
+      setFrequency(habit.frequency);
+      setTargetCount(habit.targetCount);
+      setUnit(habit.unit || "");
+      setColor(habit.color || "#3b82f6");
+      setIcon(habit.icon || "");
+    }
+  }, [open, habit]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
 
-    createHabit.mutate(
+    updateHabit.mutate(
       {
-        name: name.trim(),
-        description: description.trim() || undefined,
-        frequency,
-        targetCount,
-        unit: unit.trim() || undefined,
-        color,
-        icon: icon || undefined,
+        id: habit.id,
+        data: {
+          name: name.trim(),
+          description: description.trim() || undefined,
+          frequency,
+          targetCount,
+          unit: unit.trim() || undefined,
+          color,
+          icon: icon || undefined,
+        },
       },
       {
         onSuccess: () => {
-          toast.success("Habit created");
-          resetForm();
+          toast.success("Habit updated");
           onOpenChange(false);
         },
         onError: () => {
-          toast.error("Failed to create habit");
+          toast.error("Failed to update habit");
         },
       }
     );
   }
 
   return (
-    <Sheet open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>New Habit</SheetTitle>
+          <SheetTitle>Edit Habit</SheetTitle>
         </SheetHeader>
         <form onSubmit={handleSubmit} className="space-y-4 px-4 pb-4">
           <div>
-            <label htmlFor="habit-name" className="block text-sm font-medium text-foreground">
+            <label htmlFor="edit-habit-name" className="block text-sm font-medium text-foreground">
               Name
             </label>
             <input
-              id="habit-name"
+              id="edit-habit-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Read for 30 minutes"
               className="mt-1 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               autoFocus
             />
           </div>
 
           <div>
-            <label htmlFor="habit-description" className="block text-sm font-medium text-foreground">
+            <label htmlFor="edit-habit-desc" className="block text-sm font-medium text-foreground">
               Description
             </label>
             <textarea
-              id="habit-description"
+              id="edit-habit-desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional details"
@@ -196,13 +192,13 @@ export function CreateHabitDialog({ open, onOpenChange }: CreateHabitDialogProps
 
           <div className="flex gap-4">
             <div className="flex-1">
-              <label htmlFor="habit-frequency" className="block text-sm font-medium text-foreground">
+              <label htmlFor="edit-habit-freq" className="block text-sm font-medium text-foreground">
                 Frequency
               </label>
               <select
-                id="habit-frequency"
+                id="edit-habit-freq"
                 value={frequency}
-                onChange={(e) => setFrequency(e.target.value)}
+                onChange={(e) => setFrequency(e.target.value as Habit["frequency"])}
                 className="mt-1 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               >
                 <option value="daily">Daily</option>
@@ -210,11 +206,11 @@ export function CreateHabitDialog({ open, onOpenChange }: CreateHabitDialogProps
               </select>
             </div>
             <div className="w-24">
-              <label htmlFor="habit-target" className="block text-sm font-medium text-foreground">
+              <label htmlFor="edit-habit-target" className="block text-sm font-medium text-foreground">
                 Target
               </label>
               <input
-                id="habit-target"
+                id="edit-habit-target"
                 type="number"
                 min="1"
                 value={targetCount}
@@ -223,11 +219,11 @@ export function CreateHabitDialog({ open, onOpenChange }: CreateHabitDialogProps
               />
             </div>
             <div className="flex-1">
-              <label htmlFor="habit-unit" className="block text-sm font-medium text-foreground">
+              <label htmlFor="edit-habit-unit" className="block text-sm font-medium text-foreground">
                 Unit
               </label>
               <input
-                id="habit-unit"
+                id="edit-habit-unit"
                 type="text"
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
@@ -300,7 +296,9 @@ export function CreateHabitDialog({ open, onOpenChange }: CreateHabitDialogProps
                   type="button"
                   onClick={() => setColor(opt.value)}
                   className={`h-7 w-7 rounded-full border-2 transition-all ${
-                    color === opt.value ? "border-foreground scale-110" : "border-transparent"
+                    color === opt.value
+                      ? "border-foreground scale-110"
+                      : "border-transparent"
                   }`}
                   style={{ backgroundColor: opt.value }}
                   aria-label={opt.label}
@@ -312,17 +310,17 @@ export function CreateHabitDialog({ open, onOpenChange }: CreateHabitDialogProps
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
-              onClick={() => { resetForm(); onOpenChange(false); }}
+              onClick={() => onOpenChange(false)}
               className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={!name.trim() || createHabit.isPending}
+              disabled={!name.trim() || updateHabit.isPending}
               className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
-              {createHabit.isPending ? "Creating..." : "Create"}
+              {updateHabit.isPending ? "Saving..." : "Save"}
             </button>
           </div>
         </form>

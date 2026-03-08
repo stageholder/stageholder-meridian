@@ -114,6 +114,37 @@ export function useDeleteHabit() {
   });
 }
 
+export function useUpdateHabitEntry() {
+  const queryClient = useQueryClient();
+  const { workspace } = useWorkspace();
+
+  return useMutation({
+    mutationFn: async ({
+      habitId,
+      entryId,
+      data,
+    }: {
+      habitId: string;
+      entryId: string;
+      data: { value?: number; notes?: string };
+    }) => {
+      const res = await apiClient.patch(
+        `/workspaces/${workspace.id}/habits/${habitId}/entries/${entryId}`,
+        data
+      );
+      return res.data as HabitEntry;
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: ["habitEntries", workspace.id, variables.habitId],
+      });
+      void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
+      void queryClient.invalidateQueries({ queryKey: lightKeys.me });
+      void queryClient.invalidateQueries({ queryKey: ["calendar"] });
+    },
+  });
+}
+
 export function useCreateHabitEntry() {
   const queryClient = useQueryClient();
   const { workspace } = useWorkspace();
@@ -138,6 +169,7 @@ export function useCreateHabitEntry() {
       });
       void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
       void queryClient.invalidateQueries({ queryKey: lightKeys.me });
+      void queryClient.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
 }
