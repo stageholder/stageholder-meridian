@@ -7,7 +7,7 @@ import { WorkspaceMemberService } from '../workspace-member/workspace-member.ser
 
 export interface CalendarDayData {
   todos: Array<{ id: string; title: string; status: string; priority: string; dueDate?: string; doDate?: string; listId: string }>;
-  journals: Array<{ id: string; title: string; date: string }>;
+  journals: Array<{ id: string; title: string; date: string; wordCount: number }>;
   habitEntries: Array<{ id: string; habitId: string; habitName: string; value: number; date: string }>;
 }
 
@@ -59,7 +59,7 @@ export class CalendarService {
     for (const journal of journals) {
       const obj = journal.toObject();
       const day = obj.date.split('T')[0] || obj.date;
-      getDay(day).journals.push({ id: obj.id, title: obj.title, date: obj.date });
+      getDay(day).journals.push({ id: obj.id, title: obj.title, date: obj.date, wordCount: obj.wordCount ?? 0 });
     }
 
     for (const entry of habitEntries) {

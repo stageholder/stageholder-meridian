@@ -34,9 +34,9 @@ export function ActivityRings({ date, size = "xl", showLabels, className }: Acti
   }
 
   const fractions: Record<string, string> = {
-    todo: `${details.todoDone}/${details.todoTotal}`,
+    todo: `${details.todoDone}/${details.todoTarget}`,
     habit: `${details.habitDone}/${details.habitTotal}`,
-    journal: details.hasJournal ? "1/1" : "0/1",
+    journal: `${details.journalWords}/${details.journalTarget} words`,
   };
 
   const percentages: Record<string, number> = {

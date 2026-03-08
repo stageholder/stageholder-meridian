@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api-client";
 import type { UserLight, LightEvent } from "@repo/core/types";
 
@@ -14,6 +14,19 @@ export function useUserLight() {
     queryFn: async () => {
       const res = await apiClient.get("/light/me");
       return res.data;
+    },
+  });
+}
+
+export function useUpdateTargets() {
+  const queryClient = useQueryClient();
+  return useMutation<UserLight, Error, { todoTargetDaily?: number; journalTargetDailyWords?: number }>({
+    mutationFn: async (data) => {
+      const res = await apiClient.patch("/light/targets", data);
+      return res.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: lightKeys.me });
     },
   });
 }

@@ -1,6 +1,6 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Patch, Body, Query } from '@nestjs/common';
 import { LightService } from './light.service';
-import { GetLightEventsQuery } from './light.dto';
+import { GetLightEventsQuery, UpdateTargetsDto } from './light.dto';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
 import { CurrentUserId } from '../../common/decorators/current-user.decorator';
 
@@ -11,6 +11,15 @@ export class LightController {
   @Get('me')
   async getMyLight(@CurrentUserId() userId: string) {
     const userLight = await this.service.getUserLight(userId);
+    return userLight.toObject();
+  }
+
+  @Patch('targets')
+  async updateTargets(
+    @CurrentUserId() userId: string,
+    @Body(new ZodValidationPipe(UpdateTargetsDto)) dto: UpdateTargetsDto,
+  ) {
+    const userLight = await this.service.updateTargets(userId, dto);
     return userLight.toObject();
   }
 

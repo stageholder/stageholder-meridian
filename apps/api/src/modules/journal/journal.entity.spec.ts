@@ -10,6 +10,7 @@ describe('Journal Entity', () => {
     workspaceId: 'ws-123',
     authorId: 'user-123',
     date: '2024-03-15',
+    wordCount: 5,
   };
 
   describe('create()', () => {

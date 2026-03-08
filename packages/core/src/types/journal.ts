@@ -7,6 +7,7 @@ export interface Journal {
   tags: string[];
   authorId: string;
   date: string;
+  wordCount: number;
   createdAt: string;
   updatedAt: string;
 }

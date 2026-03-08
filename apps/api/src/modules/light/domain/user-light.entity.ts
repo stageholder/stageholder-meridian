@@ -1,5 +1,5 @@
 import { Entity, EntityProps, Ok, Result } from '../../../shared';
-import { getTierForLight } from './light-config';
+import { getTierForLight, DEFAULT_TARGETS } from './light-config';
 
 export interface UserLightProps extends EntityProps {
   userId: string;
@@ -13,6 +13,8 @@ export interface UserLightProps extends EntityProps {
   lastActiveDate: string | null;
   longestPerfectStreak: number;
   perfectDaysTotal: number;
+  todoTargetDaily: number;
+  journalTargetDailyWords: number;
 }
 
 export class UserLight extends Entity<UserLightProps> {
@@ -31,6 +33,13 @@ export class UserLight extends Entity<UserLightProps> {
   get lastActiveDate(): string | null { return this.get('lastActiveDate'); }
   get longestPerfectStreak(): number { return this.get('longestPerfectStreak'); }
   get perfectDaysTotal(): number { return this.get('perfectDaysTotal'); }
+  get todoTargetDaily(): number { return this.get('todoTargetDaily'); }
+  get journalTargetDailyWords(): number { return this.get('journalTargetDailyWords'); }
+
+  updateTargets(targets: { todoTargetDaily?: number; journalTargetDailyWords?: number }): void {
+    if (targets.todoTargetDaily !== undefined) this.set('todoTargetDaily', targets.todoTargetDaily);
+    if (targets.journalTargetDailyWords !== undefined) this.set('journalTargetDailyWords', targets.journalTargetDailyWords);
+  }
 
   addLight(amount: number): void {
     this.set('totalLight', this.totalLight + amount);
@@ -78,6 +87,8 @@ export class UserLight extends Entity<UserLightProps> {
       lastActiveDate: null,
       longestPerfectStreak: 0,
       perfectDaysTotal: 0,
+      todoTargetDaily: DEFAULT_TARGETS.todoDaily,
+      journalTargetDailyWords: DEFAULT_TARGETS.journalDailyWords,
     });
     return Ok(userLight);
   }

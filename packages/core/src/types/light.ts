@@ -11,6 +11,8 @@ export interface UserLight {
   lastActiveDate: string | null;
   longestPerfectStreak: number;
   perfectDaysTotal: number;
+  todoTargetDaily: number;
+  journalTargetDailyWords: number;
   createdAt: string;
   updatedAt: string;
 }

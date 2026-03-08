@@ -13,6 +13,11 @@ export const LIGHT_TIERS = [
 
 export type LightTier = (typeof LIGHT_TIERS)[number];
 
+export const DEFAULT_TARGETS = {
+  todoDaily: 3,
+  journalDailyWords: 150,
+} as const;
+
 export const LIGHT_ACTIONS = {
   TODO_COMPLETE_LOW: 3,
   TODO_COMPLETE_MEDIUM: 4,

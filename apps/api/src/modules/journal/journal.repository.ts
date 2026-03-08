@@ -10,7 +10,7 @@ export class JournalRepository {
 
   async save(journal: Journal): Promise<void> {
     const data = journal.toObject();
-    await this.model.updateOne({ _id: data.id }, { $set: { title: data.title, content: data.content, mood: data.mood, tags: data.tags, workspace_id: data.workspaceId, author_id: data.authorId, date: data.date } }, { upsert: true });
+    await this.model.updateOne({ _id: data.id }, { $set: { title: data.title, content: data.content, mood: data.mood, tags: data.tags, workspace_id: data.workspaceId, author_id: data.authorId, date: data.date, word_count: data.wordCount } }, { upsert: true });
   }
 
   async findById(id: string): Promise<Journal | null> {
@@ -37,6 +37,6 @@ export class JournalRepository {
   async delete(id: string): Promise<void> { await this.model.updateOne({ _id: id }, { $set: { deleted_at: new Date() } }); }
 
   private toDomain(doc: any): Journal {
-    return Journal.reconstitute({ title: doc.title, content: doc.content, mood: doc.mood, tags: doc.tags || [], workspaceId: doc.workspace_id, authorId: doc.author_id, date: doc.date, createdAt: doc.created_at, updatedAt: doc.updated_at }, doc._id);
+    return Journal.reconstitute({ title: doc.title, content: doc.content, mood: doc.mood, tags: doc.tags || [], workspaceId: doc.workspace_id, authorId: doc.author_id, date: doc.date, wordCount: doc.word_count ?? 0, createdAt: doc.created_at, updatedAt: doc.updated_at }, doc._id);
   }
 }

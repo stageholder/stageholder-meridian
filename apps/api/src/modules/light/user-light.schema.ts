@@ -22,6 +22,8 @@ export class UserLightModel {
   @Prop({ type: String, default: null }) last_active_date: string;
   @Prop({ type: Number, default: 0 }) longest_perfect_streak: number;
   @Prop({ type: Number, default: 0 }) perfect_days_total: number;
+  @Prop({ type: Number, default: 3 }) todo_target_daily: number;
+  @Prop({ type: Number, default: 150 }) journal_target_daily_words: number;
 }
 
 export const UserLightSchema = SchemaFactory.createForClass(UserLightModel);

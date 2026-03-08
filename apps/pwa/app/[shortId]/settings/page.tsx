@@ -5,11 +5,13 @@ import { cn } from "@/lib/utils";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { WorkspaceSettings } from "@/components/settings/workspace-settings";
 import { MembersList } from "@/components/settings/members-list";
+import { TargetsSettings } from "@/components/settings/targets-settings";
 
 const tabs = [
   { id: "profile", label: "Profile" },
   { id: "workspace", label: "Workspace" },
   { id: "members", label: "Members" },
+  { id: "targets", label: "Targets" },
 ] as const;
 
 type TabId = (typeof tabs)[number]["id"];
@@ -51,6 +53,7 @@ export default function SettingsPage() {
         {activeTab === "profile" && <ProfileForm />}
         {activeTab === "workspace" && <WorkspaceSettings />}
         {activeTab === "members" && <MembersList />}
+        {activeTab === "targets" && <TargetsSettings />}
       </div>
     </div>
   );

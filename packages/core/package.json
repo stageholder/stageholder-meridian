@@ -14,7 +14,8 @@
     "./stores/*": "./src/stores/*.ts",
     "./platform": "./src/platform/index.ts",
     "./platform/notifications": "./src/platform/notifications.ts",
-    "./platform/updater": "./src/platform/updater.ts"
+    "./platform/updater": "./src/platform/updater.ts",
+    "./utils/*": "./src/utils/*.ts"
   },
   "peerDependencies": {
     "react": "^19.0.0"

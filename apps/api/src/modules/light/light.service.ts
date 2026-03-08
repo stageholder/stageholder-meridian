@@ -8,6 +8,7 @@ import { LightEvent, LightAction } from './domain/light-event.entity';
 import {
   LIGHT_ACTIONS,
   RING_STREAK_MILESTONES,
+  DEFAULT_TARGETS,
   getMultiplier,
   getTodoLight,
 } from './domain/light-config';
@@ -36,6 +37,13 @@ export class LightService {
 
   async getEvents(userId: string, limit: number, offset: number) {
     return this.lightEventRepo.findByUser(userId, limit, offset);
+  }
+
+  async updateTargets(userId: string, targets: { todoTargetDaily?: number; journalTargetDailyWords?: number }): Promise<UserLight> {
+    const userLight = await this.getOrCreateUserLight(userId);
+    userLight.updateTargets(targets);
+    await this.userLightRepo.save(userLight);
+    return userLight;
   }
 
   async awardTodoComplete(
@@ -226,7 +234,7 @@ export class LightService {
     userLight.addLight(totalLight);
 
     // Update streaks in real-time based on current day's ring completion
-    const currentRings = await this.computeRingCompletion(userId, date);
+    const currentRings = await this.computeRingCompletion(userId, date, userLight.todoTargetDaily);
     const previousDay = format(subDays(new Date(date + 'T00:00:00'), 1), 'yyyy-MM-dd');
     const wasConsecutive = userLight.lastActiveDate === previousDay || userLight.lastActiveDate === date;
 
@@ -249,13 +257,14 @@ export class LightService {
     workspaceId: string,
     previousDate: string,
   ): Promise<void> {
-    const rings = await this.computeRingCompletion(userId, previousDate);
+    const rings = await this.computeRingCompletion(userId, previousDate, userLight.todoTargetDaily);
     await this.evaluateDayForEntity(userLight, userId, workspaceId, rings, previousDate);
   }
 
   private async computeRingCompletion(
     userId: string,
     date: string,
+    todoTarget?: number,
   ): Promise<{ todo: boolean; habit: boolean; journal: boolean }> {
     const [todoEvents, habitEvents, journalEvents, totalHabits] =
       await Promise.all([
@@ -265,8 +274,10 @@ export class LightService {
         this.habitRepo.countByCreator(userId),
       ]);
 
+    const effectiveTodoTarget = todoTarget ?? DEFAULT_TARGETS.todoDaily;
+
     return {
-      todo: todoEvents > 0,
+      todo: todoEvents >= effectiveTodoTarget,
       // Habit ring complete if all habits checked in, or no habits exist
       habit: totalHabits === 0 || habitEvents >= totalHabits,
       journal: journalEvents > 0,

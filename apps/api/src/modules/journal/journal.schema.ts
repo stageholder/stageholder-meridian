@@ -18,6 +18,7 @@ export class JournalModel {
   @Prop({ type: String, required: true, index: true }) workspace_id: string;
   @Prop({ type: String, required: true, index: true }) author_id: string;
   @Prop({ type: String, required: true, index: true }) date: string;
+  @Prop({ type: Number, default: 0 }) word_count: number;
   @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 
