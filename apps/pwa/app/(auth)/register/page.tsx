@@ -27,7 +27,7 @@ export default function RegisterPage() {
       const res = await apiClient.post<AuthUser>("/auth/register", { name, email, password });
       setUser(res.data);
       setLoggedInFlag();
-      router.push(`/${res.data.personalWorkspaceShortId}/dashboard`);
+      router.push(res.data.onboardingCompleted ? `/${res.data.personalWorkspaceShortId}/dashboard` : '/onboarding');
     } catch {
       setError("Registration failed. Please try again.");
     } finally {

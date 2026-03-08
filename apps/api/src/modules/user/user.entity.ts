@@ -11,6 +11,7 @@ export interface UserProps extends EntityProps {
   emailVerified: boolean;
   avatar?: string;
   timezone?: string;
+  onboardingCompleted: boolean;
 }
 
 export class User extends Entity<UserProps> {
@@ -24,18 +25,20 @@ export class User extends Entity<UserProps> {
   get emailVerified(): boolean { return this.get('emailVerified'); }
   get avatar(): string | undefined { return this.get('avatar'); }
   get timezone(): string | undefined { return this.get('timezone'); }
+  get onboardingCompleted(): boolean { return this.get('onboardingCompleted'); }
 
   updateName(name: string): void { this.set('name', name); }
   updateAvatar(avatar: string): void { this.set('avatar', avatar); }
   updateTimezone(timezone: string): void { this.set('timezone', timezone); }
   updatePasswordHash(hash: string): void { this.set('passwordHash', hash); }
   markEmailVerified(): void { this.set('emailVerified', true); }
+  completeOnboarding(): void { this.set('onboardingCompleted', true); }
 
-  static create(props: Omit<UserProps, 'id' | 'createdAt' | 'updatedAt'>): Result<User> {
+  static create(props: Omit<UserProps, 'id' | 'createdAt' | 'updatedAt' | 'onboardingCompleted'>): Result<User> {
     if (!props.email || !props.email.includes('@')) return Err(new Error('Invalid email'));
     if (!props.name || props.name.trim().length === 0) return Err(new Error('Name is required'));
     if (props.provider === AuthProvider.LOCAL && !props.passwordHash) return Err(new Error('Password is required for local accounts'));
-    return Ok(new User(props as UserProps));
+    return Ok(new User({ ...props, onboardingCompleted: false } as UserProps));
   }
 
   static reconstitute(props: UserProps, id: string): User { return new User(props, id); }

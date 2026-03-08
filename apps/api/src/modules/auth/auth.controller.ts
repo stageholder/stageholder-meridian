@@ -15,7 +15,7 @@ function isBearerClient(req: Request): boolean {
 
 function toUserResponse(user: User) {
   const obj = user.toObject();
-  return { id: obj.id, email: obj.email, name: obj.name, avatar: obj.avatar, timezone: obj.timezone, provider: obj.provider, emailVerified: obj.emailVerified, createdAt: obj.createdAt };
+  return { id: obj.id, email: obj.email, name: obj.name, avatar: obj.avatar, timezone: obj.timezone, provider: obj.provider, emailVerified: obj.emailVerified, onboardingCompleted: obj.onboardingCompleted, createdAt: obj.createdAt };
 }
 
 @Controller('auth')
@@ -68,8 +68,8 @@ export class AuthController {
     const { user, tokens, personalWorkspaceShortId } = await this.authService.exchangeGoogleCode(code, state);
     setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
     const frontendUrl = this.authService.getFrontendUrl();
-    const redirectPath = personalWorkspaceShortId ? `/${personalWorkspaceShortId}/dashboard` : '/workspaces';
-    const userJson = encodeURIComponent(JSON.stringify(toUserResponse(user)));
+    const redirectPath = !user.onboardingCompleted ? '/onboarding' : personalWorkspaceShortId ? `/${personalWorkspaceShortId}/dashboard` : '/workspaces';
+    const userJson = encodeURIComponent(JSON.stringify({ ...toUserResponse(user), personalWorkspaceShortId }));
     res.redirect(`${frontendUrl}/auth/google/callback?user=${userJson}&redirect=${encodeURIComponent(redirectPath)}`);
   }
 
@@ -103,5 +103,11 @@ export class AuthController {
   async updateProfile(@CurrentUserId() userId: string, @Body() body: { name?: string; avatar?: string; timezone?: string }) {
     const user = await this.authService.updateProfile(userId, body);
     return toUserResponse(user);
+  }
+
+  @Post('onboarding/complete')
+  async completeOnboarding(@CurrentUserId() userId: string) {
+    const { user, personalWorkspaceShortId } = await this.authService.completeOnboarding(userId);
+    return { ...toUserResponse(user), personalWorkspaceShortId };
   }
 }

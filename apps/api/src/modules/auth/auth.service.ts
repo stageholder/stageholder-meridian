@@ -172,6 +172,14 @@ export class AuthService {
     return user;
   }
 
+  async completeOnboarding(userId: string): Promise<{ user: User; personalWorkspaceShortId: string }> {
+    const user = await this.getProfile(userId);
+    user.completeOnboarding();
+    await this.userService.updateUser(user);
+    const personalWs = await this.workspaceService.findPersonalByOwner(userId);
+    return { user, personalWorkspaceShortId: personalWs?.shortId || '' };
+  }
+
   async updateProfile(userId: string, dto: { name?: string; avatar?: string; timezone?: string }): Promise<User> {
     const user = await this.getProfile(userId);
     if (dto.name) user.updateName(dto.name);

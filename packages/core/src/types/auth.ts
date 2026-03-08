@@ -6,6 +6,7 @@ export interface AuthUser {
   timezone?: string;
   provider: 'local' | 'google';
   emailVerified: boolean;
+  onboardingCompleted: boolean;
   createdAt: string;
   personalWorkspaceShortId?: string;
 }

@@ -27,6 +27,7 @@ export class UserModel {
   @Prop({ type: Boolean, default: false }) email_verified: boolean;
   @Prop({ type: String }) avatar: string;
   @Prop({ type: String }) timezone: string;
+  @Prop({ type: Boolean, default: false }) onboarding_completed: boolean;
   @Prop({ type: String }) refresh_token_hash: string;
 }
 

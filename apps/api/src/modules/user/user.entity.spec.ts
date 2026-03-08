@@ -8,6 +8,7 @@ describe('User Entity', () => {
     passwordHash: 'hashed_password_123',
     provider: AuthProvider.LOCAL,
     emailVerified: false,
+    onboardingCompleted: false,
   };
 
   const validGoogleProps = {
@@ -16,6 +17,7 @@ describe('User Entity', () => {
     provider: AuthProvider.GOOGLE,
     providerId: 'google-id-123',
     emailVerified: true,
+    onboardingCompleted: false,
   };
 
   describe('create()', () => {
@@ -180,6 +182,25 @@ describe('User Entity', () => {
         expect(user.emailVerified).toBe(false);
         user.markEmailVerified();
         expect(user.emailVerified).toBe(true);
+      }
+    });
+
+    it('should complete onboarding', () => {
+      const result = User.create(validLocalProps);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        const user = result.value;
+        expect(user.onboardingCompleted).toBe(false);
+        user.completeOnboarding();
+        expect(user.onboardingCompleted).toBe(true);
+      }
+    });
+
+    it('should default onboardingCompleted to false on create', () => {
+      const result = User.create(validLocalProps);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.onboardingCompleted).toBe(false);
       }
     });
   });

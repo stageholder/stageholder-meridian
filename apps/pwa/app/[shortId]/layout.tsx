@@ -169,6 +169,12 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
+    if (user && user.onboardingCompleted === false) {
+      router.replace('/onboarding');
+    }
+  }, [user, router]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function fetchWorkspace() {
