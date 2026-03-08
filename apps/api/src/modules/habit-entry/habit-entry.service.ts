@@ -17,7 +17,7 @@ export class HabitEntryService {
     const result = HabitEntry.create({ habitId, date: dto.date, value: dto.value, notes: dto.notes, workspaceId });
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);
-    this.lightService.awardHabitCheckin(userId, workspaceId, habitId, result.value.id).catch(() => {});
+    await this.lightService.awardHabitCheckin(userId, workspaceId, habitId, result.value.id).catch(() => {});
     return result.value;
   }
 

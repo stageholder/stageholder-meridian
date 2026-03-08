@@ -198,28 +198,27 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
             return (
               <div key={day.dateStr} className="flex flex-col items-center gap-1">
                 <span className={cn("text-[10px]", day.isScheduled ? "text-muted-foreground" : "text-muted-foreground/40")}>{day.label}</span>
+                {ratio >= 1 ? (
+                  <span className="text-sm leading-none" title={`${day.value}/${habit.targetCount}`}>🔥</span>
+                ) : (
                 <div
                   className={cn(
                     "h-3.5 w-3.5 rounded-full border transition-all",
                     day.isToday && "ring-1 ring-offset-1 ring-offset-background",
                     !day.isScheduled
                       ? "border-dashed border-muted-foreground/20"
-                      : ratio >= 1
-                        ? "border-transparent"
-                        : ratio > 0
+                      : ratio > 0
                           ? "border-transparent"
                           : "border-muted-foreground/30"
                   )}
                   style={
                     !day.isScheduled
                       ? undefined
-                      : ratio >= 1
-                        ? { backgroundColor: habitColor, borderColor: habitColor }
-                        : ratio > 0
+                      : ratio > 0
                           ? { backgroundColor: habitColor + "60", borderColor: habitColor + "60" }
                           : undefined
                   }
-                />
+                />)}
               </div>
             );
           })}

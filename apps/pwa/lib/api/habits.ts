@@ -141,8 +141,8 @@ export function useUpdateHabitEntry() {
         queryKey: ["habitEntries", workspace.id, variables.habitId],
       });
       void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
-      void queryClient.invalidateQueries({ queryKey: lightKeys.me });
       void queryClient.invalidateQueries({ queryKey: ["calendar"] });
+      void queryClient.invalidateQueries({ queryKey: lightKeys.me });
     },
   });
 }
@@ -170,8 +170,8 @@ export function useCreateHabitEntry() {
         queryKey: ["habitEntries", workspace.id, variables.habitId],
       });
       void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
-      void queryClient.invalidateQueries({ queryKey: lightKeys.me });
       void queryClient.invalidateQueries({ queryKey: ["calendar"] });
+      void queryClient.invalidateQueries({ queryKey: lightKeys.me });
     },
   });
 }
