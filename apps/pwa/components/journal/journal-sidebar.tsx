@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Plus, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useJournals, useJournalsPaginated } from "@/lib/api/journals";
 import { JournalList } from "@/components/journal/journal-list";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -68,10 +68,9 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
           </div>
           <Link
             href={`/${workspace.shortId}/journal/new`}
-            className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
+            className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
-            <Plus className="size-4" />
-            <span className="sr-only">New Entry</span>
+            New Journal
           </Link>
         </div>
 

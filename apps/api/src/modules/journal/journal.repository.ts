@@ -10,7 +10,15 @@ export class JournalRepository {
 
   async save(journal: Journal): Promise<void> {
     const data = journal.toObject();
-    await this.model.updateOne({ _id: data.id }, { $set: { title: data.title, content: data.content, mood: data.mood, tags: data.tags, workspace_id: data.workspaceId, author_id: data.authorId, date: data.date, word_count: data.wordCount, updated_at: new Date() } }, { upsert: true });
+    const now = new Date();
+    await this.model.updateOne(
+      { _id: data.id },
+      {
+        $set: { title: data.title, content: data.content, mood: data.mood, tags: data.tags, workspace_id: data.workspaceId, author_id: data.authorId, date: data.date, word_count: data.wordCount, updated_at: now },
+        $setOnInsert: { created_at: now },
+      },
+      { upsert: true },
+    );
   }
 
   async findById(id: string): Promise<Journal | null> {
@@ -21,7 +29,7 @@ export class JournalRepository {
   async findByWorkspace(workspaceId: string, authorId?: string): Promise<Journal[]> {
     const filter: Record<string, any> = { workspace_id: workspaceId, deleted_at: null };
     if (authorId) filter.author_id = authorId;
-    const docs = await this.model.find(filter).sort({ date: -1 }).lean();
+    const docs = await this.model.find(filter).sort({ date: -1, created_at: -1 }).lean();
     return docs.map((doc) => this.toDomain(doc));
   }
 
@@ -29,14 +37,14 @@ export class JournalRepository {
     const filter: Record<string, any> = { workspace_id: workspaceId, deleted_at: null };
     if (authorId) filter.author_id = authorId;
     const total = await this.model.countDocuments(filter);
-    const docs = await this.model.find(filter).sort({ date: -1 }).skip((page - 1) * limit).limit(limit).lean();
+    const docs = await this.model.find(filter).sort({ date: -1, created_at: -1 }).skip((page - 1) * limit).limit(limit).lean();
     return { docs: docs.map((doc) => this.toDomain(doc)), total };
   }
 
   async findByDateRange(workspaceId: string, startDate: string, endDate: string, authorId?: string): Promise<Journal[]> {
     const filter: Record<string, any> = { workspace_id: workspaceId, deleted_at: null, date: { $gte: startDate, $lte: endDate } };
     if (authorId) filter.author_id = authorId;
-    const docs = await this.model.find(filter).sort({ date: -1 }).lean();
+    const docs = await this.model.find(filter).sort({ date: -1, created_at: -1 }).lean();
     return docs.map((doc) => this.toDomain(doc));
   }
 

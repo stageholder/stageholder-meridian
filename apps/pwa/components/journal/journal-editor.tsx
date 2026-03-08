@@ -8,6 +8,7 @@ import { countWords } from "@repo/core/utils/text";
 import { useUserLight } from "@/lib/api/light";
 import { useJournals } from "@/lib/api/journals";
 import { cn } from "@/lib/utils";
+import type { SaveStatus } from "@/lib/hooks/use-autosave";
 
 interface JournalEditorProps {
   content: string;
@@ -16,9 +17,10 @@ interface JournalEditorProps {
   autoFocus?: boolean;
   date?: string;
   excludeJournalId?: string;
+  saveStatus?: SaveStatus;
 }
 
-export function JournalEditor({ content, onChange, placeholder, autoFocus, date, excludeJournalId }: JournalEditorProps) {
+export function JournalEditor({ content, onChange, placeholder, autoFocus, date, excludeJournalId, saveStatus }: JournalEditorProps) {
   const { data: userLight } = useUserLight();
   const target = userLight?.journalTargetDailyWords ?? 150;
   const [wordCount, setWordCount] = useState(() => countWords(content));
@@ -60,7 +62,7 @@ export function JournalEditor({ content, onChange, placeholder, autoFocus, date,
     editorProps: {
       attributes: {
         class:
-          "prose prose-sm dark:prose-invert max-w-none min-h-[200px] px-4 py-3 focus:outline-none",
+          "prose prose-sm dark:prose-invert max-w-none min-h-[300px] focus:outline-none",
       },
     },
   });
@@ -73,8 +75,9 @@ export function JournalEditor({ content, onChange, placeholder, autoFocus, date,
   const metTarget = totalWords >= target;
 
   return (
-    <div className="rounded-lg border border-border bg-background">
-      <div className="flex items-center gap-1 border-b border-border px-2 py-1.5">
+    <div className="flex flex-1 flex-col overflow-hidden">
+      {/* Toolbar */}
+      <div className="flex shrink-0 items-center gap-1 border-b border-border/50 pb-2 mb-0 px-4">
         <button
           type="button"
           onClick={() => editor.chain().focus().toggleBold().run()}
@@ -105,7 +108,7 @@ export function JournalEditor({ content, onChange, placeholder, autoFocus, date,
             <line x1="15" x2="9" y1="4" y2="20" />
           </svg>
         </button>
-        <div className="mx-1 h-5 w-px bg-border" />
+        <div className="mx-1 h-5 w-px bg-border/50" />
         <button
           type="button"
           onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
@@ -159,10 +162,30 @@ export function JournalEditor({ content, onChange, placeholder, autoFocus, date,
             <path d="M3 12v6" />
           </svg>
         </button>
+
+        {/* Save status — right-aligned in toolbar */}
+        {saveStatus && (
+          <span className={cn(
+            "ml-auto text-xs",
+            saveStatus === "saving" && "text-muted-foreground",
+            saveStatus === "saved" && "text-muted-foreground",
+            saveStatus === "error" && "text-destructive",
+            saveStatus === "idle" && "text-transparent",
+          )}>
+            {saveStatus === "saving" && "Saving..."}
+            {saveStatus === "saved" && "Saved"}
+            {saveStatus === "error" && "Save failed"}
+          </span>
+        )}
       </div>
-      <EditorContent editor={editor} />
-      {/* Word count footer */}
-      <div className="border-t border-border px-4 py-1.5">
+
+      {/* Scrollable editor content */}
+      <div className="flex-1 overflow-y-auto px-4 pt-4">
+        <EditorContent editor={editor} />
+      </div>
+
+      {/* Fixed word count bar at bottom */}
+      <div className="shrink-0 border-t border-border/50 bg-background px-4 py-2">
         <div className="flex items-center gap-2">
           <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
             <div
@@ -177,7 +200,7 @@ export function JournalEditor({ content, onChange, placeholder, autoFocus, date,
             "shrink-0 text-xs tabular-nums",
             metTarget ? "font-medium text-[var(--ring-journal)]" : "text-muted-foreground",
           )}>
-            {totalWords} words today / {target} target
+            {totalWords} / {target} words
           </span>
         </div>
       </div>
