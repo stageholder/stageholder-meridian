@@ -26,7 +26,7 @@ const colorOptions = [
   { value: "#8b5cf6", label: "Purple" },
   { value: "#ec4899", label: "Pink" },
   { value: "#14b8a6", label: "Teal" },
-  { value: "#6366f1", label: "Indigo" },
+  { value: "#78716c", label: "Stone" },
 ];
 
 const iconOptions: { emoji: string; keywords: string }[] = [
