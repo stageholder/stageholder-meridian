@@ -17,13 +17,13 @@ export function computeActivityRings(
   totalHabits: number,
   targets: Targets = DEFAULT_TARGETS,
 ): ActivityRingsData {
-  if (!dayData) return { todo: 100, habit: 100, journal: 0 };
+  if (!dayData) return { todo: 0, habit: 0, journal: 0 };
 
   const todoDone = dayData.todos.filter((t) => t.status === "done").length;
   const todoPct = Math.min(100, (todoDone / targets.todoDaily) * 100);
 
   const habitDone = dayData.habitEntries.filter((e) => e.value > 0).length;
-  const habitPct = totalHabits === 0 ? 100 : (habitDone / totalHabits) * 100;
+  const habitPct = totalHabits === 0 ? 0 : (habitDone / totalHabits) * 100;
 
   const journalWords = dayData.journals.reduce((sum, j) => sum + (j.wordCount ?? 0), 0);
   const journalPct = Math.min(100, (journalWords / targets.journalDailyWords) * 100);
