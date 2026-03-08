@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { CheckSquare, BookOpen } from "lucide-react";
+import { CheckSquare, BookOpen, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useActivityRings } from "@/lib/hooks/use-activity-rings";
 import {
@@ -70,6 +70,7 @@ export function DailyTargetRings() {
   if (isLoading) return null;
 
   const todoComplete = data.todo >= 100;
+  const habitComplete = data.habit >= 100;
   const journalComplete = data.journal >= 100;
 
   return (
@@ -82,6 +83,13 @@ export function DailyTargetRings() {
             trackColor="var(--ring-todo-track)"
           >
             <CheckSquare className={cn("size-3.5", todoComplete ? "text-[var(--ring-todo)]" : "text-muted-foreground/60")} />
+          </CircleProgress>
+          <CircleProgress
+            percent={data.habit}
+            color="var(--ring-habit)"
+            trackColor="var(--ring-habit-track)"
+          >
+            <Target className={cn("size-3.5", habitComplete ? "text-[var(--ring-habit)]" : "text-muted-foreground/60")} />
           </CircleProgress>
           <CircleProgress
             percent={data.journal}
@@ -112,6 +120,24 @@ export function DailyTargetRings() {
               </p>
             </div>
             <span className="text-xs font-semibold tabular-nums text-foreground">{Math.round(data.todo)}%</span>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <CircleProgress
+              percent={data.habit}
+              color="var(--ring-habit)"
+              trackColor="var(--ring-habit-track)"
+              size={32}
+              strokeWidth={3}
+            >
+              <Target className={cn("size-4", habitComplete ? "text-[var(--ring-habit)]" : "text-muted-foreground/60")} />
+            </CircleProgress>
+            <div className="flex-1">
+              <p className="text-xs font-medium text-foreground">Habits</p>
+              <p className="text-[11px] tabular-nums text-muted-foreground">
+                {details.habitDone}/{details.habitTotal} completed
+              </p>
+            </div>
+            <span className="text-xs font-semibold tabular-nums text-foreground">{Math.round(data.habit)}%</span>
           </div>
           <div className="flex items-center gap-2.5">
             <CircleProgress
