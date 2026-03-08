@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import apiClient from "@/lib/api-client";
 import { useWorkspace } from "@/lib/workspace-context";
 import { toast } from "sonner";
@@ -9,7 +10,9 @@ import type { Workspace } from "@repo/core/types";
 
 export function WorkspaceSettings() {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const { workspace } = useWorkspace();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const { data: workspaceData, isLoading } = useQuery<Workspace>({
     queryKey: ["workspace", workspace.id],
@@ -55,11 +58,25 @@ export function WorkspaceSettings() {
     });
   }
 
+  const deleteWorkspace = useMutation({
+    mutationFn: async () => {
+      await apiClient.delete(`/workspaces/${workspace.id}`);
+    },
+    onSuccess: () => {
+      toast.success("Workspace deleted");
+      router.push("/workspaces");
+    },
+    onError: () => {
+      toast.error("Failed to delete workspace");
+    },
+  });
+
   if (isLoading) {
     return <div className="text-sm text-muted-foreground">Loading workspace...</div>;
   }
 
   return (
+    <div className="space-y-8">
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label htmlFor="workspace-name" className="block text-sm font-medium text-foreground">
@@ -96,5 +113,42 @@ export function WorkspaceSettings() {
         {updateWorkspace.isPending ? "Saving..." : "Save Changes"}
       </button>
     </form>
+
+    {!workspaceData?.isPersonal && (
+      <div className="rounded-lg border border-destructive/30 p-4">
+        <h3 className="text-sm font-medium text-destructive">Danger Zone</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Permanently delete this workspace and all its data. This action cannot be undone.
+        </p>
+        {!showDeleteConfirm ? (
+          <button
+            type="button"
+            onClick={() => setShowDeleteConfirm(true)}
+            className="mt-3 rounded-lg border border-destructive px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive hover:text-destructive-foreground"
+          >
+            Delete Workspace
+          </button>
+        ) : (
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => deleteWorkspace.mutate()}
+              disabled={deleteWorkspace.isPending}
+              className="rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+            >
+              {deleteWorkspace.isPending ? "Deleting..." : "Confirm Delete"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(false)}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
+    )}
+    </div>
   );
 }
