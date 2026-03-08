@@ -5,6 +5,7 @@ export interface Habit {
   description?: string;
   frequency: 'daily' | 'weekly' | 'custom';
   targetCount: number;
+  scheduledDays?: number[];
   unit?: string;
   color?: string;
   icon?: string;

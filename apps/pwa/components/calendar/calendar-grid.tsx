@@ -11,6 +11,7 @@ import {
 } from "date-fns";
 import { CalendarCell } from "./calendar-cell";
 import type { CalendarData } from "@/lib/api/calendar";
+import type { Habit } from "@repo/core/types";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -18,11 +19,11 @@ interface CalendarGridProps {
   currentMonth: Date;
   selectedDate: Date | null;
   calendarData: CalendarData;
-  totalHabits: number;
+  habits: Habit[];
   onSelectDate: (date: Date) => void;
 }
 
-export function CalendarGrid({ currentMonth, selectedDate, calendarData, totalHabits, onSelectDate }: CalendarGridProps) {
+export function CalendarGrid({ currentMonth, selectedDate, calendarData, habits, onSelectDate }: CalendarGridProps) {
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const gridStart = startOfWeek(monthStart);
@@ -52,7 +53,7 @@ export function CalendarGrid({ currentMonth, selectedDate, calendarData, totalHa
               currentMonth={currentMonth}
               isSelected={selectedDate ? isSameDay(day, selectedDate) : false}
               dayData={calendarData[dateKey]}
-              totalHabits={totalHabits}
+              habits={habits}
               onClick={() => onSelectDate(day)}
             />
           );

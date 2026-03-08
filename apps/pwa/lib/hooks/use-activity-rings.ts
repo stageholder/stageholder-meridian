@@ -3,6 +3,7 @@ import type { CalendarDayData } from "@/lib/api/calendar";
 import { useCalendarData } from "@/lib/api/calendar";
 import { useHabits } from "@/lib/api/habits";
 import { useUserLight } from "@/lib/api/light";
+import type { Habit } from "@repo/core/types";
 import type { ActivityRingsData } from "@/components/activity-rings/activity-rings-visual";
 
 interface Targets {
@@ -12,9 +13,18 @@ interface Targets {
 
 const DEFAULT_TARGETS: Targets = { todoDaily: 3, journalDailyWords: 150 };
 
+function countScheduledHabits(habits: Habit[] | undefined, date: string): number {
+  if (!habits) return 0;
+  const dow = new Date(date + "T00:00:00").getDay();
+  return habits.filter((h) => {
+    if (!h.scheduledDays || h.scheduledDays.length === 0) return true;
+    return h.scheduledDays.includes(dow);
+  }).length;
+}
+
 export function computeActivityRings(
   dayData: CalendarDayData | undefined,
-  totalHabits: number,
+  scheduledHabitCount: number,
   targets: Targets = DEFAULT_TARGETS,
 ): ActivityRingsData {
   if (!dayData) return { todo: 0, habit: 0, journal: 0 };
@@ -23,7 +33,7 @@ export function computeActivityRings(
   const todoPct = Math.min(100, (todoDone / targets.todoDaily) * 100);
 
   const habitDone = dayData.habitEntries.filter((e) => e.value > 0).length;
-  const habitPct = totalHabits === 0 ? 0 : (habitDone / totalHabits) * 100;
+  const habitPct = scheduledHabitCount === 0 ? 0 : Math.min(100, (habitDone / scheduledHabitCount) * 100);
 
   const journalWords = dayData.journals.reduce((sum, j) => sum + (j.wordCount ?? 0), 0);
   const journalPct = Math.min(100, (journalWords / targets.journalDailyWords) * 100);
@@ -37,7 +47,7 @@ export function useActivityRings(date: string) {
   const { data: habits, isLoading: habitsLoading, isFetched: habitsFetched } = useHabits();
   const { data: userLight } = useUserLight();
 
-  const totalHabits = habits?.length ?? 0;
+  const scheduledHabitCount = useMemo(() => countScheduledHabits(habits, date), [habits, date]);
   const dayData = calendarData?.[date];
 
   const targets: Targets = useMemo(() => ({
@@ -46,8 +56,8 @@ export function useActivityRings(date: string) {
   }), [userLight?.todoTargetDaily, userLight?.journalTargetDailyWords]);
 
   const data = useMemo(
-    () => computeActivityRings(dayData, totalHabits, targets),
-    [dayData, totalHabits, targets],
+    () => computeActivityRings(dayData, scheduledHabitCount, targets),
+    [dayData, scheduledHabitCount, targets],
   );
 
   const details = useMemo(() => {
@@ -59,12 +69,12 @@ export function useActivityRings(date: string) {
       todoDone,
       todoTarget: targets.todoDaily,
       habitDone,
-      habitTotal: totalHabits,
+      habitTotal: scheduledHabitCount,
       hasJournal,
       journalWords,
       journalTarget: targets.journalDailyWords,
     };
-  }, [dayData, totalHabits, targets]);
+  }, [dayData, scheduledHabitCount, targets]);
 
   // Only show loading on first fetch, not on background refetches
   const isInitialLoading = (calLoading && !calFetched) || (habitsLoading && !habitsFetched);

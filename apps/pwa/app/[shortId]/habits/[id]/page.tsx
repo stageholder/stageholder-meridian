@@ -74,24 +74,33 @@ export default function HabitDetailPage() {
     if (!habit) return { streak: 0, longestStreak: 0, totalCompletions: 0, completionRate: 0 };
 
     const target = habit.targetCount;
+    const hasSchedule = habit.scheduledDays && habit.scheduledDays.length > 0;
     const now = new Date();
     const todayStr = format(now, "yyyy-MM-dd");
 
-    // Current streak
-    const todayCompleted = (entryMap.get(todayStr) ?? 0) >= target;
+    // Current streak (skips non-scheduled days)
+    const todayDow = now.getDay();
+    const todayIsScheduled = !hasSchedule || habit.scheduledDays!.includes(todayDow);
+    const todayCompleted = todayIsScheduled && (entryMap.get(todayStr) ?? 0) >= target;
     let currentStreak = todayCompleted ? 1 : 0;
     for (let i = 1; i <= 90; i++) {
-      const d = format(subDays(now, i), "yyyy-MM-dd");
+      const checkDay = subDays(now, i);
+      const dow = checkDay.getDay();
+      if (hasSchedule && !habit.scheduledDays!.includes(dow)) continue;
+      const d = format(checkDay, "yyyy-MM-dd");
       if ((entryMap.get(d) ?? 0) >= target) currentStreak++;
       else break;
     }
 
-    // Longest streak + total completions
+    // Longest streak + total completions (skips non-scheduled days)
     let longestStreak = 0;
     let tempStreak = 0;
     let totalCompletions = 0;
     for (let i = 90; i >= 0; i--) {
-      const d = format(subDays(now, i), "yyyy-MM-dd");
+      const checkDay = subDays(now, i);
+      const dow = checkDay.getDay();
+      if (hasSchedule && !habit.scheduledDays!.includes(dow)) continue;
+      const d = format(checkDay, "yyyy-MM-dd");
       if ((entryMap.get(d) ?? 0) >= target) {
         tempStreak++;
         totalCompletions++;
@@ -250,13 +259,17 @@ export default function HabitDetailPage() {
             const value = monthEntryMap.get(dateStr) ?? 0;
             const ratio = habit.targetCount > 0 ? value / habit.targetCount : 0;
             const isToday = dateStr === today;
+            const dow = getDay(day);
+            const hasSchedule = habit.scheduledDays && habit.scheduledDays.length > 0;
+            const isScheduled = !hasSchedule || habit.scheduledDays!.includes(dow);
 
             return (
               <div
                 key={dateStr}
                 className={cn(
                   "flex h-8 w-full items-center justify-center rounded-md text-xs",
-                  isToday && "ring-1 ring-primary"
+                  isToday && "ring-1 ring-primary",
+                  !isScheduled && "opacity-30"
                 )}
                 style={
                   ratio >= 1
@@ -265,7 +278,7 @@ export default function HabitDetailPage() {
                       ? { backgroundColor: habitColor + "40" }
                       : undefined
                 }
-                title={`${dateStr}: ${value}/${habit.targetCount}`}
+                title={`${dateStr}: ${value}/${habit.targetCount}${!isScheduled ? " (rest day)" : ""}`}
               >
                 {day.getDate()}
               </div>

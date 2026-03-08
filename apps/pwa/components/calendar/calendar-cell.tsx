@@ -5,17 +5,26 @@ import { isToday, isSameMonth } from "date-fns";
 import { ActivityRingsVisual } from "@/components/activity-rings";
 import { computeActivityRings } from "@/components/activity-rings";
 import type { CalendarDayData } from "@/lib/api/calendar";
+import type { Habit } from "@repo/core/types";
+
+function countScheduledHabits(habits: Habit[], date: Date): number {
+  const dow = date.getDay();
+  return habits.filter((h) => {
+    if (!h.scheduledDays || h.scheduledDays.length === 0) return true;
+    return h.scheduledDays.includes(dow);
+  }).length;
+}
 
 interface CalendarCellProps {
   date: Date;
   currentMonth: Date;
   isSelected: boolean;
   dayData?: CalendarDayData;
-  totalHabits: number;
+  habits: Habit[];
   onClick: () => void;
 }
 
-export function CalendarCell({ date, currentMonth, isSelected, dayData, totalHabits, onClick }: CalendarCellProps) {
+export function CalendarCell({ date, currentMonth, isSelected, dayData, habits, onClick }: CalendarCellProps) {
   const today = isToday(date);
   const inMonth = isSameMonth(date, currentMonth);
 
@@ -23,7 +32,8 @@ export function CalendarCell({ date, currentMonth, isSelected, dayData, totalHab
     || (dayData?.journals?.length ?? 0) > 0
     || (dayData?.habitEntries?.length ?? 0) > 0;
 
-  const ringsData = hasData ? computeActivityRings(dayData, totalHabits) : null;
+  const scheduledCount = countScheduledHabits(habits, date);
+  const ringsData = hasData ? computeActivityRings(dayData, scheduledCount) : null;
 
   return (
     <button

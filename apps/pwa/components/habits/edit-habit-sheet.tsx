@@ -17,6 +17,16 @@ interface EditHabitSheetProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const DAY_OPTIONS = [
+  { value: 1, label: "Mon" },
+  { value: 2, label: "Tue" },
+  { value: 3, label: "Wed" },
+  { value: 4, label: "Thu" },
+  { value: 5, label: "Fri" },
+  { value: 6, label: "Sat" },
+  { value: 0, label: "Sun" },
+];
+
 const colorOptions = [
   { value: "#ef4444", label: "Red" },
   { value: "#f97316", label: "Orange" },
@@ -110,6 +120,7 @@ export function EditHabitSheet({ habit, open, onOpenChange }: EditHabitSheetProp
   const [unit, setUnit] = useState(habit.unit || "");
   const [color, setColor] = useState(habit.color || "#3b82f6");
   const [icon, setIcon] = useState(habit.icon || "");
+  const [scheduledDays, setScheduledDays] = useState<number[]>(habit.scheduledDays || []);
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [iconSearch, setIconSearch] = useState("");
   const updateHabit = useUpdateHabit();
@@ -120,6 +131,7 @@ export function EditHabitSheet({ habit, open, onOpenChange }: EditHabitSheetProp
       setDescription(habit.description || "");
       setFrequency(habit.frequency);
       setTargetCount(habit.targetCount);
+      setScheduledDays(habit.scheduledDays || []);
       setUnit(habit.unit || "");
       setColor(habit.color || "#3b82f6");
       setIcon(habit.icon || "");
@@ -138,6 +150,7 @@ export function EditHabitSheet({ habit, open, onOpenChange }: EditHabitSheetProp
           description: description.trim() || undefined,
           frequency,
           targetCount,
+          scheduledDays: scheduledDays.length > 0 ? scheduledDays : null,
           unit: unit.trim() || undefined,
           color,
           icon: icon || undefined,
@@ -198,11 +211,14 @@ export function EditHabitSheet({ habit, open, onOpenChange }: EditHabitSheetProp
               <select
                 id="edit-habit-freq"
                 value={frequency}
-                onChange={(e) => setFrequency(e.target.value as Habit["frequency"])}
+                onChange={(e) => {
+                  setFrequency(e.target.value as Habit["frequency"]);
+                  if (e.target.value === "daily") setScheduledDays([]);
+                }}
                 className="mt-1 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               >
                 <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
+                <option value="weekly">Specific days</option>
               </select>
             </div>
             <div className="w-24">
@@ -232,6 +248,37 @@ export function EditHabitSheet({ habit, open, onOpenChange }: EditHabitSheetProp
               />
             </div>
           </div>
+
+          {frequency === "weekly" && (
+            <div>
+              <label className="block text-sm font-medium text-foreground">Days</label>
+              <div className="mt-2 flex gap-1.5">
+                {DAY_OPTIONS.map((day) => {
+                  const active = scheduledDays.includes(day.value);
+                  return (
+                    <button
+                      key={day.value}
+                      type="button"
+                      onClick={() =>
+                        setScheduledDays(
+                          active
+                            ? scheduledDays.filter((d) => d !== day.value)
+                            : [...scheduledDays, day.value].sort()
+                        )
+                      }
+                      className={`flex h-9 w-9 items-center justify-center rounded-lg text-xs font-medium transition-all ${
+                        active
+                          ? "bg-primary text-primary-foreground"
+                          : "border border-border text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      {day.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-foreground">Icon</label>

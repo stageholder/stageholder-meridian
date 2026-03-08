@@ -12,6 +12,7 @@ import type { CalendarDayData } from "@/lib/api/calendar";
 import { ActivityRingsVisual } from "@/components/activity-rings";
 import { computeActivityRings } from "@/components/activity-rings";
 import Link from "next/link";
+import type { Habit } from "@repo/core/types";
 
 const priorityConfig: Record<string, { label: string; className: string }> = {
   urgent: { label: "Urgent", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
@@ -21,13 +22,21 @@ const priorityConfig: Record<string, { label: string; className: string }> = {
   none: { label: "", className: "" },
 };
 
+function countScheduledHabits(habits: Habit[], date: Date): number {
+  const dow = date.getDay();
+  return habits.filter((h) => {
+    if (!h.scheduledDays || h.scheduledDays.length === 0) return true;
+    return h.scheduledDays.includes(dow);
+  }).length;
+}
+
 interface DayPanelProps {
   date: Date;
   dayData: CalendarDayData;
-  totalHabits: number;
+  habits: Habit[];
 }
 
-export function DayPanel({ date, dayData, totalHabits }: DayPanelProps) {
+export function DayPanel({ date, dayData, habits }: DayPanelProps) {
   const { workspace } = useWorkspace();
   const queryClient = useQueryClient();
   const updateTodo = useUpdateTodo();
@@ -47,7 +56,7 @@ export function DayPanel({ date, dayData, totalHabits }: DayPanelProps) {
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center gap-3">
-        <ActivityRingsVisual data={computeActivityRings(dayData, totalHabits)} size="md" />
+        <ActivityRingsVisual data={computeActivityRings(dayData, countScheduledHabits(habits, date))} size="md" />
         <h3 className="text-sm font-semibold text-foreground">
           {format(date, "EEEE, MMMM d, yyyy")}
         </h3>

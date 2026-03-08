@@ -49,7 +49,9 @@ export function HabitCard({ habit }: HabitCardProps) {
   );
   const todayValue = todayEntry?.value ?? 0;
   const isComplete = todayValue >= habit.targetCount;
-  const streak = calculateStreak(entries || [], habit.targetCount);
+  const todayDow = new Date().getDay(); // 0=Sun, 1=Mon, ...
+  const isScheduledToday = !habit.scheduledDays || habit.scheduledDays.length === 0 || habit.scheduledDays.includes(todayDow);
+  const streak = calculateStreak(entries || [], habit.targetCount, habit.scheduledDays);
 
   // Week dots data
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
@@ -57,16 +59,19 @@ export function HabitCard({ habit }: HabitCardProps) {
     const date = addDays(weekStart, i);
     const dateStr = format(date, "yyyy-MM-dd");
     const entry = entries?.find((e: HabitEntry) => e.date.split("T")[0] === dateStr);
+    const dow = date.getDay();
+    const isScheduled = !habit.scheduledDays || habit.scheduledDays.length === 0 || habit.scheduledDays.includes(dow);
     return {
       label: format(date, "EEEEE"),
       dateStr,
       value: entry?.value ?? 0,
       isToday: dateStr === today,
+      isScheduled,
     };
   });
 
   function handleCheckIn() {
-    if (isComplete) return;
+    if (isComplete || !isScheduledToday) return;
 
     const onSuccess = () => {
       toast.success(`Checked in for ${habit.name}`);
@@ -186,23 +191,27 @@ export function HabitCard({ habit }: HabitCardProps) {
             const ratio = habit.targetCount > 0 ? day.value / habit.targetCount : 0;
             return (
               <div key={day.dateStr} className="flex flex-col items-center gap-1">
-                <span className="text-[10px] text-muted-foreground">{day.label}</span>
+                <span className={cn("text-[10px]", day.isScheduled ? "text-muted-foreground" : "text-muted-foreground/40")}>{day.label}</span>
                 <div
                   className={cn(
                     "h-3.5 w-3.5 rounded-full border transition-all",
                     day.isToday && "ring-1 ring-offset-1 ring-offset-background",
-                    ratio >= 1
-                      ? "border-transparent"
-                      : ratio > 0
+                    !day.isScheduled
+                      ? "border-dashed border-muted-foreground/20"
+                      : ratio >= 1
                         ? "border-transparent"
-                        : "border-muted-foreground/30"
+                        : ratio > 0
+                          ? "border-transparent"
+                          : "border-muted-foreground/30"
                   )}
                   style={
-                    ratio >= 1
-                      ? { backgroundColor: habitColor, borderColor: habitColor }
-                      : ratio > 0
-                        ? { backgroundColor: habitColor + "60", borderColor: habitColor + "60" }
-                        : undefined
+                    !day.isScheduled
+                      ? undefined
+                      : ratio >= 1
+                        ? { backgroundColor: habitColor, borderColor: habitColor }
+                        : ratio > 0
+                          ? { backgroundColor: habitColor + "60", borderColor: habitColor + "60" }
+                          : undefined
                   }
                 />
               </div>
@@ -227,6 +236,11 @@ export function HabitCard({ habit }: HabitCardProps) {
                 <Undo2 className="size-3" />
               </button>
             )}
+            {!isScheduledToday && !isComplete ? (
+              <span className="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                Rest day
+              </span>
+            ) : (
             <button
               onClick={handleCheckIn}
               disabled={isComplete || isPending}
@@ -263,6 +277,7 @@ export function HabitCard({ habit }: HabitCardProps) {
                 "Check In"
               )}
             </button>
+            )}
           </div>
         </div>
       </div>
@@ -272,7 +287,11 @@ export function HabitCard({ habit }: HabitCardProps) {
   );
 }
 
-function calculateStreak(entries: HabitEntry[], targetCount: number): number {
+function calculateStreak(
+  entries: HabitEntry[],
+  targetCount: number,
+  scheduledDays?: number[]
+): number {
   if (entries.length === 0) return 0;
 
   const entryMap = new Map<string, number>();
@@ -281,20 +300,30 @@ function calculateStreak(entries: HabitEntry[], targetCount: number): number {
     entryMap.set(dateStr, (entryMap.get(dateStr) ?? 0) + e.value);
   }
 
+  const hasSchedule = scheduledDays && scheduledDays.length > 0;
   const today = new Date();
   const todayStr = format(today, "yyyy-MM-dd");
 
-  // If today is not yet completed, start counting from yesterday
-  const todayCompleted = (entryMap.get(todayStr) ?? 0) >= targetCount;
+  // If today is scheduled and completed, count it
+  const todayDow = today.getDay();
+  const todayIsScheduled = !hasSchedule || scheduledDays!.includes(todayDow);
+  const todayCompleted = todayIsScheduled && (entryMap.get(todayStr) ?? 0) >= targetCount;
   let streak = todayCompleted ? 1 : 0;
-  const startOffset = todayCompleted ? 1 : 1;
 
-  for (let i = startOffset; i <= 90; i++) {
-    const checkDate = format(subDays(today, i), "yyyy-MM-dd");
+  for (let i = 1; i <= 90; i++) {
+    const checkDay = subDays(today, i);
+    const dow = checkDay.getDay();
+
+    // Skip non-scheduled days
+    if (hasSchedule && !scheduledDays!.includes(dow)) continue;
+
+    const checkDate = format(checkDay, "yyyy-MM-dd");
     const dayValue = entryMap.get(checkDate) ?? 0;
     if (dayValue >= targetCount) {
       streak++;
     } else {
+      // If today wasn't completed and this is the first scheduled day back, don't break yet
+      if (i === 1 && !todayCompleted && !todayIsScheduled) continue;
       break;
     }
   }

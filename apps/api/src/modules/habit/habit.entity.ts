@@ -7,6 +7,7 @@ export interface HabitProps extends EntityProps {
   description?: string;
   frequency: HabitFrequency;
   targetCount: number;
+  scheduledDays?: number[];
   unit?: string;
   color?: string;
   icon?: string;
@@ -21,6 +22,7 @@ export class Habit extends Entity<HabitProps> {
   get description(): string | undefined { return this.get('description'); }
   get frequency(): HabitFrequency { return this.get('frequency'); }
   get targetCount(): number { return this.get('targetCount'); }
+  get scheduledDays(): number[] | undefined { return this.get('scheduledDays'); }
   get unit(): string | undefined { return this.get('unit'); }
   get color(): string | undefined { return this.get('color'); }
   get icon(): string | undefined { return this.get('icon'); }
@@ -31,6 +33,7 @@ export class Habit extends Entity<HabitProps> {
   updateDescription(description: string | undefined): void { this.set('description', description); }
   updateFrequency(frequency: HabitFrequency): void { this.set('frequency', frequency); }
   updateTargetCount(targetCount: number): void { this.set('targetCount', targetCount); }
+  updateScheduledDays(scheduledDays: number[] | undefined): void { this.set('scheduledDays', scheduledDays); }
   updateUnit(unit: string | undefined): void { this.set('unit', unit); }
   updateColor(color: string | undefined): void { this.set('color', color); }
   updateIcon(icon: string | undefined): void { this.set('icon', icon); }

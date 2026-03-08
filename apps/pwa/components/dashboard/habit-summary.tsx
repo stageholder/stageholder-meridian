@@ -66,8 +66,22 @@ export function HabitSummary() {
           <p className="text-xs text-muted-foreground">Loading...</p>
         ) : habits && habits.length > 0 ? (
           habits.slice(0, 5).map((habit: Habit) => {
+            const todayDow = new Date().getDay();
+            const isScheduledToday = !habit.scheduledDays || habit.scheduledDays.length === 0 || habit.scheduledDays.includes(todayDow);
             const isComplete = completedHabitIds.has(habit.id);
             const hasEntry = checkedInHabitIds.has(habit.id);
+
+            if (!isScheduledToday) {
+              return (
+                <div key={habit.id} className="flex items-center gap-3">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground text-xs">
+                    <span className="block h-2 w-2 rounded-full bg-current opacity-40" />
+                  </div>
+                  <span className="text-sm text-muted-foreground">{habit.name}</span>
+                  <span className="text-[10px] text-muted-foreground/60">Rest day</span>
+                </div>
+              );
+            }
 
             return (
               <div key={habit.id} className="flex items-center gap-3">

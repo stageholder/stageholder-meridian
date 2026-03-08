@@ -11,7 +11,7 @@ export class HabitService {
 
   async create(workspaceId: string, userId: string, dto: CreateHabitDto): Promise<Habit> {
     await this.memberService.requireRole(workspaceId, userId, ['owner', 'admin', 'member']);
-    const result = Habit.create({ name: dto.name, description: dto.description, frequency: dto.frequency || 'daily', targetCount: dto.targetCount, unit: dto.unit, color: dto.color, icon: dto.icon, workspaceId, creatorId: userId });
+    const result = Habit.create({ name: dto.name, description: dto.description, frequency: dto.frequency || 'daily', targetCount: dto.targetCount, scheduledDays: dto.scheduledDays, unit: dto.unit, color: dto.color, icon: dto.icon, workspaceId, creatorId: userId });
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);
     return result.value;
@@ -43,6 +43,7 @@ export class HabitService {
     if (dto.description !== undefined) habit.updateDescription(dto.description);
     if (dto.frequency) habit.updateFrequency(dto.frequency as HabitFrequency);
     if (dto.targetCount !== undefined) habit.updateTargetCount(dto.targetCount);
+    if (dto.scheduledDays !== undefined) habit.updateScheduledDays(dto.scheduledDays ?? undefined);
     if (dto.unit !== undefined) habit.updateUnit(dto.unit);
     if (dto.color !== undefined) habit.updateColor(dto.color);
     if (dto.icon !== undefined) habit.updateIcon(dto.icon);

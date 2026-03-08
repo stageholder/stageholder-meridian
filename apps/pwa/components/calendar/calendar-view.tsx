@@ -8,6 +8,7 @@ import { DayPanel } from "./day-panel";
 import { useCalendarData } from "@/lib/api/calendar";
 import { useHabits } from "@/lib/api/habits";
 import type { CalendarDayData } from "@/lib/api/calendar";
+import type { Habit } from "@repo/core/types";
 
 export function CalendarView() {
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
@@ -16,7 +17,7 @@ export function CalendarView() {
   const monthKey = format(currentMonth, "yyyy-MM");
   const { data: calendarData, isLoading } = useCalendarData(monthKey);
   const { data: habits } = useHabits();
-  const totalHabits = habits?.length ?? 0;
+  const habitsList = habits ?? [];
 
   const selectedDayData: CalendarDayData | undefined = useMemo(() => {
     if (!selectedDate || !calendarData) return undefined;
@@ -45,7 +46,7 @@ export function CalendarView() {
           currentMonth={currentMonth}
           selectedDate={selectedDate}
           calendarData={calendarData || {}}
-          totalHabits={totalHabits}
+          habits={habitsList}
           onSelectDate={setSelectedDate}
         />
       )}
@@ -54,7 +55,7 @@ export function CalendarView() {
         <DayPanel
           date={selectedDate}
           dayData={selectedDayData || { todos: [], journals: [], habitEntries: [] }}
-          totalHabits={totalHabits}
+          habits={habitsList}
         />
       )}
     </div>
