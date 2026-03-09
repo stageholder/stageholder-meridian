@@ -1,7 +1,17 @@
-import { Entity, EntityProps, Ok, Err, Result } from '../../shared';
+import { Entity, EntityProps, Ok, Err, Result, generateId } from '../../shared';
 
-export type TodoStatus = 'todo' | 'in_progress' | 'done';
+export type TodoStatus = 'todo' | 'done';
 export type TodoPriority = 'none' | 'low' | 'medium' | 'high' | 'urgent';
+
+export interface SubtaskData {
+  id: string;
+  title: string;
+  status: 'todo' | 'done';
+  priority: TodoPriority;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface TodoProps extends EntityProps {
   title: string;
@@ -15,6 +25,7 @@ export interface TodoProps extends EntityProps {
   assigneeId?: string;
   creatorId: string;
   order: number;
+  subtasks: SubtaskData[];
 }
 
 export class Todo extends Entity<TodoProps> {
@@ -31,6 +42,7 @@ export class Todo extends Entity<TodoProps> {
   get assigneeId(): string | undefined { return this.get('assigneeId'); }
   get creatorId(): string { return this.get('creatorId'); }
   get order(): number { return this.get('order'); }
+  get subtasks(): SubtaskData[] { return this.get('subtasks'); }
 
   updateTitle(title: string): void { this.set('title', title); }
   updateDescription(description: string | undefined): void { this.set('description', description); }
@@ -41,12 +53,48 @@ export class Todo extends Entity<TodoProps> {
   updateAssigneeId(assigneeId: string | undefined): void { this.set('assigneeId', assigneeId); }
   updateOrder(order: number): void { this.set('order', order); }
 
-  static create(props: Omit<TodoProps, 'id' | 'createdAt' | 'updatedAt'>): Result<Todo> {
+  addSubtask(title: string, priority: TodoPriority = 'none'): Result<SubtaskData> {
+    const subtasks = this.subtasks;
+    if (subtasks.length >= 50) return Err(new Error('Maximum 50 subtasks per todo'));
+    const now = new Date().toISOString();
+    const subtask: SubtaskData = { id: generateId(), title, status: 'todo', priority, order: subtasks.length, createdAt: now, updatedAt: now };
+    this.set('subtasks', [...subtasks, subtask]);
+    return Ok(subtask);
+  }
+
+  updateSubtask(subtaskId: string, updates: { title?: string; status?: 'todo' | 'done'; priority?: TodoPriority }): Result<SubtaskData> {
+    const subtasks = [...this.subtasks];
+    const idx = subtasks.findIndex(s => s.id === subtaskId);
+    if (idx === -1) return Err(new Error('Subtask not found'));
+    const now = new Date().toISOString();
+    subtasks[idx] = { ...subtasks[idx]!, ...updates, updatedAt: now };
+    this.set('subtasks', subtasks);
+    return Ok(subtasks[idx]!);
+  }
+
+  removeSubtask(subtaskId: string): Result<void> {
+    const subtasks = this.subtasks;
+    const idx = subtasks.findIndex(s => s.id === subtaskId);
+    if (idx === -1) return Err(new Error('Subtask not found'));
+    this.set('subtasks', subtasks.filter(s => s.id !== subtaskId));
+    return Ok(undefined);
+  }
+
+  reorderSubtasks(items: { id: string; order: number }[]): void {
+    const subtasks = [...this.subtasks];
+    for (const item of items) {
+      const s = subtasks.find(s => s.id === item.id);
+      if (s) s.order = item.order;
+    }
+    this.set('subtasks', subtasks);
+  }
+
+  static create(props: Omit<TodoProps, 'id' | 'createdAt' | 'updatedAt' | 'subtasks'>): Result<Todo> {
     if (!props.title || props.title.trim().length === 0) return Err(new Error('Todo title is required'));
     if (!props.listId) return Err(new Error('List is required'));
     if (!props.workspaceId) return Err(new Error('Workspace is required'));
     if (!props.creatorId) return Err(new Error('Creator is required'));
-    return Ok(new Todo({ ...props, status: props.status || 'todo', priority: props.priority || 'none', order: props.order ?? 0 } as TodoProps));
+    return Ok(new Todo({ ...props, status: props.status || 'todo', priority: props.priority || 'none', order: props.order ?? 0, subtasks: [] } as TodoProps));
   }
 
   static reconstitute(props: TodoProps, id: string): Todo { return new Todo(props, id); }

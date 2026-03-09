@@ -10,7 +10,7 @@ export class TodoRepository {
 
   async save(todo: Todo): Promise<void> {
     const data = todo.toObject();
-    await this.model.updateOne({ _id: data.id }, { $set: { title: data.title, description: data.description, status: data.status, priority: data.priority, due_date: data.dueDate, do_date: data.doDate, list_id: data.listId, workspace_id: data.workspaceId, assignee_id: data.assigneeId, creator_id: data.creatorId, order: data.order } }, { upsert: true });
+    await this.model.updateOne({ _id: data.id }, { $set: { title: data.title, description: data.description, status: data.status, priority: data.priority, due_date: data.dueDate, do_date: data.doDate, list_id: data.listId, workspace_id: data.workspaceId, assignee_id: data.assigneeId, creator_id: data.creatorId, order: data.order, subtasks: (data.subtasks || []).map((s: any) => ({ _id: s.id, title: s.title, status: s.status, priority: s.priority, order: s.order, created_at: s.createdAt, updated_at: s.updatedAt })) } }, { upsert: true });
   }
 
   async findById(id: string): Promise<Todo | null> {
@@ -50,6 +50,6 @@ export class TodoRepository {
   async delete(id: string): Promise<void> { await this.model.updateOne({ _id: id }, { $set: { deleted_at: new Date() } }); }
 
   private toDomain(doc: any): Todo {
-    return Todo.reconstitute({ title: doc.title, description: doc.description, status: doc.status, priority: doc.priority, dueDate: doc.due_date, doDate: doc.do_date, listId: doc.list_id, workspaceId: doc.workspace_id, assigneeId: doc.assignee_id, creatorId: doc.creator_id, order: doc.order, createdAt: doc.created_at, updatedAt: doc.updated_at }, doc._id);
+    return Todo.reconstitute({ title: doc.title, description: doc.description, status: doc.status, priority: doc.priority, dueDate: doc.due_date, doDate: doc.do_date, listId: doc.list_id, workspaceId: doc.workspace_id, assigneeId: doc.assignee_id, creatorId: doc.creator_id, order: doc.order, subtasks: (doc.subtasks || []).map((s: any) => ({ id: s._id, title: s.title, status: s.status, priority: s.priority, order: s.order, createdAt: s.created_at, updatedAt: s.updated_at })), createdAt: doc.created_at, updatedAt: doc.updated_at }, doc._id);
   }
 }

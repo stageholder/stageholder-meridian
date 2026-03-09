@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { TodoRepository } from './todo.repository';
 import { Todo, TodoStatus } from './todo.entity';
-import { CreateTodoDto, UpdateTodoDto, ReorderTodosDto } from './todo.dto';
+import { CreateTodoDto, UpdateTodoDto, ReorderTodosDto, CreateSubtaskDto, UpdateSubtaskDto, ReorderSubtasksDto } from './todo.dto';
 import { WorkspaceMemberService } from '../workspace-member/workspace-member.service';
 import { LightService } from '../light/light.service';
 import { PaginatedResult, buildPaginationMeta, DEFAULT_PAGE, DEFAULT_LIMIT, MAX_LIMIT } from '../../shared';
@@ -79,5 +79,36 @@ export class TodoService {
   async delete(id: string, workspaceId: string, userId: string): Promise<void> {
     await this.findById(id, workspaceId, userId);
     await this.repository.delete(id);
+  }
+
+  async addSubtask(todoId: string, workspaceId: string, userId: string, dto: CreateSubtaskDto): Promise<Todo> {
+    const todo = await this.findById(todoId, workspaceId, userId);
+    const result = todo.addSubtask(dto.title, dto.priority);
+    if (!result.ok) throw new Error(result.error.message);
+    await this.repository.save(todo);
+    return todo;
+  }
+
+  async updateSubtask(todoId: string, subtaskId: string, workspaceId: string, userId: string, dto: UpdateSubtaskDto): Promise<Todo> {
+    const todo = await this.findById(todoId, workspaceId, userId);
+    const result = todo.updateSubtask(subtaskId, dto);
+    if (!result.ok) throw new NotFoundException('Subtask not found');
+    await this.repository.save(todo);
+    return todo;
+  }
+
+  async removeSubtask(todoId: string, subtaskId: string, workspaceId: string, userId: string): Promise<Todo> {
+    const todo = await this.findById(todoId, workspaceId, userId);
+    const result = todo.removeSubtask(subtaskId);
+    if (!result.ok) throw new NotFoundException('Subtask not found');
+    await this.repository.save(todo);
+    return todo;
+  }
+
+  async reorderSubtasks(todoId: string, workspaceId: string, userId: string, dto: ReorderSubtasksDto): Promise<Todo> {
+    const todo = await this.findById(todoId, workspaceId, userId);
+    todo.reorderSubtasks(dto.items);
+    await this.repository.save(todo);
+    return todo;
   }
 }

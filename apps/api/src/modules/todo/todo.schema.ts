@@ -1,8 +1,18 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Schema as MongooseSchema } from 'mongoose';
 import { randomUUID } from 'crypto';
 
 export type TodoDocument = TodoModel & Document<string>;
+
+const SubtaskSchema = new MongooseSchema({
+  _id: { type: String, required: true },
+  title: { type: String, required: true },
+  status: { type: String, required: true, default: 'todo' },
+  priority: { type: String, required: true, default: 'none' },
+  order: { type: Number, required: true, default: 0 },
+  created_at: { type: String },
+  updated_at: { type: String },
+}, { _id: false });
 
 @Schema({
   collection: 'todos',
@@ -22,6 +32,7 @@ export class TodoModel {
   @Prop({ type: String, index: true }) assignee_id: string;
   @Prop({ type: String, required: true }) creator_id: string;
   @Prop({ type: Number, default: 0 }) order: number;
+  @Prop({ type: [SubtaskSchema], default: [] }) subtasks: any[];
   @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 

@@ -214,3 +214,61 @@ export function useDeleteTodo() {
     },
   });
 }
+
+export function useAddSubtask() {
+  const queryClient = useQueryClient();
+  const { workspace } = useWorkspace();
+
+  return useMutation({
+    mutationFn: async ({ listId, todoId, data }: { listId: string; todoId: string; data: { title: string; priority?: string } }) => {
+      const res = await apiClient.post(
+        `/workspaces/${workspace.id}/todos/${todoId}/subtasks`,
+        data
+      );
+      return res.data as Todo;
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ["todos", workspace.id, variables.listId] });
+      void queryClient.invalidateQueries({ queryKey: ["allTodos", workspace.id] });
+      void queryClient.invalidateQueries({ queryKey: ["calendar", workspace.id] });
+    },
+  });
+}
+
+export function useUpdateSubtask() {
+  const queryClient = useQueryClient();
+  const { workspace } = useWorkspace();
+
+  return useMutation({
+    mutationFn: async ({ listId, todoId, subtaskId, data }: { listId: string; todoId: string; subtaskId: string; data: { title?: string; status?: string; priority?: string } }) => {
+      const res = await apiClient.patch(
+        `/workspaces/${workspace.id}/todos/${todoId}/subtasks/${subtaskId}`,
+        data
+      );
+      return res.data as Todo;
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ["todos", workspace.id, variables.listId] });
+      void queryClient.invalidateQueries({ queryKey: ["allTodos", workspace.id] });
+      void queryClient.invalidateQueries({ queryKey: ["calendar", workspace.id] });
+    },
+  });
+}
+
+export function useRemoveSubtask() {
+  const queryClient = useQueryClient();
+  const { workspace } = useWorkspace();
+
+  return useMutation({
+    mutationFn: async ({ listId, todoId, subtaskId }: { listId: string; todoId: string; subtaskId: string }) => {
+      await apiClient.delete(
+        `/workspaces/${workspace.id}/todos/${todoId}/subtasks/${subtaskId}`
+      );
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ["todos", workspace.id, variables.listId] });
+      void queryClient.invalidateQueries({ queryKey: ["allTodos", workspace.id] });
+      void queryClient.invalidateQueries({ queryKey: ["calendar", workspace.id] });
+    },
+  });
+}

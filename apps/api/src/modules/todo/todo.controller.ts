@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query } from '@nestjs/common';
 import { TodoService } from './todo.service';
-import { CreateTodoDto, UpdateTodoDto, ReorderTodosDto } from './todo.dto';
-import { CreateTodoDto as CreateSchema, UpdateTodoDto as UpdateSchema, ReorderTodosDto as ReorderSchema } from './todo.dto';
+import { CreateTodoDto, UpdateTodoDto, ReorderTodosDto, CreateSubtaskDto, UpdateSubtaskDto, ReorderSubtasksDto } from './todo.dto';
+import { CreateTodoDto as CreateSchema, UpdateTodoDto as UpdateSchema, ReorderTodosDto as ReorderSchema, CreateSubtaskDto as CreateSubtaskSchema, UpdateSubtaskDto as UpdateSubtaskSchema, ReorderSubtasksDto as ReorderSubtasksSchema } from './todo.dto';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
 import { CurrentUserId } from '../../common/decorators/current-user.decorator';
 
@@ -36,6 +36,26 @@ export class TodoController {
   async reorder(@Param('workspaceId') workspaceId: string, @CurrentUserId() userId: string, @Body(new ZodValidationPipe(ReorderSchema)) dto: ReorderTodosDto) {
     await this.service.reorder(workspaceId, userId, dto);
     return { reordered: true };
+  }
+
+  @Post(':id/subtasks')
+  async addSubtask(@Param('workspaceId') workspaceId: string, @Param('id') id: string, @CurrentUserId() userId: string, @Body(new ZodValidationPipe(CreateSubtaskSchema)) dto: CreateSubtaskDto) {
+    return (await this.service.addSubtask(id, workspaceId, userId, dto)).toObject();
+  }
+
+  @Post(':id/subtasks/reorder')
+  async reorderSubtasks(@Param('workspaceId') workspaceId: string, @Param('id') id: string, @CurrentUserId() userId: string, @Body(new ZodValidationPipe(ReorderSubtasksSchema)) dto: ReorderSubtasksDto) {
+    return (await this.service.reorderSubtasks(id, workspaceId, userId, dto)).toObject();
+  }
+
+  @Patch(':id/subtasks/:subtaskId')
+  async updateSubtask(@Param('workspaceId') workspaceId: string, @Param('id') id: string, @Param('subtaskId') subtaskId: string, @CurrentUserId() userId: string, @Body(new ZodValidationPipe(UpdateSubtaskSchema)) dto: UpdateSubtaskDto) {
+    return (await this.service.updateSubtask(id, subtaskId, workspaceId, userId, dto)).toObject();
+  }
+
+  @Delete(':id/subtasks/:subtaskId')
+  async removeSubtask(@Param('workspaceId') workspaceId: string, @Param('id') id: string, @Param('subtaskId') subtaskId: string, @CurrentUserId() userId: string) {
+    return (await this.service.removeSubtask(id, subtaskId, workspaceId, userId)).toObject();
   }
 
   @Delete(':id')

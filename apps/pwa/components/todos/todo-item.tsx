@@ -93,7 +93,7 @@ export function TodoItem({ todo, listId }: TodoItemProps) {
               {todo.description}
             </p>
           )}
-          {(priority.label || formattedDueDate || formattedDoDate) && (
+          {(priority.label || formattedDueDate || formattedDoDate || (todo.subtasks && todo.subtasks.length > 0)) && (
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
               {priority.label && (
                 <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-medium", priority.className)}>
@@ -123,6 +123,15 @@ export function TodoItem({ todo, listId }: TodoItemProps) {
                     <polyline points="12 6 12 12 16 14" />
                   </svg>
                   {formattedDoDate}
+                </span>
+              )}
+              {todo.subtasks && todo.subtasks.length > 0 && (
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 11 12 14 22 4" />
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                  </svg>
+                  {todo.subtasks.filter(s => s.status === 'done').length}/{todo.subtasks.length}
                 </span>
               )}
             </div>

@@ -1,6 +1,8 @@
 "use client";
 
-import { useUpdateTodo, useDeleteTodo } from "@/lib/api/todos";
+import { useState, useRef, useEffect } from "react";
+import { useUpdateTodo, useDeleteTodo, useAddSubtask, useUpdateSubtask, useRemoveSubtask } from "@/lib/api/todos";
+import { DatePicker } from "@/components/ui/date-picker";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Todo } from "@repo/core/types";
@@ -13,6 +15,8 @@ const priorityConfig: Record<string, { label: string; dotClass: string; badgeCla
   none: { label: "None", dotClass: "bg-muted-foreground/40", badgeClass: "" },
 };
 
+const priorityOptions = ["urgent", "high", "medium", "low", "none"] as const;
+
 interface TodoDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -23,8 +27,51 @@ interface TodoDetailDialogProps {
 export function TodoDetailDialog({ open, onOpenChange, todo, listId }: TodoDetailDialogProps) {
   const updateTodo = useUpdateTodo();
   const deleteTodo = useDeleteTodo();
+  const addSubtask = useAddSubtask();
+  const updateSubtask = useUpdateSubtask();
+  const removeSubtask = useRemoveSubtask();
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+  const [priorityOpen, setPriorityOpen] = useState(false);
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [descDraft, setDescDraft] = useState(todo.description ?? "");
+  const descRef = useRef<HTMLTextAreaElement>(null);
+  const priorityRef = useRef<HTMLDivElement>(null);
   const isDone = todo.status === "done";
   const priority = priorityConfig[todo.priority] ?? priorityConfig.none!;
+
+  // Sync description draft when todo changes externally
+  useEffect(() => {
+    if (!editingDesc) setDescDraft(todo.description ?? "");
+  }, [todo.description, editingDesc]);
+
+  // Auto-focus textarea when entering edit mode
+  useEffect(() => {
+    if (editingDesc && descRef.current) {
+      descRef.current.focus();
+      descRef.current.selectionStart = descRef.current.value.length;
+    }
+  }, [editingDesc]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (priorityRef.current && !priorityRef.current.contains(e.target as Node)) setPriorityOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function handleUpdateField(data: Record<string, any>) {
+    updateTodo.mutate({ listId, todoId: todo.id, data });
+  }
+
+  function handleSaveDescription() {
+    const trimmed = descDraft.trim();
+    const current = todo.description ?? "";
+    if (trimmed !== current) {
+      handleUpdateField({ description: trimmed || undefined });
+    }
+    setEditingDesc(false);
+  }
 
   function handleToggleStatus() {
     updateTodo.mutate({
@@ -49,24 +96,6 @@ export function TodoDetailDialog({ open, onOpenChange, todo, listId }: TodoDetai
     );
   }
 
-  const formattedDueDate = todo.dueDate
-    ? new Date(todo.dueDate).toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-    : null;
-
-  const formattedDoDate = todo.doDate
-    ? new Date(todo.doDate).toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      })
-    : null;
-
   const isOverdue =
     todo.dueDate && !isDone && new Date(todo.dueDate) < new Date();
 
@@ -87,7 +116,7 @@ export function TodoDetailDialog({ open, onOpenChange, todo, listId }: TodoDetai
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="fixed inset-0 bg-black/50" onClick={() => onOpenChange(false)} />
-      <div className="relative z-50 w-full max-w-md rounded-xl border border-border bg-card shadow-lg">
+      <div className="relative z-50 w-full max-w-2xl rounded-xl border border-border bg-card shadow-lg">
         {/* Header */}
         <div className="flex items-start gap-3 border-b border-border p-5">
           <button
@@ -137,100 +166,246 @@ export function TodoDetailDialog({ open, onOpenChange, todo, listId }: TodoDetai
           </button>
         </div>
 
-        {/* Body */}
-        <div className="space-y-4 p-5">
-          {/* Description */}
-          {todo.description ? (
+        {/* Body — two columns */}
+        <div className="flex divide-x divide-border">
+          {/* Left column: Description & Subtasks */}
+          <div className="flex-1 space-y-4 p-5 min-w-0">
+            {/* Description (editable) */}
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Description</p>
-              <p className="mt-1.5 whitespace-pre-wrap text-sm text-foreground">{todo.description}</p>
-            </div>
-          ) : (
-            <p className="text-sm italic text-muted-foreground">No description</p>
-          )}
-
-          {/* Details grid */}
-          <div className="grid grid-cols-2 gap-4 rounded-lg border border-border bg-muted/30 p-4">
-            {/* Priority */}
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Priority</p>
-              <div className="mt-1.5 flex items-center gap-2">
-                <span className={cn("h-2 w-2 rounded-full", priority.dotClass)} />
-                {priority.badgeClass ? (
-                  <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-medium", priority.badgeClass)}>
-                    {priority.label}
-                  </span>
-                ) : (
-                  <span className="text-sm text-muted-foreground">{priority.label}</span>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Description</p>
+                {!editingDesc && (
+                  <button
+                    type="button"
+                    onClick={() => setEditingDesc(true)}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {todo.description ? "Edit" : "Add"}
+                  </button>
                 )}
               </div>
+              {editingDesc ? (
+                <div className="mt-1.5">
+                  <textarea
+                    ref={descRef}
+                    value={descDraft}
+                    onChange={(e) => setDescDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                        handleSaveDescription();
+                      }
+                      if (e.key === "Escape") {
+                        setDescDraft(todo.description ?? "");
+                        setEditingDesc(false);
+                      }
+                    }}
+                    placeholder="Add a description..."
+                    rows={3}
+                    className="w-full resize-none rounded-md border border-border bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSaveDescription}
+                      className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setDescDraft(todo.description ?? ""); setEditingDesc(false); }}
+                      className="rounded-md px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-accent"
+                    >
+                      Cancel
+                    </button>
+                    <span className="ml-auto text-[10px] text-muted-foreground">
+                      Cmd+Enter to save
+                    </span>
+                  </div>
+                </div>
+              ) : todo.description ? (
+                <p
+                  className="mt-1.5 whitespace-pre-wrap text-sm text-foreground cursor-pointer rounded-md px-2 py-1.5 -mx-2 hover:bg-accent/50 transition-colors"
+                  onClick={() => setEditingDesc(true)}
+                >
+                  {todo.description}
+                </p>
+              ) : (
+                <p
+                  className="mt-1.5 text-sm italic text-muted-foreground cursor-pointer rounded-md px-2 py-1.5 -mx-2 hover:bg-accent/50 transition-colors"
+                  onClick={() => setEditingDesc(true)}
+                >
+                  Click to add a description...
+                </p>
+              )}
             </div>
 
-            {/* Status */}
+            {/* Subtasks */}
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Status</p>
-              <p className="mt-1.5 text-sm text-foreground capitalize">
-                {todo.status === "in_progress" ? "In Progress" : todo.status === "done" ? "Done" : "To Do"}
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Subtasks{todo.subtasks && todo.subtasks.length > 0 && ` ${todo.subtasks.filter(s => s.status === 'done').length}/${todo.subtasks.length}`}
+                </p>
+              </div>
+              {todo.subtasks && todo.subtasks.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {[...todo.subtasks].sort((a, b) => a.order - b.order).map((subtask) => (
+                    <div key={subtask.id} className="group/subtask flex items-center gap-2 rounded-md px-1 py-1 hover:bg-accent/50">
+                      <button
+                        type="button"
+                        onClick={() => updateSubtask.mutate({ listId, todoId: todo.id, subtaskId: subtask.id, data: { status: subtask.status === 'done' ? 'todo' : 'done' } })}
+                        className={cn(
+                          "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
+                          subtask.status === 'done'
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-muted-foreground/40 hover:border-primary"
+                        )}
+                        aria-label={subtask.status === 'done' ? "Mark subtask incomplete" : "Mark subtask complete"}
+                      >
+                        {subtask.status === 'done' && (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        )}
+                      </button>
+                      <span className={cn("flex-1 text-sm", subtask.status === 'done' && "line-through text-muted-foreground")}>
+                        {subtask.title}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeSubtask.mutate({ listId, todoId: todo.id, subtaskId: subtask.id })}
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover/subtask:opacity-100"
+                        aria-label="Delete subtask"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" x2="6" y1="6" y2="18" />
+                          <line x1="6" x2="18" y1="6" y2="18" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <form
+                className="mt-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const title = newSubtaskTitle.trim();
+                  if (!title) return;
+                  addSubtask.mutate({ listId, todoId: todo.id, data: { title } }, {
+                    onSuccess: () => setNewSubtaskTitle(""),
+                  });
+                }}
+              >
+                <input
+                  type="text"
+                  value={newSubtaskTitle}
+                  onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                  placeholder="Add subtask..."
+                  className="w-full rounded-md border border-border bg-transparent px-3 py-1.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </form>
             </div>
+          </div>
+
+          {/* Right column: Task details (interactive) */}
+          <div className="w-60 shrink-0 space-y-1 p-3">
+            {/* Priority */}
+            <div ref={priorityRef} className="relative">
+              <p className="px-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Priority</p>
+              <button
+                type="button"
+                onClick={() => setPriorityOpen(!priorityOpen)}
+                className="mt-0.5 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
+              >
+                <span className={cn("h-2.5 w-2.5 rounded-full", priority.dotClass)} />
+                <span>{priority.label}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-auto text-muted-foreground"><path d="m6 9 6 6 6-6" /></svg>
+              </button>
+              {priorityOpen && (
+                <div className="absolute left-0 right-0 z-10 mt-1 rounded-lg border border-border bg-popover p-1 shadow-md">
+                  {priorityOptions.map((key) => {
+                    const p = priorityConfig[key]!;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => { handleUpdateField({ priority: key }); setPriorityOpen(false); }}
+                        className={cn(
+                          "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent",
+                          todo.priority === key && "bg-accent"
+                        )}
+                      >
+                        <span className={cn("h-2.5 w-2.5 rounded-full", p.dotClass)} />
+                        <span>{p.label}</span>
+                        {todo.priority === key && (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="ml-auto text-primary"><polyline points="20 6 9 17 4 12" /></svg>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="!mt-3 border-t border-border" />
 
             {/* Due Date */}
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Due Date</p>
-              {formattedDueDate ? (
-                <p className={cn(
-                  "mt-1.5 flex items-center gap-1.5 text-sm",
-                  isOverdue ? "text-red-600 dark:text-red-400" : "text-foreground"
-                )}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-                    <line x1="16" x2="16" y1="2" y2="6" />
-                    <line x1="8" x2="8" y1="2" y2="6" />
-                    <line x1="3" x2="21" y1="10" y2="10" />
-                  </svg>
-                  {formattedDueDate}
-                  {isOverdue && <span className="text-xs font-medium">(Overdue)</span>}
-                </p>
-              ) : (
-                <p className="mt-1.5 text-sm text-muted-foreground">No due date</p>
-              )}
+              <p className="px-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Due Date</p>
+              <div className="mt-0.5 px-1">
+                <DatePicker
+                  value={todo.dueDate ?? ""}
+                  onChange={(value) => handleUpdateField({ dueDate: value || null })}
+                  placeholder="Set due date"
+                  clearable={false}
+                  className={cn(
+                    "h-8 w-full text-xs",
+                    isOverdue && "border-red-500/50 text-red-600 dark:text-red-400"
+                  )}
+                />
+              </div>
             </div>
 
             {/* Do Date */}
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Do Date</p>
-              {formattedDoDate ? (
-                <p className="mt-1.5 flex items-center gap-1.5 text-sm text-foreground">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <polyline points="12 6 12 12 16 14" />
-                  </svg>
-                  {formattedDoDate}
-                </p>
-              ) : (
-                <p className="mt-1.5 text-sm text-muted-foreground">No do date</p>
-              )}
+              <p className="px-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Do Date</p>
+              <div className="mt-0.5 px-1">
+                <DatePicker
+                  value={todo.doDate ?? ""}
+                  onChange={(value) => handleUpdateField({ doDate: value || null })}
+                  placeholder="Set do date"
+                  clearable={false}
+                  className="h-8 w-full text-xs"
+                />
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between border-t border-border px-5 py-3">
-          <span className="text-xs text-muted-foreground">
-            Updated {formattedUpdatedAt}
-          </span>
-          <button
-            type="button"
-            onClick={handleDelete}
-            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 6h18" />
-              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-            </svg>
-            Delete
-          </button>
+            {/* Timestamps & Delete */}
+            <div className="!mt-3 space-y-2 border-t border-border pt-3">
+              <div className="flex items-center justify-between px-2">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Created</span>
+                <span className="text-xs text-muted-foreground">{formattedCreatedAt}</span>
+              </div>
+              <div className="flex items-center justify-between px-2">
+                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Updated</span>
+                <span className="text-xs text-muted-foreground">{formattedUpdatedAt}</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="!mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18" />
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+              </svg>
+              Delete
+            </button>
+          </div>
         </div>
       </div>
     </div>

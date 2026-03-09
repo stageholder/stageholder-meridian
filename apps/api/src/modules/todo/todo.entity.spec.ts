@@ -13,6 +13,7 @@ describe('Todo Entity', () => {
     assigneeId: 'user-456',
     creatorId: 'user-123',
     order: 1,
+    subtasks: [],
   };
 
   describe('create()', () => {
@@ -189,8 +190,6 @@ describe('Todo Entity', () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         const todo = result.value;
-        todo.updateStatus('in_progress');
-        expect(todo.status).toBe('in_progress');
         todo.updateStatus('done');
         expect(todo.status).toBe('done');
       }
