@@ -34,6 +34,7 @@ export function createTodosApi(client: AxiosInstance, getWorkspaceId: () => stri
       status?: string;
       priority?: string;
       dueDate?: string;
+      doDate?: string;
       assigneeId?: string;
     }): Promise<Todo> => {
       const res = await client.post(wp('/todos'), { ...data, listId });
@@ -53,6 +54,7 @@ export function createTodosApi(client: AxiosInstance, getWorkspaceId: () => stri
       status?: string;
       priority?: string;
       dueDate?: string;
+      doDate?: string;
       assigneeId?: string;
     }): Promise<Todo> => {
       const res = await client.patch(wp(`/todos/${todoId}`), data);

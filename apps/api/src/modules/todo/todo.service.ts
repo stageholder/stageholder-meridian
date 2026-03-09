@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { TodoRepository } from './todo.repository';
 import { Todo, TodoStatus } from './todo.entity';
 import { CreateTodoDto, UpdateTodoDto, ReorderTodosDto, CreateSubtaskDto, UpdateSubtaskDto, ReorderSubtasksDto } from './todo.dto';
@@ -12,6 +12,10 @@ export class TodoService {
 
   async create(workspaceId: string, userId: string, dto: CreateTodoDto): Promise<Todo> {
     await this.memberService.requireRole(workspaceId, userId, ['owner', 'admin', 'member']);
+    if (dto.assigneeId) {
+      const assigneeIsMember = await this.memberService.isMember(workspaceId, dto.assigneeId);
+      if (!assigneeIsMember) throw new BadRequestException('Assignee is not a member of this workspace');
+    }
     const order = await this.repository.countByList(dto.listId);
     const result = Todo.create({ title: dto.title, description: dto.description, status: dto.status || 'todo', priority: dto.priority || 'none', dueDate: dto.dueDate, doDate: dto.doDate, listId: dto.listId, workspaceId, assigneeId: dto.assigneeId, creatorId: userId, order });
     if (!result.ok) throw result.error;
@@ -41,6 +45,10 @@ export class TodoService {
 
   async update(id: string, workspaceId: string, userId: string, dto: UpdateTodoDto): Promise<Todo> {
     const todo = await this.findById(id, workspaceId, userId);
+    if (dto.assigneeId) {
+      const assigneeIsMember = await this.memberService.isMember(workspaceId, dto.assigneeId);
+      if (!assigneeIsMember) throw new BadRequestException('Assignee is not a member of this workspace');
+    }
     if (dto.title) todo.updateTitle(dto.title);
     if (dto.description !== undefined) todo.updateDescription(dto.description || undefined);
     if (dto.status) todo.updateStatus(dto.status as TodoStatus);

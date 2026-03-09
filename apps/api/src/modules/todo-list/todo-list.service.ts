@@ -3,11 +3,12 @@ import { TodoListRepository } from './todo-list.repository';
 import { TodoList } from './todo-list.entity';
 import { CreateTodoListDto, UpdateTodoListDto } from './todo-list.dto';
 import { WorkspaceMemberService } from '../workspace-member/workspace-member.service';
+import { TodoRepository } from '../todo/todo.repository';
 import { PaginatedResult, buildPaginationMeta, DEFAULT_PAGE, DEFAULT_LIMIT, MAX_LIMIT } from '../../shared';
 
 @Injectable()
 export class TodoListService {
-  constructor(private readonly repository: TodoListRepository, private readonly memberService: WorkspaceMemberService) {}
+  constructor(private readonly repository: TodoListRepository, private readonly memberService: WorkspaceMemberService, private readonly todoRepository: TodoRepository) {}
 
   private async ensureDefaultList(workspaceId: string, userId: string): Promise<void> {
     const existing = await this.repository.findDefaultByWorkspace(workspaceId);
@@ -59,6 +60,7 @@ export class TodoListService {
   async delete(id: string, workspaceId: string, userId: string): Promise<void> {
     const list = await this.findById(id, workspaceId, userId);
     if (list.isDefault) throw new ForbiddenException('Cannot delete the default Inbox list');
+    await this.todoRepository.deleteByList(id);
     await this.repository.delete(id);
   }
 }

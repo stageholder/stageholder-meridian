@@ -126,8 +126,8 @@ describe('Pagination', () => {
       expect(DEFAULT_LIMIT).toBe(20);
     });
 
-    it('should export MAX_LIMIT as 100', () => {
-      expect(MAX_LIMIT).toBe(100);
+    it('should export MAX_LIMIT as 500', () => {
+      expect(MAX_LIMIT).toBe(500);
     });
   });
 });

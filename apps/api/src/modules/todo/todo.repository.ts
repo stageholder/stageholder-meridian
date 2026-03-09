@@ -49,6 +49,10 @@ export class TodoRepository {
 
   async delete(id: string): Promise<void> { await this.model.updateOne({ _id: id }, { $set: { deleted_at: new Date() } }); }
 
+  async deleteByList(listId: string): Promise<void> {
+    await this.model.updateMany({ list_id: listId, deleted_at: null }, { $set: { deleted_at: new Date() } });
+  }
+
   private toDomain(doc: any): Todo {
     return Todo.reconstitute({ title: doc.title, description: doc.description, status: doc.status, priority: doc.priority, dueDate: doc.due_date, doDate: doc.do_date, listId: doc.list_id, workspaceId: doc.workspace_id, assigneeId: doc.assignee_id, creatorId: doc.creator_id, order: doc.order, subtasks: (doc.subtasks || []).map((s: any) => ({ id: s._id, title: s.title, status: s.status, priority: s.priority, order: s.order, createdAt: s.created_at, updatedAt: s.updated_at })), createdAt: doc.created_at, updatedAt: doc.updated_at }, doc._id);
   }
