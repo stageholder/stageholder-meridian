@@ -17,6 +17,7 @@ import { ActivityModule } from './modules/activity/activity.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { LightModule } from './modules/light/light.module';
+import { FeedbackModule } from './modules/feedback/feedback.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
 
@@ -45,6 +46,7 @@ import { RequestLoggerMiddleware } from './common/middleware/request-logger.midd
     NotificationModule,
     CalendarModule,
     LightModule,
+    FeedbackModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

@@ -29,6 +29,7 @@ import { getTierProgress, getNextTier } from "@repo/core/types/light";
 import { OfflineIndicator } from "@/components/shared/offline-indicator";
 import { DailyTargetRings } from "@/components/shared/daily-target-rings";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
+import { FeedbackButton } from "@/components/shared/feedback-button";
 import apiClient from "@/lib/api-client";
 import { clearLoggedInFlag } from "@/lib/auth-helpers";
 import { useAuthStore } from "@/stores/auth-store";
@@ -236,6 +237,11 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
           <div className="flex-1 overflow-y-auto py-1">
             <SidebarNav shortId={shortId} pathname={pathname} />
           </div>
+
+          {/* Feedback */}
+          <div className="border-t border-sidebar-border px-3 py-2">
+            <FeedbackButton />
+          </div>
         </aside>
 
         {/* Main content area */}
@@ -261,6 +267,9 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
                   </SheetTitle>
                 </SheetHeader>
                 <SidebarNav shortId={shortId} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+                <div className="mt-auto border-t border-sidebar-border px-3 py-2">
+                  <FeedbackButton onNavigate={() => setMobileOpen(false)} />
+                </div>
               </SheetContent>
             </Sheet>
 
