@@ -8,6 +8,13 @@ import { JournalList } from "@/components/journal/journal-list";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useWorkspace } from "@/lib/workspace-context";
 import type { Journal } from "@repo/core/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const moodOptions = [
   { value: 0, label: "All Moods" },
@@ -94,17 +101,21 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
               className="w-auto"
             />
           </div>
-          <select
-            value={moodFilter}
-            onChange={(e) => setMoodFilter(Number(e.target.value))}
-            className="rounded-lg border border-border bg-background px-2 py-1 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          <Select
+            value={String(moodFilter)}
+            onValueChange={(value) => setMoodFilter(Number(value))}
           >
-            {moodOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="h-7 w-auto rounded-lg border-border bg-background px-2 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {moodOptions.map((opt) => (
+                <SelectItem key={opt.value} value={String(opt.value)}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {(startDate || endDate || moodFilter !== 0) && (
             <button
               onClick={() => {

@@ -6,6 +6,13 @@ import apiClient from "@/lib/api-client";
 import { useWorkspace } from "@/lib/workspace-context";
 import { toast } from "sonner";
 import type { WorkspaceMember } from "@repo/core/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function MembersList() {
   const queryClient = useQueryClient();
@@ -103,15 +110,15 @@ export function MembersList() {
             <label htmlFor="invite-role" className="block text-sm font-medium text-foreground">
               Role
             </label>
-            <select
-              id="invite-role"
-              value={inviteRole}
-              onChange={(e) => setInviteRole(e.target.value)}
-              className="mt-1 block rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="member">Member</option>
-              <option value="admin">Admin</option>
-            </select>
+            <Select value={inviteRole} onValueChange={setInviteRole}>
+              <SelectTrigger className="mt-1 rounded-lg border-border bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <button
             type="submit"
@@ -144,20 +151,24 @@ export function MembersList() {
                   <tr key={member.id} className="border-b border-border last:border-0">
                     <td className="px-4 py-3 text-foreground">{member.email}</td>
                     <td className="px-4 py-3">
-                      <select
+                      <Select
                         value={member.role}
-                        onChange={(e) =>
+                        onValueChange={(role) =>
                           updateRole.mutate({
                             memberId: member.id,
-                            role: e.target.value,
+                            role,
                           })
                         }
-                        className="rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
                       >
-                        <option value="member">Member</option>
-                        <option value="admin">Admin</option>
-                        <option value="owner">Owner</option>
-                      </select>
+                        <SelectTrigger className="h-7 rounded border-border bg-background px-2 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="member">Member</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="owner">Owner</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex rounded-full bg-accent px-2 py-0.5 text-xs capitalize text-accent-foreground">

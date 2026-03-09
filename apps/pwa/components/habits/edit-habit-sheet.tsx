@@ -10,6 +10,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface EditHabitSheetProps {
   habit: Habit;
@@ -208,18 +215,21 @@ export function EditHabitSheet({ habit, open, onOpenChange }: EditHabitSheetProp
               <label htmlFor="edit-habit-freq" className="block text-sm font-medium text-foreground">
                 Frequency
               </label>
-              <select
-                id="edit-habit-freq"
+              <Select
                 value={frequency}
-                onChange={(e) => {
-                  setFrequency(e.target.value as Habit["frequency"]);
-                  if (e.target.value === "daily") setScheduledDays([]);
+                onValueChange={(value) => {
+                  setFrequency(value as Habit["frequency"]);
+                  if (value === "daily") setScheduledDays([]);
                 }}
-                className="mt-1 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               >
-                <option value="daily">Daily</option>
-                <option value="weekly">Specific days</option>
-              </select>
+                <SelectTrigger className="mt-1 w-full rounded-lg border-border bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Specific days</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="w-24">
               <label htmlFor="edit-habit-target" className="block text-sm font-medium text-foreground">

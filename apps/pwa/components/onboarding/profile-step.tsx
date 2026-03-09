@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import apiClient from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 import type { AuthUser } from "@repo/core/types";
+import { TimezoneSelect } from "@/components/ui/timezone-select";
 
 export function ProfileStep({ onContinue }: { onContinue: () => void }) {
   const user = useAuthStore((s) => s.user);
@@ -66,18 +67,11 @@ export function ProfileStep({ onContinue }: { onContinue: () => void }) {
           <label htmlFor="onboard-tz" className="block text-sm font-medium text-foreground">
             Timezone
           </label>
-          <select
-            id="onboard-tz"
+          <TimezoneSelect
             value={timezone}
-            onChange={(e) => setTimezone(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
-          >
-            {Intl.supportedValuesOf("timeZone").map((tz) => (
-              <option key={tz} value={tz}>
-                {tz}
-              </option>
-            ))}
-          </select>
+            onValueChange={setTimezone}
+            className="mt-1"
+          />
         </div>
       </div>
 

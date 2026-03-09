@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api-client";
 import { toast } from "sonner";
 import type { AuthUser } from "@repo/core/types";
+import { TimezoneSelect } from "@/components/ui/timezone-select";
 
 export function ProfileForm() {
   const queryClient = useQueryClient();
@@ -86,18 +87,11 @@ export function ProfileForm() {
         <label htmlFor="profile-timezone" className="block text-sm font-medium text-foreground">
           Timezone
         </label>
-        <select
-          id="profile-timezone"
+        <TimezoneSelect
           value={timezone}
-          onChange={(e) => setTimezone(e.target.value)}
-          className="mt-1 block w-full max-w-md rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-        >
-          {Intl.supportedValuesOf("timeZone").map((tz) => (
-            <option key={tz} value={tz}>
-              {tz}
-            </option>
-          ))}
-        </select>
+          onValueChange={setTimezone}
+          className="mt-1 max-w-md"
+        />
       </div>
 
       <button
