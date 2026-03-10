@@ -37,6 +37,11 @@ export class HabitRepository {
     return this.model.countDocuments({ workspace_id: workspaceId, creator_id: creatorId, deleted_at: null });
   }
 
+  async findIdsByWorkspaceCreator(workspaceId: string, creatorId: string): Promise<string[]> {
+    const docs = await this.model.find({ workspace_id: workspaceId, creator_id: creatorId, deleted_at: null }).select('_id').lean();
+    return docs.map((d) => d._id as string);
+  }
+
   async delete(id: string): Promise<void> { await this.model.updateOne({ _id: id }, { $set: { deleted_at: new Date() } }); }
 
   private toDomain(doc: any): Habit {

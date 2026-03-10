@@ -19,10 +19,14 @@ export function HabitSummary({ index = 0, className }: { index?: number; classNa
   const today = format(new Date(), "yyyy-MM-dd");
 
   const habitProgress = useMemo(() => {
-    if (!habits || !calendarData?.[today]) return new Map<string, number>();
-    const valueMap = new Map<string, number>();
+    if (!habits || !calendarData?.[today]) return new Map<string, { value: number; type?: string }>();
+    const valueMap = new Map<string, { value: number; type?: string }>();
     for (const entry of calendarData[today].habitEntries) {
-      valueMap.set(entry.habitId, (valueMap.get(entry.habitId) ?? 0) + entry.value);
+      const existing = valueMap.get(entry.habitId);
+      valueMap.set(entry.habitId, {
+        value: (existing?.value ?? 0) + entry.value,
+        type: entry.type || existing?.type || "completion",
+      });
     }
     return valueMap;
   }, [calendarData, habits, today]);
@@ -48,16 +52,27 @@ export function HabitSummary({ index = 0, className }: { index?: number; classNa
           habits.slice(0, 5).map((habit: Habit) => {
             const todayDow = new Date().getDay();
             const isScheduledToday = !habit.scheduledDays || habit.scheduledDays.length === 0 || habit.scheduledDays.includes(todayDow);
-            const value = habitProgress.get(habit.id) ?? 0;
+            const progress = habitProgress.get(habit.id);
+            const value = progress?.value ?? 0;
+            const isSkipped = progress?.type === "skip";
             const target = habit.targetCount;
             const pct = Math.min(100, target > 0 ? (value / target) * 100 : 0);
-            const isComplete = value >= target;
+            const isComplete = !isSkipped && value >= target;
 
             if (!isScheduledToday) {
               return (
                 <div key={habit.id} className="flex items-center gap-3">
                   <span className="flex-1 truncate text-sm text-muted-foreground">{habit.name}</span>
                   <span className="text-[10px] text-muted-foreground/60">Rest day</span>
+                </div>
+              );
+            }
+
+            if (isSkipped) {
+              return (
+                <div key={habit.id} className="flex items-center gap-3">
+                  <span className="flex-1 truncate text-sm text-muted-foreground">{habit.name}</span>
+                  <span className="text-[10px] text-muted-foreground/60">Skipped</span>
                 </div>
               );
             }

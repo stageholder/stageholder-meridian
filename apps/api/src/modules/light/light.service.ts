@@ -404,14 +404,19 @@ export class LightService {
     date: string,
     todoTarget?: number,
   ): Promise<{ todo: boolean; habit: boolean; journal: boolean }> {
-    const [todoEvents, habitEvents, journalEvents, totalHabits, skipCount] =
+    const [todoEvents, habitEvents, journalEvents, userHabitIds] =
       await Promise.all([
         this.lightEventRepo.countByUserActionDate(userId, 'todo_complete', date),
         this.lightEventRepo.countByUserActionDate(userId, 'habit_checkin', date),
         this.lightEventRepo.countByUserActionDate(userId, 'journal_entry', date),
-        this.habitRepo.countByWorkspaceCreator(workspaceId, userId),
-        this.habitEntryModel.countDocuments({ workspace_id: workspaceId, date, type: 'skip', deleted_at: null }),
+        this.habitRepo.findIdsByWorkspaceCreator(workspaceId, userId),
       ]);
+
+    const totalHabits = userHabitIds.length;
+    // Only count skips for this user's habits
+    const skipCount = totalHabits > 0
+      ? await this.habitEntryModel.countDocuments({ habit_id: { $in: userHabitIds }, date, type: 'skip', deleted_at: null })
+      : 0;
 
     const effectiveTodoTarget = todoTarget ?? DEFAULT_TARGETS.todoDaily;
 

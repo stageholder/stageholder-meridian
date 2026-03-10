@@ -80,7 +80,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
   });
 
   function handleCheckIn() {
-    if (isComplete || !isScheduledOnActiveDate) return;
+    if (isComplete || isSkipped || !isScheduledOnActiveDate) return;
 
     const dateLabel = isViewingToday ? habit.name : `${habit.name} (${activeDate})`;
     const onSuccess = () => {
