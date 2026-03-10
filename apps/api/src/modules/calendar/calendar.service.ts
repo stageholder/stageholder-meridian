@@ -8,7 +8,7 @@ import { WorkspaceMemberService } from '../workspace-member/workspace-member.ser
 export interface CalendarDayData {
   todos: Array<{ id: string; title: string; status: string; priority: string; dueDate?: string; doDate?: string; listId: string; subtasks?: Array<{ id: string; title: string; status: string }> }>;
   journals: Array<{ id: string; title: string; date: string; wordCount: number }>;
-  habitEntries: Array<{ id: string; habitId: string; habitName: string; value: number; date: string }>;
+  habitEntries: Array<{ id: string; habitId: string; habitName: string; value: number; type: string; date: string }>;
 }
 
 @Injectable()
@@ -65,7 +65,7 @@ export class CalendarService {
     for (const entry of habitEntries) {
       const obj = entry.toObject();
       const day = obj.date.split('T')[0] || obj.date;
-      getDay(day).habitEntries.push({ id: obj.id, habitId: obj.habitId, habitName: habitMap.get(obj.habitId) || 'Unknown', value: obj.value, date: obj.date });
+      getDay(day).habitEntries.push({ id: obj.id, habitId: obj.habitId, habitName: habitMap.get(obj.habitId) || 'Unknown', value: obj.value, type: obj.type || 'completion', date: obj.date });
     }
 
     return result;

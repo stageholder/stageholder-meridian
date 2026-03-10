@@ -175,3 +175,32 @@ export function useCreateHabitEntry() {
     },
   });
 }
+
+export function useSkipHabitEntry() {
+  const queryClient = useQueryClient();
+  const { workspace } = useWorkspace();
+
+  return useMutation({
+    mutationFn: async ({
+      habitId,
+      data,
+    }: {
+      habitId: string;
+      data: { date: string; skipReason?: string };
+    }) => {
+      const res = await apiClient.post(
+        `/workspaces/${workspace.id}/habits/${habitId}/entries`,
+        { date: data.date, value: 0, type: "skip", skipReason: data.skipReason }
+      );
+      return res.data as HabitEntry;
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: ["habitEntries", workspace.id, variables.habitId],
+      });
+      void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
+      void queryClient.invalidateQueries({ queryKey: ["calendar"] });
+      void queryClient.invalidateQueries({ queryKey: lightKeys.me });
+    },
+  });
+}

@@ -20,6 +20,8 @@ export interface HabitEntry {
   workspaceId: string;
   date: string;
   value: number;
+  type?: 'completion' | 'skip';
+  skipReason?: string;
   notes?: string;
   createdAt: string;
   updatedAt: string;

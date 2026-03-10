@@ -7,6 +7,7 @@ import { LightEventRepository } from './repository/light-event.repository';
 import { LightService } from './light.service';
 import { LightController } from './light.controller';
 import { HabitModule } from '../habit/habit.module';
+import { HabitEntryModel, HabitEntrySchema } from '../habit-entry/habit-entry.schema';
 import { UserModule } from '../user/user.module';
 import { NotificationModule } from '../notification/notification.module';
 
@@ -15,6 +16,7 @@ import { NotificationModule } from '../notification/notification.module';
     MongooseModule.forFeature([
       { name: UserLightModel.name, schema: UserLightSchema },
       { name: LightEventModel.name, schema: LightEventSchema },
+      { name: HabitEntryModel.name, schema: HabitEntrySchema },
     ]),
     HabitModule,
     UserModule,

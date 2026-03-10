@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { format, subDays, startOfWeek, addDays } from "date-fns";
 import Link from "next/link";
-import { MoreHorizontal, Undo2 } from "lucide-react";
+import { MoreHorizontal, SkipForward, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HabitProgress } from "./habit-progress";
 import { EditHabitSheet } from "./edit-habit-sheet";
 import {
   useCreateHabitEntry,
   useUpdateHabitEntry,
+  useSkipHabitEntry,
   useHabitEntries,
   useDeleteHabit,
 } from "@/lib/api/habits";
@@ -43,6 +44,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
 
   const createEntry = useCreateHabitEntry();
   const updateEntry = useUpdateHabitEntry();
+  const skipEntry = useSkipHabitEntry();
   const deleteHabit = useDeleteHabit();
   const [editOpen, setEditOpen] = useState(false);
   const [bouncing, setBouncing] = useState(false);
@@ -52,7 +54,8 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
     (e: HabitEntry) => e.date.split("T")[0] === activeDate
   );
   const activeDateValue = activeDateEntry?.value ?? 0;
-  const isComplete = activeDateValue >= habit.targetCount;
+  const isSkipped = activeDateEntry?.type === "skip";
+  const isComplete = !isSkipped && activeDateValue >= habit.targetCount;
   const activeDateObj = selectedDate ? new Date(selectedDate + "T00:00:00") : new Date();
   const activeDow = activeDateObj.getDay();
   const isScheduledOnActiveDate = !habit.scheduledDays || habit.scheduledDays.length === 0 || habit.scheduledDays.includes(activeDow);
@@ -70,6 +73,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
       label: format(date, "EEEEE"),
       dateStr,
       value: entry?.value ?? 0,
+      type: entry?.type as "completion" | "skip" | undefined,
       isToday: dateStr === today,
       isScheduled,
     };
@@ -106,6 +110,17 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
     }
   }
 
+  function handleSkip() {
+    if (isComplete || isSkipped || !isScheduledOnActiveDate || activeDateEntry) return;
+    skipEntry.mutate(
+      { habitId: habit.id, data: { date: activeDate } },
+      {
+        onSuccess: () => toast.success(`Skipped ${habit.name}`),
+        onError: () => toast.error("Failed to skip"),
+      }
+    );
+  }
+
   function handleUndo() {
     if (!activeDateEntry || activeDateValue <= 0) return;
 
@@ -132,7 +147,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
     });
   }
 
-  const isPending = createEntry.isPending || updateEntry.isPending;
+  const isPending = createEntry.isPending || updateEntry.isPending || skipEntry.isPending;
   const habitColor = habit.color || "#3b82f6";
 
   return (
@@ -195,10 +210,21 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
         <div className="mt-3 flex justify-between px-1">
           {weekDays.map((day) => {
             const ratio = habit.targetCount > 0 ? day.value / habit.targetCount : 0;
+            const isDaySkipped = day.type === "skip";
             return (
               <div key={day.dateStr} className="flex flex-col items-center gap-1">
                 <span className={cn("text-[10px]", day.isScheduled ? "text-muted-foreground" : "text-muted-foreground/40")}>{day.label}</span>
-                {ratio >= 1 ? (
+                {isDaySkipped ? (
+                  <div
+                    className={cn(
+                      "flex h-3.5 w-3.5 items-center justify-center rounded-full border border-dashed border-muted-foreground/40",
+                      day.isToday && "ring-1 ring-offset-1 ring-offset-background"
+                    )}
+                    title="Skipped"
+                  >
+                    <span className="text-[8px] leading-none text-muted-foreground">—</span>
+                  </div>
+                ) : ratio >= 1 ? (
                   <span className="text-sm leading-none" title={`${day.value}/${habit.targetCount}`}>🔥</span>
                 ) : (
                 <div
@@ -231,7 +257,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
               : `${habit.targetCount}x target`}
           </span>
           <div className="flex items-center gap-1.5">
-            {activeDateValue > 0 && (
+            {activeDateValue > 0 && !isSkipped && (
               <button
                 onClick={handleUndo}
                 disabled={isPending}
@@ -241,47 +267,65 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
                 <Undo2 className="size-3" />
               </button>
             )}
-            {!isScheduledOnActiveDate && !isComplete ? (
+            {isSkipped ? (
+              <span className="flex items-center gap-1 rounded-lg bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                <SkipForward className="size-3" />
+                Skipped
+              </span>
+            ) : !isScheduledOnActiveDate && !isComplete ? (
               <span className="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground">
                 Rest day
               </span>
             ) : (
-            <button
-              onClick={handleCheckIn}
-              disabled={isComplete || isPending}
-              className={cn(
-                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
-                bouncing && "animate-bounce",
-                isComplete
-                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                  : "bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            <>
+              {!isComplete && !activeDateEntry && isScheduledOnActiveDate && (
+                <button
+                  onClick={handleSkip}
+                  disabled={isPending}
+                  className="flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-xs text-muted-foreground transition-all hover:bg-accent hover:text-foreground disabled:opacity-50"
+                  title="Skip today"
+                >
+                  <SkipForward className="size-3" />
+                  Skip
+                </button>
               )}
-            >
-              {isComplete ? (
-                <>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  Complete
-                </>
-              ) : isPending ? (
-                "Checking..."
-              ) : habit.targetCount > 1 ? (
-                `${activeDateValue}/${habit.targetCount}`
-              ) : (
-                "Check In"
-              )}
-            </button>
+              <button
+                onClick={handleCheckIn}
+                disabled={isComplete || isPending}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
+                  bouncing && "animate-bounce",
+                  isComplete
+                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                    : "bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                )}
+              >
+                {isComplete ? (
+                  <>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    Complete
+                  </>
+                ) : isPending ? (
+                  "Checking..."
+                ) : habit.targetCount > 1 ? (
+                  `${activeDateValue}/${habit.targetCount}`
+                ) : (
+                  "Check In"
+                )}
+              </button>
+            </>
             )}
           </div>
         </div>
@@ -299,10 +343,14 @@ function calculateStreak(
 ): number {
   if (entries.length === 0) return 0;
 
-  const entryMap = new Map<string, number>();
+  const entryMap = new Map<string, { value: number; type?: string }>();
   for (const e of entries) {
     const dateStr = e.date.split("T")[0]!;
-    entryMap.set(dateStr, (entryMap.get(dateStr) ?? 0) + e.value);
+    const existing = entryMap.get(dateStr);
+    entryMap.set(dateStr, {
+      value: (existing?.value ?? 0) + e.value,
+      type: e.type || existing?.type || "completion",
+    });
   }
 
   const hasSchedule = scheduledDays && scheduledDays.length > 0;
@@ -312,7 +360,10 @@ function calculateStreak(
   // If today is scheduled and completed, count it
   const todayDow = today.getDay();
   const todayIsScheduled = !hasSchedule || scheduledDays!.includes(todayDow);
-  const todayCompleted = todayIsScheduled && (entryMap.get(todayStr) ?? 0) >= targetCount;
+  const todayEntry = entryMap.get(todayStr);
+  const todayIsSkipped = todayEntry?.type === "skip";
+  const todayCompleted = todayIsScheduled && !todayIsSkipped && (todayEntry?.value ?? 0) >= targetCount;
+  // Skipped today: don't break streak but don't count it either
   let streak = todayCompleted ? 1 : 0;
 
   for (let i = 1; i <= 90; i++) {
@@ -323,7 +374,12 @@ function calculateStreak(
     if (hasSchedule && !scheduledDays!.includes(dow)) continue;
 
     const checkDate = format(checkDay, "yyyy-MM-dd");
-    const dayValue = entryMap.get(checkDate) ?? 0;
+    const dayEntry = entryMap.get(checkDate);
+
+    // Skipped day: preserve streak but don't increment
+    if (dayEntry?.type === "skip") continue;
+
+    const dayValue = dayEntry?.value ?? 0;
     if (dayValue >= targetCount) {
       streak++;
     } else {

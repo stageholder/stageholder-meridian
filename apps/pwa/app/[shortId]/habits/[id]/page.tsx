@@ -14,7 +14,7 @@ import {
   isFuture,
   isToday as isTodayFn,
 } from "date-fns";
-import { ArrowLeft, ChevronLeft, ChevronRight, Undo2 } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, SkipForward, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EditHabitSheet } from "@/components/habits/edit-habit-sheet";
 import {
@@ -22,6 +22,7 @@ import {
   useHabitEntries,
   useCreateHabitEntry,
   useUpdateHabitEntry,
+  useSkipHabitEntry,
   useDeleteHabit,
 } from "@/lib/api/habits";
 import { useWorkspace } from "@/lib/workspace-context";
@@ -37,6 +38,7 @@ export default function HabitDetailPage() {
   const deleteHabit = useDeleteHabit();
   const createEntry = useCreateHabitEntry();
   const updateEntry = useUpdateHabitEntry();
+  const skipEntryMutation = useSkipHabitEntry();
   const [editOpen, setEditOpen] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -57,21 +59,29 @@ export default function HabitDetailPage() {
     endDate: calMonthEnd,
   });
 
-  // Build entry map for quick lookup
+  // Build entry map for quick lookup (stores value + type for streak/skip logic)
   const entryMap = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, { value: number; type?: string }>();
     for (const e of allEntries || []) {
       const dateStr = e.date.split("T")[0]!;
-      map.set(dateStr, (map.get(dateStr) ?? 0) + e.value);
+      const existing = map.get(dateStr);
+      map.set(dateStr, {
+        value: (existing?.value ?? 0) + e.value,
+        type: e.type || existing?.type || "completion",
+      });
     }
     return map;
   }, [allEntries]);
 
   const monthEntryMap = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, { value: number; type?: string }>();
     for (const e of monthEntries || []) {
       const dateStr = e.date.split("T")[0]!;
-      map.set(dateStr, (map.get(dateStr) ?? 0) + e.value);
+      const existing = map.get(dateStr);
+      map.set(dateStr, {
+        value: (existing?.value ?? 0) + e.value,
+        type: e.type || existing?.type || "completion",
+      });
     }
     return map;
   }, [monthEntries]);
@@ -95,21 +105,25 @@ export default function HabitDetailPage() {
     const now = new Date();
     const todayStr = format(now, "yyyy-MM-dd");
 
-    // Current streak (skips non-scheduled days)
+    // Current streak (skips non-scheduled days; skip entries preserve but don't extend)
     const todayDow = now.getDay();
     const todayIsScheduled = !hasSchedule || habit.scheduledDays!.includes(todayDow);
-    const todayCompleted = todayIsScheduled && (entryMap.get(todayStr) ?? 0) >= target;
+    const todayEntry = entryMap.get(todayStr);
+    const todayIsSkipped = todayEntry?.type === "skip";
+    const todayCompleted = todayIsScheduled && !todayIsSkipped && (todayEntry?.value ?? 0) >= target;
     let currentStreak = todayCompleted ? 1 : 0;
     for (let i = 1; i <= 90; i++) {
       const checkDay = subDays(now, i);
       const dow = checkDay.getDay();
       if (hasSchedule && !habit.scheduledDays!.includes(dow)) continue;
       const d = format(checkDay, "yyyy-MM-dd");
-      if ((entryMap.get(d) ?? 0) >= target) currentStreak++;
+      const dayEntry = entryMap.get(d);
+      if (dayEntry?.type === "skip") continue; // skip preserves streak
+      if ((dayEntry?.value ?? 0) >= target) currentStreak++;
       else break;
     }
 
-    // Longest streak + total completions (skips non-scheduled days)
+    // Longest streak + total completions (skip entries preserve but don't extend)
     let longestStreak = 0;
     let tempStreak = 0;
     let totalCompletions = 0;
@@ -118,7 +132,9 @@ export default function HabitDetailPage() {
       const dow = checkDay.getDay();
       if (hasSchedule && !habit.scheduledDays!.includes(dow)) continue;
       const d = format(checkDay, "yyyy-MM-dd");
-      if ((entryMap.get(d) ?? 0) >= target) {
+      const dayEntry = entryMap.get(d);
+      if (dayEntry?.type === "skip") continue; // skip preserves streak
+      if ((dayEntry?.value ?? 0) >= target) {
         tempStreak++;
         totalCompletions++;
         longestStreak = Math.max(longestStreak, tempStreak);
@@ -154,12 +170,18 @@ export default function HabitDetailPage() {
       .slice(0, 20);
   }, [allEntries]);
 
-  const isMutating = createEntry.isPending || updateEntry.isPending;
+  const isMutating = createEntry.isPending || updateEntry.isPending || skipEntryMutation.isPending;
 
   function handleDateCheckIn(dateStr: string) {
     if (!habit) return;
     const existing = monthEntryObjMap.get(dateStr);
-    const currentVal = monthEntryMap.get(dateStr) ?? 0;
+    const currentEntry = monthEntryMap.get(dateStr);
+    const currentVal = currentEntry?.value ?? 0;
+
+    if (currentEntry?.type === "skip") {
+      toast.info("This day was skipped");
+      return;
+    }
 
     if (currentVal >= habit.targetCount) {
       toast.info("Already completed for this date");
@@ -185,8 +207,9 @@ export default function HabitDetailPage() {
   function handleDateUndo(dateStr: string) {
     if (!habit) return;
     const existing = monthEntryObjMap.get(dateStr);
-    const currentVal = monthEntryMap.get(dateStr) ?? 0;
-    if (!existing || currentVal <= 0) return;
+    const currentEntry = monthEntryMap.get(dateStr);
+    if (!existing || !currentEntry || currentEntry.type === "skip" || currentEntry.value <= 0) return;
+    const currentVal = currentEntry.value;
 
     updateEntry.mutate(
       { habitId: habit.id, entryId: existing.id, data: { value: currentVal - 1 } },
@@ -318,10 +341,12 @@ export default function HabitDetailPage() {
             ))}
             {calendarDays.days.map((day) => {
               const dateStr = format(day, "yyyy-MM-dd");
-              const value = monthEntryMap.get(dateStr) ?? 0;
+              const monthEntry = monthEntryMap.get(dateStr);
+              const value = monthEntry?.value ?? 0;
+              const isDaySkipped = monthEntry?.type === "skip";
               const ratio = habit.targetCount > 0 ? value / habit.targetCount : 0;
-              const isComplete = ratio >= 1;
-              const isPartial = ratio > 0 && ratio < 1;
+              const isComplete = !isDaySkipped && ratio >= 1;
+              const isPartial = !isDaySkipped && ratio > 0 && ratio < 1;
               const isDayToday = dateStr === today;
               const isFutureDay = isFuture(day) && !isTodayFn(day);
               const isSelected = selectedDate === dateStr;
@@ -343,7 +368,8 @@ export default function HabitDetailPage() {
                       isDayToday && !isSelected && "ring-2 ring-primary",
                       isSelected && "ring-2 ring-foreground scale-110",
                       isComplete && "text-white font-semibold",
-                      !isComplete && !isPartial && "text-muted-foreground",
+                      isDaySkipped && "border-2 border-dashed border-muted-foreground/40 text-muted-foreground",
+                      !isComplete && !isPartial && !isDaySkipped && "text-muted-foreground",
                       isPartial && "font-medium text-foreground",
                       !isFutureDay && "cursor-pointer hover:scale-110",
                       isFutureDay && "opacity-20 cursor-not-allowed",
@@ -355,12 +381,14 @@ export default function HabitDetailPage() {
                           ? { backgroundColor: habitColor + "25" }
                           : undefined
                     }
-                    title={`${dateStr}: ${value}/${habit.targetCount}${!isScheduled ? " (rest day)" : ""}${isFutureDay ? " (future)" : ""}`}
+                    title={`${dateStr}: ${isDaySkipped ? "Skipped" : `${value}/${habit.targetCount}`}${!isScheduled ? " (rest day)" : ""}${isFutureDay ? " (future)" : ""}`}
                   >
                     {isComplete ? (
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
+                    ) : isDaySkipped ? (
+                      <span className="text-[9px]">—</span>
                     ) : (
                       day.getDate()
                     )}
@@ -372,11 +400,15 @@ export default function HabitDetailPage() {
 
           {/* Selected date action panel */}
           {selectedDate && (() => {
-            const selValue = monthEntryMap.get(selectedDate) ?? 0;
-            const selComplete = habit.targetCount > 0 && selValue >= habit.targetCount;
+            const selEntry = monthEntryMap.get(selectedDate);
+            const selValue = selEntry?.value ?? 0;
+            const selIsSkipped = selEntry?.type === "skip";
+            const selComplete = !selIsSkipped && habit.targetCount > 0 && selValue >= habit.targetCount;
             const selDow = getDay(new Date(selectedDate + "T00:00:00"));
             const hasSchedule = habit.scheduledDays && habit.scheduledDays.length > 0;
             const selScheduled = !hasSchedule || habit.scheduledDays!.includes(selDow);
+            const selIsToday = selectedDate === today;
+            const selHasEntry = !!monthEntryObjMap.get(selectedDate);
 
             return (
               <div className="mt-4 flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2.5">
@@ -385,12 +417,12 @@ export default function HabitDetailPage() {
                     {format(new Date(selectedDate + "T00:00:00"), "MMM d, yyyy")}
                   </span>
                   <span className="text-[10px] text-muted-foreground">
-                    {selValue}/{habit.targetCount}
+                    {selIsSkipped ? "Skipped" : `${selValue}/${habit.targetCount}`}
                     {!selScheduled && " · Rest day"}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  {selValue > 0 && (
+                  {selValue > 0 && !selIsSkipped && (
                     <button
                       onClick={() => handleDateUndo(selectedDate)}
                       disabled={isMutating}
@@ -400,7 +432,12 @@ export default function HabitDetailPage() {
                       Undo
                     </button>
                   )}
-                  {selComplete ? (
+                  {selIsSkipped ? (
+                    <span className="flex items-center gap-1 rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                      <SkipForward className="size-3" />
+                      Skipped
+                    </span>
+                  ) : selComplete ? (
                     <span className="flex items-center gap-1 rounded-md bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="20 6 9 17 4 12" />
@@ -408,13 +445,33 @@ export default function HabitDetailPage() {
                       Done
                     </span>
                   ) : (
-                    <button
-                      onClick={() => handleDateCheckIn(selectedDate)}
-                      disabled={isMutating}
-                      className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                    >
-                      {isMutating ? "..." : "Record"}
-                    </button>
+                    <>
+                      {selIsToday && !selHasEntry && selScheduled && (
+                        <button
+                          onClick={() => {
+                            skipEntryMutation.mutate(
+                              { habitId: habit.id, data: { date: selectedDate } },
+                              {
+                                onSuccess: () => toast.success(`Skipped for ${selectedDate}`),
+                                onError: () => toast.error("Failed to skip"),
+                              }
+                            );
+                          }}
+                          disabled={isMutating}
+                          className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+                        >
+                          <SkipForward className="size-3" />
+                          Skip
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDateCheckIn(selectedDate)}
+                        disabled={isMutating}
+                        className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        {isMutating ? "..." : "Record"}
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -431,7 +488,8 @@ export default function HabitDetailPage() {
             <div className="mt-3 space-y-1.5 overflow-y-auto max-h-[320px] pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-track]:bg-transparent">
               {recentEntries.map((entry: HabitEntry) => {
                 const dateStr = entry.date.split("T")[0]!;
-                const isComplete = entry.value >= habit.targetCount;
+                const entryIsSkip = entry.type === "skip";
+                const isComplete = !entryIsSkip && entry.value >= habit.targetCount;
                 return (
                   <div
                     key={entry.id}
@@ -441,7 +499,11 @@ export default function HabitDetailPage() {
                       <div
                         className={cn(
                           "h-2 w-2 rounded-full",
-                          isComplete ? "bg-green-500" : "bg-orange-400"
+                          entryIsSkip
+                            ? "bg-muted-foreground/40"
+                            : isComplete
+                              ? "bg-green-500"
+                              : "bg-orange-400"
                         )}
                       />
                       <span className="text-sm text-foreground">
@@ -449,10 +511,19 @@ export default function HabitDetailPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
-                        {entry.value}/{habit.targetCount}
-                      </span>
-                      {entry.notes && (
+                      {entryIsSkip ? (
+                        <span className="text-xs text-muted-foreground">Skipped</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          {entry.value}/{habit.targetCount}
+                        </span>
+                      )}
+                      {entry.skipReason && (
+                        <span className="max-w-[120px] truncate text-xs text-muted-foreground">
+                          {entry.skipReason}
+                        </span>
+                      )}
+                      {entry.notes && !entryIsSkip && (
                         <span className="max-w-[120px] truncate text-xs text-muted-foreground">
                           {entry.notes}
                         </span>

@@ -15,10 +15,13 @@ export class HabitEntryService {
     await this.memberService.requireRole(workspaceId, userId, ['owner', 'admin', 'member']);
     const existing = await this.repository.findByHabitAndDate(habitId, dto.date);
     if (existing) throw new ConflictException('Entry already exists for this habit on this date');
-    const result = HabitEntry.create({ habitId, date: dto.date, value: dto.value, notes: dto.notes, workspaceId });
+    const isSkip = dto.type === 'skip';
+    const result = HabitEntry.create({ habitId, date: dto.date, value: isSkip ? 0 : dto.value, type: dto.type, skipReason: dto.skipReason, notes: dto.notes, workspaceId });
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);
-    await this.lightService.awardHabitCheckin(userId, workspaceId, habitId, result.value.id).catch((err) => this.logger.warn('Failed to award light', err.message));
+    if (!isSkip) {
+      await this.lightService.awardHabitCheckin(userId, workspaceId, habitId, result.value.id).catch((err) => this.logger.warn('Failed to award light', err.message));
+    }
     return result.value;
   }
 

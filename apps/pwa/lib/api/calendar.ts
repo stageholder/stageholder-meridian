@@ -5,7 +5,7 @@ import { useWorkspace } from "@/lib/workspace-context";
 export interface CalendarDayData {
   todos: Array<{ id: string; title: string; status: string; priority: string; dueDate?: string; doDate?: string; listId: string }>;
   journals: Array<{ id: string; title: string; date: string; wordCount: number }>;
-  habitEntries: Array<{ id: string; habitId: string; habitName: string; value: number; date: string }>;
+  habitEntries: Array<{ id: string; habitId: string; habitName: string; value: number; type?: string; date: string }>;
 }
 
 export type CalendarData = Record<string, CalendarDayData>;

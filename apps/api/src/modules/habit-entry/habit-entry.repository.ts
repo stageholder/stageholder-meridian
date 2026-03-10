@@ -10,7 +10,7 @@ export class HabitEntryRepository {
 
   async save(entry: HabitEntry): Promise<void> {
     const data = entry.toObject();
-    await this.model.updateOne({ _id: data.id }, { $set: { habit_id: data.habitId, date: data.date, value: data.value, notes: data.notes, workspace_id: data.workspaceId } }, { upsert: true });
+    await this.model.updateOne({ _id: data.id }, { $set: { habit_id: data.habitId, date: data.date, value: data.value, type: data.type || 'completion', skip_reason: data.skipReason, notes: data.notes, workspace_id: data.workspaceId } }, { upsert: true });
   }
 
   async findById(id: string): Promise<HabitEntry | null> {
@@ -46,7 +46,11 @@ export class HabitEntryRepository {
 
   async delete(id: string): Promise<void> { await this.model.updateOne({ _id: id }, { $set: { deleted_at: new Date() } }); }
 
+  async countSkipsByWorkspaceCreatorAndDate(workspaceId: string, date: string): Promise<number> {
+    return this.model.countDocuments({ workspace_id: workspaceId, date, type: 'skip', deleted_at: null });
+  }
+
   private toDomain(doc: any): HabitEntry {
-    return HabitEntry.reconstitute({ habitId: doc.habit_id, date: doc.date, value: doc.value, notes: doc.notes, workspaceId: doc.workspace_id, createdAt: doc.created_at, updatedAt: doc.updated_at }, doc._id);
+    return HabitEntry.reconstitute({ habitId: doc.habit_id, date: doc.date, value: doc.value, type: doc.type || 'completion', skipReason: doc.skip_reason, notes: doc.notes, workspaceId: doc.workspace_id, createdAt: doc.created_at, updatedAt: doc.updated_at }, doc._id);
   }
 }

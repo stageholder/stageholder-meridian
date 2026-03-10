@@ -14,6 +14,8 @@ export class HabitEntryModel {
   @Prop({ type: String, required: true, index: true }) habit_id: string;
   @Prop({ type: String, required: true }) date: string;
   @Prop({ type: Number, required: true }) value: number;
+  @Prop({ type: String, default: 'completion' }) type: string;
+  @Prop({ type: String }) skip_reason: string;
   @Prop({ type: String }) notes: string;
   @Prop({ type: String, required: true, index: true }) workspace_id: string;
   @Prop({ type: Date, default: null }) deleted_at: Date;

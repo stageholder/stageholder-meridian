@@ -1,8 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { format, subDays } from 'date-fns';
 import { UserLightRepository } from './repository/user-light.repository';
 import { LightEventRepository } from './repository/light-event.repository';
 import { HabitRepository } from '../habit/habit.repository';
+import { HabitEntryModel, HabitEntryDocument } from '../habit-entry/habit-entry.schema';
 import { UserService } from '../user/user.service';
 import { NotificationService } from '../notification/notification.service';
 import { UserLight } from './domain/user-light.entity';
@@ -24,6 +27,7 @@ export class LightService {
     private readonly userLightRepo: UserLightRepository,
     private readonly lightEventRepo: LightEventRepository,
     private readonly habitRepo: HabitRepository,
+    @InjectModel(HabitEntryModel.name) private readonly habitEntryModel: Model<HabitEntryDocument>,
     private readonly userService: UserService,
     private readonly notificationService: NotificationService,
   ) {}
@@ -400,20 +404,21 @@ export class LightService {
     date: string,
     todoTarget?: number,
   ): Promise<{ todo: boolean; habit: boolean; journal: boolean }> {
-    const [todoEvents, habitEvents, journalEvents, totalHabits] =
+    const [todoEvents, habitEvents, journalEvents, totalHabits, skipCount] =
       await Promise.all([
         this.lightEventRepo.countByUserActionDate(userId, 'todo_complete', date),
         this.lightEventRepo.countByUserActionDate(userId, 'habit_checkin', date),
         this.lightEventRepo.countByUserActionDate(userId, 'journal_entry', date),
         this.habitRepo.countByWorkspaceCreator(workspaceId, userId),
+        this.habitEntryModel.countDocuments({ workspace_id: workspaceId, date, type: 'skip', deleted_at: null }),
       ]);
 
     const effectiveTodoTarget = todoTarget ?? DEFAULT_TARGETS.todoDaily;
 
     return {
       todo: todoEvents >= effectiveTodoTarget,
-      // Habit ring complete if all habits checked in, or no habits exist
-      habit: totalHabits === 0 || habitEvents >= totalHabits,
+      // Habit ring complete if all habits checked in or skipped, or no habits exist
+      habit: totalHabits === 0 || (habitEvents + skipCount) >= totalHabits,
       journal: journalEvents > 0,
     };
   }

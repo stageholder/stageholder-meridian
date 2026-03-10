@@ -33,7 +33,8 @@ export function computeActivityRings(
   const todoPct = Math.min(100, (todoDone / targets.todoDaily) * 100);
 
   const habitDone = dayData.habitEntries.filter((e) => e.value > 0).length;
-  const habitPct = scheduledHabitCount === 0 ? 0 : Math.min(100, (habitDone / scheduledHabitCount) * 100);
+  const habitSkipped = dayData.habitEntries.filter((e) => e.type === "skip").length;
+  const habitPct = scheduledHabitCount === 0 ? 0 : Math.min(100, ((habitDone + habitSkipped) / scheduledHabitCount) * 100);
 
   const journalWords = dayData.journals.reduce((sum, j) => sum + (j.wordCount ?? 0), 0);
   // Journal ring is binary: complete if any journal entry exists for the day
@@ -64,7 +65,7 @@ export function useActivityRings(date: string) {
 
   const details = useMemo(() => {
     const todoDone = dayData?.todos.filter((t) => t.status === "done").length ?? 0;
-    const habitDone = dayData?.habitEntries.filter((e) => e.value > 0).length ?? 0;
+    const habitDone = (dayData?.habitEntries.filter((e) => e.value > 0).length ?? 0) + (dayData?.habitEntries.filter((e) => e.type === "skip").length ?? 0);
     const journalWords = dayData?.journals.reduce((sum, j) => sum + (j.wordCount ?? 0), 0) ?? 0;
     const hasJournal = (dayData?.journals.length ?? 0) > 0;
     return {

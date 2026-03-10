@@ -4,6 +4,8 @@ export interface HabitEntryProps extends EntityProps {
   habitId: string;
   date: string;
   value: number;
+  type?: 'completion' | 'skip';
+  skipReason?: string;
   notes?: string;
   workspaceId: string;
 }
@@ -14,6 +16,8 @@ export class HabitEntry extends Entity<HabitEntryProps> {
   get habitId(): string { return this.get('habitId'); }
   get date(): string { return this.get('date'); }
   get value(): number { return this.get('value'); }
+  get type(): 'completion' | 'skip' { return this.get('type') || 'completion'; }
+  get skipReason(): string | undefined { return this.get('skipReason'); }
   get notes(): string | undefined { return this.get('notes'); }
   get workspaceId(): string { return this.get('workspaceId'); }
 
@@ -25,6 +29,7 @@ export class HabitEntry extends Entity<HabitEntryProps> {
     if (!props.date) return Err(new Error('Date is required'));
     if (props.value === undefined || props.value === null) return Err(new Error('Value is required'));
     if (!props.workspaceId) return Err(new Error('Workspace is required'));
+    if (props.type === 'skip') props.value = 0;
     return Ok(new HabitEntry(props as HabitEntryProps));
   }
 

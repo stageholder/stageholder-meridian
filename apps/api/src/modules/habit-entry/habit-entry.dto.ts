@@ -3,6 +3,8 @@ import { z } from 'zod';
 export const CreateHabitEntryDto = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
   value: z.number().min(0),
+  type: z.enum(['completion', 'skip']).optional().default('completion'),
+  skipReason: z.string().max(200).optional(),
   notes: z.string().max(1000).optional(),
 });
 export type CreateHabitEntryDto = z.infer<typeof CreateHabitEntryDto>;

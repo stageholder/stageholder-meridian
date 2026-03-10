@@ -139,19 +139,24 @@ export function DayPanel({ date, dayData, habits }: DayPanelProps) {
         </div>
         {dayData.habitEntries.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-2">
-            {dayData.habitEntries.map((entry) => (
-              <span
-                key={entry.id}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium",
-                  entry.value > 0
-                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                    : "bg-muted text-muted-foreground"
-                )}
-              >
-                {entry.value > 0 ? "\u2713" : "\u2717"} {entry.habitName}
-              </span>
-            ))}
+            {dayData.habitEntries.map((entry) => {
+              const isSkip = entry.type === "skip";
+              return (
+                <span
+                  key={entry.id}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium",
+                    isSkip
+                      ? "border border-dashed border-muted-foreground/40 bg-muted/50 text-muted-foreground"
+                      : entry.value > 0
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                        : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {isSkip ? "Skipped" : entry.value > 0 ? "\u2713" : "\u2717"} {entry.habitName}
+                </span>
+              );
+            })}
           </div>
         ) : (
           <p className="mt-2 text-xs text-muted-foreground">No habit entries</p>
