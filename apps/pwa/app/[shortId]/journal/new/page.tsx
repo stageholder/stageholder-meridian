@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { format, parseISO, addDays, nextMonday } from "date-fns";
 import { ArrowLeft, X } from "lucide-react";
@@ -40,6 +40,14 @@ function getDateInfo(dateStr: string) {
 }
 
 export default function NewJournalPage() {
+  return (
+    <Suspense>
+      <NewJournalContent />
+    </Suspense>
+  );
+}
+
+function NewJournalContent() {
   const { workspace } = useWorkspace();
   const router = useRouter();
   const searchParams = useSearchParams();

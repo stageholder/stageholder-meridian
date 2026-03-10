@@ -7,9 +7,10 @@ import { cn } from "@/lib/utils";
 import { useHabits } from "@/lib/api/habits";
 import { useCalendarData } from "@/lib/api/calendar";
 import { useWorkspace } from "@/lib/workspace-context";
+import { BentoCard } from "./bento-card";
 import type { Habit } from "@repo/core/types";
 
-export function HabitSummary() {
+export function HabitSummary({ index = 0, className }: { index?: number; className?: string }) {
   const { workspace } = useWorkspace();
   const { data: habits, isLoading: habitsLoading } = useHabits();
   const currentMonth = format(new Date(), "yyyy-MM");
@@ -17,100 +18,74 @@ export function HabitSummary() {
 
   const today = format(new Date(), "yyyy-MM-dd");
 
-  const completedHabitIds = useMemo(() => {
-    const ids = new Set<string>();
-    if (!calendarData || !calendarData[today]) return ids;
-
-    const todayEntries = calendarData[today].habitEntries;
-    // Aggregate values per habitId
+  const habitProgress = useMemo(() => {
+    if (!habits || !calendarData?.[today]) return new Map<string, number>();
     const valueMap = new Map<string, number>();
-    for (const entry of todayEntries) {
+    for (const entry of calendarData[today].habitEntries) {
       valueMap.set(entry.habitId, (valueMap.get(entry.habitId) ?? 0) + entry.value);
     }
-
-    // Cross-reference with habits to check completion
-    if (habits) {
-      for (const habit of habits) {
-        const val = valueMap.get(habit.id) ?? 0;
-        if (val >= habit.targetCount) {
-          ids.add(habit.id);
-        }
-      }
-    }
-
-    return ids;
+    return valueMap;
   }, [calendarData, habits, today]);
-
-  const checkedInHabitIds = useMemo(() => {
-    const ids = new Set<string>();
-    if (!calendarData || !calendarData[today]) return ids;
-    for (const entry of calendarData[today].habitEntries) {
-      ids.add(entry.habitId);
-    }
-    return ids;
-  }, [calendarData, today]);
 
   const isLoading = habitsLoading || calendarLoading;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">Habits Today</h3>
+    <BentoCard
+      title="Habits Today"
+      href={`/${workspace.shortId}/habits`}
+      index={index}
+      className={className}
+      action={
         <Link href={`/${workspace.shortId}/habits`} className="text-xs text-primary hover:underline">
           View all
         </Link>
-      </div>
-
-      <div className="mt-4 space-y-2">
+      }
+    >
+      <div className="space-y-3">
         {isLoading ? (
           <p className="text-xs text-muted-foreground">Loading...</p>
         ) : habits && habits.length > 0 ? (
           habits.slice(0, 5).map((habit: Habit) => {
             const todayDow = new Date().getDay();
             const isScheduledToday = !habit.scheduledDays || habit.scheduledDays.length === 0 || habit.scheduledDays.includes(todayDow);
-            const isComplete = completedHabitIds.has(habit.id);
-            const hasEntry = checkedInHabitIds.has(habit.id);
+            const value = habitProgress.get(habit.id) ?? 0;
+            const target = habit.targetCount;
+            const pct = Math.min(100, target > 0 ? (value / target) * 100 : 0);
+            const isComplete = value >= target;
 
             if (!isScheduledToday) {
               return (
                 <div key={habit.id} className="flex items-center gap-3">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground text-xs">
-                    <span className="block h-2 w-2 rounded-full bg-current opacity-40" />
-                  </div>
-                  <span className="text-sm text-muted-foreground">{habit.name}</span>
+                  <span className="flex-1 truncate text-sm text-muted-foreground">{habit.name}</span>
                   <span className="text-[10px] text-muted-foreground/60">Rest day</span>
                 </div>
               );
             }
 
             return (
-              <div key={habit.id} className="flex items-center gap-3">
-                <div
-                  className={cn(
-                    "flex h-6 w-6 items-center justify-center rounded-full text-xs",
-                    isComplete
-                      ? "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
-                      : hasEntry
-                        ? "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
-                        : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {isComplete ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  ) : (
-                    <span className="block h-2 w-2 rounded-full bg-current" />
-                  )}
+              <div key={habit.id} className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span
+                    className={cn(
+                      "truncate text-sm",
+                      isComplete ? "text-muted-foreground line-through" : "text-foreground"
+                    )}
+                  >
+                    {habit.name}
+                  </span>
+                  <span className="ml-2 shrink-0 text-xs text-muted-foreground tabular-nums">
+                    {value}/{target}
+                  </span>
                 </div>
-                <span
-                  className={cn(
-                    "text-sm",
-                    isComplete ? "text-muted-foreground line-through" : "text-foreground"
-                  )}
-                >
-                  {habit.name}
-                </span>
+                <div className="h-1.5 w-full rounded-full bg-muted">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all",
+                      isComplete ? "bg-green-500 dark:bg-green-400" : "bg-orange-500 dark:bg-orange-400"
+                    )}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
               </div>
             );
           })
@@ -118,6 +93,6 @@ export function HabitSummary() {
           <p className="text-xs text-muted-foreground">No habits to track yet.</p>
         )}
       </div>
-    </div>
+    </BentoCard>
   );
 }
