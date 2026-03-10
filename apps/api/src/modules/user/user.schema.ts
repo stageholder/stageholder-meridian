@@ -29,6 +29,7 @@ export class UserModel {
   @Prop({ type: String }) timezone: string;
   @Prop({ type: Boolean, default: false }) onboarding_completed: boolean;
   @Prop({ type: String }) refresh_token_hash: string;
+  @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(UserModel);

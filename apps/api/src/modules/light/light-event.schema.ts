@@ -19,6 +19,7 @@ export class LightEventModel {
   @Prop({ type: Number, required: true }) total_light: number;
   @Prop({ type: String, required: true, index: true }) date: string;
   @Prop({ type: Object }) metadata: Record<string, unknown>;
+  @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 
 export const LightEventSchema = SchemaFactory.createForClass(LightEventModel);

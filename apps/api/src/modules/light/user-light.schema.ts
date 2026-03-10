@@ -24,6 +24,7 @@ export class UserLightModel {
   @Prop({ type: Number, default: 0 }) perfect_days_total: number;
   @Prop({ type: Number, default: 3 }) todo_target_daily: number;
   @Prop({ type: Number, default: 150 }) journal_target_daily_words: number;
+  @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 
 export const UserLightSchema = SchemaFactory.createForClass(UserLightModel);

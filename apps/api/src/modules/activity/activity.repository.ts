@@ -14,13 +14,13 @@ export class ActivityRepository {
   }
 
   async findByWorkspace(workspaceId: string, page: number, limit: number): Promise<{ docs: Activity[]; total: number }> {
-    const total = await this.model.countDocuments({ workspace_id: workspaceId });
-    const docs = await this.model.find({ workspace_id: workspaceId }).sort({ created_at: -1 }).skip((page - 1) * limit).limit(limit).lean();
+    const total = await this.model.countDocuments({ workspace_id: workspaceId, deleted_at: null });
+    const docs = await this.model.find({ workspace_id: workspaceId, deleted_at: null }).sort({ created_at: -1 }).skip((page - 1) * limit).limit(limit).lean();
     return { docs: docs.map((doc) => this.toDomain(doc)), total };
   }
 
   async findByEntity(entityType: string, entityId: string): Promise<Activity[]> {
-    const docs = await this.model.find({ entity_type: entityType, entity_id: entityId }).sort({ created_at: -1 }).lean();
+    const docs = await this.model.find({ entity_type: entityType, entity_id: entityId, deleted_at: null }).sort({ created_at: -1 }).lean();
     return docs.map((doc) => this.toDomain(doc));
   }
 

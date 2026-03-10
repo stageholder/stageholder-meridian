@@ -14,6 +14,9 @@ export function createNotificationsApi(client: AxiosInstance) {
     markAllRead: async (): Promise<void> => {
       await client.post('/notifications/mark-all-read');
     },
+    markAsRead: async (id: string): Promise<void> => {
+      await client.patch(`/notifications/${id}/read`);
+    },
   };
 }
 

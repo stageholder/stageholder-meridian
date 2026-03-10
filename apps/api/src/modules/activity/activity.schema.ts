@@ -19,6 +19,7 @@ export class ActivityModel {
   @Prop({ type: MongooseSchema.Types.Mixed }) changes: Record<string, { from: unknown; to: unknown }>;
   @Prop({ type: MongooseSchema.Types.Mixed }) metadata: Record<string, unknown>;
   @Prop({ type: String, required: true, index: true }) workspace_id: string;
+  @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 
 export const ActivitySchema = SchemaFactory.createForClass(ActivityModel);

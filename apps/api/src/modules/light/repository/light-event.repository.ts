@@ -14,18 +14,18 @@ export class LightEventRepository {
   }
 
   async findByUser(userId: string, limit: number, offset: number): Promise<{ docs: LightEvent[]; total: number }> {
-    const total = await this.model.countDocuments({ user_id: userId });
-    const docs = await this.model.find({ user_id: userId }).sort({ created_at: -1 }).skip(offset).limit(limit).lean();
+    const total = await this.model.countDocuments({ user_id: userId, deleted_at: null });
+    const docs = await this.model.find({ user_id: userId, deleted_at: null }).sort({ created_at: -1 }).skip(offset).limit(limit).lean();
     return { docs: docs.map((doc) => this.toDomain(doc)), total };
   }
 
   async existsForEntityOnDate(userId: string, action: string, date: string, entityId: string): Promise<boolean> {
-    const doc = await this.model.findOne({ user_id: userId, action, date, 'metadata.entityId': entityId }).lean();
+    const doc = await this.model.findOne({ user_id: userId, action, date, 'metadata.entityId': entityId, deleted_at: null }).lean();
     return !!doc;
   }
 
   async countByUserActionDate(userId: string, action: string, date: string): Promise<number> {
-    return this.model.countDocuments({ user_id: userId, action, date });
+    return this.model.countDocuments({ user_id: userId, action, date, deleted_at: null });
   }
 
   private toDomain(doc: any): LightEvent {

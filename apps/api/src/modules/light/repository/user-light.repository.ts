@@ -14,7 +14,7 @@ export class UserLightRepository {
   }
 
   async findByUserId(userId: string): Promise<UserLight | null> {
-    const doc = await this.model.findOne({ user_id: userId }).lean();
+    const doc = await this.model.findOne({ user_id: userId, deleted_at: null }).lean();
     return doc ? this.toDomain(doc) : null;
   }
 

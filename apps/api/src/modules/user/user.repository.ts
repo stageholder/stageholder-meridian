@@ -35,18 +35,18 @@ export class UserRepository {
   }
 
   async findById(id: string): Promise<User | null> {
-    const doc = await this.model.findById(id).lean();
+    const doc = await this.model.findById(id).where({ deleted_at: null }).lean();
     return doc ? this.toDomain(doc) : null;
   }
 
   async findByIds(ids: string[]): Promise<User[]> {
     if (ids.length === 0) return [];
-    const docs = await this.model.find({ _id: { $in: ids } }).lean();
+    const docs = await this.model.find({ _id: { $in: ids }, deleted_at: null }).lean();
     return docs.map((doc) => this.toDomain(doc));
   }
 
   async findByProviderId(provider: string, providerId: string): Promise<User | null> {
-    const doc = await this.model.findOne({ provider, provider_id: providerId }).lean();
+    const doc = await this.model.findOne({ provider, provider_id: providerId, deleted_at: null }).lean();
     return doc ? this.toDomain(doc) : null;
   }
 
