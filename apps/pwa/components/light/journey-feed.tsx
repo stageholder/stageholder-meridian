@@ -3,15 +3,17 @@
 import { useState } from 'react';
 import { useLightEvents } from '@/lib/api/light';
 import { format, parseISO } from 'date-fns';
+import { CheckCircle2, Plus, Target, BookOpen, Star, Flame, CircleDot } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-const ACTION_LABELS: Record<string, string> = {
-  todo_complete: 'Completed todo',
-  habit_checkin: 'Habit check-in',
-  journal_entry: 'Journal entry',
-  perfect_day: 'Perfect Day bonus',
-  ring_streak_bonus: 'Streak milestone',
-  todo_create: 'Todo Created',
-  ring_completion_bonus: 'Ring Completed',
+const ACTION_CONFIG: Record<string, { label: string; icon: typeof Star; color: string }> = {
+  todo_complete: { label: 'Completed todo', icon: CheckCircle2, color: 'text-blue-500' },
+  todo_create: { label: 'Todo created', icon: Plus, color: 'text-blue-400' },
+  habit_checkin: { label: 'Habit check-in', icon: Target, color: 'text-orange-500' },
+  journal_entry: { label: 'Journal entry', icon: BookOpen, color: 'text-emerald-500' },
+  perfect_day: { label: 'Perfect Day', icon: Star, color: 'text-amber-500' },
+  ring_streak_bonus: { label: 'Streak milestone', icon: Flame, color: 'text-red-500' },
+  ring_completion_bonus: { label: 'Ring completed', icon: CircleDot, color: 'text-purple-500' },
 };
 
 const INITIAL_LIMIT = 10;
@@ -34,7 +36,6 @@ export function JourneyFeed() {
     );
   }
 
-  // Group events by date
   const grouped = events.reduce<Record<string, typeof events>>((acc, event) => {
     const dateKey = format(parseISO(event.createdAt), 'yyyy-MM-dd');
     if (!acc[dateKey]) acc[dateKey] = [];
@@ -56,34 +57,42 @@ export function JourneyFeed() {
 
         return (
           <div key={dateKey}>
-            {/* Day header */}
-            <div className="flex items-center justify-between border-b pb-1">
+            <div className="flex items-center justify-between border-b border-border pb-1.5">
               <span className="text-sm font-medium text-foreground">
                 {format(parseISO(dateKey), 'MMM d, yyyy')}
               </span>
-              <span className="text-sm font-semibold text-amber-500 tabular-nums">
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 tabular-nums dark:bg-amber-900/30 dark:text-amber-400">
                 +{dayTotal} Light
               </span>
             </div>
 
-            {/* Events */}
             <div className="mt-2 space-y-1.5">
-              {dayEvents.map((event) => (
-                <div
-                  key={event.id}
-                  className="flex items-center justify-between text-sm"
-                >
-                  <span className="text-muted-foreground">
-                    {ACTION_LABELS[event.action] ?? event.action}
-                  </span>
-                  <span className="tabular-nums text-muted-foreground">
-                    {event.baseLight} x {event.multiplier} ={' '}
-                    <span className="font-medium text-foreground">
-                      {event.totalLight}
+              {dayEvents.map((event) => {
+                const config = ACTION_CONFIG[event.action] ?? {
+                  label: event.action,
+                  icon: Star,
+                  color: 'text-muted-foreground',
+                };
+                const Icon = config.icon;
+
+                return (
+                  <div
+                    key={event.id}
+                    className="flex items-center gap-2.5 rounded-lg px-1 py-1 text-sm"
+                  >
+                    <Icon className={cn('size-3.5 shrink-0', config.color)} />
+                    <span className="flex-1 text-foreground">
+                      {config.label}
                     </span>
-                  </span>
-                </div>
-              ))}
+                    <span className="shrink-0 tabular-nums text-muted-foreground">
+                      {event.baseLight} x {event.multiplier} ={' '}
+                      <span className="font-medium text-foreground">
+                        {event.totalLight}
+                      </span>
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
@@ -91,7 +100,7 @@ export function JourneyFeed() {
       {hasMore && (
         <button
           onClick={() => setLimit((l) => l + LOAD_MORE)}
-          className="w-full rounded-md py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="w-full rounded-lg border border-border py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           Show more
         </button>

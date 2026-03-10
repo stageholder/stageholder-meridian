@@ -50,13 +50,16 @@ export function ActivityRings({ date, size = "xl", showLabels, className }: Acti
     <div className={cn("rounded-xl border border-border bg-card p-5", className)}>
       <div className="flex flex-col items-center gap-5 sm:flex-row">
         <ActivityRingsVisual data={data} size={size} />
-        <div className="flex min-w-[180px] flex-col gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
           {CATEGORIES.map(({ key, label, color, icon: Icon }) => (
             <div key={key} className="flex items-center gap-3">
               <Icon className="size-4 shrink-0" style={{ color }} />
-              <span className="text-sm font-medium text-foreground">{label}</span>
-              <span className="ml-auto text-sm tabular-nums text-muted-foreground">{fractions[key]}</span>
-              <span className="text-sm font-semibold tabular-nums text-foreground">{percentages[key]}%</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-foreground">{label}</p>
+                <p className="text-xs tabular-nums text-muted-foreground">
+                  {fractions[key]} · {percentages[key]}%
+                </p>
+              </div>
             </div>
           ))}
         </div>
