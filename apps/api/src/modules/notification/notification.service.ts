@@ -36,6 +36,14 @@ export class NotificationService {
     return { data: docs.map((d) => d.toObject()), meta: buildPaginationMeta(total, p, l) };
   }
 
+  async markAsRead(userId: string, id: string): Promise<void> {
+    const notification = await this.repository.findById(id);
+    if (!notification) throw new Error('Notification not found');
+    if (notification.recipientId !== userId) throw new Error('Notification not found');
+    notification.markAsRead();
+    await this.repository.save(notification);
+  }
+
   async getUnreadCount(userId: string): Promise<number> {
     return this.repository.countUnread(userId);
   }

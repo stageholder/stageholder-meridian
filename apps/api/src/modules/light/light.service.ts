@@ -3,6 +3,7 @@ import { format, subDays } from 'date-fns';
 import { UserLightRepository } from './repository/user-light.repository';
 import { LightEventRepository } from './repository/light-event.repository';
 import { HabitRepository } from '../habit/habit.repository';
+import { UserService } from '../user/user.service';
 import { UserLight } from './domain/user-light.entity';
 import { LightEvent, LightAction } from './domain/light-event.entity';
 import {
@@ -19,6 +20,7 @@ export class LightService {
     private readonly userLightRepo: UserLightRepository,
     private readonly lightEventRepo: LightEventRepository,
     private readonly habitRepo: HabitRepository,
+    private readonly userService: UserService,
   ) {}
 
   async getOrCreateUserLight(userId: string): Promise<UserLight> {
@@ -52,7 +54,7 @@ export class LightService {
     todoId: string,
     priority: string,
   ): Promise<void> {
-    const date = this.getToday();
+    const date = await this.getTodayForUser(userId);
     const exists = await this.lightEventRepo.existsForEntityOnDate(
       userId,
       'todo_complete',
@@ -74,7 +76,7 @@ export class LightService {
     habitId: string,
     entryId: string,
   ): Promise<void> {
-    const date = this.getToday();
+    const date = await this.getTodayForUser(userId);
     const exists = await this.lightEventRepo.existsForEntityOnDate(
       userId,
       'habit_checkin',
@@ -94,7 +96,7 @@ export class LightService {
     workspaceId: string,
     journalId: string,
   ): Promise<void> {
-    const date = this.getToday();
+    const date = await this.getTodayForUser(userId);
     const exists = await this.lightEventRepo.existsForEntityOnDate(
       userId,
       'journal_entry',
@@ -115,7 +117,8 @@ export class LightService {
     dateOverride?: string,
   ): Promise<void> {
     const userLight = await this.getOrCreateUserLight(userId);
-    await this.evaluateDayForEntity(userLight, userId, workspaceId, rings, dateOverride);
+    const date = dateOverride ?? await this.getTodayForUser(userId);
+    await this.evaluateDayForEntity(userLight, userId, workspaceId, rings, date);
   }
 
   private async evaluateDayForEntity(
@@ -284,9 +287,25 @@ export class LightService {
     };
   }
 
-  // TODO: getToday() uses server UTC time. When user timezone plumbing is available,
-  // accept an optional timezone parameter and compute the local date accordingly.
-  private getToday(): string {
+  private async getTodayForUser(userId: string): Promise<string> {
+    const user = await this.userService.findById(userId);
+    return this.getToday(user?.timezone);
+  }
+
+  private getToday(timezone?: string): string {
+    if (timezone) {
+      try {
+        const formatter = new Intl.DateTimeFormat('en-CA', {
+          timeZone: timezone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        });
+        return formatter.format(new Date());
+      } catch {
+        // Fall back to UTC if timezone is invalid
+      }
+    }
     return format(new Date(), 'yyyy-MM-dd');
   }
 }

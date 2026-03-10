@@ -66,6 +66,31 @@ export function createTodosApi(client: AxiosInstance, getWorkspaceId: () => stri
     reorderTodos: async (_listId: string, data: { todoIds: string[] }): Promise<void> => {
       await client.post(wp('/todos/reorder'), data);
     },
+
+    // Subtasks
+    addSubtask: async (todoId: string, data: {
+      title: string;
+      priority?: string;
+    }): Promise<Todo> => {
+      const res = await client.post(wp(`/todos/${todoId}/subtasks`), data);
+      return res.data;
+    },
+    updateSubtask: async (todoId: string, subtaskId: string, data: {
+      title?: string;
+      status?: string;
+      priority?: string;
+    }): Promise<Todo> => {
+      const res = await client.patch(wp(`/todos/${todoId}/subtasks/${subtaskId}`), data);
+      return res.data;
+    },
+    removeSubtask: async (todoId: string, subtaskId: string): Promise<Todo> => {
+      const res = await client.delete(wp(`/todos/${todoId}/subtasks/${subtaskId}`));
+      return res.data;
+    },
+    reorderSubtasks: async (todoId: string, data: { items: { id: string; order: number }[] }): Promise<Todo> => {
+      const res = await client.post(wp(`/todos/${todoId}/subtasks/reorder`), data);
+      return res.data;
+    },
   };
 }
 

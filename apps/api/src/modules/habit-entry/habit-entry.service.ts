@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { HabitEntryRepository } from './habit-entry.repository';
 import { HabitEntry } from './habit-entry.entity';
 import { CreateHabitEntryDto, UpdateHabitEntryDto } from './habit-entry.dto';
@@ -8,6 +8,7 @@ import { PaginatedResult, buildPaginationMeta, DEFAULT_PAGE, DEFAULT_LIMIT, MAX_
 
 @Injectable()
 export class HabitEntryService {
+  private readonly logger = new Logger(HabitEntryService.name);
   constructor(private readonly repository: HabitEntryRepository, private readonly memberService: WorkspaceMemberService, private readonly lightService: LightService) {}
 
   async create(habitId: string, workspaceId: string, userId: string, dto: CreateHabitEntryDto): Promise<HabitEntry> {
@@ -17,7 +18,7 @@ export class HabitEntryService {
     const result = HabitEntry.create({ habitId, date: dto.date, value: dto.value, notes: dto.notes, workspaceId });
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);
-    await this.lightService.awardHabitCheckin(userId, workspaceId, habitId, result.value.id).catch(() => {});
+    await this.lightService.awardHabitCheckin(userId, workspaceId, habitId, result.value.id).catch((err) => this.logger.warn('Failed to award light', err.message));
     return result.value;
   }
 

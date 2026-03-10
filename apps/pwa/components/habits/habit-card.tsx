@@ -164,7 +164,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
           </Link>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground">
+              <button className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Habit options">
                 <MoreHorizontal className="size-4" />
               </button>
             </DropdownMenuTrigger>

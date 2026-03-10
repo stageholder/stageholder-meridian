@@ -17,8 +17,17 @@ export class WorkspaceRepository {
   async findById(id: string): Promise<Workspace | null> {
     const doc = await this.model.findById(id).where({ deleted_at: null }).lean();
     if (!doc) return null;
-    await this.backfillShortId(doc);
+    if (!doc.short_id) await this.backfillShortId(doc);
     return this.toDomain(doc);
+  }
+
+  async findByIds(ids: string[]): Promise<Workspace[]> {
+    if (ids.length === 0) return [];
+    const docs = await this.model.find({ _id: { $in: ids }, deleted_at: null }).lean();
+    for (const doc of docs) {
+      if (!doc.short_id) await this.backfillShortId(doc);
+    }
+    return docs.map((doc) => this.toDomain(doc));
   }
 
   async findByShortId(shortId: string): Promise<Workspace | null> {

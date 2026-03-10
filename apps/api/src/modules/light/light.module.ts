@@ -7,6 +7,7 @@ import { LightEventRepository } from './repository/light-event.repository';
 import { LightService } from './light.service';
 import { LightController } from './light.controller';
 import { HabitModule } from '../habit/habit.module';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { HabitModule } from '../habit/habit.module';
       { name: LightEventModel.name, schema: LightEventSchema },
     ]),
     HabitModule,
+    UserModule,
   ],
   controllers: [LightController],
   providers: [UserLightRepository, LightEventRepository, LightService],

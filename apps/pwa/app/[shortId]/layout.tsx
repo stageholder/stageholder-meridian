@@ -201,7 +201,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
   }, [shortId, router, setActiveWorkspace]);
 
   async function handleLogout() {
-    try { await apiClient.post("/auth/logout"); } catch { /* ignore */ }
+    try { await apiClient.post("/auth/logout"); } catch (err) { console.warn("Server-side logout failed, proceeding with local cleanup:", err); }
     clearUser();
     localStorage.removeItem("auth-storage");
     localStorage.removeItem("workspace-storage");

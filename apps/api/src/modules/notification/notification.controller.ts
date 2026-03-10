@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Query } from '@nestjs/common';
+import { Controller, Get, Param, Patch, Query } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { CurrentUserId } from '../../common/decorators/current-user.decorator';
 
@@ -16,6 +16,12 @@ export class NotificationController {
   async unreadCount(@CurrentUserId() userId: string) {
     const count = await this.service.getUnreadCount(userId);
     return { count };
+  }
+
+  @Patch(':id/read')
+  async markAsRead(@CurrentUserId() userId: string, @Param('id') id: string) {
+    await this.service.markAsRead(userId, id);
+    return { success: true };
   }
 
   @Patch('read-all')

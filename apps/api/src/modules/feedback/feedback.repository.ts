@@ -16,4 +16,15 @@ export class FeedbackRepository {
       { upsert: true },
     );
   }
+
+  async findAllPaginated(page: number, limit: number): Promise<{ docs: Feedback[]; total: number }> {
+    const filter = { deleted_at: null };
+    const total = await this.model.countDocuments(filter);
+    const docs = await this.model.find(filter).sort({ created_at: -1 }).skip((page - 1) * limit).limit(limit).lean();
+    return { docs: docs.map((doc) => this.toDomain(doc)), total };
+  }
+
+  private toDomain(doc: any): Feedback {
+    return Feedback.reconstitute({ userId: doc.user_id, type: doc.type, message: doc.message, createdAt: doc.created_at, updatedAt: doc.updated_at }, doc._id);
+  }
 }

@@ -76,7 +76,7 @@ export function DailyTargetRings() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="flex items-center gap-1 rounded-md px-1 py-1 transition-colors hover:bg-accent">
+        <button className="flex items-center gap-1 rounded-md px-1 py-1 transition-colors hover:bg-accent" aria-label="View daily targets">
           <CircleProgress
             percent={data.todo}
             color="var(--ring-todo)"

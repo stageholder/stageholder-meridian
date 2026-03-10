@@ -15,7 +15,7 @@ export function CalendarView() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
   const monthKey = format(currentMonth, "yyyy-MM");
-  const { data: calendarData, isLoading } = useCalendarData(monthKey);
+  const { data: calendarData, isLoading, isError } = useCalendarData(monthKey);
   const { data: habits } = useHabits();
   const habitsList = habits ?? [];
 
@@ -40,6 +40,10 @@ export function CalendarView() {
       {isLoading ? (
         <div className="flex h-[400px] items-center justify-center">
           <p className="text-sm text-muted-foreground">Loading calendar...</p>
+        </div>
+      ) : isError ? (
+        <div className="flex h-[400px] items-center justify-center">
+          <p className="text-sm text-destructive">Failed to load calendar. Please try refreshing the page.</p>
         </div>
       ) : (
         <CalendarGrid

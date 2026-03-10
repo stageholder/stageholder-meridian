@@ -7,10 +7,11 @@ import { useAllTodos, useTodoLists } from "@/lib/api/todos";
 import type { Todo, TodoList } from "@repo/core/types";
 
 export function TodayContent() {
-  const { data: todos, isLoading: todosLoading } = useAllTodos();
-  const { data: lists, isLoading: listsLoading } = useTodoLists();
+  const { data: todos, isLoading: todosLoading, isError: todosError } = useAllTodos();
+  const { data: lists, isLoading: listsLoading, isError: listsError } = useTodoLists();
 
   const isLoading = todosLoading || listsLoading;
+  const isError = todosError || listsError;
 
   const today = format(new Date(), "yyyy-MM-dd");
 
@@ -59,6 +60,8 @@ export function TodayContent() {
 
       {isLoading ? (
         <div className="mt-3 text-sm text-muted-foreground">Loading todos...</div>
+      ) : isError ? (
+        <div className="mt-3 text-sm text-destructive">Failed to load todos. Please try refreshing the page.</div>
       ) : (
         <div className="mt-3 space-y-6">
           {sortedListIds.map((listId) => {

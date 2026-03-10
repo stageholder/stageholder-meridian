@@ -1,8 +1,8 @@
 import { Controller, Post, Get, Patch, Body, Query, Req, Res, UnauthorizedException } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, SocialLoginDto } from './auth.dto';
-import { RegisterDto as RegisterSchema, LoginDto as LoginSchema, SocialLoginDto as SocialLoginSchema } from './auth.dto';
+import { RegisterDto, LoginDto, SocialLoginDto, RefreshDto, UpdateProfileDto } from './auth.dto';
+import { RegisterDto as RegisterSchema, LoginDto as LoginSchema, SocialLoginDto as SocialLoginSchema, RefreshDto as RefreshSchema, UpdateProfileDto as UpdateProfileSchema } from './auth.dto';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUserId } from '../../common/decorators/current-user.decorator';
@@ -75,7 +75,7 @@ export class AuthController {
 
   @Public()
   @Post('refresh')
-  async refresh(@Req() req: Request, @Body() body: { refreshToken?: string }, @Res({ passthrough: true }) res: Response) {
+  async refresh(@Req() req: Request, @Body(new ZodValidationPipe(RefreshSchema)) body: RefreshDto, @Res({ passthrough: true }) res: Response) {
     const refreshToken = getRefreshTokenFromCookie(req) || body.refreshToken;
     if (!refreshToken) { clearAuthCookies(res); throw new UnauthorizedException('No refresh token provided'); }
     const { user, tokens } = await this.authService.refreshToken(refreshToken);
@@ -100,7 +100,7 @@ export class AuthController {
   }
 
   @Patch('me')
-  async updateProfile(@CurrentUserId() userId: string, @Body() body: { name?: string; avatar?: string; timezone?: string }) {
+  async updateProfile(@CurrentUserId() userId: string, @Body(new ZodValidationPipe(UpdateProfileSchema)) body: UpdateProfileDto) {
     const user = await this.authService.updateProfile(userId, body);
     return toUserResponse(user);
   }

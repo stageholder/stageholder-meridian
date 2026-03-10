@@ -6,7 +6,8 @@
       "WebFetch(domain:ui.shadcn.com)",
       "Bash(bunx tsc:*)",
       "Bash(grep:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

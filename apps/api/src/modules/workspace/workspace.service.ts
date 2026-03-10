@@ -32,9 +32,8 @@ export class WorkspaceService {
 
   async findByUser(userId: string): Promise<Workspace[]> {
     const memberships = await this.memberService.getUserMemberships(userId);
-    const workspaces: Workspace[] = [];
-    for (const m of memberships) { const ws = await this.repository.findById(m.workspaceId); if (ws) workspaces.push(ws); }
-    return workspaces;
+    const workspaceIds = memberships.map((m) => m.workspaceId);
+    return this.repository.findByIds(workspaceIds);
   }
 
   async findById(id: string, userId?: string): Promise<Workspace> {

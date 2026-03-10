@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { TodoRepository } from './todo.repository';
 import { Todo, TodoStatus } from './todo.entity';
 import { CreateTodoDto, UpdateTodoDto, ReorderTodosDto, CreateSubtaskDto, UpdateSubtaskDto, ReorderSubtasksDto } from './todo.dto';
@@ -8,6 +8,7 @@ import { PaginatedResult, buildPaginationMeta, DEFAULT_PAGE, DEFAULT_LIMIT, MAX_
 
 @Injectable()
 export class TodoService {
+  private readonly logger = new Logger(TodoService.name);
   constructor(private readonly repository: TodoRepository, private readonly memberService: WorkspaceMemberService, private readonly lightService: LightService) {}
 
   async create(workspaceId: string, userId: string, dto: CreateTodoDto): Promise<Todo> {
@@ -58,7 +59,7 @@ export class TodoService {
     if (dto.assigneeId !== undefined) todo.updateAssigneeId(dto.assigneeId || undefined);
     await this.repository.save(todo);
     if (dto.status === 'done') {
-      this.lightService.awardTodoComplete(userId, workspaceId, id, todo.priority).catch(() => {});
+      this.lightService.awardTodoComplete(userId, workspaceId, id, todo.priority).catch((err) => this.logger.warn('Failed to award light', err.message));
     }
     return todo;
   }
@@ -68,7 +69,7 @@ export class TodoService {
     todo.updateStatus(status);
     await this.repository.save(todo);
     if (status === 'done') {
-      this.lightService.awardTodoComplete(userId, workspaceId, id, todo.priority).catch(() => {});
+      this.lightService.awardTodoComplete(userId, workspaceId, id, todo.priority).catch((err) => this.logger.warn('Failed to award light', err.message));
     }
     return todo;
   }
@@ -92,7 +93,7 @@ export class TodoService {
   async addSubtask(todoId: string, workspaceId: string, userId: string, dto: CreateSubtaskDto): Promise<Todo> {
     const todo = await this.findById(todoId, workspaceId, userId);
     const result = todo.addSubtask(dto.title, dto.priority);
-    if (!result.ok) throw new Error(result.error.message);
+    if (!result.ok) throw new BadRequestException(result.error.message);
     await this.repository.save(todo);
     return todo;
   }

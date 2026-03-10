@@ -21,3 +21,15 @@ export const SocialLoginDto = z.object({
   message: 'Either idToken or accessToken is required',
 });
 export type SocialLoginDto = z.infer<typeof SocialLoginDto>;
+
+export const RefreshDto = z.object({
+  refreshToken: z.string().optional(),
+});
+export type RefreshDto = z.infer<typeof RefreshDto>;
+
+export const UpdateProfileDto = z.object({
+  name: z.string().min(1).max(100).optional(),
+  avatar: z.string().url().optional(),
+  timezone: z.string().max(100).optional(),
+});
+export type UpdateProfileDto = z.infer<typeof UpdateProfileDto>;
