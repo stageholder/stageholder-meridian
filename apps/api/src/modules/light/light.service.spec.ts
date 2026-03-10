@@ -35,24 +35,31 @@ const mockLightEventRepo = {
 
 const mockHabitRepo = {
   countByCreator: vi.fn(),
+  countByWorkspaceCreator: vi.fn(),
 };
 
 const mockUserService = {
   findById: vi.fn(),
 };
 
+const mockNotificationService = {
+  create: vi.fn().mockResolvedValue(undefined),
+};
+
 describe('LightService', () => {
   let service: LightService;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     mockUserLightRepo.save.mockResolvedValue(undefined);
     mockLightEventRepo.save.mockResolvedValue(undefined);
+    mockNotificationService.create.mockResolvedValue(undefined);
     service = new LightService(
       mockUserLightRepo as any,
       mockLightEventRepo as any,
       mockHabitRepo as any,
       mockUserService as any,
+      mockNotificationService as any,
     );
   });
 
@@ -117,7 +124,7 @@ describe('LightService', () => {
       mockLightEventRepo.existsForEntityOnDate.mockResolvedValue(false);
       mockUserLightRepo.findByUserId.mockResolvedValue(ul);
       mockLightEventRepo.countByUserActionDate.mockResolvedValue(0);
-      mockHabitRepo.countByCreator.mockResolvedValue(0);
+      mockHabitRepo.countByWorkspaceCreator.mockResolvedValue(0);
 
       await service.awardTodoComplete('user-1', 'ws-1', 'todo-1', 'medium');
 
@@ -142,7 +149,7 @@ describe('LightService', () => {
       mockLightEventRepo.existsForEntityOnDate.mockResolvedValue(false);
       mockUserLightRepo.findByUserId.mockResolvedValue(ul);
       mockLightEventRepo.countByUserActionDate.mockResolvedValue(0);
-      mockHabitRepo.countByCreator.mockResolvedValue(1);
+      mockHabitRepo.countByWorkspaceCreator.mockResolvedValue(1);
 
       await service.awardHabitCheckin('user-1', 'ws-1', 'habit-1', 'entry-1');
 
@@ -219,6 +226,118 @@ describe('LightService', () => {
 
       expect(result).toBe(events);
       expect(mockLightEventRepo.findByUser).toHaveBeenCalledWith('user-1', 10, 0);
+    });
+  });
+
+  describe('awardTodoCreate', () => {
+    it('should award 1 light for creating a todo', async () => {
+      const ul = makeUserLight();
+      mockUserService.findById.mockResolvedValue({ timezone: 'UTC' });
+      mockLightEventRepo.existsForEntityOnDate.mockResolvedValue(false);
+      mockUserLightRepo.findByUserId.mockResolvedValue(ul);
+      mockLightEventRepo.countByUserActionDate.mockResolvedValue(0);
+      mockHabitRepo.countByWorkspaceCreator.mockResolvedValue(0);
+
+      await service.awardTodoCreate('user-1', 'ws-1', 'todo-1');
+
+      expect(mockLightEventRepo.save).toHaveBeenCalled();
+      expect(mockUserLightRepo.save).toHaveBeenCalled();
+
+      const savedEvent = mockLightEventRepo.save.mock.calls[0][0];
+      expect(savedEvent.action).toBe('todo_create');
+      expect(savedEvent.baseLight).toBe(LIGHT_ACTIONS.TODO_CREATE);
+    });
+
+    it('should skip if already awarded for same todo on same date', async () => {
+      mockUserService.findById.mockResolvedValue({ timezone: 'UTC' });
+      mockLightEventRepo.existsForEntityOnDate.mockResolvedValue(true);
+
+      await service.awardTodoCreate('user-1', 'ws-1', 'todo-1');
+
+      expect(mockLightEventRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('checkRingCompletionBonus', () => {
+    it('should award 3 light when a single ring completes', async () => {
+      const ul = makeUserLight();
+      mockUserService.findById.mockResolvedValue({ timezone: 'UTC' });
+      // First call: existsForEntityOnDate for the todo_complete dedup check -> false
+      // Subsequent calls: ring completion bonus checks
+      mockLightEventRepo.existsForEntityOnDate
+        .mockResolvedValueOnce(false)  // todo_complete dedup
+        .mockResolvedValueOnce(false)  // ring_todo bonus (new)
+        .mockResolvedValueOnce(false)  // ring_habit bonus (new)
+        .mockResolvedValueOnce(false)  // ring_journal bonus (new)
+        .mockResolvedValueOnce(false); // ring_all bonus
+      mockUserLightRepo.findByUserId.mockResolvedValue(ul);
+      // todo_complete count=3 (meets default target of 3), habit=0, journal=0
+      mockLightEventRepo.countByUserActionDate
+        .mockResolvedValueOnce(3)   // todo_complete count
+        .mockResolvedValueOnce(0)   // habit_checkin count
+        .mockResolvedValueOnce(0);  // journal_entry count
+      mockHabitRepo.countByWorkspaceCreator.mockResolvedValue(0); // no habits, so habit ring = complete
+
+      await service.awardTodoComplete('user-1', 'ws-1', 'todo-1', 'medium');
+
+      // Should have saved: 1 todo_complete event + ring_todo bonus + ring_habit bonus + ring_journal bonus + ring_all bonus
+      const savedEvents = mockLightEventRepo.save.mock.calls.map((c: any) => c[0]);
+      const ringBonusEvents = savedEvents.filter((e: any) => e.action === 'ring_completion_bonus');
+      expect(ringBonusEvents.length).toBeGreaterThanOrEqual(1);
+
+      const singleRingBonus = ringBonusEvents.find((e: any) => e.metadata?.ring === 'todo');
+      expect(singleRingBonus).toBeDefined();
+      expect(singleRingBonus.baseLight).toBe(3);
+    });
+
+    it('should award additional 5 light when all 3 rings complete', async () => {
+      const ul = makeUserLight();
+      mockUserService.findById.mockResolvedValue({ timezone: 'UTC' });
+      mockLightEventRepo.existsForEntityOnDate
+        .mockResolvedValueOnce(false)  // todo_complete dedup
+        .mockResolvedValueOnce(false)  // ring_todo bonus
+        .mockResolvedValueOnce(false)  // ring_habit bonus
+        .mockResolvedValueOnce(false)  // ring_journal bonus
+        .mockResolvedValueOnce(false); // ring_all bonus
+      mockUserLightRepo.findByUserId.mockResolvedValue(ul);
+      // All rings complete: todos>=3, habits all checked, journal>0
+      mockLightEventRepo.countByUserActionDate
+        .mockResolvedValueOnce(3)   // todo_complete count (meets target)
+        .mockResolvedValueOnce(2)   // habit_checkin count
+        .mockResolvedValueOnce(1);  // journal_entry count
+      mockHabitRepo.countByWorkspaceCreator.mockResolvedValue(2); // 2 habits, 2 checkins
+
+      await service.awardTodoComplete('user-1', 'ws-1', 'todo-1', 'medium');
+
+      const savedEvents = mockLightEventRepo.save.mock.calls.map((c: any) => c[0]);
+      const ringBonusEvents = savedEvents.filter((e: any) => e.action === 'ring_completion_bonus');
+
+      const allRingsBonus = ringBonusEvents.find((e: any) => e.metadata?.ring === 'all');
+      expect(allRingsBonus).toBeDefined();
+      expect(allRingsBonus.baseLight).toBe(5);
+    });
+
+    it('should not award duplicate ring completion bonus on same day', async () => {
+      const ul = makeUserLight();
+      mockUserService.findById.mockResolvedValue({ timezone: 'UTC' });
+      mockLightEventRepo.existsForEntityOnDate
+        .mockResolvedValueOnce(false)  // todo_complete dedup
+        .mockResolvedValueOnce(true)   // ring_todo bonus already exists
+        .mockResolvedValueOnce(true)   // ring_habit bonus already exists
+        .mockResolvedValueOnce(true)   // ring_journal bonus already exists
+        .mockResolvedValueOnce(true);  // ring_all bonus already exists
+      mockUserLightRepo.findByUserId.mockResolvedValue(ul);
+      mockLightEventRepo.countByUserActionDate
+        .mockResolvedValueOnce(3)
+        .mockResolvedValueOnce(1)
+        .mockResolvedValueOnce(1);
+      mockHabitRepo.countByWorkspaceCreator.mockResolvedValue(1);
+
+      await service.awardTodoComplete('user-1', 'ws-1', 'todo-1', 'medium');
+
+      const savedEvents = mockLightEventRepo.save.mock.calls.map((c: any) => c[0]);
+      const ringBonusEvents = savedEvents.filter((e: any) => e.action === 'ring_completion_bonus');
+      expect(ringBonusEvents).toHaveLength(0);
     });
   });
 

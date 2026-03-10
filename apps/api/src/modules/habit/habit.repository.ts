@@ -33,6 +33,10 @@ export class HabitRepository {
     return this.model.countDocuments({ creator_id: creatorId, deleted_at: null });
   }
 
+  async countByWorkspaceCreator(workspaceId: string, creatorId: string): Promise<number> {
+    return this.model.countDocuments({ workspace_id: workspaceId, creator_id: creatorId, deleted_at: null });
+  }
+
   async delete(id: string): Promise<void> { await this.model.updateOne({ _id: id }, { $set: { deleted_at: new Date() } }); }
 
   private toDomain(doc: any): Habit {

@@ -7,7 +7,8 @@
       "Bash(bunx tsc:*)",
       "Bash(grep:*)",
       "Bash(cat:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx vitest:*)"
     ]
   }
 }

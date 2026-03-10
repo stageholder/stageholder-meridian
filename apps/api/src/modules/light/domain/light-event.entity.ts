@@ -1,11 +1,13 @@
 import { Entity, EntityProps, Ok, Result } from '../../../shared';
 
 export type LightAction =
+  | 'todo_create'
   | 'todo_complete'
   | 'habit_checkin'
   | 'journal_entry'
   | 'perfect_day'
-  | 'ring_streak_bonus';
+  | 'ring_streak_bonus'
+  | 'ring_completion_bonus';
 
 export interface LightEventProps extends EntityProps {
   userId: string;

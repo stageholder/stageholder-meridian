@@ -10,6 +10,8 @@ const ACTION_LABELS: Record<string, string> = {
   journal_entry: 'Journal entry',
   perfect_day: 'Perfect Day bonus',
   ring_streak_bonus: 'Streak milestone',
+  todo_create: 'Todo Created',
+  ring_completion_bonus: 'Ring Completed',
 };
 
 const INITIAL_LIMIT = 10;

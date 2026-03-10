@@ -8,6 +8,7 @@ import { LightService } from './light.service';
 import { LightController } from './light.controller';
 import { HabitModule } from '../habit/habit.module';
 import { UserModule } from '../user/user.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { UserModule } from '../user/user.module';
     ]),
     HabitModule,
     UserModule,
+    NotificationModule,
   ],
   controllers: [LightController],
   providers: [UserLightRepository, LightEventRepository, LightService],

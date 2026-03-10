@@ -7,8 +7,8 @@ interface JourneyStatsProps {
 }
 
 function getMultiplier(streak: number): number {
-  if (streak >= 14) return 3;
-  if (streak >= 10) return 2.5;
+  if (streak >= 30) return 3;
+  if (streak >= 14) return 2.5;
   if (streak >= 7) return 2;
   if (streak >= 3) return 1.5;
   return 1;

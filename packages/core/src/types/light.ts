@@ -21,7 +21,7 @@ export interface LightEvent {
   id: string;
   userId: string;
   workspaceId: string;
-  action: 'todo_complete' | 'habit_checkin' | 'journal_entry' | 'perfect_day' | 'ring_streak_bonus';
+  action: 'todo_complete' | 'todo_create' | 'habit_checkin' | 'journal_entry' | 'perfect_day' | 'ring_streak_bonus' | 'ring_completion_bonus';
   baseLight: number;
   multiplier: number;
   totalLight: number;

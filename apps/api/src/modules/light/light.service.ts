@@ -1,14 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { format, subDays } from 'date-fns';
 import { UserLightRepository } from './repository/user-light.repository';
 import { LightEventRepository } from './repository/light-event.repository';
 import { HabitRepository } from '../habit/habit.repository';
 import { UserService } from '../user/user.service';
+import { NotificationService } from '../notification/notification.service';
 import { UserLight } from './domain/user-light.entity';
 import { LightEvent, LightAction } from './domain/light-event.entity';
 import {
   LIGHT_ACTIONS,
   RING_STREAK_MILESTONES,
+  RING_COMPLETION_BONUS,
   DEFAULT_TARGETS,
   getMultiplier,
   getTodoLight,
@@ -16,11 +18,14 @@ import {
 
 @Injectable()
 export class LightService {
+  private readonly logger = new Logger(LightService.name);
+
   constructor(
     private readonly userLightRepo: UserLightRepository,
     private readonly lightEventRepo: LightEventRepository,
     private readonly habitRepo: HabitRepository,
     private readonly userService: UserService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async getOrCreateUserLight(userId: string): Promise<UserLight> {
@@ -46,6 +51,25 @@ export class LightService {
     userLight.updateTargets(targets);
     await this.userLightRepo.save(userLight);
     return userLight;
+  }
+
+  async awardTodoCreate(
+    userId: string,
+    workspaceId: string,
+    todoId: string,
+  ): Promise<void> {
+    const date = await this.getTodayForUser(userId);
+    const exists = await this.lightEventRepo.existsForEntityOnDate(
+      userId,
+      'todo_create',
+      date,
+      todoId,
+    );
+    if (exists) return;
+
+    await this.awardLight(userId, workspaceId, 'todo_create', LIGHT_ACTIONS.TODO_CREATE, date, {
+      entityId: todoId,
+    });
   }
 
   async awardTodoComplete(
@@ -164,7 +188,10 @@ export class LightService {
       });
       if (eventResult.ok) {
         await this.lightEventRepo.save(eventResult.value);
-        userLight.addLight(totalLight);
+        const { tieredUp, newTitle } = this.addLightAndDetectTierUp(userLight, totalLight);
+        if (tieredUp) {
+          this.notifyAchievement(userId, workspaceId, 'Tier Up!', `You've reached ${newTitle}!`);
+        }
       }
     }
 
@@ -197,7 +224,16 @@ export class LightService {
         });
         if (eventResult.ok) {
           await this.lightEventRepo.save(eventResult.value);
-          userLight.addLight(milestone.bonus);
+          const { tieredUp, newTitle } = this.addLightAndDetectTierUp(userLight, milestone.bonus);
+          this.notifyAchievement(
+            userId,
+            workspaceId,
+            'Streak Milestone!',
+            `Your ${ring} ring hit a ${milestone.days}-day streak! +${milestone.bonus} light`,
+          );
+          if (tieredUp) {
+            this.notifyAchievement(userId, workspaceId, 'Tier Up!', `You've reached ${newTitle}!`);
+          }
         }
       }
     }
@@ -234,24 +270,118 @@ export class LightService {
     if (!eventResult.ok) return;
 
     await this.lightEventRepo.save(eventResult.value);
-    userLight.addLight(totalLight);
+    const { tieredUp, newTitle } = this.addLightAndDetectTierUp(userLight, totalLight);
+    if (tieredUp) {
+      this.notifyAchievement(userId, workspaceId, 'Tier Up!', `You've reached ${newTitle}!`);
+    }
 
     // Update streaks in real-time based on current day's ring completion
-    const currentRings = await this.computeRingCompletion(userId, date, userLight.todoTargetDaily);
+    const currentRings = await this.computeRingCompletion(workspaceId, userId, date, userLight.todoTargetDaily);
     const previousDay = format(subDays(new Date(date + 'T00:00:00'), 1), 'yyyy-MM-dd');
     const wasConsecutive = userLight.lastActiveDate === previousDay || userLight.lastActiveDate === date;
+    const alreadyActiveToday = userLight.lastActiveDate === date;
 
     userLight.updateStreaks({
-      todoRingStreak: currentRings.todo ? (wasConsecutive ? Math.max(userLight.todoRingStreak, 1) : 1) : 0,
-      habitRingStreak: currentRings.habit ? (wasConsecutive ? Math.max(userLight.habitRingStreak, 1) : 1) : 0,
-      journalRingStreak: currentRings.journal ? (wasConsecutive ? Math.max(userLight.journalRingStreak, 1) : 1) : 0,
-      perfectDayStreak: currentRings.todo && currentRings.habit && currentRings.journal
-        ? (wasConsecutive ? Math.max(userLight.perfectDayStreak, 1) : 1)
+      todoRingStreak: currentRings.todo
+        ? (alreadyActiveToday ? userLight.todoRingStreak : (wasConsecutive ? userLight.todoRingStreak + 1 : 1))
+        : 0,
+      habitRingStreak: currentRings.habit
+        ? (alreadyActiveToday ? userLight.habitRingStreak : (wasConsecutive ? userLight.habitRingStreak + 1 : 1))
+        : 0,
+      journalRingStreak: currentRings.journal
+        ? (alreadyActiveToday ? userLight.journalRingStreak : (wasConsecutive ? userLight.journalRingStreak + 1 : 1))
+        : 0,
+      perfectDayStreak: (currentRings.todo && currentRings.habit && currentRings.journal)
+        ? (alreadyActiveToday ? userLight.perfectDayStreak : (wasConsecutive ? userLight.perfectDayStreak + 1 : 1))
         : userLight.perfectDayStreak,
       lastActiveDate: date,
     });
 
+    // Check ring completion bonuses
+    await this.checkRingCompletionBonus(userLight, userId, workspaceId, date, currentRings);
+
     await this.userLightRepo.save(userLight);
+  }
+
+  private async checkRingCompletionBonus(
+    userLight: UserLight,
+    userId: string,
+    workspaceId: string,
+    date: string,
+    currentRings: { todo: boolean; habit: boolean; journal: boolean },
+  ): Promise<void> {
+    const ringChecks: { ring: string; complete: boolean }[] = [
+      { ring: 'todo', complete: currentRings.todo },
+      { ring: 'habit', complete: currentRings.habit },
+      { ring: 'journal', complete: currentRings.journal },
+    ];
+
+    for (const { ring, complete } of ringChecks) {
+      if (!complete) continue;
+
+      const entityId = `ring_${ring}_${date}`;
+      const exists = await this.lightEventRepo.existsForEntityOnDate(
+        userId,
+        'ring_completion_bonus',
+        date,
+        entityId,
+      );
+      if (exists) continue;
+
+      const eventResult = LightEvent.create({
+        userId,
+        workspaceId,
+        action: 'ring_completion_bonus',
+        baseLight: RING_COMPLETION_BONUS.SINGLE_RING,
+        multiplier: 1,
+        totalLight: RING_COMPLETION_BONUS.SINGLE_RING,
+        date,
+        metadata: { entityId, ring },
+      });
+      if (eventResult.ok) {
+        await this.lightEventRepo.save(eventResult.value);
+        const { tieredUp, newTitle } = this.addLightAndDetectTierUp(userLight, RING_COMPLETION_BONUS.SINGLE_RING);
+        if (tieredUp) {
+          this.notifyAchievement(userId, workspaceId, 'Tier Up!', `You've reached ${newTitle}!`);
+        }
+      }
+    }
+
+    // All rings bonus
+    if (currentRings.todo && currentRings.habit && currentRings.journal) {
+      const allRingsEntityId = `ring_all_${date}`;
+      const allRingsExists = await this.lightEventRepo.existsForEntityOnDate(
+        userId,
+        'ring_completion_bonus',
+        date,
+        allRingsEntityId,
+      );
+      if (!allRingsExists) {
+        const eventResult = LightEvent.create({
+          userId,
+          workspaceId,
+          action: 'ring_completion_bonus',
+          baseLight: RING_COMPLETION_BONUS.ALL_RINGS,
+          multiplier: 1,
+          totalLight: RING_COMPLETION_BONUS.ALL_RINGS,
+          date,
+          metadata: { entityId: allRingsEntityId, ring: 'all' },
+        });
+        if (eventResult.ok) {
+          await this.lightEventRepo.save(eventResult.value);
+          const { tieredUp, newTitle } = this.addLightAndDetectTierUp(userLight, RING_COMPLETION_BONUS.ALL_RINGS);
+          this.notifyAchievement(
+            userId,
+            workspaceId,
+            'All Rings Complete!',
+            `You completed all daily rings! +${RING_COMPLETION_BONUS.ALL_RINGS} bonus light`,
+          );
+          if (tieredUp) {
+            this.notifyAchievement(userId, workspaceId, 'Tier Up!', `You've reached ${newTitle}!`);
+          }
+        }
+      }
+    }
   }
 
   private async evaluatePreviousDay(
@@ -260,11 +390,12 @@ export class LightService {
     workspaceId: string,
     previousDate: string,
   ): Promise<void> {
-    const rings = await this.computeRingCompletion(userId, previousDate, userLight.todoTargetDaily);
+    const rings = await this.computeRingCompletion(workspaceId, userId, previousDate, userLight.todoTargetDaily);
     await this.evaluateDayForEntity(userLight, userId, workspaceId, rings, previousDate);
   }
 
   private async computeRingCompletion(
+    workspaceId: string,
     userId: string,
     date: string,
     todoTarget?: number,
@@ -274,7 +405,7 @@ export class LightService {
         this.lightEventRepo.countByUserActionDate(userId, 'todo_complete', date),
         this.lightEventRepo.countByUserActionDate(userId, 'habit_checkin', date),
         this.lightEventRepo.countByUserActionDate(userId, 'journal_entry', date),
-        this.habitRepo.countByCreator(userId),
+        this.habitRepo.countByWorkspaceCreator(workspaceId, userId),
       ]);
 
     const effectiveTodoTarget = todoTarget ?? DEFAULT_TARGETS.todoDaily;
@@ -307,5 +438,28 @@ export class LightService {
       }
     }
     return format(new Date(), 'yyyy-MM-dd');
+  }
+
+  private addLightAndDetectTierUp(
+    userLight: UserLight,
+    amount: number,
+  ): { tieredUp: boolean; newTitle: string } {
+    const oldTier = userLight.currentTier;
+    userLight.addLight(amount);
+    return {
+      tieredUp: userLight.currentTier > oldTier,
+      newTitle: userLight.currentTitle,
+    };
+  }
+
+  private notifyAchievement(
+    recipientId: string,
+    workspaceId: string,
+    title: string,
+    message: string,
+  ): void {
+    this.notificationService
+      .create({ recipientId, workspaceId, type: 'achievement', title, message })
+      .catch((err) => this.logger.warn(`Failed to create notification: ${err.message}`));
   }
 }

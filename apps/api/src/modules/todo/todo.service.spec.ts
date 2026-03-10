@@ -19,6 +19,7 @@ const mockMemberService = {
 
 const mockLightService = {
   awardTodoComplete: vi.fn(),
+  awardTodoCreate: vi.fn(),
 };
 
 function makeTodo(overrides: Partial<Record<string, unknown>> = {}) {
@@ -44,6 +45,7 @@ describe('TodoService', () => {
     mockMemberService.requireRole.mockResolvedValue(undefined);
     mockMemberService.isMember.mockResolvedValue(true);
     mockLightService.awardTodoComplete.mockResolvedValue(undefined);
+    mockLightService.awardTodoCreate.mockResolvedValue(undefined);
     service = new TodoService(
       mockRepository as any,
       mockMemberService as any,
@@ -66,6 +68,7 @@ describe('TodoService', () => {
       expect(todo.creatorId).toBe('user-1');
       expect(mockMemberService.requireRole).toHaveBeenCalledWith('ws-1', 'user-1', ['owner', 'admin', 'member']);
       expect(mockRepository.save).toHaveBeenCalledOnce();
+      expect(mockLightService.awardTodoCreate).toHaveBeenCalledWith('user-1', 'ws-1', todo.id);
     });
 
     it('should reject assignee who is not a workspace member', async () => {

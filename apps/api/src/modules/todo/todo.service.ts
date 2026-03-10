@@ -21,6 +21,7 @@ export class TodoService {
     const result = Todo.create({ title: dto.title, description: dto.description, status: dto.status || 'todo', priority: dto.priority || 'none', dueDate: dto.dueDate, doDate: dto.doDate, listId: dto.listId, workspaceId, assigneeId: dto.assigneeId, creatorId: userId, order });
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);
+    this.lightService.awardTodoCreate(userId, workspaceId, result.value.id).catch((err) => this.logger.warn('Failed to award light for todo creation', err.message));
     return result.value;
   }
 
