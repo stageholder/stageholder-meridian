@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import apiClient from "@/lib/api-client";
 import { setLoggedInFlag } from "@/lib/auth-helpers";
 import { useAuthStore } from "@/stores/auth-store";
@@ -11,6 +11,8 @@ import type { AuthUser } from "@repo/core/types";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect");
   const setUser = useAuthStore((s) => s.setUser);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,7 +28,9 @@ export default function LoginPage() {
       const res = await apiClient.post<AuthUser>("/auth/login", { email, password });
       setUser(res.data);
       setLoggedInFlag();
-      if (!res.data.onboardingCompleted) {
+      if (redirect) {
+        router.push(redirect);
+      } else if (!res.data.onboardingCompleted) {
         router.push('/onboarding');
       } else {
         router.push(res.data.personalWorkspaceShortId ? `/${res.data.personalWorkspaceShortId}/dashboard` : "/workspaces");
@@ -95,7 +99,7 @@ export default function LoginPage() {
 
       <p className="text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{" "}
-        <Link href="/register" className="font-medium text-primary hover:underline">
+        <Link href={redirect ? `/register?redirect=${encodeURIComponent(redirect)}` : "/register"} className="font-medium text-primary hover:underline">
           Sign up
         </Link>
       </p>

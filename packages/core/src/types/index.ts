@@ -1,5 +1,5 @@
 export type { AuthUser } from './auth';
-export type { Workspace, WorkspaceMember } from './workspace';
+export type { Workspace, WorkspaceMember, InvitationInfo, AcceptedInvitation } from './workspace';
 export type { TodoList, Todo } from './todo';
 export type { Journal } from './journal';
 export type { Habit, HabitEntry } from './habit';

@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { WorkspaceMemberService } from './workspace-member.service';
 import { InviteMemberDto, UpdateMemberRoleDto, InviteMemberDto as InviteSchema, UpdateMemberRoleDto as UpdateRoleSchema } from './workspace-member.dto';
 import { ZodValidationPipe } from '../../common/zod-validation.pipe';
@@ -7,13 +8,22 @@ import { UserService } from '../user/user.service';
 
 @Controller('workspaces/:workspaceId/members')
 export class WorkspaceMemberController {
-  constructor(private readonly service: WorkspaceMemberService, private readonly userService: UserService) {}
+  private readonly frontendUrl: string;
+
+  constructor(
+    private readonly service: WorkspaceMemberService,
+    private readonly userService: UserService,
+    private readonly configService: ConfigService,
+  ) {
+    this.frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
+  }
 
   @Post('invite')
   async invite(@Param('workspaceId') workspaceId: string, @CurrentUserId() userId: string, @Body(new ZodValidationPipe(InviteSchema)) dto: InviteMemberDto) {
     await this.service.requireRole(workspaceId, userId, ['owner', 'admin']);
     const member = await this.service.invite(workspaceId, dto);
-    return member.toObject();
+    const obj = member.toObject();
+    return { ...obj, inviteLink: `${this.frontendUrl}/invite/${obj.invitationToken}` };
   }
 
   @Get()
@@ -34,6 +44,27 @@ export class WorkspaceMemberController {
     const userIds = await this.service.listAcceptedMemberUserIds(workspaceId);
     const users = await this.userService.findByIds(userIds);
     return users.map((u) => ({ id: u.id, name: u.name, email: u.email, avatar: u.avatar }));
+  }
+
+  @Post('resend/:memberId')
+  async resend(@Param('workspaceId') workspaceId: string, @Param('memberId') memberId: string, @CurrentUserId() userId: string) {
+    await this.service.requireRole(workspaceId, userId, ['owner', 'admin']);
+    const member = await this.service.resendInvitation(memberId, workspaceId);
+    const obj = member.toObject();
+    return { ...obj, inviteLink: `${this.frontendUrl}/invite/${obj.invitationToken}` };
+  }
+
+  @Post('cancel/:memberId')
+  async cancel(@Param('workspaceId') workspaceId: string, @Param('memberId') memberId: string, @CurrentUserId() userId: string) {
+    await this.service.requireRole(workspaceId, userId, ['owner', 'admin']);
+    await this.service.cancelInvitation(memberId, workspaceId);
+    return { cancelled: true };
+  }
+
+  @Post('leave')
+  async leave(@Param('workspaceId') workspaceId: string, @CurrentUserId() userId: string) {
+    await this.service.leaveWorkspace(workspaceId, userId);
+    return { left: true, redirect: '/workspaces' };
   }
 
   @Delete(':memberId')

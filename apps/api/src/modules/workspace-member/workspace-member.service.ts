@@ -3,11 +3,19 @@ import { randomUUID } from 'crypto';
 import { WorkspaceMemberRepository } from './workspace-member.repository';
 import { WorkspaceMember, MemberRole } from './workspace-member.entity';
 import { InviteMemberDto, UpdateMemberRoleDto } from './workspace-member.dto';
+import { NotificationService } from '../notification/notification.service';
+import { UserService } from '../user/user.service';
 import { PaginatedResult, buildPaginationMeta, DEFAULT_PAGE, DEFAULT_LIMIT, MAX_LIMIT } from '../../shared';
+
+const INVITATION_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 @Injectable()
 export class WorkspaceMemberService {
-  constructor(private readonly repository: WorkspaceMemberRepository) {}
+  constructor(
+    private readonly repository: WorkspaceMemberRepository,
+    private readonly notificationService: NotificationService,
+    private readonly userService: UserService,
+  ) {}
 
   async addOwner(workspaceId: string, userId: string, email: string): Promise<WorkspaceMember> {
     const result = WorkspaceMember.create({ workspaceId, userId, email, role: 'owner', invitationStatus: 'accepted' });
@@ -20,9 +28,24 @@ export class WorkspaceMemberService {
     const existing = await this.repository.findByWorkspaceAndEmail(workspaceId, dto.email);
     if (existing) throw new ConflictException('User already invited to this workspace');
     const token = randomUUID();
-    const result = WorkspaceMember.create({ workspaceId, email: dto.email.toLowerCase(), role: dto.role as MemberRole, invitationStatus: 'pending', invitationToken: token });
+    const expiresAt = new Date(Date.now() + INVITATION_EXPIRY_MS);
+    const result = WorkspaceMember.create({ workspaceId, email: dto.email.toLowerCase(), role: dto.role as MemberRole, invitationStatus: 'pending', invitationToken: token, expiresAt });
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);
+
+    const existingUser = await this.userService.findByEmail(dto.email.toLowerCase());
+    if (existingUser) {
+      await this.notificationService.create({
+        recipientId: existingUser.id,
+        type: 'invitation',
+        title: 'Workspace Invitation',
+        message: `You have been invited to join a workspace as ${dto.role}.`,
+        entityType: 'workspace_member',
+        entityId: result.value.id,
+        workspaceId,
+      });
+    }
+
     return result.value;
   }
 
@@ -31,9 +54,50 @@ export class WorkspaceMemberService {
   async acceptInvitation(token: string, userId: string): Promise<WorkspaceMember> {
     const member = await this.repository.findByToken(token);
     if (!member) throw new NotFoundException('Invitation not found or already used');
+    if (member.isExpired()) throw new ForbiddenException('Invitation has expired');
     member.accept(userId);
     await this.repository.save(member);
+
+    const ownerMembers = await this.repository.findByWorkspace(member.workspaceId);
+    const owner = ownerMembers.find((m) => m.role === 'owner');
+    if (owner?.userId) {
+      await this.notificationService.create({
+        recipientId: owner.userId,
+        type: 'invitation_accepted',
+        title: 'Invitation Accepted',
+        message: `${member.email} has accepted the workspace invitation.`,
+        entityType: 'workspace_member',
+        entityId: member.id,
+        workspaceId: member.workspaceId,
+      });
+    }
+
     return member;
+  }
+
+  async resendInvitation(memberId: string, workspaceId: string): Promise<WorkspaceMember> {
+    const member = await this.repository.findById(memberId);
+    if (!member || member.workspaceId !== workspaceId) throw new NotFoundException('Member not found');
+    if (member.invitationStatus !== 'pending') throw new ConflictException('Invitation already accepted');
+    const token = randomUUID();
+    const expiresAt = new Date(Date.now() + INVITATION_EXPIRY_MS);
+    member.regenerateToken(token, expiresAt);
+    await this.repository.save(member);
+    return member;
+  }
+
+  async cancelInvitation(memberId: string, workspaceId: string): Promise<void> {
+    const member = await this.repository.findById(memberId);
+    if (!member || member.workspaceId !== workspaceId) throw new NotFoundException('Member not found');
+    if (member.invitationStatus !== 'pending') throw new ConflictException('Cannot cancel an accepted invitation');
+    await this.repository.delete(memberId);
+  }
+
+  async leaveWorkspace(workspaceId: string, userId: string): Promise<void> {
+    const member = await this.repository.findByWorkspaceAndUser(workspaceId, userId);
+    if (!member) throw new NotFoundException('Not a member of this workspace');
+    if (member.role === 'owner') throw new ForbiddenException('Owner cannot leave the workspace');
+    await this.repository.delete(member.id);
   }
 
   async listMembers(workspaceId: string): Promise<WorkspaceMember[]> { return this.repository.findByWorkspace(workspaceId); }

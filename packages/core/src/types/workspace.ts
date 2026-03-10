@@ -16,5 +16,19 @@ export interface WorkspaceMember {
   email: string;
   role: string;
   invitationStatus: string;
+  invitationToken?: string;
+  expiresAt?: string;
+  inviteLink?: string;
   createdAt: string;
+}
+
+export interface InvitationInfo {
+  workspaceName: string;
+  role: string;
+  email: string;
+  expired: boolean;
+}
+
+export interface AcceptedInvitation extends WorkspaceMember {
+  workspaceShortId: string;
 }

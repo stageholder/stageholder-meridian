@@ -10,7 +10,7 @@ export class WorkspaceMemberRepository {
 
   async save(member: WorkspaceMember): Promise<void> {
     const data = member.toObject();
-    await this.model.updateOne({ _id: data.id }, { $set: { workspace_id: data.workspaceId, user_id: data.userId, email: data.email, role: data.role, invitation_status: data.invitationStatus, invitation_token: data.invitationToken } }, { upsert: true });
+    await this.model.updateOne({ _id: data.id }, { $set: { workspace_id: data.workspaceId, user_id: data.userId, email: data.email, role: data.role, invitation_status: data.invitationStatus, invitation_token: data.invitationToken, expires_at: data.expiresAt } }, { upsert: true });
   }
 
   async findByWorkspaceAndUser(workspaceId: string, userId: string): Promise<WorkspaceMember | null> {
@@ -53,6 +53,6 @@ export class WorkspaceMemberRepository {
   async delete(id: string): Promise<void> { await this.model.updateOne({ _id: id }, { $set: { deleted_at: new Date() } }); }
 
   private toDomain(doc: any): WorkspaceMember {
-    return WorkspaceMember.reconstitute({ workspaceId: doc.workspace_id, userId: doc.user_id, email: doc.email, role: doc.role as MemberRole, invitationStatus: doc.invitation_status as InvitationStatus, invitationToken: doc.invitation_token, createdAt: doc.created_at, updatedAt: doc.updated_at }, doc._id);
+    return WorkspaceMember.reconstitute({ workspaceId: doc.workspace_id, userId: doc.user_id, email: doc.email, role: doc.role as MemberRole, invitationStatus: doc.invitation_status as InvitationStatus, invitationToken: doc.invitation_token, expiresAt: doc.expires_at ? new Date(doc.expires_at) : undefined, createdAt: doc.created_at, updatedAt: doc.updated_at }, doc._id);
   }
 }

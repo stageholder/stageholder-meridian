@@ -17,6 +17,7 @@ export class WorkspaceMemberModel {
   @Prop({ type: String, required: true, enum: ['owner', 'admin', 'member', 'viewer'], default: 'member' }) role: string;
   @Prop({ type: String, required: true, enum: ['pending', 'accepted'], default: 'pending' }) invitation_status: string;
   @Prop({ type: String }) invitation_token: string;
+  @Prop({ type: Date }) expires_at: Date;
   @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 

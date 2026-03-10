@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import apiClient from "@/lib/api-client";
 import { setLoggedInFlag } from "@/lib/auth-helpers";
 import { useAuthStore } from "@/stores/auth-store";
@@ -11,6 +11,8 @@ import type { AuthUser } from "@repo/core/types";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect");
   const setUser = useAuthStore((s) => s.setUser);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -27,7 +29,11 @@ export default function RegisterPage() {
       const res = await apiClient.post<AuthUser>("/auth/register", { name, email, password });
       setUser(res.data);
       setLoggedInFlag();
-      router.push(res.data.onboardingCompleted ? `/${res.data.personalWorkspaceShortId}/dashboard` : '/onboarding');
+      if (redirect) {
+        router.push(redirect);
+      } else {
+        router.push(res.data.onboardingCompleted ? `/${res.data.personalWorkspaceShortId}/dashboard` : '/onboarding');
+      }
     } catch {
       setError("Registration failed. Please try again.");
     } finally {
@@ -108,7 +114,7 @@ export default function RegisterPage() {
 
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-primary hover:underline">
+        <Link href={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : "/login"} className="font-medium text-primary hover:underline">
           Sign in
         </Link>
       </p>

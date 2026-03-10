@@ -1,5 +1,5 @@
 import type { AxiosInstance } from 'axios';
-import type { Workspace, WorkspaceMember } from '@repo/core/types';
+import type { Workspace, WorkspaceMember, InvitationInfo, AcceptedInvitation } from '@repo/core/types';
 
 export function createWorkspacesApi(client: AxiosInstance) {
   return {
@@ -36,6 +36,24 @@ export function createWorkspacesApi(client: AxiosInstance) {
     },
     removeMember: async (workspaceId: string, memberId: string): Promise<void> => {
       await client.delete(`/workspaces/${workspaceId}/members/${memberId}`);
+    },
+    resendInvitation: async (workspaceId: string, memberId: string): Promise<WorkspaceMember> => {
+      const res = await client.post(`/workspaces/${workspaceId}/members/resend/${memberId}`);
+      return res.data;
+    },
+    cancelInvitation: async (workspaceId: string, memberId: string): Promise<void> => {
+      await client.post(`/workspaces/${workspaceId}/members/cancel/${memberId}`);
+    },
+    leaveWorkspace: async (workspaceId: string): Promise<void> => {
+      await client.post(`/workspaces/${workspaceId}/members/leave`);
+    },
+    getInvitationInfo: async (token: string): Promise<InvitationInfo> => {
+      const res = await client.get(`/invitations/${token}`);
+      return res.data;
+    },
+    acceptInvitation: async (token: string): Promise<AcceptedInvitation> => {
+      const res = await client.post(`/invitations/${token}/accept`);
+      return res.data;
     },
   };
 }
