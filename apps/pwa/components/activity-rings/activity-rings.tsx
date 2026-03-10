@@ -10,6 +10,7 @@ interface ActivityRingsProps {
   date: string;
   size?: ActivityRingsSize;
   showLabels?: boolean;
+  bare?: boolean;
   className?: string;
 }
 
@@ -19,7 +20,7 @@ const CATEGORIES = [
   { key: "journal" as const, label: "Journal", color: RING_COLORS.journal.color, icon: BookOpen },
 ] as const;
 
-export function ActivityRings({ date, size = "xl", showLabels, className }: ActivityRingsProps) {
+export function ActivityRings({ date, size = "xl", showLabels, bare, className }: ActivityRingsProps) {
   const { data, isLoading, details } = useActivityRings(date);
 
   if (isLoading) {
@@ -47,7 +48,7 @@ export function ActivityRings({ date, size = "xl", showLabels, className }: Acti
   };
 
   return (
-    <div className={cn("rounded-xl border border-border bg-card p-5", className)}>
+    <div className={cn(!bare && "rounded-xl border border-border bg-card p-5", className)}>
       <div className="flex flex-col items-center gap-5 sm:flex-row">
         <ActivityRingsVisual data={data} size={size} />
         <div className="flex min-w-0 flex-1 flex-col gap-3">

@@ -33,7 +33,7 @@ export default function DashboardPage() {
       {/* Row 2: Activity Rings + Level | Weekly Activity Chart */}
       <BentoCard index={1} className="md:col-span-1 lg:col-span-5">
         <Link href={`/${params.shortId}/journey`} className="block">
-          <ActivityRings date={today} size="xl" showLabels />
+          <ActivityRings date={today} size="xl" showLabels bare />
           {userLight && <LevelProgress userLight={userLight} className="mt-4" />}
         </Link>
       </BentoCard>
