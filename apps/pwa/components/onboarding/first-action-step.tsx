@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import apiClient from "@/lib/api-client";
 import type { Workspace } from "@repo/core/types";
 
@@ -31,14 +31,36 @@ export function FirstActionStep({
   const [journalContent, setJournalContent] = useState("");
   const [saving, setSaving] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [loadingWorkspace, setLoadingWorkspace] = useState(true);
+  const [workspaceError, setWorkspaceError] = useState(false);
+
+  const fetchWorkspace = useCallback(async () => {
+    setLoadingWorkspace(true);
+    setWorkspaceError(false);
+    try {
+      if (personalWorkspaceShortId) {
+        const res = await apiClient.get<Workspace>(`/workspaces/${personalWorkspaceShortId}`);
+        setWorkspaceId(res.data.id);
+      } else {
+        // Fallback: fetch user's workspaces and pick the first one
+        const res = await apiClient.get<Workspace[]>("/workspaces");
+        const first = res.data[0];
+        if (first) {
+          setWorkspaceId(first.id);
+        } else {
+          setWorkspaceError(true);
+        }
+      }
+    } catch {
+      setWorkspaceError(true);
+    } finally {
+      setLoadingWorkspace(false);
+    }
+  }, [personalWorkspaceShortId]);
 
   useEffect(() => {
-    if (!personalWorkspaceShortId) return;
-    apiClient
-      .get<Workspace>(`/workspaces/${personalWorkspaceShortId}`)
-      .then((res) => setWorkspaceId(res.data.id))
-      .catch(() => {});
-  }, [personalWorkspaceShortId]);
+    void fetchWorkspace();
+  }, [fetchWorkspace]);
 
   async function handleCreate() {
     if (!workspaceId) return;
@@ -58,11 +80,11 @@ export function FirstActionStep({
         });
       }
     } catch {
-      // continue anyway
-    } finally {
-      setSaving(false);
-      onContinue();
+      // Non-blocking: still continue even if creation fails,
+      // user can create habits/journals later from the dashboard
     }
+    setSaving(false);
+    onContinue();
   }
 
   return (
@@ -138,13 +160,26 @@ export function FirstActionStep({
         </div>
       )}
 
+      {workspaceError && (
+        <div className="flex items-center justify-between rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+          <p className="text-sm text-destructive">Failed to load workspace.</p>
+          <button
+            type="button"
+            onClick={() => void fetchWorkspace()}
+            className="text-sm font-medium text-destructive hover:underline"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col gap-2">
         <button
           onClick={handleCreate}
-          disabled={saving || !workspaceId}
+          disabled={saving || loadingWorkspace || !workspaceId}
           className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
-          {saving ? "Creating..." : "Create & Continue"}
+          {loadingWorkspace ? "Loading..." : saving ? "Creating..." : "Create & Continue"}
         </button>
         <button
           onClick={onSkip}

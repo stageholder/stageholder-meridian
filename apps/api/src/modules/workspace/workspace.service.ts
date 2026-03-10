@@ -51,8 +51,11 @@ export class WorkspaceService {
     return ws;
   }
 
+  private static readonly UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
   async resolve(identifier: string, userId: string): Promise<Workspace> {
-    const ws = identifier.includes('-')
+    const isUuid = WorkspaceService.UUID_REGEX.test(identifier);
+    const ws = isUuid
       ? await this.repository.findById(identifier)
       : await this.repository.findByShortId(identifier);
     if (!ws) throw new NotFoundException('Workspace not found');
