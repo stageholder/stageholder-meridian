@@ -19,6 +19,33 @@ import { ZodValidationPipe } from "../../common/zod-validation.pipe";
 import { CurrentUserId } from "../../common/decorators/current-user.decorator";
 
 @ApiTags("Habit Entries")
+@Controller("workspaces/:workspaceId/habit-entries")
+export class HabitEntrySyncController {
+  constructor(private readonly service: HabitEntryService) {}
+
+  @Get()
+  async listAll(
+    @Param("workspaceId") workspaceId: string,
+    @CurrentUserId() userId: string,
+    @Query("updatedSince") updatedSince?: string,
+    @Query("includeSoftDeleted") includeSoftDeleted?: string,
+    @Query("limit") _limit?: string,
+  ) {
+    if (!updatedSince) {
+      return [];
+    }
+    return (
+      await this.service.findUpdatedSince(
+        workspaceId,
+        userId,
+        updatedSince,
+        includeSoftDeleted === "true",
+      )
+    ).map((e) => e.toObject());
+  }
+}
+
+@ApiTags("Habit Entries")
 @Controller("workspaces/:workspaceId/habits/:habitId/entries")
 export class HabitEntryController {
   constructor(private readonly service: HabitEntryService) {}
