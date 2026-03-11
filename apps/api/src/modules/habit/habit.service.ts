@@ -78,6 +78,25 @@ export class HabitService {
     };
   }
 
+  async findUpdatedSince(
+    workspaceId: string,
+    userId: string,
+    since: string,
+    includeSoftDeleted = false,
+  ) {
+    await this.memberService.requireRole(workspaceId, userId, [
+      "owner",
+      "admin",
+      "member",
+    ]);
+    const habits = await this.repository.findUpdatedSince(
+      workspaceId,
+      since,
+      includeSoftDeleted,
+    );
+    return habits.map((h) => h.toObject());
+  }
+
   async findById(
     id: string,
     workspaceId: string,

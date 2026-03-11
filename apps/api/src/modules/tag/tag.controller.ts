@@ -38,7 +38,19 @@ export class TagController {
     @CurrentUserId() userId: string,
     @Query("page") page?: string,
     @Query("limit") limit?: string,
+    @Query("updatedSince") updatedSince?: string,
+    @Query("includeSoftDeleted") includeSoftDeleted?: string,
   ) {
+    if (updatedSince) {
+      return (
+        await this.service.findUpdatedSince(
+          wsId,
+          userId,
+          updatedSince,
+          includeSoftDeleted === "true",
+        )
+      ).map((t) => t.toObject());
+    }
     return this.service.listByWorkspace(
       wsId,
       userId,

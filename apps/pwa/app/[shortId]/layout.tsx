@@ -27,6 +27,7 @@ import { useUserLight } from "@/lib/api/light";
 import { StarVisual } from "@/components/light/star-visual";
 import { getTierProgress, getNextTier } from "@repo/core/types/light";
 import { OfflineIndicator } from "@/components/shared/offline-indicator";
+import { SyncConflictListener } from "@/components/shared/sync-conflict-toast";
 import { DailyTargetRings } from "@/components/shared/daily-target-rings";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { FeedbackButton } from "@/components/shared/feedback-button";
@@ -272,6 +273,7 @@ export default function WorkspaceLayout({
 
   return (
     <WorkspaceProvider workspace={workspace}>
+      <SyncConflictListener />
       <div className="flex h-screen bg-background">
         {/* Desktop sidebar */}
         <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">

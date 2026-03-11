@@ -40,7 +40,18 @@ export class JournalController {
     @Query("endDate") endDate?: string,
     @Query("page") page?: string,
     @Query("limit") limit?: string,
+    @Query("updatedSince") updatedSince?: string,
+    @Query("includeSoftDeleted") includeSoftDeleted?: string,
   ) {
+    if (updatedSince) {
+      return this.service.findUpdatedSince(
+        workspaceId,
+        userId,
+        updatedSince,
+        includeSoftDeleted === "true",
+      );
+    }
+
     return this.service.listByWorkspace(
       workspaceId,
       userId,

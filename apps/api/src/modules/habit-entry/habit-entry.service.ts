@@ -128,6 +128,24 @@ export class HabitEntryService {
     };
   }
 
+  async findUpdatedSince(
+    workspaceId: string,
+    userId: string,
+    since: string,
+    includeSoftDeleted = false,
+  ): Promise<HabitEntry[]> {
+    await this.memberService.requireRole(workspaceId, userId, [
+      "owner",
+      "admin",
+      "member",
+    ]);
+    return this.repository.findUpdatedSince(
+      workspaceId,
+      since,
+      includeSoftDeleted,
+    );
+  }
+
   async update(
     id: string,
     workspaceId: string,

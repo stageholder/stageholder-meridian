@@ -21,6 +21,7 @@ export interface PendingMutation {
   payload: unknown;
   retryCount: number;
   status: "pending" | "in-flight" | "failed";
+  tempId?: string;
 }
 
 export interface SyncMeta {
@@ -62,7 +63,27 @@ class MeridianDB extends Dexie {
     this.version(2).stores({
       todos: "id, workspaceId, listId, status, assigneeId, dueDate, doDate",
     });
+
+    // Version 3: Add tempId to pendingMutations (no index change needed)
+    this.version(3).stores({});
   }
 }
 
 export const db = new MeridianDB();
+
+export function getTableForEntity(entityType: string) {
+  const map: Record<string, EntityTable<any, any>> = {
+    habits: db.habits,
+    habitEntries: db.habitEntries,
+    todos: db.todos,
+    todoLists: db.todoLists,
+    journals: db.journals,
+    tags: db.tags,
+    notifications: db.notifications,
+    workspaces: db.workspaces,
+    members: db.members,
+  };
+  const table = map[entityType];
+  if (!table) throw new Error(`Unknown entity type: ${entityType}`);
+  return table;
+}

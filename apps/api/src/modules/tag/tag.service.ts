@@ -71,6 +71,24 @@ export class TagService {
     };
   }
 
+  async findUpdatedSince(
+    workspaceId: string,
+    userId: string,
+    since: string,
+    includeSoftDeleted = false,
+  ): Promise<Tag[]> {
+    await this.memberService.requireRole(workspaceId, userId, [
+      "owner",
+      "admin",
+      "member",
+    ]);
+    return this.repository.findUpdatedSince(
+      workspaceId,
+      since,
+      includeSoftDeleted,
+    );
+  }
+
   async findById(
     id: string,
     workspaceId: string,

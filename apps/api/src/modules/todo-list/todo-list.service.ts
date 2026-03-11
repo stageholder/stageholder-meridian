@@ -95,6 +95,25 @@ export class TodoListService {
     };
   }
 
+  async findUpdatedSince(
+    workspaceId: string,
+    userId: string,
+    since: string,
+    includeSoftDeleted = false,
+  ): Promise<ReturnType<TodoList["toObject"]>[]> {
+    await this.memberService.requireRole(workspaceId, userId, [
+      "owner",
+      "admin",
+      "member",
+    ]);
+    const lists = await this.repository.findUpdatedSince(
+      workspaceId,
+      since,
+      includeSoftDeleted,
+    );
+    return lists.map((l) => l.toObject());
+  }
+
   async findById(
     id: string,
     workspaceId: string,

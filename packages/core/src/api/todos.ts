@@ -19,8 +19,8 @@ export function createTodosApi(
       const res = await client.post(wp("/todo-lists"), data);
       return res.data;
     },
-    listLists: async (): Promise<TodoList[]> => {
-      const res = await client.get(wp("/todo-lists"));
+    listLists: async (params?: Record<string, string>): Promise<TodoList[]> => {
+      const res = await client.get(wp("/todo-lists"), { params });
       return res.data?.data ?? res.data;
     },
     getList: async (listId: string): Promise<TodoList> => {
@@ -134,6 +134,11 @@ export function createTodosApi(
         data,
       );
       return res.data;
+    },
+
+    listAllTodos: async (params?: Record<string, unknown>): Promise<Todo[]> => {
+      const res = await client.get(wp("/todos"), { params });
+      return res.data?.data ?? res.data;
     },
   };
 }

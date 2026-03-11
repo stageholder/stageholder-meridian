@@ -22,8 +22,8 @@ export function createHabitsApi(
       const res = await client.post(wp("/habits"), data);
       return res.data;
     },
-    list: async (): Promise<Habit[]> => {
-      const res = await client.get(wp("/habits"));
+    list: async (params?: Record<string, string>): Promise<Habit[]> => {
+      const res = await client.get(wp("/habits"), { params });
       return res.data?.data ?? res.data;
     },
     get: async (id: string): Promise<Habit> => {
@@ -86,6 +86,13 @@ export function createHabitsApi(
     },
     deleteEntry: async (habitId: string, entryId: string): Promise<void> => {
       await client.delete(wp(`/habits/${habitId}/entries/${entryId}`));
+    },
+
+    listAllEntries: async (
+      params?: Record<string, unknown>,
+    ): Promise<HabitEntry[]> => {
+      const res = await client.get(wp("/habit-entries"), { params });
+      return res.data?.data ?? res.data;
     },
   };
 }

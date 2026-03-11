@@ -1,5 +1,6 @@
 import type { AxiosInstance } from "axios";
 import { db, type PendingMutation } from "../db/index";
+import { reconcileId } from "./id-reconciler";
 
 const MAX_RETRIES = 5;
 
@@ -32,9 +33,17 @@ export async function flush(
       await db.pendingMutations.update(mutation.id!, { status: "in-flight" });
 
       switch (mutation.operation) {
-        case "create":
-          await client.post(mutation.path, mutation.payload);
+        case "create": {
+          const res = await client.post(mutation.path, mutation.payload);
+          if (
+            mutation.tempId &&
+            res.data?.id &&
+            mutation.tempId !== res.data.id
+          ) {
+            await reconcileId(mutation.entityType, mutation.tempId, res.data);
+          }
           break;
+        }
         case "update":
           await client.patch(mutation.path, mutation.payload);
           break;
@@ -59,6 +68,24 @@ export async function flush(
 
 export async function getPendingCount(): Promise<number> {
   return db.pendingMutations.where("status").anyOf("pending", "failed").count();
+}
+
+export async function getFailedMutations(): Promise<PendingMutation[]> {
+  return db.pendingMutations.where("status").equals("failed").toArray();
+}
+
+export async function dismissMutation(id: number): Promise<void> {
+  await db.pendingMutations.delete(id);
+}
+
+export async function dismissAllFailed(): Promise<void> {
+  const failed = await db.pendingMutations
+    .where("status")
+    .equals("failed")
+    .toArray();
+  await db.pendingMutations.bulkDelete(
+    failed.map((m) => m.id!).filter(Boolean),
+  );
 }
 
 export async function clear(): Promise<void> {

@@ -19,10 +19,9 @@ export function createJournalsApi(
       const res = await client.post(wp("/journals"), data);
       return res.data;
     },
-    list: async (params?: {
-      startDate?: string;
-      endDate?: string;
-    }): Promise<Journal[]> => {
+    list: async (
+      params?: Record<string, string | undefined>,
+    ): Promise<Journal[]> => {
       const res = await client.get(wp("/journals"), { params });
       return res.data?.data ?? res.data;
     },

@@ -204,6 +204,25 @@ export class TodoService {
     }
   }
 
+  async findUpdatedSince(
+    workspaceId: string,
+    userId: string,
+    since: string,
+    includeSoftDeleted = false,
+  ): Promise<ReturnType<Todo["toObject"]>[]> {
+    await this.memberService.requireRole(workspaceId, userId, [
+      "owner",
+      "admin",
+      "member",
+    ]);
+    const todos = await this.repository.findUpdatedSince(
+      workspaceId,
+      since,
+      includeSoftDeleted,
+    );
+    return todos.map((t) => t.toObject());
+  }
+
   async delete(id: string, workspaceId: string, userId: string): Promise<void> {
     await this.findById(id, workspaceId, userId);
     await this.repository.delete(id);

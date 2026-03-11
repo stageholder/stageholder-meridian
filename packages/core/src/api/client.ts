@@ -57,6 +57,11 @@ export function createApiClient(config: PlatformConfig): AxiosInstance {
         !originalRequest._retry &&
         !originalRequest.url?.includes("/auth/")
       ) {
+        // Don't attempt refresh when offline — let mutation queue retry later
+        if (typeof navigator !== "undefined" && !navigator.onLine) {
+          return Promise.reject(error);
+        }
+
         if (isRefreshing) {
           return new Promise((resolve, reject) => {
             failedQueue.push({ resolve, reject });
@@ -90,7 +95,10 @@ export function createApiClient(config: PlatformConfig): AxiosInstance {
           return client(originalRequest);
         } catch (refreshError) {
           processQueue(refreshError);
-          config.onLogout?.();
+          // Only logout if online — offline users keep their session
+          if (typeof navigator !== "undefined" && navigator.onLine) {
+            config.onLogout?.();
+          }
           return Promise.reject(refreshError);
         } finally {
           isRefreshing = false;

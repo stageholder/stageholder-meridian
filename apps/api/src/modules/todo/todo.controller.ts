@@ -50,7 +50,18 @@ export class TodoController {
     @Query("listId") listId?: string,
     @Query("page") page?: string,
     @Query("limit") limit?: string,
+    @Query("updatedSince") updatedSince?: string,
+    @Query("includeSoftDeleted") includeSoftDeleted?: string,
   ) {
+    if (updatedSince) {
+      return this.service.findUpdatedSince(
+        workspaceId,
+        userId,
+        updatedSince,
+        includeSoftDeleted === "true",
+      );
+    }
+
     if (listId) {
       return (await this.service.listByList(listId, workspaceId, userId)).map(
         (t) => t.toObject(),

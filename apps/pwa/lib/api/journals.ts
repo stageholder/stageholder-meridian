@@ -1,13 +1,16 @@
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  useInfiniteQuery,
-} from "@tanstack/react-query";
+import { useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import apiClient from "@/lib/api-client";
 import { useWorkspace } from "@/lib/workspace-context";
 import type { Journal } from "@repo/core/types";
+import {
+  useOfflineQuerySingle,
+  useOfflineQueryFiltered,
+  useOfflineMutation,
+  useOfflineDeleteMutation,
+} from "@repo/offline/hooks";
+import { db } from "@repo/offline/db";
 import { lightKeys } from "./light";
+import { useCallback } from "react";
 
 interface PaginatedResponse {
   data: Journal[];
@@ -20,16 +23,28 @@ export function useJournals(
 ) {
   const { workspace } = useWorkspace();
 
-  return useQuery<Journal[]>({
-    queryKey: ["journals", workspace.id, params],
-    queryFn: async () => {
+  const localQueryFn = useCallback(() => {
+    if (params?.startDate && params?.endDate) {
+      return db.journals
+        .where("date")
+        .between(params.startDate, params.endDate, true, true)
+        .toArray();
+    }
+    return db.journals.where("workspaceId").equals(workspace.id).toArray();
+  }, [workspace.id, params?.startDate, params?.endDate]);
+
+  return useOfflineQueryFiltered<Journal>(
+    ["journals", workspace.id, params],
+    localQueryFn,
+    async () => {
       const res = await apiClient.get(`/workspaces/${workspace.id}/journals`, {
         params,
       });
       return res.data?.data ?? res.data;
     },
-    enabled: options?.enabled,
-  });
+    db.journals,
+    { enabled: options?.enabled },
+  );
 }
 
 export function useJournalsPaginated(limit = 20) {
@@ -56,38 +71,54 @@ export function useJournalsPaginated(limit = 20) {
 export function useJournal(id: string) {
   const { workspace } = useWorkspace();
 
-  return useQuery<Journal>({
-    queryKey: ["journal", workspace.id, id],
-    queryFn: async () => {
+  return useOfflineQuerySingle<Journal>(
+    ["journal", workspace.id, id],
+    db.journals,
+    id,
+    async () => {
       const res = await apiClient.get(
         `/workspaces/${workspace.id}/journals/${id}`,
       );
       return res.data;
     },
-    enabled: !!id,
-  });
+    { enabled: !!id },
+  );
 }
 
 export function useCreateJournal() {
   const queryClient = useQueryClient();
   const { workspace } = useWorkspace();
 
-  return useMutation({
-    mutationFn: async (data: {
+  return useOfflineMutation<
+    Journal,
+    {
       title: string;
       content: string;
       mood?: number;
       tags?: string[];
       date?: string;
-    }) => {
+    }
+  >({
+    mutationFn: async (data) => {
       const res = await apiClient.post(
         `/workspaces/${workspace.id}/journals`,
         data,
       );
       return res.data as Journal;
     },
+    table: db.journals,
+    entityType: "journals",
+    operation: "create",
+    buildPath: () => `/workspaces/${workspace.id}/journals`,
+    invalidateKeys: [
+      ["journals", workspace.id],
+      [...lightKeys.me],
+      ["calendar", workspace.id],
+    ],
     onMutate: async (newData) => {
-      await queryClient.cancelQueries({ queryKey: ["journals", workspace.id] });
+      await queryClient.cancelQueries({
+        queryKey: ["journals", workspace.id],
+      });
 
       const previousQueries = queryClient.getQueriesData<Journal[]>({
         queryKey: ["journals", workspace.id],
@@ -108,7 +139,6 @@ export function useCreateJournal() {
         updatedAt: new Date().toISOString(),
       };
 
-      // Only update flat Journal[] caches (not paginated infinite query)
       for (const [queryKey, data] of previousQueries) {
         if (Array.isArray(data)) {
           queryClient.setQueryData<Journal[]>(queryKey, [
@@ -118,15 +148,15 @@ export function useCreateJournal() {
         }
       }
 
-      return { previousQueries };
+      return { previousQueries } as any;
     },
-    onError: (_err, _data, context) => {
+    onError: ((_err: Error, _data: any, context: any) => {
       if (context?.previousQueries) {
         for (const [queryKey, data] of context.previousQueries) {
           queryClient.setQueryData(queryKey, data);
         }
       }
-    },
+    }) as any,
     onSettled: () => {
       void queryClient.invalidateQueries({
         queryKey: ["journals", workspace.id],
@@ -143,11 +173,9 @@ export function useUpdateJournal() {
   const queryClient = useQueryClient();
   const { workspace } = useWorkspace();
 
-  return useMutation({
-    mutationFn: async ({
-      id,
-      data,
-    }: {
+  return useOfflineMutation<
+    Journal,
+    {
       id: string;
       data: {
         title?: string;
@@ -155,15 +183,27 @@ export function useUpdateJournal() {
         mood?: number;
         tags?: string[];
       };
-    }) => {
+    }
+  >({
+    mutationFn: async ({ id, data }) => {
       const res = await apiClient.patch(
         `/workspaces/${workspace.id}/journals/${id}`,
         data,
       );
       return res.data as Journal;
     },
+    table: db.journals,
+    entityType: "journals",
+    operation: "update",
+    buildPath: ({ id }) => `/workspaces/${workspace.id}/journals/${id}`,
+    invalidateKeys: [
+      ["journals", workspace.id],
+      ["calendar", workspace.id],
+    ],
     onMutate: async ({ id, data }) => {
-      await queryClient.cancelQueries({ queryKey: ["journals", workspace.id] });
+      await queryClient.cancelQueries({
+        queryKey: ["journals", workspace.id],
+      });
       await queryClient.cancelQueries({
         queryKey: ["journal", workspace.id, id],
       });
@@ -196,9 +236,9 @@ export function useUpdateJournal() {
         old ? { ...old, ...data, updatedAt: new Date().toISOString() } : old,
       );
 
-      return { previousQueries, previousDetail };
+      return { previousQueries, previousDetail } as any;
     },
-    onError: (_err, variables, context) => {
+    onError: ((_err: Error, variables: any, context: any) => {
       if (context?.previousQueries) {
         for (const [queryKey, data] of context.previousQueries) {
           queryClient.setQueryData(queryKey, data);
@@ -210,8 +250,8 @@ export function useUpdateJournal() {
           context.previousDetail,
         );
       }
-    },
-    onSettled: (_data, _err, variables) => {
+    }) as any,
+    onSettled: ((_data: any, _err: any, variables: any) => {
       void queryClient.invalidateQueries({
         queryKey: ["journals", workspace.id],
       });
@@ -221,7 +261,7 @@ export function useUpdateJournal() {
       void queryClient.invalidateQueries({
         queryKey: ["calendar", workspace.id],
       });
-    },
+    }) as any,
   });
 }
 
@@ -229,12 +269,22 @@ export function useDeleteJournal() {
   const queryClient = useQueryClient();
   const { workspace } = useWorkspace();
 
-  return useMutation({
-    mutationFn: async (id: string) => {
+  return useOfflineDeleteMutation<string>({
+    mutationFn: async (id) => {
       await apiClient.delete(`/workspaces/${workspace.id}/journals/${id}`);
     },
+    table: db.journals as any,
+    entityType: "journals",
+    buildPath: (id) => `/workspaces/${workspace.id}/journals/${id}`,
+    getEntityId: (id) => id,
+    invalidateKeys: [
+      ["journals", workspace.id],
+      ["calendar", workspace.id],
+    ],
     onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: ["journals", workspace.id] });
+      await queryClient.cancelQueries({
+        queryKey: ["journals", workspace.id],
+      });
 
       const previousQueries = queryClient.getQueriesData<Journal[]>({
         queryKey: ["journals", workspace.id],
@@ -250,15 +300,15 @@ export function useDeleteJournal() {
         }
       }
 
-      return { previousQueries };
+      return { previousQueries } as any;
     },
-    onError: (_err, _id, context) => {
+    onError: ((_err: Error, _id: any, context: any) => {
       if (context?.previousQueries) {
         for (const [queryKey, data] of context.previousQueries) {
           queryClient.setQueryData(queryKey, data);
         }
       }
-    },
+    }) as any,
     onSettled: () => {
       void queryClient.invalidateQueries({
         queryKey: ["journals", workspace.id],

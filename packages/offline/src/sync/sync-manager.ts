@@ -6,6 +6,12 @@ import { flush } from "./mutation-queue";
 interface SyncableEntity {
   id: string;
   updatedAt?: string;
+  deletedAt?: string | null;
+}
+
+export interface SyncConflict {
+  entityType: string;
+  entityId: string;
 }
 
 let syncing = false;
@@ -14,42 +20,77 @@ export async function syncEntity<T extends SyncableEntity>(
   entityType: string,
   workspaceId: string,
   table: EntityTable<T, "id">,
-  fetchFn: () => Promise<T[]>,
-): Promise<void> {
-  const serverData = await fetchFn();
-  if (!Array.isArray(serverData)) return;
+  fetchFn: (since?: string) => Promise<T[]>,
+): Promise<SyncConflict[]> {
+  const conflicts: SyncConflict[] = [];
 
-  await db.transaction("rw", table, db.syncMeta, async () => {
-    for (const item of serverData) {
-      const local = await table.get({ id: item.id } as never);
+  // Read last sync timestamp for delta sync
+  const meta = await db.syncMeta.get([entityType, workspaceId]);
+  const since = meta?.lastSyncedAt;
 
-      if (!local) {
-        await table.put(item);
-      } else {
-        const localUpdated = (local as SyncableEntity).updatedAt;
-        const serverUpdated = item.updatedAt;
-        if (serverUpdated && localUpdated && serverUpdated >= localUpdated) {
+  const serverData = await fetchFn(since);
+  if (!Array.isArray(serverData)) return conflicts;
+
+  await db.transaction(
+    "rw",
+    table,
+    db.syncMeta,
+    db.pendingMutations,
+    async () => {
+      for (const item of serverData) {
+        // Handle tombstones: if server says deleted, remove from Dexie
+        if (item.deletedAt) {
+          await table.delete(item.id as never);
+          continue;
+        }
+
+        // Check if this entity has pending local mutations (potential conflict)
+        const hasPending = await db.pendingMutations
+          .where("entityType")
+          .equals(entityType)
+          .filter((m) => {
+            const entityId = m.entityId || m.tempId;
+            return entityId === item.id && m.status !== "in-flight";
+          })
+          .count();
+
+        const local = await table.get({ id: item.id } as never);
+
+        if (!local) {
           await table.put(item);
+        } else {
+          const localUpdated = (local as SyncableEntity).updatedAt;
+          const serverUpdated = item.updatedAt;
+          if (serverUpdated && localUpdated && serverUpdated >= localUpdated) {
+            if (hasPending > 0) {
+              conflicts.push({ entityType, entityId: item.id });
+            }
+            await table.put(item);
+          }
         }
       }
-    }
 
-    await db.syncMeta.put({
-      entityType,
-      workspaceId,
-      lastSyncedAt: new Date().toISOString(),
-    });
-  });
+      await db.syncMeta.put({
+        entityType,
+        workspaceId,
+        lastSyncedAt: new Date().toISOString(),
+      });
+    },
+  );
+
+  return conflicts;
 }
 
 export async function fullSync(
   workspaceId: string,
   client: AxiosInstance,
-  fetchers: Record<string, () => Promise<SyncableEntity[]>>,
+  fetchers: Record<string, (since?: string) => Promise<SyncableEntity[]>>,
   tables: Record<string, EntityTable<SyncableEntity, "id">>,
-): Promise<void> {
-  if (syncing) return;
+): Promise<SyncConflict[]> {
+  if (syncing) return [];
   syncing = true;
+
+  const allConflicts: SyncConflict[] = [];
 
   try {
     await flush(client);
@@ -57,12 +98,20 @@ export async function fullSync(
     for (const [entityType, fetchFn] of Object.entries(fetchers)) {
       const table = tables[entityType];
       if (table) {
-        await syncEntity(entityType, workspaceId, table, fetchFn);
+        const conflicts = await syncEntity(
+          entityType,
+          workspaceId,
+          table,
+          fetchFn,
+        );
+        allConflicts.push(...conflicts);
       }
     }
   } finally {
     syncing = false;
   }
+
+  return allConflicts;
 }
 
 export function isSyncing(): boolean {

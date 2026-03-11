@@ -15,8 +15,8 @@ export function createWorkspacesApi(client: AxiosInstance) {
       const res = await client.post("/workspaces", data);
       return res.data;
     },
-    list: async (): Promise<Workspace[]> => {
-      const res = await client.get("/workspaces");
+    list: async (params?: Record<string, string>): Promise<Workspace[]> => {
+      const res = await client.get("/workspaces", { params });
       return res.data;
     },
     get: async (id: string): Promise<Workspace> => {
@@ -43,8 +43,13 @@ export function createWorkspacesApi(client: AxiosInstance) {
       );
       return res.data;
     },
-    listMembers: async (workspaceId: string): Promise<WorkspaceMember[]> => {
-      const res = await client.get(`/workspaces/${workspaceId}/members`);
+    listMembers: async (
+      workspaceId: string,
+      params?: Record<string, string>,
+    ): Promise<WorkspaceMember[]> => {
+      const res = await client.get(`/workspaces/${workspaceId}/members`, {
+        params,
+      });
       return res.data?.data ?? res.data;
     },
     updateMemberRole: async (

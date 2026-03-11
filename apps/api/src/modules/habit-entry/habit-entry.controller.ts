@@ -44,7 +44,19 @@ export class HabitEntryController {
     @Query("endDate") endDate?: string,
     @Query("page") page?: string,
     @Query("limit") limit?: string,
+    @Query("updatedSince") updatedSince?: string,
+    @Query("includeSoftDeleted") includeSoftDeleted?: string,
   ) {
+    if (updatedSince) {
+      return (
+        await this.service.findUpdatedSince(
+          workspaceId,
+          userId,
+          updatedSince,
+          includeSoftDeleted === "true",
+        )
+      ).map((e) => e.toObject());
+    }
     if (page || limit) {
       return this.service.listByHabitPaginated(
         habitId,

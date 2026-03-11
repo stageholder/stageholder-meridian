@@ -120,6 +120,25 @@ export class JournalService {
     };
   }
 
+  async findUpdatedSince(
+    workspaceId: string,
+    userId: string,
+    since: string,
+    includeSoftDeleted: boolean,
+  ) {
+    await this.memberService.requireRole(workspaceId, userId, [
+      "owner",
+      "admin",
+      "member",
+    ]);
+    const journals = await this.repository.findUpdatedSince(
+      workspaceId,
+      since,
+      includeSoftDeleted,
+    );
+    return journals.map((j) => j.toObject());
+  }
+
   async update(
     id: string,
     workspaceId: string,

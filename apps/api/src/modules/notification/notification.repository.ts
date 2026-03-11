@@ -91,6 +91,20 @@ export class NotificationRepository {
     );
   }
 
+  async findUpdatedSince(
+    recipientId: string,
+    since: string,
+    includeSoftDeleted = false,
+  ): Promise<Notification[]> {
+    const filter: any = {
+      recipient_id: recipientId,
+      updated_at: { $gt: new Date(since) },
+    };
+    if (!includeSoftDeleted) filter.deleted_at = null;
+    const docs = await this.model.find(filter).lean();
+    return docs.map((doc) => this.toDomain(doc));
+  }
+
   private toDomain(doc: any): Notification {
     return Notification.reconstitute(
       {

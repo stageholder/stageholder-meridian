@@ -13,8 +13,8 @@ export function createTagsApi(
       const res = await client.post(wp("/tags"), data);
       return res.data;
     },
-    list: async (): Promise<Tag[]> => {
-      const res = await client.get(wp("/tags"));
+    list: async (params?: Record<string, string>): Promise<Tag[]> => {
+      const res = await client.get(wp("/tags"), { params });
       return res.data?.data ?? res.data;
     },
     update: async (

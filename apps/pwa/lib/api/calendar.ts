@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import apiClient from "@/lib/api-client";
 import { useWorkspace } from "@/lib/workspace-context";
+import { useNetworkStatus } from "@repo/offline/network";
+import { assembleCalendarDataLocally } from "@repo/offline/hooks/use-offline-calendar";
 
 export interface CalendarDayData {
   todos: Array<{
@@ -32,10 +34,14 @@ export type CalendarData = Record<string, CalendarDayData>;
 
 export function useCalendarData(month: string) {
   const { workspace } = useWorkspace();
+  const isOnline = useNetworkStatus();
 
   return useQuery<CalendarData>({
     queryKey: ["calendar", workspace.id, month],
     queryFn: async () => {
+      if (!isOnline) {
+        return assembleCalendarDataLocally(month);
+      }
       const res = await apiClient.get(`/workspaces/${workspace.id}/calendar`, {
         params: { month },
       });

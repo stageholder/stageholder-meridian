@@ -14,7 +14,18 @@ export class NotificationController {
     @Query("unread") unread?: string,
     @Query("page") page?: string,
     @Query("limit") limit?: string,
+    @Query("updatedSince") updatedSince?: string,
+    @Query("includeSoftDeleted") includeSoftDeleted?: string,
   ) {
+    if (updatedSince) {
+      return (
+        await this.service.findUpdatedSince(
+          userId,
+          updatedSince,
+          includeSoftDeleted === "true",
+        )
+      ).map((n) => n.toObject());
+    }
     const unreadOnly = unread === "true";
     return this.service.listForUserPaginated(
       userId,

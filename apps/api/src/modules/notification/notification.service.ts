@@ -58,6 +58,14 @@ export class NotificationService {
     };
   }
 
+  async findUpdatedSince(
+    userId: string,
+    since: string,
+    includeSoftDeleted = false,
+  ): Promise<Notification[]> {
+    return this.repository.findUpdatedSince(userId, since, includeSoftDeleted);
+  }
+
   async markAsRead(userId: string, id: string): Promise<void> {
     const notification = await this.repository.findById(id);
     if (!notification) throw new Error("Notification not found");

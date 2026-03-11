@@ -3,10 +3,9 @@ import type { AppNotification } from "@repo/core/types";
 
 export function createNotificationsApi(client: AxiosInstance) {
   return {
-    list: async (params?: {
-      page?: number;
-      limit?: number;
-    }): Promise<{
+    list: async (
+      params?: Record<string, unknown>,
+    ): Promise<{
       data: AppNotification[];
       total: number;
       page: number;

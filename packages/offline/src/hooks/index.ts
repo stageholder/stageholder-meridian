@@ -16,6 +16,8 @@ interface SyncableEntity {
   id: string;
 }
 
+// --- Query Hooks ---
+
 export function useOfflineQuery<T extends SyncableEntity>(
   queryKey: unknown[],
   table: EntityTable<T, "id">,
@@ -47,49 +49,122 @@ export function useOfflineQuery<T extends SyncableEntity>(
   };
 }
 
-export function useOfflineMutation<TData extends SyncableEntity, TVariables>(
-  options: UseMutationOptions<TData, Error, TVariables> & {
+export function useOfflineQuerySingle<T extends SyncableEntity>(
+  queryKey: unknown[],
+  table: EntityTable<T, "id">,
+  id: string,
+  fetchFn: () => Promise<T>,
+  options?: Partial<UseQueryOptions<T>>,
+) {
+  const isOnline = useNetworkStatus();
+  const localData = useLiveQuery(() => table.get(id as any), [table, id]);
+
+  const query = useQuery<T>({
+    queryKey,
+    queryFn: async () => {
+      const data = await fetchFn();
+      await table.put(data);
+      return data;
+    },
+    enabled: isOnline && options?.enabled !== false,
+    ...options,
+  });
+
+  return {
+    ...query,
+    data: query.data ?? localData ?? undefined,
+    isOffline: !isOnline,
+  };
+}
+
+export function useOfflineQueryFiltered<T extends SyncableEntity>(
+  queryKey: unknown[],
+  localQueryFn: () => Promise<T[]>,
+  fetchFn: () => Promise<T[]>,
+  table: EntityTable<T, "id">,
+  options?: Partial<UseQueryOptions<T[]>>,
+) {
+  const isOnline = useNetworkStatus();
+  const localData = useLiveQuery(() => localQueryFn(), [localQueryFn]) ?? [];
+
+  const query = useQuery<T[]>({
+    queryKey,
+    queryFn: async () => {
+      const data = await fetchFn();
+      await db.transaction("rw", table, async () => {
+        for (const item of data) {
+          await table.put(item);
+        }
+      });
+      return data;
+    },
+    enabled: isOnline && options?.enabled !== false,
+    ...options,
+  });
+
+  return {
+    ...query,
+    data: query.data ?? localData,
+    isOffline: !isOnline,
+  };
+}
+
+// --- Mutation Hooks ---
+
+export function useOfflineMutation<
+  TData extends SyncableEntity,
+  TVariables,
+  TContext = unknown,
+>(
+  options: Omit<
+    UseMutationOptions<TData, Error, TVariables, TContext>,
+    "mutationFn"
+  > & {
+    mutationFn: (variables: TVariables) => Promise<TData>;
     table: EntityTable<TData, "id">;
     entityType: string;
     buildPath: (variables: TVariables) => string;
-    operation: "create" | "update" | "delete";
+    operation: "create" | "update";
     invalidateKeys?: unknown[][];
   },
 ) {
   const isOnline = useNetworkStatus();
   const queryClient = useQueryClient();
 
-  return useMutation<TData, Error, TVariables>({
+  return useMutation<TData, Error, TVariables, TContext>({
     mutationFn: async (variables) => {
-      if (isOnline && options.mutationFn) {
-        const result = await options.mutationFn(variables, {} as never);
+      if (isOnline) {
+        const result = await options.mutationFn(variables);
         await options.table.put(result);
         return result;
       }
 
       const path = options.buildPath(variables);
+      const tempId = crypto.randomUUID();
 
-      if (options.operation === "delete") {
-        const id = (variables as Record<string, unknown>).id;
-        if (id) await options.table.delete(id as never);
-      } else {
-        const optimistic = {
-          id: crypto.randomUUID(),
-          ...variables,
-        } as unknown as TData;
-        await options.table.put(optimistic);
-      }
+      const optimistic = {
+        id: tempId,
+        ...variables,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as unknown as TData;
+      await options.table.put(optimistic);
 
       await enqueue({
         entityType: options.entityType,
-        entityId: String((variables as Record<string, unknown>).id ?? ""),
+        entityId:
+          options.operation === "update"
+            ? String((variables as Record<string, unknown>).id ?? "")
+            : "",
         operation: options.operation,
         path,
         payload: variables,
+        tempId: options.operation === "create" ? tempId : undefined,
       });
 
-      return {} as TData;
+      return optimistic;
     },
+    onMutate: isOnline ? options.onMutate : undefined,
     onSuccess: (...args) => {
       options.invalidateKeys?.forEach((key) =>
         queryClient.invalidateQueries({ queryKey: key }),
@@ -97,8 +172,56 @@ export function useOfflineMutation<TData extends SyncableEntity, TVariables>(
       options.onSuccess?.(...args);
     },
     onError: options.onError,
+    onSettled: options.onSettled,
   });
 }
+
+export function useOfflineDeleteMutation<TVariables>(
+  options: Omit<UseMutationOptions<void, Error, TVariables>, "mutationFn"> & {
+    mutationFn: (variables: TVariables) => Promise<void>;
+    table: EntityTable<SyncableEntity, "id">;
+    entityType: string;
+    buildPath: (variables: TVariables) => string;
+    getEntityId: (variables: TVariables) => string;
+    invalidateKeys?: unknown[][];
+  },
+) {
+  const isOnline = useNetworkStatus();
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, TVariables>({
+    mutationFn: async (variables) => {
+      const entityId = options.getEntityId(variables);
+
+      if (isOnline) {
+        await options.mutationFn(variables);
+        await options.table.delete(entityId as never);
+        return;
+      }
+
+      await options.table.delete(entityId as never);
+
+      await enqueue({
+        entityType: options.entityType,
+        entityId,
+        operation: "delete",
+        path: options.buildPath(variables),
+        payload: variables,
+      });
+    },
+    onMutate: isOnline ? options.onMutate : undefined,
+    onSuccess: (...args) => {
+      options.invalidateKeys?.forEach((key) =>
+        queryClient.invalidateQueries({ queryKey: key }),
+      );
+      options.onSuccess?.(...args);
+    },
+    onError: options.onError,
+    onSettled: options.onSettled,
+  });
+}
+
+// --- Utility Hooks ---
 
 export function usePendingCount(): number {
   const count = useLiveQuery(
@@ -109,6 +232,14 @@ export function usePendingCount(): number {
   return count ?? 0;
 }
 
+export function useFailedMutations() {
+  const mutations = useLiveQuery(
+    () => db.pendingMutations.where("status").equals("failed").toArray(),
+    [],
+  );
+  return mutations ?? [];
+}
+
 export function useAutoSync(
   syncFn: () => Promise<void>,
   options: { intervalMs?: number; isOnline?: boolean } = {},
@@ -116,6 +247,14 @@ export function useAutoSync(
   const { intervalMs = 60000, isOnline: isOnlineOverride } = options;
   const browserOnline = useNetworkStatus();
   const isOnline = isOnlineOverride ?? browserOnline;
+
+  // Immediate flush on mount if browser reports online
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && navigator.onLine) {
+      syncFn();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!isOnline) return;

@@ -60,6 +60,20 @@ export class TagRepository {
     );
   }
 
+  async findUpdatedSince(
+    workspaceId: string,
+    since: string,
+    includeSoftDeleted = false,
+  ): Promise<Tag[]> {
+    const filter: any = {
+      workspace_id: workspaceId,
+      updated_at: { $gt: new Date(since) },
+    };
+    if (!includeSoftDeleted) filter.deleted_at = null;
+    const docs = await this.model.find(filter).lean();
+    return docs.map((doc) => this.toDomain(doc));
+  }
+
   private toDomain(doc: any): Tag {
     return Tag.reconstitute(
       {

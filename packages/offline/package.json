@@ -11,7 +11,8 @@
     "./db": "./src/db/index.ts",
     "./sync/*": "./src/sync/*.ts",
     "./network": "./src/network/index.ts",
-    "./hooks": "./src/hooks/index.ts"
+    "./hooks": "./src/hooks/index.ts",
+    "./hooks/*": "./src/hooks/*.ts"
   },
   "peerDependencies": {
     "react": "^19.0.0",
