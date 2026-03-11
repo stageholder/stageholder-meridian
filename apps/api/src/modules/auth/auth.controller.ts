@@ -8,6 +8,7 @@ import {
   Req,
   Res,
   UnauthorizedException,
+  BadRequestException,
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import { ApiTags } from "@nestjs/swagger";
@@ -131,9 +132,13 @@ export class AuthController {
   @Get("google")
   async googleRedirect(
     @Query("redirect_uri") redirectUri: string,
+    @Query("client_type") clientType: "web" | "desktop",
     @Res() res: Response,
   ) {
-    const url = this.authService.getGoogleAuthUrl(redirectUri);
+    const url = this.authService.getGoogleAuthUrl(
+      redirectUri,
+      clientType || "web",
+    );
     res.redirect(url);
   }
 
@@ -141,21 +146,50 @@ export class AuthController {
   @Get("google/callback")
   async googleCallback(
     @Query("code") code: string,
-    @Query("state") state: string,
+    @Query("state") stateParam: string,
     @Res() res: Response,
   ) {
+    // Parse JSON state (with fallback for plain-string backward compat)
+    let redirectUri = "";
+    let clientType = "web";
+    try {
+      const parsed = JSON.parse(stateParam);
+      redirectUri = parsed.redirectUri || "";
+      clientType = parsed.clientType || "web";
+    } catch {
+      redirectUri = stateParam;
+    }
+
     const { user, tokens, personalWorkspaceShortId } =
-      await this.authService.exchangeGoogleCode(code, state);
-    setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
-    const frontendUrl = this.authService.getFrontendUrl();
+      await this.authService.exchangeGoogleCode(code, redirectUri);
+
+    const userJson = encodeURIComponent(
+      JSON.stringify({ ...toUserResponse(user), personalWorkspaceShortId }),
+    );
     const redirectPath = !user.onboardingCompleted
       ? "/onboarding"
       : personalWorkspaceShortId
         ? `/${personalWorkspaceShortId}/dashboard`
         : "/workspaces";
-    const userJson = encodeURIComponent(
-      JSON.stringify({ ...toUserResponse(user), personalWorkspaceShortId }),
-    );
+
+    if (clientType === "desktop") {
+      // Validate localhost redirect to prevent open redirect
+      if (!/^http:\/\/localhost:\d+/.test(redirectUri)) {
+        throw new BadRequestException("Invalid desktop redirect URI");
+      }
+      // Desktop: redirect to localhost with tokens (no cookies)
+      const params = new URLSearchParams({
+        access_token: tokens.accessToken,
+        refresh_token: tokens.refreshToken,
+        user: userJson,
+        redirect: redirectPath,
+      });
+      return res.redirect(`${redirectUri}?${params.toString()}`);
+    }
+
+    // Web: existing cookie-based flow
+    setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+    const frontendUrl = this.authService.getFrontendUrl();
     res.redirect(
       `${frontendUrl}/auth/google/callback?user=${userJson}&redirect=${encodeURIComponent(redirectPath)}`,
     );

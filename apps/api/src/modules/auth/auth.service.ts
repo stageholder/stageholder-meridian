@@ -150,7 +150,10 @@ export class AuthService {
     return this.config.get<string>("FRONTEND_URL", "http://localhost:3000");
   }
 
-  getGoogleAuthUrl(redirectUri: string): string {
+  getGoogleAuthUrl(
+    redirectUri: string,
+    clientType: "web" | "desktop" = "web",
+  ): string {
     const googleClientId = this.config.get<string>("GOOGLE_CLIENT_ID");
     if (!googleClientId)
       throw new BadRequestException("Google OAuth not configured");
@@ -159,6 +162,10 @@ export class AuthService {
         "API_URL",
         `http://localhost:${this.config.get("PORT", "4000")}`,
       ) + "/api/v1/auth/google/callback";
+    const state = JSON.stringify({
+      redirectUri: redirectUri || "",
+      clientType,
+    });
     const params = new URLSearchParams({
       client_id: googleClientId,
       redirect_uri: callbackUrl,
@@ -166,7 +173,7 @@ export class AuthService {
       scope: "openid email profile",
       access_type: "offline",
       prompt: "select_account",
-      state: redirectUri || "",
+      state,
     });
     return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
   }

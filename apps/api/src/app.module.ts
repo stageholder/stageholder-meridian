@@ -31,10 +31,21 @@ import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
         genReqId: (req: any) => req.headers["x-request-id"] || randomUUID(),
         transport:
           process.env.NODE_ENV !== "production"
-            ? { target: "pino-pretty" }
+            ? {
+                target: "pino-pretty",
+                options: {
+                  colorize: true,
+                  singleLine: true,
+                  ignore: "pid,hostname",
+                },
+              }
             : undefined,
         level: process.env.NODE_ENV === "production" ? "info" : "debug",
         autoLogging: true,
+        serializers: {
+          req: (req: any) => ({ method: req.method, url: req.url }),
+          res: (res: any) => ({ statusCode: res.statusCode }),
+        },
       },
     }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),

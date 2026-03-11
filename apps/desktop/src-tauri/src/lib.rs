@@ -6,6 +6,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_oauth::init())
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.clear_all_browsing_data();
