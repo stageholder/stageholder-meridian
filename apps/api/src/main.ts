@@ -46,15 +46,25 @@ async function bootstrap() {
 
   // Swagger docs (dev/staging only)
   if (process.env.NODE_ENV !== "production") {
-    const { DocumentBuilder, SwaggerModule } = await import("@nestjs/swagger");
-    const config = new DocumentBuilder()
-      .setTitle("Meridian API")
-      .setVersion("0.1.0")
-      .addBearerAuth()
-      .addCookieAuth("access_token")
-      .build();
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup("docs", app, document);
+    try {
+      const { DocumentBuilder, SwaggerModule } =
+        await import("@nestjs/swagger");
+      const config = new DocumentBuilder()
+        .setTitle("Meridian API")
+        .setVersion("0.1.0")
+        .addBearerAuth()
+        .addCookieAuth("access_token")
+        .build();
+      const document = SwaggerModule.createDocument(app, config, {
+        operationIdFactory: (_controllerKey, methodKey) => methodKey,
+      });
+      SwaggerModule.setup("docs", app, document);
+    } catch (err) {
+      const logger = app.get(Logger);
+      logger.warn(
+        `Swagger setup failed (Zod DTOs are not class-based): ${err}`,
+      );
+    }
   }
 
   const port = process.env.PORT || 4000;
