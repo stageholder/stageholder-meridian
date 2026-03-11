@@ -1,7 +1,12 @@
 "use client";
 
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 import { useLightTrend } from "@/lib/hooks/use-light-trend";
 
 const chartConfig = {
@@ -33,13 +38,29 @@ export function LightEarnedChart() {
       <AreaChart data={data}>
         <defs>
           <linearGradient id="lightGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="var(--color-light)" stopOpacity={0.3} />
+            <stop
+              offset="5%"
+              stopColor="var(--color-light)"
+              stopOpacity={0.3}
+            />
             <stop offset="95%" stopColor="var(--color-light)" stopOpacity={0} />
           </linearGradient>
         </defs>
         <CartesianGrid vertical={false} strokeDasharray="3 3" />
-        <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} interval="preserveStartEnd" />
-        <YAxis tickLine={false} axisLine={false} fontSize={12} width={30} allowDecimals={false} />
+        <XAxis
+          dataKey="label"
+          tickLine={false}
+          axisLine={false}
+          fontSize={12}
+          interval="preserveStartEnd"
+        />
+        <YAxis
+          tickLine={false}
+          axisLine={false}
+          fontSize={12}
+          width={30}
+          allowDecimals={false}
+        />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Area
           type="monotone"

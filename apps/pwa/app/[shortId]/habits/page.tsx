@@ -29,7 +29,17 @@ export default function HabitsPage() {
           onClick={() => setShowCreateDialog(true)}
           className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M5 12h14" />
             <path d="M12 5v14" />
           </svg>
@@ -57,7 +67,8 @@ export default function HabitsPage() {
         )}
         {!isViewingToday && (
           <span className="text-xs text-muted-foreground">
-            Viewing: {format(new Date(selectedDate + "T00:00:00"), "EEEE, MMM d, yyyy")}
+            Viewing:{" "}
+            {format(new Date(selectedDate + "T00:00:00"), "EEEE, MMM d, yyyy")}
           </span>
         )}
       </div>
@@ -65,7 +76,10 @@ export default function HabitsPage() {
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-xl border border-border bg-card p-5">
+            <div
+              key={i}
+              className="rounded-xl border border-border bg-card p-5"
+            >
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 animate-pulse rounded-lg bg-muted" />
                 <div className="space-y-2">

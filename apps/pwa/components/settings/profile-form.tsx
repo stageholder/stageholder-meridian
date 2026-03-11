@@ -23,7 +23,9 @@ export function ProfileForm() {
   useEffect(() => {
     if (user) {
       setName(user.name);
-      setTimezone(user.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+      setTimezone(
+        user.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+      );
     }
   }, [user]);
 
@@ -51,13 +53,18 @@ export function ProfileForm() {
   }
 
   if (isLoading) {
-    return <div className="text-sm text-muted-foreground">Loading profile...</div>;
+    return (
+      <div className="text-sm text-muted-foreground">Loading profile...</div>
+    );
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="profile-name" className="block text-sm font-medium text-foreground">
+        <label
+          htmlFor="profile-name"
+          className="block text-sm font-medium text-foreground"
+        >
           Name
         </label>
         <input
@@ -70,7 +77,10 @@ export function ProfileForm() {
       </div>
 
       <div>
-        <label htmlFor="profile-email" className="block text-sm font-medium text-foreground">
+        <label
+          htmlFor="profile-email"
+          className="block text-sm font-medium text-foreground"
+        >
           Email
         </label>
         <input
@@ -80,11 +90,16 @@ export function ProfileForm() {
           disabled
           className="mt-1 block w-full max-w-md rounded-lg border border-border bg-muted px-3 py-2 text-sm text-muted-foreground"
         />
-        <p className="mt-1 text-xs text-muted-foreground">Email cannot be changed.</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Email cannot be changed.
+        </p>
       </div>
 
       <div>
-        <label htmlFor="profile-timezone" className="block text-sm font-medium text-foreground">
+        <label
+          htmlFor="profile-timezone"
+          className="block text-sm font-medium text-foreground"
+        >
           Timezone
         </label>
         <TimezoneSelect

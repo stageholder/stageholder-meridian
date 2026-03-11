@@ -11,12 +11,22 @@
     "dev:desktop": "turbo run dev --filter=pwa --filter=desktop --filter=api",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "check": "turbo run check",
+    "test": "turbo run test",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "eslint": "^9.39.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.3.3",
     "prettier": "^3.7.4",
     "turbo": "^2.8.12",
     "typescript": "5.9.2"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,json,md,yml}": [
+      "prettier --write"
+    ]
   },
   "engines": {
     "node": ">=18"

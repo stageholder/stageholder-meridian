@@ -25,9 +25,22 @@ Returns items grouped by ISO date string for the requested month (including over
 ```typescript
 interface CalendarResponse {
   [date: string]: {
-    todos: Array<{ id: string; title: string; status: string; priority: string; dueDate: string; listId: string }>;
+    todos: Array<{
+      id: string;
+      title: string;
+      status: string;
+      priority: string;
+      dueDate: string;
+      listId: string;
+    }>;
     journals: Array<{ id: string; title: string; date: string }>;
-    habitEntries: Array<{ id: string; habitId: string; habitName: string; completed: boolean; date: string }>;
+    habitEntries: Array<{
+      id: string;
+      habitId: string;
+      habitName: string;
+      completed: boolean;
+      date: string;
+    }>;
   };
 }
 ```
@@ -43,6 +56,7 @@ New `calendar` module in NestJS that queries across existing todo, journal, and 
 ### Offline Support
 
 When offline, query Dexie directly:
+
 - `db.todos.where('dueDate').between(startDate, endDate)`
 - `db.journals.where('date').between(startDate, endDate)`
 - `db.habitEntries.where('date').between(startDate, endDate)`
@@ -142,8 +156,9 @@ Add "Calendar" to sidebar between "Dashboard" and "Todos" using `CalendarDays` i
 // lib/api/calendar.ts
 function useCalendarData(workspaceId: string, month: string) {
   return useOfflineQuery({
-    queryKey: ['calendar', workspaceId, month],
-    queryFn: () => api.get(`/workspaces/${workspaceId}/calendar?month=${month}`),
+    queryKey: ["calendar", workspaceId, month],
+    queryFn: () =>
+      api.get(`/workspaces/${workspaceId}/calendar?month=${month}`),
     offlineFn: () => getCalendarDataFromDexie(workspaceId, month),
   });
 }

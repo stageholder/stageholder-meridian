@@ -1,19 +1,50 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useLightEvents } from '@/lib/api/light';
-import { format, parseISO } from 'date-fns';
-import { CheckCircle2, Plus, Target, BookOpen, Star, Flame, CircleDot } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useState } from "react";
+import { useLightEvents } from "@/lib/api/light";
+import { format, parseISO } from "date-fns";
+import {
+  CheckCircle2,
+  Plus,
+  Target,
+  BookOpen,
+  Star,
+  Flame,
+  CircleDot,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const ACTION_CONFIG: Record<string, { label: string; icon: typeof Star; color: string }> = {
-  todo_complete: { label: 'Completed todo', icon: CheckCircle2, color: 'text-blue-500' },
-  todo_create: { label: 'Todo created', icon: Plus, color: 'text-blue-400' },
-  habit_checkin: { label: 'Habit check-in', icon: Target, color: 'text-orange-500' },
-  journal_entry: { label: 'Journal entry', icon: BookOpen, color: 'text-emerald-500' },
-  perfect_day: { label: 'Perfect Day', icon: Star, color: 'text-amber-500' },
-  ring_streak_bonus: { label: 'Streak milestone', icon: Flame, color: 'text-red-500' },
-  ring_completion_bonus: { label: 'Ring completed', icon: CircleDot, color: 'text-purple-500' },
+const ACTION_CONFIG: Record<
+  string,
+  { label: string; icon: typeof Star; color: string }
+> = {
+  todo_complete: {
+    label: "Completed todo",
+    icon: CheckCircle2,
+    color: "text-blue-500",
+  },
+  todo_create: { label: "Todo created", icon: Plus, color: "text-blue-400" },
+  habit_checkin: {
+    label: "Habit check-in",
+    icon: Target,
+    color: "text-orange-500",
+  },
+  journal_entry: {
+    label: "Journal entry",
+    icon: BookOpen,
+    color: "text-emerald-500",
+  },
+  perfect_day: { label: "Perfect Day", icon: Star, color: "text-amber-500" },
+  ring_streak_bonus: {
+    label: "Streak milestone",
+    icon: Flame,
+    color: "text-red-500",
+  },
+  ring_completion_bonus: {
+    label: "Ring completed",
+    icon: CircleDot,
+    color: "text-purple-500",
+  },
 };
 
 const INITIAL_LIMIT = 10;
@@ -37,7 +68,7 @@ export function JourneyFeed() {
   }
 
   const grouped = events.reduce<Record<string, typeof events>>((acc, event) => {
-    const dateKey = format(parseISO(event.createdAt), 'yyyy-MM-dd');
+    const dateKey = format(parseISO(event.createdAt), "yyyy-MM-dd");
     if (!acc[dateKey]) acc[dateKey] = [];
     acc[dateKey].push(event);
     return acc;
@@ -59,7 +90,7 @@ export function JourneyFeed() {
           <div key={dateKey}>
             <div className="flex items-center justify-between border-b border-border pb-1.5">
               <span className="text-sm font-medium text-foreground">
-                {format(parseISO(dateKey), 'MMM d, yyyy')}
+                {format(parseISO(dateKey), "MMM d, yyyy")}
               </span>
               <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 tabular-nums dark:bg-amber-900/30 dark:text-amber-400">
                 +{dayTotal} Light
@@ -71,7 +102,7 @@ export function JourneyFeed() {
                 const config = ACTION_CONFIG[event.action] ?? {
                   label: event.action,
                   icon: Star,
-                  color: 'text-muted-foreground',
+                  color: "text-muted-foreground",
                 };
                 const Icon = config.icon;
 
@@ -80,12 +111,12 @@ export function JourneyFeed() {
                     key={event.id}
                     className="flex items-center gap-2.5 rounded-lg px-1 py-1 text-sm"
                   >
-                    <Icon className={cn('size-3.5 shrink-0', config.color)} />
+                    <Icon className={cn("size-3.5 shrink-0", config.color)} />
                     <span className="flex-1 text-foreground">
                       {config.label}
                     </span>
                     <span className="shrink-0 tabular-nums text-muted-foreground">
-                      {event.baseLight} x {event.multiplier} ={' '}
+                      {event.baseLight} x {event.multiplier} ={" "}
                       <span className="font-medium text-foreground">
                         {event.totalLight}
                       </span>

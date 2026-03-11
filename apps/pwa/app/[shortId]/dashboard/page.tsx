@@ -34,11 +34,17 @@ export default function DashboardPage() {
       <BentoCard index={1} className="md:col-span-1 lg:col-span-5">
         <Link href={`/${params.shortId}/journey`} className="block">
           <ActivityRings date={today} size="xl" showLabels bare />
-          {userLight && <LevelProgress userLight={userLight} className="mt-4" />}
+          {userLight && (
+            <LevelProgress userLight={userLight} className="mt-4" />
+          )}
         </Link>
       </BentoCard>
 
-      <BentoCard title="Weekly Activity" index={2} className="md:col-span-1 lg:col-span-7">
+      <BentoCard
+        title="Weekly Activity"
+        index={2}
+        className="md:col-span-1 lg:col-span-7"
+      >
         <WeeklyActivityChart />
       </BentoCard>
 
@@ -47,18 +53,28 @@ export default function DashboardPage() {
       <HabitSummary index={4} className="md:col-span-1 lg:col-span-7" />
 
       {/* Row 4: Mood Trend | Light Earned */}
-      <BentoCard title="Mood Trend" index={5} className="md:col-span-1 lg:col-span-5">
+      <BentoCard
+        title="Mood Trend"
+        index={5}
+        className="md:col-span-1 lg:col-span-5"
+      >
         <MoodTrendChart />
       </BentoCard>
 
-      <BentoCard title="Light Earned" index={6} className="md:col-span-1 lg:col-span-7">
+      <BentoCard
+        title="Light Earned"
+        index={6}
+        className="md:col-span-1 lg:col-span-7"
+      >
         <LightEarnedChart />
       </BentoCard>
 
       {/* Row 5: Recent Journals */}
       <RecentJournals index={7} className="col-span-full" />
 
-      {levelUpTier && <LevelUpCelebration tier={levelUpTier} onDismiss={dismiss} />}
+      {levelUpTier && (
+        <LevelUpCelebration tier={levelUpTier} onDismiss={dismiss} />
+      )}
     </div>
   );
 }

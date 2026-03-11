@@ -8,10 +8,11 @@ import { DayPanel } from "./day-panel";
 import { useCalendarData } from "@/lib/api/calendar";
 import { useHabits } from "@/lib/api/habits";
 import type { CalendarDayData } from "@/lib/api/calendar";
-import type { Habit } from "@repo/core/types";
 
 export function CalendarView() {
-  const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
+  const [currentMonth, setCurrentMonth] = useState(() =>
+    startOfMonth(new Date()),
+  );
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
   const monthKey = format(currentMonth, "yyyy-MM");
@@ -43,7 +44,9 @@ export function CalendarView() {
         </div>
       ) : isError ? (
         <div className="flex h-[400px] items-center justify-center">
-          <p className="text-sm text-destructive">Failed to load calendar. Please try refreshing the page.</p>
+          <p className="text-sm text-destructive">
+            Failed to load calendar. Please try refreshing the page.
+          </p>
         </div>
       ) : (
         <CalendarGrid
@@ -58,7 +61,9 @@ export function CalendarView() {
       {selectedDate && (
         <DayPanel
           date={selectedDate}
-          dayData={selectedDayData || { todos: [], journals: [], habitEntries: [] }}
+          dayData={
+            selectedDayData || { todos: [], journals: [], habitEntries: [] }
+          }
           habits={habitsList}
         />
       )}

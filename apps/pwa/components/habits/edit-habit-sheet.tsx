@@ -119,7 +119,11 @@ const iconOptions: { emoji: string; keywords: string }[] = [
   { emoji: "🪥", keywords: "toothbrush teeth hygiene brush" },
 ];
 
-export function EditHabitSheet({ habit, open, onOpenChange }: EditHabitSheetProps) {
+export function EditHabitSheet({
+  habit,
+  open,
+  onOpenChange,
+}: EditHabitSheetProps) {
   const [name, setName] = useState(habit.name);
   const [description, setDescription] = useState(habit.description || "");
   const [frequency, setFrequency] = useState(habit.frequency);
@@ -127,7 +131,9 @@ export function EditHabitSheet({ habit, open, onOpenChange }: EditHabitSheetProp
   const [unit, setUnit] = useState(habit.unit || "");
   const [color, setColor] = useState(habit.color || "#3b82f6");
   const [icon, setIcon] = useState(habit.icon || "");
-  const [scheduledDays, setScheduledDays] = useState<number[]>(habit.scheduledDays || []);
+  const [scheduledDays, setScheduledDays] = useState<number[]>(
+    habit.scheduledDays || [],
+  );
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [iconSearch, setIconSearch] = useState("");
   const updateHabit = useUpdateHabit();
@@ -171,7 +177,7 @@ export function EditHabitSheet({ habit, open, onOpenChange }: EditHabitSheetProp
         onError: () => {
           toast.error("Failed to update habit");
         },
-      }
+      },
     );
   }
 
@@ -183,7 +189,10 @@ export function EditHabitSheet({ habit, open, onOpenChange }: EditHabitSheetProp
         </SheetHeader>
         <form onSubmit={handleSubmit} className="space-y-4 px-4 pb-4">
           <div>
-            <label htmlFor="edit-habit-name" className="block text-sm font-medium text-foreground">
+            <label
+              htmlFor="edit-habit-name"
+              className="block text-sm font-medium text-foreground"
+            >
               Name
             </label>
             <input
@@ -197,7 +206,10 @@ export function EditHabitSheet({ habit, open, onOpenChange }: EditHabitSheetProp
           </div>
 
           <div>
-            <label htmlFor="edit-habit-desc" className="block text-sm font-medium text-foreground">
+            <label
+              htmlFor="edit-habit-desc"
+              className="block text-sm font-medium text-foreground"
+            >
               Description
             </label>
             <textarea
@@ -212,7 +224,10 @@ export function EditHabitSheet({ habit, open, onOpenChange }: EditHabitSheetProp
 
           <div className="flex gap-4">
             <div className="flex-1">
-              <label htmlFor="edit-habit-freq" className="block text-sm font-medium text-foreground">
+              <label
+                htmlFor="edit-habit-freq"
+                className="block text-sm font-medium text-foreground"
+              >
                 Frequency
               </label>
               <Select
@@ -232,7 +247,10 @@ export function EditHabitSheet({ habit, open, onOpenChange }: EditHabitSheetProp
               </Select>
             </div>
             <div className="w-24">
-              <label htmlFor="edit-habit-target" className="block text-sm font-medium text-foreground">
+              <label
+                htmlFor="edit-habit-target"
+                className="block text-sm font-medium text-foreground"
+              >
                 Target
               </label>
               <input
@@ -245,7 +263,10 @@ export function EditHabitSheet({ habit, open, onOpenChange }: EditHabitSheetProp
               />
             </div>
             <div className="flex-1">
-              <label htmlFor="edit-habit-unit" className="block text-sm font-medium text-foreground">
+              <label
+                htmlFor="edit-habit-unit"
+                className="block text-sm font-medium text-foreground"
+              >
                 Unit
               </label>
               <input
@@ -261,7 +282,9 @@ export function EditHabitSheet({ habit, open, onOpenChange }: EditHabitSheetProp
 
           {frequency === "weekly" && (
             <div>
-              <label className="block text-sm font-medium text-foreground">Days</label>
+              <label className="block text-sm font-medium text-foreground">
+                Days
+              </label>
               <div className="mt-2 flex gap-1.5">
                 {DAY_OPTIONS.map((day) => {
                   const active = scheduledDays.includes(day.value);
@@ -273,7 +296,7 @@ export function EditHabitSheet({ habit, open, onOpenChange }: EditHabitSheetProp
                         setScheduledDays(
                           active
                             ? scheduledDays.filter((d) => d !== day.value)
-                            : [...scheduledDays, day.value].sort()
+                            : [...scheduledDays, day.value].sort(),
                         )
                       }
                       className={`flex h-9 w-9 items-center justify-center rounded-lg text-xs font-medium transition-all ${
@@ -291,7 +314,9 @@ export function EditHabitSheet({ habit, open, onOpenChange }: EditHabitSheetProp
           )}
 
           <div>
-            <label className="block text-sm font-medium text-foreground">Icon</label>
+            <label className="block text-sm font-medium text-foreground">
+              Icon
+            </label>
             <button
               type="button"
               onClick={() => setIconPickerOpen(!iconPickerOpen)}
@@ -317,8 +342,10 @@ export function EditHabitSheet({ habit, open, onOpenChange }: EditHabitSheetProp
                 <div className="max-h-40 overflow-y-auto p-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-track]:bg-transparent">
                   <div className="grid grid-cols-7 gap-1.5">
                     {iconOptions
-                      .filter((opt) =>
-                        !iconSearch || opt.keywords.includes(iconSearch.toLowerCase())
+                      .filter(
+                        (opt) =>
+                          !iconSearch ||
+                          opt.keywords.includes(iconSearch.toLowerCase()),
                       )
                       .map((opt) => (
                         <button
@@ -345,7 +372,9 @@ export function EditHabitSheet({ habit, open, onOpenChange }: EditHabitSheetProp
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground">Color</label>
+            <label className="block text-sm font-medium text-foreground">
+              Color
+            </label>
             <div className="mt-2 flex gap-2">
               {colorOptions.map((opt) => (
                 <button

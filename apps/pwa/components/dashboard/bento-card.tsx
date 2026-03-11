@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardAction,
+} from "@/components/ui/card";
 
 interface BentoCardProps {
   children: React.ReactNode;
@@ -11,13 +17,17 @@ interface BentoCardProps {
   className?: string;
 }
 
-export function BentoCard({ children, title, href, action, index = 0, className }: BentoCardProps) {
+export function BentoCard({
+  children,
+  title,
+  href,
+  action,
+  index = 0,
+  className,
+}: BentoCardProps) {
   return (
     <Card
-      className={cn(
-        "animate-[bento-enter_0.4s_ease-out_both]",
-        className,
-      )}
+      className={cn("animate-[bento-enter_0.4s_ease-out_both]", className)}
       style={{ animationDelay: `${index * 75}ms` }}
     >
       {(title || action) && (
@@ -25,7 +35,9 @@ export function BentoCard({ children, title, href, action, index = 0, className 
           {title && (
             <CardTitle className="text-sm">
               {href ? (
-                <Link href={href} className="hover:underline">{title}</Link>
+                <Link href={href} className="hover:underline">
+                  {title}
+                </Link>
               ) : (
                 title
               )}

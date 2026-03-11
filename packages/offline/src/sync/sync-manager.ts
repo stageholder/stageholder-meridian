@@ -1,7 +1,7 @@
-import type { AxiosInstance } from 'axios';
-import type { EntityTable } from 'dexie';
-import { db } from '../db/index';
-import { flush } from './mutation-queue';
+import type { AxiosInstance } from "axios";
+import type { EntityTable } from "dexie";
+import { db } from "../db/index";
+import { flush } from "./mutation-queue";
 
 interface SyncableEntity {
   id: string;
@@ -13,13 +13,13 @@ let syncing = false;
 export async function syncEntity<T extends SyncableEntity>(
   entityType: string,
   workspaceId: string,
-  table: EntityTable<T, 'id'>,
+  table: EntityTable<T, "id">,
   fetchFn: () => Promise<T[]>,
 ): Promise<void> {
   const serverData = await fetchFn();
   if (!Array.isArray(serverData)) return;
 
-  await db.transaction('rw', table, db.syncMeta, async () => {
+  await db.transaction("rw", table, db.syncMeta, async () => {
     for (const item of serverData) {
       const local = await table.get({ id: item.id } as never);
 
@@ -46,7 +46,7 @@ export async function fullSync(
   workspaceId: string,
   client: AxiosInstance,
   fetchers: Record<string, () => Promise<SyncableEntity[]>>,
-  tables: Record<string, EntityTable<SyncableEntity, 'id'>>,
+  tables: Record<string, EntityTable<SyncableEntity, "id">>,
 ): Promise<void> {
   if (syncing) return;
   syncing = true;

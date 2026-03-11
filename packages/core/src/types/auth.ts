@@ -4,7 +4,7 @@ export interface AuthUser {
   name: string;
   avatar?: string;
   timezone?: string;
-  provider: 'local' | 'google';
+  provider: "local" | "google";
   emailVerified: boolean;
   onboardingCompleted: boolean;
   createdAt: string;

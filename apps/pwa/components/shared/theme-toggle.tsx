@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
-import { useTheme } from "next-themes"
-import { Moon, Sun, Monitor } from "lucide-react"
+import { useTheme } from "next-themes";
+import { Moon, Sun, Monitor } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 
 export function ThemeToggle() {
-  const { setTheme, theme } = useTheme()
+  const { setTheme, theme } = useTheme();
 
   return (
     <DropdownMenu>
@@ -27,19 +27,25 @@ export function ThemeToggle() {
         <DropdownMenuItem onClick={() => setTheme("light")}>
           <Sun className="size-4" />
           Light
-          {theme === "light" && <span className="ml-auto text-xs text-primary">●</span>}
+          {theme === "light" && (
+            <span className="ml-auto text-xs text-primary">●</span>
+          )}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme("dark")}>
           <Moon className="size-4" />
           Dark
-          {theme === "dark" && <span className="ml-auto text-xs text-primary">●</span>}
+          {theme === "dark" && (
+            <span className="ml-auto text-xs text-primary">●</span>
+          )}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme("system")}>
           <Monitor className="size-4" />
           System
-          {theme === "system" && <span className="ml-auto text-xs text-primary">●</span>}
+          {theme === "system" && (
+            <span className="ml-auto text-xs text-primary">●</span>
+          )}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

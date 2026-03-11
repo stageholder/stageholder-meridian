@@ -21,7 +21,10 @@ export function CompletedContent() {
 
   const completedTodos = (todos || [])
     .filter((t) => t.status === "done" && new Date(t.updatedAt) >= sevenDaysAgo)
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    .sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    );
 
   // Group by date completed
   const groupedByDate = new Map<string, Todo[]>();
@@ -46,7 +49,9 @@ export function CompletedContent() {
       </div>
 
       {isLoading ? (
-        <div className="mt-3 text-sm text-muted-foreground">Loading todos...</div>
+        <div className="mt-3 text-sm text-muted-foreground">
+          Loading todos...
+        </div>
       ) : (
         <div className="mt-3 space-y-6">
           {[...groupedByDate.entries()].map(([date, dateTodos]) => {
@@ -60,7 +65,9 @@ export function CompletedContent() {
 
             return (
               <div key={date}>
-                <h2 className="mb-3 text-sm font-semibold text-foreground">{date}</h2>
+                <h2 className="mb-3 text-sm font-semibold text-foreground">
+                  {date}
+                </h2>
                 <div className="space-y-4 pl-1">
                   {[...byList.entries()].map(([listId, listTodos]) => {
                     const list = listMap.get(listId);
@@ -69,7 +76,9 @@ export function CompletedContent() {
                         <div className="mb-2 flex items-center gap-2">
                           <span
                             className="inline-block h-3 w-3 rounded-full"
-                            style={{ backgroundColor: list?.color || "#6b7280" }}
+                            style={{
+                              backgroundColor: list?.color || "#6b7280",
+                            }}
                           />
                           <span className="text-xs font-medium text-muted-foreground">
                             {list?.name || "Unknown List"}
@@ -77,7 +86,11 @@ export function CompletedContent() {
                         </div>
                         <div className="space-y-2">
                           {listTodos.map((todo) => (
-                            <TodoItem key={todo.id} todo={todo} listId={listId} />
+                            <TodoItem
+                              key={todo.id}
+                              todo={todo}
+                              listId={listId}
+                            />
                           ))}
                         </div>
                       </div>

@@ -1,16 +1,16 @@
-import { useEffect } from 'react';
+import { useEffect } from "react";
 import {
   useQuery,
   useMutation,
   useQueryClient,
   type UseQueryOptions,
   type UseMutationOptions,
-} from '@tanstack/react-query';
-import type { EntityTable } from 'dexie';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db/index';
-import { enqueue } from '../sync/mutation-queue';
-import { useNetworkStatus } from '../network/index';
+} from "@tanstack/react-query";
+import type { EntityTable } from "dexie";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "../db/index";
+import { enqueue } from "../sync/mutation-queue";
+import { useNetworkStatus } from "../network/index";
 
 interface SyncableEntity {
   id: string;
@@ -18,7 +18,7 @@ interface SyncableEntity {
 
 export function useOfflineQuery<T extends SyncableEntity>(
   queryKey: unknown[],
-  table: EntityTable<T, 'id'>,
+  table: EntityTable<T, "id">,
   fetchFn: () => Promise<T[]>,
   options?: Partial<UseQueryOptions<T[]>>,
 ) {
@@ -29,14 +29,14 @@ export function useOfflineQuery<T extends SyncableEntity>(
     queryKey,
     queryFn: async () => {
       const data = await fetchFn();
-      await db.transaction('rw', table, async () => {
+      await db.transaction("rw", table, async () => {
         for (const item of data) {
           await table.put(item);
         }
       });
       return data;
     },
-    enabled: isOnline && (options?.enabled !== false),
+    enabled: isOnline && options?.enabled !== false,
     ...options,
   });
 
@@ -49,10 +49,10 @@ export function useOfflineQuery<T extends SyncableEntity>(
 
 export function useOfflineMutation<TData extends SyncableEntity, TVariables>(
   options: UseMutationOptions<TData, Error, TVariables> & {
-    table: EntityTable<TData, 'id'>;
+    table: EntityTable<TData, "id">;
     entityType: string;
     buildPath: (variables: TVariables) => string;
-    operation: 'create' | 'update' | 'delete';
+    operation: "create" | "update" | "delete";
     invalidateKeys?: unknown[][];
   },
 ) {
@@ -69,7 +69,7 @@ export function useOfflineMutation<TData extends SyncableEntity, TVariables>(
 
       const path = options.buildPath(variables);
 
-      if (options.operation === 'delete') {
+      if (options.operation === "delete") {
         const id = (variables as Record<string, unknown>).id;
         if (id) await options.table.delete(id as never);
       } else {
@@ -82,7 +82,7 @@ export function useOfflineMutation<TData extends SyncableEntity, TVariables>(
 
       await enqueue({
         entityType: options.entityType,
-        entityId: String((variables as Record<string, unknown>).id ?? ''),
+        entityId: String((variables as Record<string, unknown>).id ?? ""),
         operation: options.operation,
         path,
         payload: variables,
@@ -103,7 +103,7 @@ export function useOfflineMutation<TData extends SyncableEntity, TVariables>(
 export function usePendingCount(): number {
   const count = useLiveQuery(
     () =>
-      db.pendingMutations.where('status').anyOf('pending', 'failed').count(),
+      db.pendingMutations.where("status").anyOf("pending", "failed").count(),
     [],
   );
   return count ?? 0;
@@ -122,15 +122,17 @@ export function useAutoSync(
 
     syncFn();
 
-    const handleOnline = () => { syncFn(); };
-    window.addEventListener('online', handleOnline);
+    const handleOnline = () => {
+      syncFn();
+    };
+    window.addEventListener("online", handleOnline);
 
     const id = setInterval(() => {
       if (isOnline) syncFn();
     }, intervalMs);
 
     return () => {
-      window.removeEventListener('online', handleOnline);
+      window.removeEventListener("online", handleOnline);
       clearInterval(id);
     };
   }, [isOnline, syncFn, intervalMs]);
@@ -138,8 +140,10 @@ export function useAutoSync(
 
 export function useSyncOnFocus(syncFn: () => Promise<void>) {
   useEffect(() => {
-    const handleFocus = () => { syncFn(); };
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    const handleFocus = () => {
+      syncFn();
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, [syncFn]);
 }

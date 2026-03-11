@@ -53,7 +53,9 @@ export default function InvitePage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 text-center">
-          <h1 className="text-lg font-semibold text-foreground">Invitation Not Found</h1>
+          <h1 className="text-lg font-semibold text-foreground">
+            Invitation Not Found
+          </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             This invitation link is invalid or has already been used.
           </p>
@@ -66,9 +68,12 @@ export default function InvitePage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 text-center">
-          <h1 className="text-lg font-semibold text-foreground">Invitation Expired</h1>
+          <h1 className="text-lg font-semibold text-foreground">
+            Invitation Expired
+          </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            This invitation has expired. Please ask the workspace admin to send a new invitation.
+            This invitation has expired. Please ask the workspace admin to send
+            a new invitation.
           </p>
         </div>
       </div>
@@ -78,12 +83,20 @@ export default function InvitePage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <div className="w-full max-w-md rounded-xl border border-border bg-card p-8">
-        <h1 className="text-lg font-semibold text-foreground">Workspace Invitation</h1>
+        <h1 className="text-lg font-semibold text-foreground">
+          Workspace Invitation
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          You have been invited to join <span className="font-medium text-foreground">{info?.workspaceName}</span> as a{" "}
-          <span className="font-medium text-foreground">{info?.role}</span>.
+          You have been invited to join{" "}
+          <span className="font-medium text-foreground">
+            {info?.workspaceName}
+          </span>{" "}
+          as a <span className="font-medium text-foreground">{info?.role}</span>
+          .
         </p>
-        <p className="mt-1 text-xs text-muted-foreground">Invited email: {info?.email}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Invited email: {info?.email}
+        </p>
 
         {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
 

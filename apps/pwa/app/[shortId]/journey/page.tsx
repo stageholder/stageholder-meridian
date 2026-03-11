@@ -1,23 +1,23 @@
-'use client';
+"use client";
 
-import { format } from 'date-fns';
-import { useUserLight } from '@/lib/api/light';
-import { ActivityRings } from '@/components/activity-rings';
-import { StarVisual } from '@/components/light/star-visual';
-import { LevelProgress } from '@/components/light/level-progress';
-import { LevelUpCelebration } from '@/components/light/level-up-celebration';
-import { useLevelUp } from '@/lib/hooks/use-level-up';
-import { JourneyStreaks } from '@/components/light/journey-streaks';
-import { JourneyTierMap } from '@/components/light/journey-tier-map';
-import { JourneyStats } from '@/components/light/journey-stats';
-import { JourneyFeed } from '@/components/light/journey-feed';
-import { JourneyLightChart } from '@/components/light/journey-light-chart';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { format } from "date-fns";
+import { useUserLight } from "@/lib/api/light";
+import { ActivityRings } from "@/components/activity-rings";
+import { StarVisual } from "@/components/light/star-visual";
+import { LevelProgress } from "@/components/light/level-progress";
+import { LevelUpCelebration } from "@/components/light/level-up-celebration";
+import { useLevelUp } from "@/lib/hooks/use-level-up";
+import { JourneyStreaks } from "@/components/light/journey-streaks";
+import { JourneyTierMap } from "@/components/light/journey-tier-map";
+import { JourneyStats } from "@/components/light/journey-stats";
+import { JourneyFeed } from "@/components/light/journey-feed";
+import { JourneyLightChart } from "@/components/light/journey-light-chart";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function JourneyPage() {
   const { data: userLight, isLoading } = useUserLight();
   const { levelUpTier, dismiss } = useLevelUp(userLight);
-  const today = format(new Date(), 'yyyy-MM-dd');
+  const today = format(new Date(), "yyyy-MM-dd");
 
   if (isLoading || !userLight) {
     return (
@@ -94,7 +94,9 @@ export default function JourneyPage() {
         </CardContent>
       </Card>
 
-      {levelUpTier && <LevelUpCelebration tier={levelUpTier} onDismiss={dismiss} />}
+      {levelUpTier && (
+        <LevelUpCelebration tier={levelUpTier} onDismiss={dismiss} />
+      )}
     </div>
   );
 }

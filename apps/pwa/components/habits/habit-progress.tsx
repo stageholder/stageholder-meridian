@@ -9,8 +9,14 @@ interface HabitProgressProps {
   streak: number;
 }
 
-export function HabitProgress({ value, targetCount, color, streak }: HabitProgressProps) {
-  const percentage = targetCount > 0 ? Math.min((value / targetCount) * 100, 100) : 0;
+export function HabitProgress({
+  value,
+  targetCount,
+  color,
+  streak,
+}: HabitProgressProps) {
+  const percentage =
+    targetCount > 0 ? Math.min((value / targetCount) * 100, 100) : 0;
   const isComplete = value >= targetCount;
   const habitColor = color || "#3b82f6";
 
@@ -31,7 +37,7 @@ export function HabitProgress({ value, targetCount, color, streak }: HabitProgre
           <div
             className={cn(
               "h-full rounded-full transition-all duration-500 ease-out",
-              isComplete && "shadow-[0_0_8px_rgba(34,197,94,0.4)]"
+              isComplete && "shadow-[0_0_8px_rgba(34,197,94,0.4)]",
             )}
             style={{
               width: `${percentage}%`,

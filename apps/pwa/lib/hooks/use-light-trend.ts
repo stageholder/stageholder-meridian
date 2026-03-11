@@ -15,7 +15,8 @@ export function useLightTrend() {
     const today = new Date();
     const lightByDate = new Map<string, number>();
     for (const e of events ?? []) {
-      const dateStr = e.date?.split("T")[0] ?? format(new Date(e.createdAt), "yyyy-MM-dd");
+      const dateStr =
+        e.date?.split("T")[0] ?? format(new Date(e.createdAt), "yyyy-MM-dd");
       lightByDate.set(dateStr, (lightByDate.get(dateStr) ?? 0) + e.totalLight);
     }
 

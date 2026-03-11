@@ -20,7 +20,15 @@ interface JournalEditorProps {
   saveStatus?: SaveStatus;
 }
 
-export function JournalEditor({ content, onChange, placeholder, autoFocus, date, excludeJournalId, saveStatus }: JournalEditorProps) {
+export function JournalEditor({
+  content,
+  onChange,
+  placeholder,
+  autoFocus,
+  date,
+  excludeJournalId,
+  saveStatus,
+}: JournalEditorProps) {
   const { data: userLight } = useUserLight();
   const target = userLight?.journalTargetDailyWords ?? 150;
   const [wordCount, setWordCount] = useState(() => countWords(content));
@@ -88,7 +96,17 @@ export function JournalEditor({ content, onChange, placeholder, autoFocus, date,
           }`}
           aria-label="Bold"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8" />
           </svg>
         </button>
@@ -102,7 +120,17 @@ export function JournalEditor({ content, onChange, placeholder, autoFocus, date,
           }`}
           aria-label="Italic"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <line x1="19" x2="10" y1="4" y2="4" />
             <line x1="14" x2="5" y1="20" y2="20" />
             <line x1="15" x2="9" y1="4" y2="20" />
@@ -111,7 +139,9 @@ export function JournalEditor({ content, onChange, placeholder, autoFocus, date,
         <div className="mx-1 h-5 w-px bg-border/50" />
         <button
           type="button"
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          onClick={() =>
+            editor.chain().focus().toggleHeading({ level: 2 }).run()
+          }
           className={`rounded p-1.5 text-sm ${
             editor.isActive("heading", { level: 2 })
               ? "bg-accent text-foreground"
@@ -119,7 +149,17 @@ export function JournalEditor({ content, onChange, placeholder, autoFocus, date,
           }`}
           aria-label="Heading"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M4 12h8" />
             <path d="M4 18V6" />
             <path d="M12 18V6" />
@@ -136,7 +176,17 @@ export function JournalEditor({ content, onChange, placeholder, autoFocus, date,
           }`}
           aria-label="Bullet list"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <line x1="8" x2="21" y1="6" y2="6" />
             <line x1="8" x2="21" y1="12" y2="12" />
             <line x1="8" x2="21" y1="18" y2="18" />
@@ -155,7 +205,17 @@ export function JournalEditor({ content, onChange, placeholder, autoFocus, date,
           }`}
           aria-label="Blockquote"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M17 6H3" />
             <path d="M21 12H8" />
             <path d="M21 18H8" />
@@ -165,13 +225,15 @@ export function JournalEditor({ content, onChange, placeholder, autoFocus, date,
 
         {/* Save status — right-aligned in toolbar */}
         {saveStatus && (
-          <span className={cn(
-            "ml-auto text-xs",
-            saveStatus === "saving" && "text-muted-foreground",
-            saveStatus === "saved" && "text-muted-foreground",
-            saveStatus === "error" && "text-destructive",
-            saveStatus === "idle" && "text-transparent",
-          )}>
+          <span
+            className={cn(
+              "ml-auto text-xs",
+              saveStatus === "saving" && "text-muted-foreground",
+              saveStatus === "saved" && "text-muted-foreground",
+              saveStatus === "error" && "text-destructive",
+              saveStatus === "idle" && "text-transparent",
+            )}
+          >
             {saveStatus === "saving" && "Saving..."}
             {saveStatus === "saved" && "Saved"}
             {saveStatus === "error" && "Save failed"}
@@ -191,15 +253,21 @@ export function JournalEditor({ content, onChange, placeholder, autoFocus, date,
             <div
               className={cn(
                 "h-full rounded-full transition-all duration-300",
-                metTarget ? "bg-[var(--ring-journal)]" : "bg-[var(--ring-journal)]/60",
+                metTarget
+                  ? "bg-[var(--ring-journal)]"
+                  : "bg-[var(--ring-journal)]/60",
               )}
               style={{ width: `${pct}%` }}
             />
           </div>
-          <span className={cn(
-            "shrink-0 text-xs tabular-nums",
-            metTarget ? "font-medium text-[var(--ring-journal)]" : "text-muted-foreground",
-          )}>
+          <span
+            className={cn(
+              "shrink-0 text-xs tabular-nums",
+              metTarget
+                ? "font-medium text-[var(--ring-journal)]"
+                : "text-muted-foreground",
+            )}
+          >
             {totalWords} / {target} words
           </span>
         </div>

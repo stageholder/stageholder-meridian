@@ -33,10 +33,19 @@ function formatDefaultTitle(isoDate: string): string {
 function getDateInfo(dateStr: string) {
   const today = format(new Date(), "yyyy-MM-dd");
   const tomorrow = format(addDays(new Date(), 1), "yyyy-MM-dd");
-  if (dateStr === today) return { label: "Today", color: "text-green-600 dark:text-green-400" };
-  if (dateStr === tomorrow) return { label: "Tomorrow", color: "text-amber-600 dark:text-amber-400" };
-  if (dateStr < today) return { label: format(parseISO(dateStr), "MMM d"), color: "text-red-600 dark:text-red-400" };
-  return { label: format(parseISO(dateStr), "MMM d"), color: "text-blue-600 dark:text-blue-400" };
+  if (dateStr === today)
+    return { label: "Today", color: "text-green-600 dark:text-green-400" };
+  if (dateStr === tomorrow)
+    return { label: "Tomorrow", color: "text-amber-600 dark:text-amber-400" };
+  if (dateStr < today)
+    return {
+      label: format(parseISO(dateStr), "MMM d"),
+      color: "text-red-600 dark:text-red-400",
+    };
+  return {
+    label: format(parseISO(dateStr), "MMM d"),
+    color: "text-blue-600 dark:text-blue-400",
+  };
 }
 
 export default function NewJournalPage() {
@@ -59,7 +68,10 @@ function NewJournalContent() {
   const [tags, setTags] = useState<string[]>([]);
   const [date, setDate] = useState(dateParam || today);
   const isDesktop = useMediaQuery("(min-width: 768px)");
-  const { data: existingEntries } = useJournals({ startDate: date, endDate: date });
+  const { data: existingEntries } = useJournals({
+    startDate: date,
+    endDate: date,
+  });
 
   const effectiveTitle = title.trim() || formatDefaultTitle(date);
   const dateInfo = getDateInfo(date);
@@ -78,11 +90,23 @@ function NewJournalContent() {
     onCreated: onCreatedRef.current,
   });
 
-  const lastSavedRef = useRef({ title: "", content: "", mood: undefined as number | undefined, tags: [] as string[], date: "" });
+  const lastSavedRef = useRef({
+    title: "",
+    content: "",
+    mood: undefined as number | undefined,
+    tags: [] as string[],
+    date: "",
+  });
 
   // Autosave when user changes something
   useEffect(() => {
-    if (!title.trim() && !content.trim() && mood === undefined && tags.length === 0) return;
+    if (
+      !title.trim() &&
+      !content.trim() &&
+      mood === undefined &&
+      tags.length === 0
+    )
+      return;
     const last = lastSavedRef.current;
     if (
       effectiveTitle === last.title &&
@@ -90,10 +114,11 @@ function NewJournalContent() {
       mood === last.mood &&
       JSON.stringify(tags) === JSON.stringify(last.tags) &&
       date === last.date
-    ) return;
+    )
+      return;
     lastSavedRef.current = { title: effectiveTitle, content, mood, tags, date };
     scheduleSave({ title: effectiveTitle, content, mood, tags, date });
-  }, [effectiveTitle, content, mood, tags, date, scheduleSave]);
+  }, [effectiveTitle, content, mood, tags, date, scheduleSave, title]);
 
   return (
     <div className="flex h-full flex-col">
@@ -121,119 +146,145 @@ function NewJournalContent() {
 
         {/* Metadata pills row */}
         <div className="mb-4 flex flex-wrap items-center gap-2">
-        {/* Date pill */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <button type="button" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-              <span className={cn("inline-flex items-center gap-1", dateInfo.color)}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-                  <line x1="16" x2="16" y1="2" y2="6" />
-                  <line x1="8" x2="8" y1="2" y2="6" />
-                  <line x1="3" x2="21" y1="10" y2="10" />
-                </svg>
-                {dateInfo.label}
-              </span>
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-auto p-2">
-            <div className="flex flex-wrap gap-1 pb-2">
-              {[
-                { label: "Today", date: new Date() },
-                { label: "Tomorrow", date: addDays(new Date(), 1) },
-                { label: "Next Week", date: nextMonday(new Date()) },
-              ].map((shortcut) => {
-                const iso = format(shortcut.date, "yyyy-MM-dd");
-                const isActive = date === iso;
-                return (
-                  <button
-                    key={shortcut.label}
-                    type="button"
-                    onClick={() => setDate(iso)}
-                    className={cn(
-                      "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
-                      isActive
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
-                    )}
-                  >
-                    {shortcut.label}
-                  </button>
-                );
-              })}
-            </div>
-            <Calendar
-              mode="single"
-              selected={parseISO(date)}
-              onSelect={(d) => { if (d) setDate(format(d, "yyyy-MM-dd")); }}
-              defaultMonth={parseISO(date)}
-            />
-          </PopoverContent>
-        </Popover>
-
-        {/* Mood pill */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <button type="button" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-              {currentMood ? (
-                <span className="inline-flex items-center gap-1">
-                  <span className="text-sm">{currentMood.emoji}</span>
-                  {currentMood.label}
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 hover:border-foreground/30">
-                  <span className="text-xs">🙂</span>
-                  Mood
-                </span>
-              )}
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-auto p-1">
-            <div className="flex items-center gap-1">
-              {moods.map((m) => (
-                <button
-                  key={m.value}
-                  type="button"
-                  onClick={() => setMood(mood === m.value ? undefined : m.value)}
+          {/* Date pill */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <span
                   className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-lg text-lg transition-colors",
-                    mood === m.value ? "bg-accent" : "hover:bg-accent"
+                    "inline-flex items-center gap-1",
+                    dateInfo.color,
                   )}
-                  title={m.label}
                 >
-                  {m.emoji}
-                </button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+                    <line x1="16" x2="16" y1="2" y2="6" />
+                    <line x1="8" x2="8" y1="2" y2="6" />
+                    <line x1="3" x2="21" y1="10" y2="10" />
+                  </svg>
+                  {dateInfo.label}
+                </span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-auto p-2">
+              <div className="flex flex-wrap gap-1 pb-2">
+                {[
+                  { label: "Today", date: new Date() },
+                  { label: "Tomorrow", date: addDays(new Date(), 1) },
+                  { label: "Next Week", date: nextMonday(new Date()) },
+                ].map((shortcut) => {
+                  const iso = format(shortcut.date, "yyyy-MM-dd");
+                  const isActive = date === iso;
+                  return (
+                    <button
+                      key={shortcut.label}
+                      type="button"
+                      onClick={() => setDate(iso)}
+                      className={cn(
+                        "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
+                        isActive
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
+                      )}
+                    >
+                      {shortcut.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <Calendar
+                mode="single"
+                selected={parseISO(date)}
+                onSelect={(d) => {
+                  if (d) setDate(format(d, "yyyy-MM-dd"));
+                }}
+                defaultMonth={parseISO(date)}
+              />
+            </PopoverContent>
+          </Popover>
 
-        {/* Tag pills */}
-        {tags.map((tag) => (
-          <span
-            key={tag}
-            className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs text-accent-foreground"
-          >
-            {tag}
-            <button
-              type="button"
-              onClick={() => setTags(tags.filter((t) => t !== tag))}
-              className="text-muted-foreground hover:text-foreground"
+          {/* Mood pill */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {currentMood ? (
+                  <span className="inline-flex items-center gap-1">
+                    <span className="text-sm">{currentMood.emoji}</span>
+                    {currentMood.label}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 hover:border-foreground/30">
+                    <span className="text-xs">🙂</span>
+                    Mood
+                  </span>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-auto p-1">
+              <div className="flex items-center gap-1">
+                {moods.map((m) => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() =>
+                      setMood(mood === m.value ? undefined : m.value)
+                    }
+                    className={cn(
+                      "flex h-9 w-9 items-center justify-center rounded-lg text-lg transition-colors",
+                      mood === m.value ? "bg-accent" : "hover:bg-accent",
+                    )}
+                    title={m.label}
+                  >
+                    {m.emoji}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Tag pills */}
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs text-accent-foreground"
             >
-              <X className="size-3" />
-            </button>
-          </span>
-        ))}
+              {tag}
+              <button
+                type="button"
+                onClick={() => setTags(tags.filter((t) => t !== tag))}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="size-3" />
+              </button>
+            </span>
+          ))}
 
-        {/* Add tag pill */}
-        <TagInput tags={tags} onChange={setTags} inline />
+          {/* Add tag pill */}
+          <TagInput tags={tags} onChange={setTags} inline />
 
-        {/* Existing entries warning */}
-        {existingEntries && existingEntries.length > 0 && (
-          <span className="text-xs text-amber-600 dark:text-amber-400">
-            · {existingEntries.length} existing {existingEntries.length === 1 ? "entry" : "entries"}
-          </span>
-        )}
+          {/* Existing entries warning */}
+          {existingEntries && existingEntries.length > 0 && (
+            <span className="text-xs text-amber-600 dark:text-amber-400">
+              · {existingEntries.length} existing{" "}
+              {existingEntries.length === 1 ? "entry" : "entries"}
+            </span>
+          )}
         </div>
       </div>
 

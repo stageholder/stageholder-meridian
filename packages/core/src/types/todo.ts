@@ -14,8 +14,8 @@ export interface TodoList {
 export interface Subtask {
   id: string;
   title: string;
-  status: 'todo' | 'done';
-  priority: 'none' | 'low' | 'medium' | 'high' | 'urgent';
+  status: "todo" | "done";
+  priority: "none" | "low" | "medium" | "high" | "urgent";
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -27,8 +27,8 @@ export interface Todo {
   listId: string;
   title: string;
   description?: string;
-  status: 'todo' | 'done';
-  priority: 'none' | 'low' | 'medium' | 'high' | 'urgent';
+  status: "todo" | "done";
+  priority: "none" | "low" | "medium" | "high" | "urgent";
   dueDate?: string;
   doDate?: string;
   assigneeId?: string;

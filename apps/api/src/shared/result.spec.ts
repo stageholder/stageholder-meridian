@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import { Ok, Err, Result } from './result';
+import { describe, it, expect } from "vitest";
+import { Ok, Err, Result } from "./result";
 
-describe('Result', () => {
-  describe('Ok', () => {
-    it('should create a successful result with a value', () => {
+describe("Result", () => {
+  describe("Ok", () => {
+    it("should create a successful result with a value", () => {
       const result = Ok(42);
       expect(result.ok).toBe(true);
       if (result.ok) {
@@ -11,16 +11,16 @@ describe('Result', () => {
       }
     });
 
-    it('should work with string values', () => {
-      const result = Ok('hello');
+    it("should work with string values", () => {
+      const result = Ok("hello");
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.value).toBe('hello');
+        expect(result.value).toBe("hello");
       }
     });
 
-    it('should work with object values', () => {
-      const obj = { id: 1, name: 'test' };
+    it("should work with object values", () => {
+      const obj = { id: 1, name: "test" };
       const result = Ok(obj);
       expect(result.ok).toBe(true);
       if (result.ok) {
@@ -28,7 +28,7 @@ describe('Result', () => {
       }
     });
 
-    it('should work with null value', () => {
+    it("should work with null value", () => {
       const result = Ok(null);
       expect(result.ok).toBe(true);
       if (result.ok) {
@@ -36,7 +36,7 @@ describe('Result', () => {
       }
     });
 
-    it('should work with undefined value', () => {
+    it("should work with undefined value", () => {
       const result = Ok(undefined);
       expect(result.ok).toBe(true);
       if (result.ok) {
@@ -45,24 +45,24 @@ describe('Result', () => {
     });
   });
 
-  describe('Err', () => {
-    it('should create a failed result with an error', () => {
-      const result = Err(new Error('something went wrong'));
+  describe("Err", () => {
+    it("should create a failed result with an error", () => {
+      const result = Err(new Error("something went wrong"));
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.error.message).toBe('something went wrong');
+        expect(result.error.message).toBe("something went wrong");
       }
     });
 
-    it('should preserve the error instance', () => {
-      const error = new Error('test error');
+    it("should preserve the error instance", () => {
+      const error = new Error("test error");
       const result = Err(error);
       if (!result.ok) {
         expect(result.error).toBe(error);
       }
     });
 
-    it('should work with custom error types', () => {
+    it("should work with custom error types", () => {
       class ValidationError extends Error {
         constructor(
           message: string,
@@ -71,17 +71,17 @@ describe('Result', () => {
           super(message);
         }
       }
-      const result = Err(new ValidationError('Invalid', 'email'));
+      const result = Err(new ValidationError("Invalid", "email"));
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error).toBeInstanceOf(ValidationError);
-        expect(result.error.field).toBe('email');
+        expect(result.error.field).toBe("email");
       }
     });
   });
 
-  describe('Type narrowing', () => {
-    it('should narrow to Ok type when ok is true', () => {
+  describe("Type narrowing", () => {
+    it("should narrow to Ok type when ok is true", () => {
       const result: Result<number> = Ok(42);
       if (result.ok) {
         const value: number = result.value;
@@ -89,15 +89,15 @@ describe('Result', () => {
       }
     });
 
-    it('should narrow to Err type when ok is false', () => {
-      const result: Result<number> = Err(new Error('fail'));
+    it("should narrow to Err type when ok is false", () => {
+      const result: Result<number> = Err(new Error("fail"));
       if (!result.ok) {
         const error: Error = result.error;
-        expect(error.message).toBe('fail');
+        expect(error.message).toBe("fail");
       }
     });
 
-    it('should allow pattern matching style usage', () => {
+    it("should allow pattern matching style usage", () => {
       function process(result: Result<string>): string {
         if (result.ok) {
           return `Success: ${result.value}`;
@@ -105,8 +105,8 @@ describe('Result', () => {
         return `Error: ${result.error.message}`;
       }
 
-      expect(process(Ok('data'))).toBe('Success: data');
-      expect(process(Err(new Error('oops')))).toBe('Error: oops');
+      expect(process(Ok("data"))).toBe("Success: data");
+      expect(process(Err(new Error("oops")))).toBe("Error: oops");
     });
   });
 });

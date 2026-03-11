@@ -67,8 +67,8 @@ export async function syncAll(): Promise<void> {
       tables as Record<string, (typeof tables)[keyof typeof tables]>,
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    sendNativeNotification('Sync failed', message);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    sendNativeNotification("Sync failed", message);
     throw error;
   }
 }

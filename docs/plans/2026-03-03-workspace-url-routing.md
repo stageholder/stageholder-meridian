@@ -13,6 +13,7 @@
 ### Task 1: Create workspace context hook
 
 **Files:**
+
 - Create: `apps/pwa/lib/workspace-context.tsx`
 
 **Step 1: Write the workspace context**
@@ -33,11 +34,18 @@ const WorkspaceContext = createContext<WorkspaceCtx | null>(null);
 
 export function useWorkspace(): WorkspaceCtx {
   const ctx = useContext(WorkspaceContext);
-  if (!ctx) throw new Error("useWorkspace must be used within WorkspaceProvider");
+  if (!ctx)
+    throw new Error("useWorkspace must be used within WorkspaceProvider");
   return ctx;
 }
 
-export function WorkspaceProvider({ workspace, children }: { workspace: Workspace; children: ReactNode }) {
+export function WorkspaceProvider({
+  workspace,
+  children,
+}: {
+  workspace: Workspace;
+  children: ReactNode;
+}) {
   return (
     <WorkspaceContext.Provider value={{ workspace }}>
       {children}
@@ -60,6 +68,7 @@ git commit -m "feat: rewrite workspace context as simple provider"
 ### Task 2: Create `[slug]/layout.tsx` and move dashboard pages
 
 **Files:**
+
 - Create: `apps/pwa/app/[slug]/layout.tsx`
 - Move: `apps/pwa/app/(dashboard)/page.tsx` → `apps/pwa/app/[slug]/dashboard/page.tsx`
 - Move: `apps/pwa/app/(dashboard)/todos/page.tsx` → `apps/pwa/app/[slug]/todos/page.tsx`
@@ -75,6 +84,7 @@ git commit -m "feat: rewrite workspace context as simple provider"
 **Step 1: Create `[slug]/layout.tsx`**
 
 Based on the existing `(dashboard)/layout.tsx`, but:
+
 - Fetches workspace by slug from URL params
 - Wraps children in `WorkspaceProvider`
 - Removes Zustand `activeWorkspaceId` guard
@@ -105,7 +115,11 @@ const navItems = [
 
 // NavIcon component — same as existing, copy from (dashboard)/layout.tsx
 
-export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
+export default function WorkspaceLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const params = useParams<{ slug: string }>();
   const pathname = usePathname();
   const router = useRouter();
@@ -133,11 +147,17 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
         router.replace("/workspaces");
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [params.slug, router]);
 
   async function handleLogout() {
-    try { await apiClient.post("/auth/logout"); } catch { /* ignore */ }
+    try {
+      await apiClient.post("/auth/logout");
+    } catch {
+      /* ignore */
+    }
     clearUser();
     localStorage.removeItem("auth-storage");
     localStorage.removeItem("workspace-storage");
@@ -161,7 +181,10 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
         {/* Sidebar — same UI as before, but links prefixed with /${slug} */}
         <aside className="hidden w-64 shrink-0 border-r border-sidebar-border bg-sidebar md:block">
           <div className="flex h-14 items-center border-b border-sidebar-border px-6">
-            <Link href={`/${slug}/dashboard`} className="text-lg font-bold text-sidebar-foreground">
+            <Link
+              href={`/${slug}/dashboard`}
+              className="text-lg font-bold text-sidebar-foreground"
+            >
               Meridian
             </Link>
           </div>
@@ -191,7 +214,9 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
         <div className="flex flex-1 flex-col">
           <header className="flex h-14 items-center justify-between border-b border-border bg-card px-6">
             <div className="flex items-center gap-4">
-              <span className="text-sm font-medium text-muted-foreground md:hidden">Meridian</span>
+              <span className="text-sm font-medium text-muted-foreground md:hidden">
+                Meridian
+              </span>
             </div>
             <div className="flex items-center gap-3">
               <OfflineIndicator />
@@ -252,6 +277,7 @@ git commit -m "feat: create [slug] layout and move dashboard pages"
 ### Task 3: Update API hooks to use workspace context
 
 **Files:**
+
 - Modify: `apps/pwa/lib/api/todos.ts`
 - Modify: `apps/pwa/lib/api/journals.ts`
 - Modify: `apps/pwa/lib/api/habits.ts`
@@ -259,6 +285,7 @@ git commit -m "feat: create [slug] layout and move dashboard pages"
 For all three files, apply the same pattern change:
 
 **Before (each hook):**
+
 ```tsx
 import { useWorkspaceStore } from "@/stores/workspace-store";
 
@@ -271,6 +298,7 @@ export function useTodoLists() {
 ```
 
 **After (each hook):**
+
 ```tsx
 import { useWorkspace } from "@/lib/workspace-context";
 
@@ -283,6 +311,7 @@ export function useTodoLists() {
 ```
 
 Changes per file:
+
 1. Replace `import { useWorkspaceStore } from "@/stores/workspace-store"` with `import { useWorkspace } from "@/lib/workspace-context"`
 2. Replace `import apiClient, { workspacePath } from "@/lib/api-client"` with `import apiClient from "@/lib/api-client"`
 3. Replace `const { activeWorkspaceId } = useWorkspaceStore()` with `const { workspace } = useWorkspace()`
@@ -314,10 +343,12 @@ git commit -m "refactor: API hooks use workspace context instead of store"
 ### Task 4: Update settings components
 
 **Files:**
+
 - Modify: `apps/pwa/components/settings/workspace-settings.tsx`
 - Modify: `apps/pwa/components/settings/members-list.tsx`
 
 Same pattern as Task 3:
+
 1. Replace `useWorkspaceStore` with `useWorkspace`
 2. Replace `activeWorkspaceId` with `workspace.id`
 3. Remove `if (!activeWorkspaceId)` guards — workspace guaranteed by layout
@@ -345,6 +376,7 @@ git commit -m "refactor: settings components use workspace context"
 ### Task 5: Update hardcoded links in dashboard components
 
 **Files:**
+
 - Modify: `apps/pwa/components/dashboard/today-todos.tsx`
 - Modify: `apps/pwa/components/dashboard/habit-summary.tsx`
 - Modify: `apps/pwa/components/dashboard/recent-journals.tsx`
@@ -358,33 +390,35 @@ All these components have hardcoded links like `href="/todos"` or `href="/journa
 **Step 1: Update `today-todos.tsx`**
 
 Add `import { useWorkspace } from "@/lib/workspace-context"` and `const { workspace } = useWorkspace()`.
-Change `href="/todos"` → `` href={`/${workspace.slug}/todos`} ``
+Change `href="/todos"` → ``href={`/${workspace.slug}/todos`}``
 
 **Step 2: Update `habit-summary.tsx`**
 
-Same pattern. Change `href="/habits"` → `` href={`/${workspace.slug}/habits`} ``
+Same pattern. Change `href="/habits"` → ``href={`/${workspace.slug}/habits`}``
 
 **Step 3: Update `recent-journals.tsx`**
 
-Change `href="/journal"` → `` href={`/${workspace.slug}/journal`} ``
-Change `` href={`/journal/${journal.id}`} `` → `` href={`/${workspace.slug}/journal/${journal.id}`} ``
+Change `href="/journal"` → ``href={`/${workspace.slug}/journal`}``
+Change ``href={`/journal/${journal.id}`}`` → ``href={`/${workspace.slug}/journal/${journal.id}`}``
 
 **Step 4: Update `journal-list.tsx`**
 
-Change `` href={`/journal/${journal.id}`} `` → `` href={`/${workspace.slug}/journal/${journal.id}`} ``
+Change ``href={`/journal/${journal.id}`}`` → ``href={`/${workspace.slug}/journal/${journal.id}`}``
 
 **Step 5: Update `todo-list-sidebar.tsx`**
 
-Change `href="/todos"` → `` href={`/${workspace.slug}/todos`} ``
+Change `href="/todos"` → ``href={`/${workspace.slug}/todos`}``
 
 **Step 6: Update journal page files with `router.push` calls**
 
 In `apps/pwa/app/[slug]/journal/new/page.tsx`:
+
 - Add `import { useWorkspace } from "@/lib/workspace-context"` and `const { workspace } = useWorkspace()`
-- Change `router.push("/journal")` → `` router.push(`/${workspace.slug}/journal`) ``
+- Change `router.push("/journal")` → ``router.push(`/${workspace.slug}/journal`)``
 
 In `apps/pwa/app/[slug]/journal/[id]/page.tsx`:
-- Same pattern: `router.push("/journal")` → `` router.push(`/${workspace.slug}/journal`) ``
+
+- Same pattern: `router.push("/journal")` → ``router.push(`/${workspace.slug}/journal`)``
 
 **Step 7: Commit**
 
@@ -398,14 +432,15 @@ git commit -m "refactor: prefix all internal links with workspace slug"
 ### Task 6: Update workspace picker and middleware
 
 **Files:**
+
 - Modify: `apps/pwa/app/workspaces/page.tsx`
 - Modify: `apps/pwa/proxy.ts`
 - Modify: `apps/pwa/app/page.tsx`
 
 **Step 1: Update workspace picker**
 
-In `selectWorkspace()`: change `router.push("/")` → `` router.push(`/${ws.slug}/dashboard`) ``
-In `handleCreate()`: change `router.push("/")` → `` router.push(`/${res.data.slug}/dashboard`) ``
+In `selectWorkspace()`: change `router.push("/")` → ``router.push(`/${ws.slug}/dashboard`)``
+In `handleCreate()`: change `router.push("/")` → ``router.push(`/${res.data.slug}/dashboard`)``
 Remove `import { useWorkspaceStore }` and `setActiveWorkspace` calls — no longer needed.
 
 **Step 2: Update middleware**
@@ -416,7 +451,13 @@ Replace `proxy.ts`:
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const STATIC_ROUTES = new Set(["login", "register", "workspaces", "_next", "api"]);
+const STATIC_ROUTES = new Set([
+  "login",
+  "register",
+  "workspaces",
+  "_next",
+  "api",
+]);
 const STATIC_FILES = new Set(["favicon.ico", "manifest.json", "sw.js"]);
 
 export function proxy(request: NextRequest) {
@@ -425,7 +466,11 @@ export function proxy(request: NextRequest) {
 
   // Let static files through
   const fileName = pathname.split("/").pop() || "";
-  if (STATIC_FILES.has(fileName) || pathname.startsWith("/_next/") || pathname.startsWith("/icons/")) {
+  if (
+    STATIC_FILES.has(fileName) ||
+    pathname.startsWith("/_next/") ||
+    pathname.startsWith("/icons/")
+  ) {
     return NextResponse.next();
   }
 
@@ -440,7 +485,8 @@ export function proxy(request: NextRequest) {
 
   // Auth pages: redirect logged-in users to /workspaces
   if (firstSegment === "login" || firstSegment === "register") {
-    if (isLoggedIn) return NextResponse.redirect(new URL("/workspaces", request.url));
+    if (isLoggedIn)
+      return NextResponse.redirect(new URL("/workspaces", request.url));
     return NextResponse.next();
   }
 
@@ -461,7 +507,9 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icons|manifest.json|sw.js).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|icons|manifest.json|sw.js).*)",
+  ],
 };
 ```
 
@@ -489,6 +537,7 @@ git commit -m "feat: update workspace picker and middleware for slug routing"
 ### Task 7: Update offline sync
 
 **Files:**
+
 - Modify: `apps/pwa/lib/offline.ts`
 - Modify: `apps/pwa/lib/api-client.ts`
 
@@ -523,7 +572,9 @@ export function getWorkspaceId(): string {
   if (typeof window !== "undefined") {
     const stored = localStorage.getItem("workspace-storage");
     if (stored) {
-      const parsed = JSON.parse(stored) as { state?: { activeWorkspaceId?: string } };
+      const parsed = JSON.parse(stored) as {
+        state?: { activeWorkspaceId?: string };
+      };
       return parsed?.state?.activeWorkspaceId || "";
     }
   }
@@ -545,6 +596,7 @@ git commit -m "refactor: remove workspacePath export, keep getWorkspaceId for of
 ### Task 8: Simplify workspace store
 
 **Files:**
+
 - Modify: `packages/core/src/stores/workspace-store.ts`
 - Modify: `apps/pwa/stores/workspace-store.ts`
 
@@ -573,9 +625,9 @@ This ensures offline sync still works.
 Simplify `packages/core/src/stores/workspace-store.ts`:
 
 ```tsx
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import type { StorageAdapter } from '@repo/core/platform';
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import type { StorageAdapter } from "@repo/core/platform";
 
 export interface WorkspaceState {
   activeWorkspaceId: string | null;
@@ -594,19 +646,29 @@ export function createWorkspaceStore(storage: StorageAdapter) {
         activeWorkspaceId: null,
         sidebarOpen: true,
         mobileSidebarOpen: false,
-        setActiveWorkspace: (workspaceId: string) => set({ activeWorkspaceId: workspaceId }),
-        toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+        setActiveWorkspace: (workspaceId: string) =>
+          set({ activeWorkspaceId: workspaceId }),
+        toggleSidebar: () =>
+          set((state) => ({ sidebarOpen: !state.sidebarOpen })),
         setSidebarOpen: (open: boolean) => set({ sidebarOpen: open }),
-        setMobileSidebarOpen: (open: boolean) => set({ mobileSidebarOpen: open }),
+        setMobileSidebarOpen: (open: boolean) =>
+          set({ mobileSidebarOpen: open }),
       }),
       {
-        name: 'workspace-storage',
+        name: "workspace-storage",
         storage: createJSONStorage(() => ({
           getItem: (key: string) => storage.getItem(key),
-          setItem: (key: string, value: string) => { void storage.setItem(key, value); },
-          removeItem: (key: string) => { void storage.removeItem(key); },
+          setItem: (key: string, value: string) => {
+            void storage.setItem(key, value);
+          },
+          removeItem: (key: string) => {
+            void storage.removeItem(key);
+          },
         })),
-        partialize: (state) => ({ activeWorkspaceId: state.activeWorkspaceId, sidebarOpen: state.sidebarOpen }),
+        partialize: (state) => ({
+          activeWorkspaceId: state.activeWorkspaceId,
+          sidebarOpen: state.sidebarOpen,
+        }),
       },
     ),
   );
@@ -625,6 +687,7 @@ git commit -m "refactor: simplify workspace store, sync from layout"
 ### Task 9: Delete dead code
 
 **Files:**
+
 - Delete: `packages/core/src/api/workspaces.ts`
 - Delete: `apps/api/src/common/guards/workspace-member.guard.ts`
 
@@ -670,6 +733,7 @@ bun dev --filter=pwa
 ```
 
 Verify:
+
 - `/` redirects to `/workspaces`
 - `/workspaces` shows workspace list
 - Selecting a workspace navigates to `/{slug}/dashboard`

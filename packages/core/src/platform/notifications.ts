@@ -1,4 +1,4 @@
-import { isDesktop } from './index';
+import { isDesktop } from "./index";
 
 export async function sendNativeNotification(
   title: string,
@@ -8,12 +8,12 @@ export async function sendNativeNotification(
 
   try {
     const { sendNotification, isPermissionGranted, requestPermission } =
-      await import('@tauri-apps/plugin-notification');
+      await import("@tauri-apps/plugin-notification");
 
     let permitted = await isPermissionGranted();
     if (!permitted) {
       const result = await requestPermission();
-      permitted = result === 'granted';
+      permitted = result === "granted";
     }
 
     if (permitted) {

@@ -10,7 +10,10 @@ export function useTodoStats() {
     const relevant = (todos ?? []).filter((t) => {
       const dueDateStr = t.dueDate?.split("T")[0];
       const doDateStr = t.doDate?.split("T")[0];
-      return (dueDateStr !== undefined && dueDateStr <= today) || (doDateStr !== undefined && doDateStr <= today);
+      return (
+        (dueDateStr !== undefined && dueDateStr <= today) ||
+        (doDateStr !== undefined && doDateStr <= today)
+      );
     });
 
     const total = relevant.length;

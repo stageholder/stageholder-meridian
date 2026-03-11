@@ -10,9 +10,7 @@ export function useTodoLists() {
   return useQuery<TodoList[]>({
     queryKey: ["todoLists", workspace.id],
     queryFn: async () => {
-      const res = await apiClient.get(
-        `/workspaces/${workspace.id}/todo-lists`
-      );
+      const res = await apiClient.get(`/workspaces/${workspace.id}/todo-lists`);
       return res.data?.data ?? res.data;
     },
   });
@@ -25,7 +23,7 @@ export function useTodoList(listId: string) {
     queryKey: ["todoList", workspace.id, listId],
     queryFn: async () => {
       const res = await apiClient.get(
-        `/workspaces/${workspace.id}/todo-lists/${listId}`
+        `/workspaces/${workspace.id}/todo-lists/${listId}`,
       );
       return res.data;
     },
@@ -39,10 +37,9 @@ export function useTodos(listId: string) {
   return useQuery<Todo[]>({
     queryKey: ["todos", workspace.id, listId],
     queryFn: async () => {
-      const res = await apiClient.get(
-        `/workspaces/${workspace.id}/todos`,
-        { params: { listId } }
-      );
+      const res = await apiClient.get(`/workspaces/${workspace.id}/todos`, {
+        params: { listId },
+      });
       return res.data;
     },
     enabled: !!listId,
@@ -55,10 +52,9 @@ export function useAllTodos() {
   return useQuery<Todo[]>({
     queryKey: ["allTodos", workspace.id],
     queryFn: async () => {
-      const res = await apiClient.get(
-        `/workspaces/${workspace.id}/todos`,
-        { params: { limit: 500 } }
-      );
+      const res = await apiClient.get(`/workspaces/${workspace.id}/todos`, {
+        params: { limit: 500 },
+      });
       return res.data?.data ?? res.data;
     },
   });
@@ -69,15 +65,22 @@ export function useCreateTodoList() {
   const { workspace } = useWorkspace();
 
   return useMutation({
-    mutationFn: async (data: { name: string; color?: string; icon?: string; isShared?: boolean }) => {
+    mutationFn: async (data: {
+      name: string;
+      color?: string;
+      icon?: string;
+      isShared?: boolean;
+    }) => {
       const res = await apiClient.post(
         `/workspaces/${workspace.id}/todo-lists`,
-        data
+        data,
       );
       return res.data as TodoList;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["todoLists", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["todoLists", workspace.id],
+      });
     },
   });
 }
@@ -87,15 +90,28 @@ export function useUpdateTodoList() {
   const { workspace } = useWorkspace();
 
   return useMutation({
-    mutationFn: async ({ listId, data }: { listId: string; data: { name?: string; color?: string; icon?: string; isShared?: boolean } }) => {
+    mutationFn: async ({
+      listId,
+      data,
+    }: {
+      listId: string;
+      data: {
+        name?: string;
+        color?: string;
+        icon?: string;
+        isShared?: boolean;
+      };
+    }) => {
       const res = await apiClient.patch(
         `/workspaces/${workspace.id}/todo-lists/${listId}`,
-        data
+        data,
       );
       return res.data as TodoList;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["todoLists", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["todoLists", workspace.id],
+      });
     },
   });
 }
@@ -106,10 +122,14 @@ export function useDeleteTodoList() {
 
   return useMutation({
     mutationFn: async (listId: string) => {
-      await apiClient.delete(`/workspaces/${workspace.id}/todo-lists/${listId}`);
+      await apiClient.delete(
+        `/workspaces/${workspace.id}/todo-lists/${listId}`,
+      );
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["todoLists", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["todoLists", workspace.id],
+      });
     },
   });
 }
@@ -134,10 +154,10 @@ export function useCreateTodo() {
         assigneeId?: string;
       };
     }) => {
-      const res = await apiClient.post(
-        `/workspaces/${workspace.id}/todos`,
-        { ...data, listId }
-      );
+      const res = await apiClient.post(`/workspaces/${workspace.id}/todos`, {
+        ...data,
+        listId,
+      });
       return res.data as Todo;
     },
     onSuccess: (_data, variables) => {
@@ -147,7 +167,9 @@ export function useCreateTodo() {
       void queryClient.invalidateQueries({
         queryKey: ["allTodos", workspace.id],
       });
-      void queryClient.invalidateQueries({ queryKey: ["calendar", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["calendar", workspace.id],
+      });
     },
   });
 }
@@ -157,11 +179,7 @@ export function useUpdateTodo() {
   const { workspace } = useWorkspace();
 
   return useMutation({
-    mutationFn: async ({
-      listId,
-      todoId,
-      data,
-    }: {
+    mutationFn: async (args: {
       listId: string;
       todoId: string;
       data: {
@@ -175,8 +193,8 @@ export function useUpdateTodo() {
       };
     }) => {
       const res = await apiClient.patch(
-        `/workspaces/${workspace.id}/todos/${todoId}`,
-        data
+        `/workspaces/${workspace.id}/todos/${args.todoId}`,
+        args.data,
       );
       return res.data as Todo;
     },
@@ -188,7 +206,9 @@ export function useUpdateTodo() {
         queryKey: ["allTodos", workspace.id],
       });
       void queryClient.invalidateQueries({ queryKey: lightKeys.me });
-      void queryClient.invalidateQueries({ queryKey: ["calendar", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["calendar", workspace.id],
+      });
     },
   });
 }
@@ -198,9 +218,9 @@ export function useDeleteTodo() {
   const { workspace } = useWorkspace();
 
   return useMutation({
-    mutationFn: async ({ listId, todoId }: { listId: string; todoId: string }) => {
+    mutationFn: async (args: { listId: string; todoId: string }) => {
       await apiClient.delete(
-        `/workspaces/${workspace.id}/todos/${todoId}`
+        `/workspaces/${workspace.id}/todos/${args.todoId}`,
       );
     },
     onSuccess: (_data, variables) => {
@@ -210,7 +230,9 @@ export function useDeleteTodo() {
       void queryClient.invalidateQueries({
         queryKey: ["allTodos", workspace.id],
       });
-      void queryClient.invalidateQueries({ queryKey: ["calendar", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["calendar", workspace.id],
+      });
     },
   });
 }
@@ -220,15 +242,21 @@ export function useReorderTodos() {
   const { workspace } = useWorkspace();
 
   return useMutation({
-    mutationFn: async ({ listId, items }: { listId: string; items: { id: string; order: number }[] }) => {
-      await apiClient.post(
-        `/workspaces/${workspace.id}/todos/reorder`,
-        { items }
-      );
+    mutationFn: async (args: {
+      listId: string;
+      items: { id: string; order: number }[];
+    }) => {
+      await apiClient.post(`/workspaces/${workspace.id}/todos/reorder`, {
+        items: args.items,
+      });
     },
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ["todos", workspace.id, variables.listId] });
-      void queryClient.invalidateQueries({ queryKey: ["allTodos", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["todos", workspace.id, variables.listId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["allTodos", workspace.id],
+      });
     },
   });
 }
@@ -238,16 +266,24 @@ export function useReorderSubtasks() {
   const { workspace } = useWorkspace();
 
   return useMutation({
-    mutationFn: async ({ listId, todoId, items }: { listId: string; todoId: string; items: { id: string; order: number }[] }) => {
+    mutationFn: async (args: {
+      listId: string;
+      todoId: string;
+      items: { id: string; order: number }[];
+    }) => {
       const res = await apiClient.post(
-        `/workspaces/${workspace.id}/todos/${todoId}/subtasks/reorder`,
-        { items }
+        `/workspaces/${workspace.id}/todos/${args.todoId}/subtasks/reorder`,
+        { items: args.items },
       );
       return res.data as Todo;
     },
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ["todos", workspace.id, variables.listId] });
-      void queryClient.invalidateQueries({ queryKey: ["allTodos", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["todos", workspace.id, variables.listId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["allTodos", workspace.id],
+      });
     },
   });
 }
@@ -257,17 +293,27 @@ export function useAddSubtask() {
   const { workspace } = useWorkspace();
 
   return useMutation({
-    mutationFn: async ({ listId, todoId, data }: { listId: string; todoId: string; data: { title: string; priority?: string } }) => {
+    mutationFn: async (args: {
+      listId: string;
+      todoId: string;
+      data: { title: string; priority?: string };
+    }) => {
       const res = await apiClient.post(
-        `/workspaces/${workspace.id}/todos/${todoId}/subtasks`,
-        data
+        `/workspaces/${workspace.id}/todos/${args.todoId}/subtasks`,
+        args.data,
       );
       return res.data as Todo;
     },
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ["todos", workspace.id, variables.listId] });
-      void queryClient.invalidateQueries({ queryKey: ["allTodos", workspace.id] });
-      void queryClient.invalidateQueries({ queryKey: ["calendar", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["todos", workspace.id, variables.listId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["allTodos", workspace.id],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["calendar", workspace.id],
+      });
     },
   });
 }
@@ -277,17 +323,28 @@ export function useUpdateSubtask() {
   const { workspace } = useWorkspace();
 
   return useMutation({
-    mutationFn: async ({ listId, todoId, subtaskId, data }: { listId: string; todoId: string; subtaskId: string; data: { title?: string; status?: string; priority?: string } }) => {
+    mutationFn: async (args: {
+      listId: string;
+      todoId: string;
+      subtaskId: string;
+      data: { title?: string; status?: string; priority?: string };
+    }) => {
       const res = await apiClient.patch(
-        `/workspaces/${workspace.id}/todos/${todoId}/subtasks/${subtaskId}`,
-        data
+        `/workspaces/${workspace.id}/todos/${args.todoId}/subtasks/${args.subtaskId}`,
+        args.data,
       );
       return res.data as Todo;
     },
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ["todos", workspace.id, variables.listId] });
-      void queryClient.invalidateQueries({ queryKey: ["allTodos", workspace.id] });
-      void queryClient.invalidateQueries({ queryKey: ["calendar", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["todos", workspace.id, variables.listId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["allTodos", workspace.id],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["calendar", workspace.id],
+      });
     },
   });
 }
@@ -297,15 +354,25 @@ export function useRemoveSubtask() {
   const { workspace } = useWorkspace();
 
   return useMutation({
-    mutationFn: async ({ listId, todoId, subtaskId }: { listId: string; todoId: string; subtaskId: string }) => {
+    mutationFn: async (args: {
+      listId: string;
+      todoId: string;
+      subtaskId: string;
+    }) => {
       await apiClient.delete(
-        `/workspaces/${workspace.id}/todos/${todoId}/subtasks/${subtaskId}`
+        `/workspaces/${workspace.id}/todos/${args.todoId}/subtasks/${args.subtaskId}`,
       );
     },
     onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ["todos", workspace.id, variables.listId] });
-      void queryClient.invalidateQueries({ queryKey: ["allTodos", workspace.id] });
-      void queryClient.invalidateQueries({ queryKey: ["calendar", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["todos", workspace.id, variables.listId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["allTodos", workspace.id],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["calendar", workspace.id],
+      });
     },
   });
 }

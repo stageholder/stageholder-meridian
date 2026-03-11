@@ -1,7 +1,12 @@
 "use client";
 
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 import { useLightTrend } from "@/lib/hooks/use-light-trend";
 
 const chartConfig = {
@@ -41,14 +46,40 @@ export function JourneyLightChart() {
       <ChartContainer config={chartConfig} className="h-[180px] w-full">
         <AreaChart data={data}>
           <defs>
-            <linearGradient id="journeyLightGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="var(--color-light)" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="var(--color-light)" stopOpacity={0} />
+            <linearGradient
+              id="journeyLightGradient"
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+            >
+              <stop
+                offset="5%"
+                stopColor="var(--color-light)"
+                stopOpacity={0.3}
+              />
+              <stop
+                offset="95%"
+                stopColor="var(--color-light)"
+                stopOpacity={0}
+              />
             </linearGradient>
           </defs>
           <CartesianGrid vertical={false} strokeDasharray="3 3" />
-          <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={11} interval="preserveStartEnd" />
-          <YAxis tickLine={false} axisLine={false} fontSize={11} width={28} allowDecimals={false} />
+          <XAxis
+            dataKey="label"
+            tickLine={false}
+            axisLine={false}
+            fontSize={11}
+            interval="preserveStartEnd"
+          />
+          <YAxis
+            tickLine={false}
+            axisLine={false}
+            fontSize={11}
+            width={28}
+            allowDecimals={false}
+          />
           <ChartTooltip content={<ChartTooltipContent />} />
           <Area
             type="monotone"

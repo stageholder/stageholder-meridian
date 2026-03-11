@@ -1,13 +1,13 @@
-import { Entity, EntityProps, Ok, Result } from '../../../shared';
+import { Entity, EntityProps, Ok, Result } from "../../../shared";
 
 export type LightAction =
-  | 'todo_create'
-  | 'todo_complete'
-  | 'habit_checkin'
-  | 'journal_entry'
-  | 'perfect_day'
-  | 'ring_streak_bonus'
-  | 'ring_completion_bonus';
+  | "todo_create"
+  | "todo_complete"
+  | "habit_checkin"
+  | "journal_entry"
+  | "perfect_day"
+  | "ring_streak_bonus"
+  | "ring_completion_bonus";
 
 export interface LightEventProps extends EntityProps {
   userId: string;
@@ -25,16 +25,34 @@ export class LightEvent extends Entity<LightEventProps> {
     super(props, id);
   }
 
-  get userId(): string { return this.get('userId'); }
-  get workspaceId(): string { return this.get('workspaceId'); }
-  get action(): LightAction { return this.get('action'); }
-  get baseLight(): number { return this.get('baseLight'); }
-  get multiplier(): number { return this.get('multiplier'); }
-  get totalLight(): number { return this.get('totalLight'); }
-  get date(): string { return this.get('date'); }
-  get metadata(): Record<string, unknown> | undefined { return this.get('metadata'); }
+  get userId(): string {
+    return this.get("userId");
+  }
+  get workspaceId(): string {
+    return this.get("workspaceId");
+  }
+  get action(): LightAction {
+    return this.get("action");
+  }
+  get baseLight(): number {
+    return this.get("baseLight");
+  }
+  get multiplier(): number {
+    return this.get("multiplier");
+  }
+  get totalLight(): number {
+    return this.get("totalLight");
+  }
+  get date(): string {
+    return this.get("date");
+  }
+  get metadata(): Record<string, unknown> | undefined {
+    return this.get("metadata");
+  }
 
-  static create(props: Omit<LightEventProps, keyof EntityProps>): Result<LightEvent> {
+  static create(
+    props: Omit<LightEventProps, keyof EntityProps>,
+  ): Result<LightEvent> {
     const event = new LightEvent({
       ...props,
     });

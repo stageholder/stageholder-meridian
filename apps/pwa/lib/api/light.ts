@@ -20,7 +20,11 @@ export function useUserLight() {
 
 export function useUpdateTargets() {
   const queryClient = useQueryClient();
-  return useMutation<UserLight, Error, { todoTargetDaily?: number; journalTargetDailyWords?: number }>({
+  return useMutation<
+    UserLight,
+    Error,
+    { todoTargetDaily?: number; journalTargetDailyWords?: number }
+  >({
     mutationFn: async (data) => {
       const res = await apiClient.patch("/light/targets", data);
       return res.data;

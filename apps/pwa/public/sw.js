@@ -1,4 +1,5 @@
-const CACHE_NAME = 'meridian-v1';
+const APP_VERSION = '0.1.0';
+const CACHE_NAME = `meridian-${APP_VERSION}`;
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',

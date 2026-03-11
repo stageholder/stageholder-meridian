@@ -13,22 +13,23 @@
 ### Task 1: Light Config Constants
 
 **Files:**
+
 - Create: `apps/api/src/modules/light/domain/light-config.ts`
 
 **Step 1: Create the config file with tier thresholds, point values, and multiplier rules**
 
 ```typescript
 export const LIGHT_TIERS = [
-  { tier: 1, title: 'Stargazer', lightRequired: 0 },
-  { tier: 2, title: 'Spark', lightRequired: 50 },
-  { tier: 3, title: 'Ember', lightRequired: 150 },
-  { tier: 4, title: 'Flame', lightRequired: 400 },
-  { tier: 5, title: 'Radiant', lightRequired: 800 },
-  { tier: 6, title: 'Flare', lightRequired: 1500 },
-  { tier: 7, title: 'Nova', lightRequired: 2800 },
-  { tier: 8, title: 'Pulsar', lightRequired: 5000 },
-  { tier: 9, title: 'Supernova', lightRequired: 8500 },
-  { tier: 10, title: 'Meridian', lightRequired: 13000 },
+  { tier: 1, title: "Stargazer", lightRequired: 0 },
+  { tier: 2, title: "Spark", lightRequired: 50 },
+  { tier: 3, title: "Ember", lightRequired: 150 },
+  { tier: 4, title: "Flame", lightRequired: 400 },
+  { tier: 5, title: "Radiant", lightRequired: 800 },
+  { tier: 6, title: "Flare", lightRequired: 1500 },
+  { tier: 7, title: "Nova", lightRequired: 2800 },
+  { tier: 8, title: "Pulsar", lightRequired: 5000 },
+  { tier: 9, title: "Supernova", lightRequired: 8500 },
+  { tier: 10, title: "Meridian", lightRequired: 13000 },
 ] as const;
 
 export type LightTier = (typeof LIGHT_TIERS)[number];
@@ -72,8 +73,9 @@ export function getMultiplier(perfectDayStreak: number): number {
 }
 
 export function getTodoLight(priority: string): number {
-  if (priority === 'high' || priority === 'urgent') return LIGHT_ACTIONS.TODO_COMPLETE_HIGH;
-  if (priority === 'medium') return LIGHT_ACTIONS.TODO_COMPLETE_MEDIUM;
+  if (priority === "high" || priority === "urgent")
+    return LIGHT_ACTIONS.TODO_COMPLETE_HIGH;
+  if (priority === "medium") return LIGHT_ACTIONS.TODO_COMPLETE_MEDIUM;
   return LIGHT_ACTIONS.TODO_COMPLETE_LOW;
 }
 ```
@@ -90,13 +92,14 @@ git commit -m "feat(light): add Light config with tier thresholds, point values,
 ### Task 2: UserLight Entity
 
 **Files:**
+
 - Create: `apps/api/src/modules/light/domain/user-light.entity.ts`
 
 **Step 1: Create the UserLight entity following existing Entity pattern**
 
 ```typescript
-import { Entity, EntityProps, Ok, Result } from '../../../shared';
-import { getTierForLight } from './light-config';
+import { Entity, EntityProps, Ok, Result } from "../../../shared";
+import { getTierForLight } from "./light-config";
 
 export interface UserLightProps extends EntityProps {
   userId: string;
@@ -117,23 +120,45 @@ export class UserLight extends Entity<UserLightProps> {
     super(props, id);
   }
 
-  get userId(): string { return this.get('userId'); }
-  get totalLight(): number { return this.get('totalLight'); }
-  get currentTier(): number { return this.get('currentTier'); }
-  get currentTitle(): string { return this.get('currentTitle'); }
-  get perfectDayStreak(): number { return this.get('perfectDayStreak'); }
-  get todoRingStreak(): number { return this.get('todoRingStreak'); }
-  get habitRingStreak(): number { return this.get('habitRingStreak'); }
-  get journalRingStreak(): number { return this.get('journalRingStreak'); }
-  get lastActiveDate(): string | null { return this.get('lastActiveDate'); }
-  get longestPerfectStreak(): number { return this.get('longestPerfectStreak'); }
-  get perfectDaysTotal(): number { return this.get('perfectDaysTotal'); }
+  get userId(): string {
+    return this.get("userId");
+  }
+  get totalLight(): number {
+    return this.get("totalLight");
+  }
+  get currentTier(): number {
+    return this.get("currentTier");
+  }
+  get currentTitle(): string {
+    return this.get("currentTitle");
+  }
+  get perfectDayStreak(): number {
+    return this.get("perfectDayStreak");
+  }
+  get todoRingStreak(): number {
+    return this.get("todoRingStreak");
+  }
+  get habitRingStreak(): number {
+    return this.get("habitRingStreak");
+  }
+  get journalRingStreak(): number {
+    return this.get("journalRingStreak");
+  }
+  get lastActiveDate(): string | null {
+    return this.get("lastActiveDate");
+  }
+  get longestPerfectStreak(): number {
+    return this.get("longestPerfectStreak");
+  }
+  get perfectDaysTotal(): number {
+    return this.get("perfectDaysTotal");
+  }
 
   addLight(amount: number): void {
-    this.set('totalLight', this.totalLight + amount);
+    this.set("totalLight", this.totalLight + amount);
     const tier = getTierForLight(this.totalLight);
-    this.set('currentTier', tier.tier);
-    this.set('currentTitle', tier.title);
+    this.set("currentTier", tier.tier);
+    this.set("currentTitle", tier.title);
   }
 
   updateStreaks(streaks: {
@@ -143,34 +168,36 @@ export class UserLight extends Entity<UserLightProps> {
     journalRingStreak: number;
     lastActiveDate: string;
   }): void {
-    this.set('perfectDayStreak', streaks.perfectDayStreak);
-    this.set('todoRingStreak', streaks.todoRingStreak);
-    this.set('habitRingStreak', streaks.habitRingStreak);
-    this.set('journalRingStreak', streaks.journalRingStreak);
-    this.set('lastActiveDate', streaks.lastActiveDate);
+    this.set("perfectDayStreak", streaks.perfectDayStreak);
+    this.set("todoRingStreak", streaks.todoRingStreak);
+    this.set("habitRingStreak", streaks.habitRingStreak);
+    this.set("journalRingStreak", streaks.journalRingStreak);
+    this.set("lastActiveDate", streaks.lastActiveDate);
     if (streaks.perfectDayStreak > this.longestPerfectStreak) {
-      this.set('longestPerfectStreak', streaks.perfectDayStreak);
+      this.set("longestPerfectStreak", streaks.perfectDayStreak);
     }
   }
 
   incrementPerfectDays(): void {
-    this.set('perfectDaysTotal', this.perfectDaysTotal + 1);
+    this.set("perfectDaysTotal", this.perfectDaysTotal + 1);
   }
 
   static create(userId: string): Result<UserLight> {
-    return Ok(new UserLight({
-      userId,
-      totalLight: 0,
-      currentTier: 1,
-      currentTitle: 'Stargazer',
-      perfectDayStreak: 0,
-      todoRingStreak: 0,
-      habitRingStreak: 0,
-      journalRingStreak: 0,
-      lastActiveDate: null,
-      longestPerfectStreak: 0,
-      perfectDaysTotal: 0,
-    } as UserLightProps));
+    return Ok(
+      new UserLight({
+        userId,
+        totalLight: 0,
+        currentTier: 1,
+        currentTitle: "Stargazer",
+        perfectDayStreak: 0,
+        todoRingStreak: 0,
+        habitRingStreak: 0,
+        journalRingStreak: 0,
+        lastActiveDate: null,
+        longestPerfectStreak: 0,
+        perfectDaysTotal: 0,
+      } as UserLightProps),
+    );
   }
 
   static reconstitute(props: UserLightProps, id: string): UserLight {
@@ -191,19 +218,20 @@ git commit -m "feat(light): add UserLight entity with tier progression and strea
 ### Task 3: LightEvent Entity
 
 **Files:**
+
 - Create: `apps/api/src/modules/light/domain/light-event.entity.ts`
 
 **Step 1: Create the LightEvent entity**
 
 ```typescript
-import { Entity, EntityProps, Ok, Result } from '../../../shared';
+import { Entity, EntityProps, Ok, Result } from "../../../shared";
 
 export type LightAction =
-  | 'todo_complete'
-  | 'habit_checkin'
-  | 'journal_entry'
-  | 'perfect_day'
-  | 'ring_streak_bonus';
+  | "todo_complete"
+  | "habit_checkin"
+  | "journal_entry"
+  | "perfect_day"
+  | "ring_streak_bonus";
 
 export interface LightEventProps extends EntityProps {
   userId: string;
@@ -221,16 +249,34 @@ export class LightEvent extends Entity<LightEventProps> {
     super(props, id);
   }
 
-  get userId(): string { return this.get('userId'); }
-  get workspaceId(): string { return this.get('workspaceId'); }
-  get action(): LightAction { return this.get('action'); }
-  get baseLight(): number { return this.get('baseLight'); }
-  get multiplier(): number { return this.get('multiplier'); }
-  get totalLight(): number { return this.get('totalLight'); }
-  get date(): string { return this.get('date'); }
-  get metadata(): Record<string, unknown> | undefined { return this.get('metadata'); }
+  get userId(): string {
+    return this.get("userId");
+  }
+  get workspaceId(): string {
+    return this.get("workspaceId");
+  }
+  get action(): LightAction {
+    return this.get("action");
+  }
+  get baseLight(): number {
+    return this.get("baseLight");
+  }
+  get multiplier(): number {
+    return this.get("multiplier");
+  }
+  get totalLight(): number {
+    return this.get("totalLight");
+  }
+  get date(): string {
+    return this.get("date");
+  }
+  get metadata(): Record<string, unknown> | undefined {
+    return this.get("metadata");
+  }
 
-  static create(props: Omit<LightEventProps, 'id' | 'createdAt' | 'updatedAt'>): Result<LightEvent> {
+  static create(
+    props: Omit<LightEventProps, "id" | "createdAt" | "updatedAt">,
+  ): Result<LightEvent> {
     return Ok(new LightEvent(props as LightEventProps));
   }
 
@@ -252,21 +298,22 @@ git commit -m "feat(light): add LightEvent entity for point audit logging"
 ### Task 4: Mongoose Schemas
 
 **Files:**
+
 - Create: `apps/api/src/modules/light/user-light.schema.ts`
 - Create: `apps/api/src/modules/light/light-event.schema.ts`
 
 **Step 1: Create UserLight schema**
 
 ```typescript
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
-import { randomUUID } from 'crypto';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document } from "mongoose";
+import { randomUUID } from "crypto";
 
 export type UserLightDocument = UserLightModel & Document<string>;
 
 @Schema({
-  collection: 'user_lights',
-  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+  collection: "user_lights",
+  timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
   toJSON: {
     transform: (_doc: any, ret: any) => {
       ret.id = ret._id;
@@ -277,17 +324,23 @@ export type UserLightDocument = UserLightModel & Document<string>;
 })
 export class UserLightModel {
   @Prop({ type: String, default: () => randomUUID() }) _id: string;
-  @Prop({ type: String, required: true, unique: true, index: true }) user_id: string;
+  @Prop({ type: String, required: true, unique: true, index: true })
+  user_id: string;
   @Prop({ type: Number, required: true, default: 0 }) total_light: number;
   @Prop({ type: Number, required: true, default: 1 }) current_tier: number;
-  @Prop({ type: String, required: true, default: 'Stargazer' }) current_title: string;
-  @Prop({ type: Number, required: true, default: 0 }) perfect_day_streak: number;
+  @Prop({ type: String, required: true, default: "Stargazer" })
+  current_title: string;
+  @Prop({ type: Number, required: true, default: 0 })
+  perfect_day_streak: number;
   @Prop({ type: Number, required: true, default: 0 }) todo_ring_streak: number;
   @Prop({ type: Number, required: true, default: 0 }) habit_ring_streak: number;
-  @Prop({ type: Number, required: true, default: 0 }) journal_ring_streak: number;
+  @Prop({ type: Number, required: true, default: 0 })
+  journal_ring_streak: number;
   @Prop({ type: String, default: null }) last_active_date: string;
-  @Prop({ type: Number, required: true, default: 0 }) longest_perfect_streak: number;
-  @Prop({ type: Number, required: true, default: 0 }) perfect_days_total: number;
+  @Prop({ type: Number, required: true, default: 0 })
+  longest_perfect_streak: number;
+  @Prop({ type: Number, required: true, default: 0 })
+  perfect_days_total: number;
 }
 
 export const UserLightSchema = SchemaFactory.createForClass(UserLightModel);
@@ -296,15 +349,15 @@ export const UserLightSchema = SchemaFactory.createForClass(UserLightModel);
 **Step 2: Create LightEvent schema**
 
 ```typescript
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
-import { randomUUID } from 'crypto';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document } from "mongoose";
+import { randomUUID } from "crypto";
 
 export type LightEventDocument = LightEventModel & Document<string>;
 
 @Schema({
-  collection: 'light_events',
-  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+  collection: "light_events",
+  timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
   toJSON: {
     transform: (_doc: any, ret: any) => {
       ret.id = ret._id;
@@ -342,17 +395,18 @@ git commit -m "feat(light): add Mongoose schemas for UserLight and LightEvent"
 ### Task 5: Repositories
 
 **Files:**
+
 - Create: `apps/api/src/modules/light/repository/user-light.repository.ts`
 - Create: `apps/api/src/modules/light/repository/light-event.repository.ts`
 
 **Step 1: Create UserLight repository**
 
 ```typescript
-import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { UserLightModel, UserLightDocument } from '../user-light.schema';
-import { UserLight } from '../domain/user-light.entity';
+import { Injectable } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
+import { UserLightModel, UserLightDocument } from "../user-light.schema";
+import { UserLight } from "../domain/user-light.entity";
 
 @Injectable()
 export class UserLightRepository {
@@ -414,11 +468,11 @@ export class UserLightRepository {
 **Step 2: Create LightEvent repository**
 
 ```typescript
-import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { LightEventModel, LightEventDocument } from '../light-event.schema';
-import { LightEvent } from '../domain/light-event.entity';
+import { Injectable } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
+import { LightEventModel, LightEventDocument } from "../light-event.schema";
+import { LightEvent } from "../domain/light-event.entity";
 
 @Injectable()
 export class LightEventRepository {
@@ -471,7 +525,7 @@ export class LightEventRepository {
       user_id: userId,
       action,
       date,
-      'metadata.entityId': entityId,
+      "metadata.entityId": entityId,
     });
     return count > 0;
   }
@@ -508,23 +562,24 @@ git commit -m "feat(light): add UserLight and LightEvent repositories"
 ### Task 6: Light Service (Core Engine)
 
 **Files:**
+
 - Create: `apps/api/src/modules/light/light.service.ts`
 
 **Step 1: Create the Light service with point awarding, streak evaluation, and deduplication**
 
 ```typescript
-import { Injectable } from '@nestjs/common';
-import { UserLightRepository } from './repository/user-light.repository';
-import { LightEventRepository } from './repository/light-event.repository';
-import { UserLight } from './domain/user-light.entity';
-import { LightEvent, LightAction } from './domain/light-event.entity';
+import { Injectable } from "@nestjs/common";
+import { UserLightRepository } from "./repository/user-light.repository";
+import { LightEventRepository } from "./repository/light-event.repository";
+import { UserLight } from "./domain/user-light.entity";
+import { LightEvent, LightAction } from "./domain/light-event.entity";
 import {
   getTodoLight,
   getMultiplier,
   LIGHT_ACTIONS,
   RING_STREAK_MILESTONES,
-} from './domain/light-config';
-import { format, subDays, differenceInCalendarDays, parseISO } from 'date-fns';
+} from "./domain/light-config";
+import { format, subDays, differenceInCalendarDays, parseISO } from "date-fns";
 
 @Injectable()
 export class LightService {
@@ -563,17 +618,24 @@ export class LightService {
     const today = this.getToday();
     const isDuplicate = await this.lightEventRepo.existsForEntityOnDate(
       userId,
-      'todo_complete',
+      "todo_complete",
       today,
       todoId,
     );
     if (isDuplicate) return;
 
     const baseLight = getTodoLight(priority);
-    await this.awardLight(userId, workspaceId, 'todo_complete', baseLight, today, {
-      entityId: todoId,
-      priority,
-    });
+    await this.awardLight(
+      userId,
+      workspaceId,
+      "todo_complete",
+      baseLight,
+      today,
+      {
+        entityId: todoId,
+        priority,
+      },
+    );
   }
 
   async awardHabitCheckin(
@@ -585,7 +647,7 @@ export class LightService {
     const today = this.getToday();
     const isDuplicate = await this.lightEventRepo.existsForEntityOnDate(
       userId,
-      'habit_checkin',
+      "habit_checkin",
       today,
       entryId,
     );
@@ -594,7 +656,7 @@ export class LightService {
     await this.awardLight(
       userId,
       workspaceId,
-      'habit_checkin',
+      "habit_checkin",
       LIGHT_ACTIONS.HABIT_CHECKIN,
       today,
       { entityId: entryId, habitId },
@@ -609,7 +671,7 @@ export class LightService {
     const today = this.getToday();
     const isDuplicate = await this.lightEventRepo.existsForEntityOnDate(
       userId,
-      'journal_entry',
+      "journal_entry",
       today,
       journalId,
     );
@@ -618,7 +680,7 @@ export class LightService {
     await this.awardLight(
       userId,
       workspaceId,
-      'journal_entry',
+      "journal_entry",
       LIGHT_ACTIONS.JOURNAL_ENTRY,
       today,
       { entityId: journalId },
@@ -632,11 +694,19 @@ export class LightService {
   ): Promise<void> {
     const today = this.getToday();
     const userLight = await this.getOrCreateUserLight(userId);
-    const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
+    const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd");
     const isConsecutive = userLight.lastActiveDate === yesterday;
 
-    const todoStreak = rings.todo ? (isConsecutive ? userLight.todoRingStreak + 1 : 1) : 0;
-    const habitStreak = rings.habit ? (isConsecutive ? userLight.habitRingStreak + 1 : 1) : 0;
+    const todoStreak = rings.todo
+      ? isConsecutive
+        ? userLight.todoRingStreak + 1
+        : 1
+      : 0;
+    const habitStreak = rings.habit
+      ? isConsecutive
+        ? userLight.habitRingStreak + 1
+        : 1
+      : 0;
     const journalStreak = rings.journal
       ? isConsecutive
         ? userLight.journalRingStreak + 1
@@ -665,7 +735,7 @@ export class LightService {
       const eventResult = LightEvent.create({
         userId,
         workspaceId,
-        action: 'perfect_day',
+        action: "perfect_day",
         baseLight: LIGHT_ACTIONS.PERFECT_DAY,
         multiplier,
         totalLight,
@@ -678,14 +748,28 @@ export class LightService {
     }
 
     // Check ring streak milestones
-    await this.checkStreakMilestones(userLight, userId, workspaceId, today, 'todo', todoStreak);
-    await this.checkStreakMilestones(userLight, userId, workspaceId, today, 'habit', habitStreak);
     await this.checkStreakMilestones(
       userLight,
       userId,
       workspaceId,
       today,
-      'journal',
+      "todo",
+      todoStreak,
+    );
+    await this.checkStreakMilestones(
+      userLight,
+      userId,
+      workspaceId,
+      today,
+      "habit",
+      habitStreak,
+    );
+    await this.checkStreakMilestones(
+      userLight,
+      userId,
+      workspaceId,
+      today,
+      "journal",
       journalStreak,
     );
 
@@ -705,7 +789,7 @@ export class LightService {
         const eventResult = LightEvent.create({
           userId,
           workspaceId,
-          action: 'ring_streak_bonus',
+          action: "ring_streak_bonus",
           baseLight: milestone.bonus,
           multiplier: 1,
           totalLight: milestone.bonus,
@@ -750,7 +834,7 @@ export class LightService {
   }
 
   private getToday(): string {
-    return format(new Date(), 'yyyy-MM-dd');
+    return format(new Date(), "yyyy-MM-dd");
   }
 }
 ```
@@ -767,13 +851,14 @@ git commit -m "feat(light): add LightService with point awarding, deduplication,
 ### Task 7: Light DTOs and Controller
 
 **Files:**
+
 - Create: `apps/api/src/modules/light/light.dto.ts`
 - Create: `apps/api/src/modules/light/light.controller.ts`
 
 **Step 1: Create DTOs**
 
 ```typescript
-import { z } from 'zod';
+import { z } from "zod";
 
 export const GetLightEventsQuery = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -785,28 +870,33 @@ export type GetLightEventsQuery = z.infer<typeof GetLightEventsQuery>;
 **Step 2: Create controller**
 
 ```typescript
-import { Controller, Get, Query } from '@nestjs/common';
-import { LightService } from './light.service';
-import { GetLightEventsQuery } from './light.dto';
-import { ZodValidationPipe } from '../../common/zod-validation.pipe';
-import { CurrentUserId } from '../../common/decorators/current-user.decorator';
+import { Controller, Get, Query } from "@nestjs/common";
+import { LightService } from "./light.service";
+import { GetLightEventsQuery } from "./light.dto";
+import { ZodValidationPipe } from "../../common/zod-validation.pipe";
+import { CurrentUserId } from "../../common/decorators/current-user.decorator";
 
-@Controller('light')
+@Controller("light")
 export class LightController {
   constructor(private readonly service: LightService) {}
 
-  @Get('me')
+  @Get("me")
   async getMyLight(@CurrentUserId() userId: string) {
     const userLight = await this.service.getUserLight(userId);
     return userLight.toObject();
   }
 
-  @Get('events')
+  @Get("events")
   async getEvents(
     @CurrentUserId() userId: string,
-    @Query(new ZodValidationPipe(GetLightEventsQuery)) query: GetLightEventsQuery,
+    @Query(new ZodValidationPipe(GetLightEventsQuery))
+    query: GetLightEventsQuery,
   ) {
-    const { docs, total } = await this.service.getEvents(userId, query.limit, query.offset);
+    const { docs, total } = await this.service.getEvents(
+      userId,
+      query.limit,
+      query.offset,
+    );
     return {
       data: docs.map((d) => d.toObject()),
       meta: { total, limit: query.limit, offset: query.offset },
@@ -827,20 +917,21 @@ git commit -m "feat(light): add Light controller with GET /light/me and GET /lig
 ### Task 8: Light Module + Register in AppModule
 
 **Files:**
+
 - Create: `apps/api/src/modules/light/light.module.ts`
 - Modify: `apps/api/src/app.module.ts`
 
 **Step 1: Create the Light module**
 
 ```typescript
-import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { UserLightModel, UserLightSchema } from './user-light.schema';
-import { LightEventModel, LightEventSchema } from './light-event.schema';
-import { UserLightRepository } from './repository/user-light.repository';
-import { LightEventRepository } from './repository/light-event.repository';
-import { LightService } from './light.service';
-import { LightController } from './light.controller';
+import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { UserLightModel, UserLightSchema } from "./user-light.schema";
+import { LightEventModel, LightEventSchema } from "./light-event.schema";
+import { UserLightRepository } from "./repository/user-light.repository";
+import { LightEventRepository } from "./repository/light-event.repository";
+import { LightService } from "./light.service";
+import { LightController } from "./light.controller";
 
 @Module({
   imports: [
@@ -859,6 +950,7 @@ export class LightModule {}
 **Step 2: Register in AppModule**
 
 Add to `apps/api/src/app.module.ts`:
+
 - Add import: `import { LightModule } from './modules/light/light.module';`
 - Add `LightModule` to the imports array (after `CalendarModule`)
 
@@ -874,6 +966,7 @@ git commit -m "feat(light): register Light module in AppModule"
 ### Task 9: Integrate Light into Existing Services
 
 **Files:**
+
 - Modify: `apps/api/src/modules/todo/todo.service.ts`
 - Modify: `apps/api/src/modules/todo/todo.module.ts`
 - Modify: `apps/api/src/modules/habit-entry/habit-entry.service.ts` (or wherever habit entry creation lives)
@@ -884,12 +977,13 @@ git commit -m "feat(light): register Light module in AppModule"
 **Step 1: Integrate into TodoService**
 
 In `todo.service.ts`:
+
 - Add constructor parameter: `private readonly lightService: LightService`
 - Add import: `import { LightService } from '../light/light.service';`
 - In `updateStatus()` method, after `await this.repository.save(todo)`, add:
 
 ```typescript
-if (status === 'done') {
+if (status === "done") {
   this.lightService
     .awardTodoComplete(userId, workspaceId, id, todo.priority)
     .catch(() => {});
@@ -897,6 +991,7 @@ if (status === 'done') {
 ```
 
 In `todo.module.ts`:
+
 - Add `LightModule` to imports
 - Add import: `import { LightModule } from '../light/light.module';`
 
@@ -911,6 +1006,7 @@ this.lightService
 ```
 
 In the habit-entry module:
+
 - Add `LightModule` to imports
 
 **Step 3: Integrate into JournalService**
@@ -924,6 +1020,7 @@ this.lightService
 ```
 
 In `journal.module.ts`:
+
 - Add `LightModule` to imports
 
 **Step 4: Verify the API compiles**
@@ -943,6 +1040,7 @@ git commit -m "feat(light): integrate Light service into todo, habit-entry, and 
 ### Task 10: Frontend Types
 
 **Files:**
+
 - Create: `packages/core/src/types/light.ts`
 - Modify: `packages/core/src/types/index.ts` (add export)
 
@@ -970,7 +1068,12 @@ export interface LightEvent {
   id: string;
   userId: string;
   workspaceId: string;
-  action: 'todo_complete' | 'habit_checkin' | 'journal_entry' | 'perfect_day' | 'ring_streak_bonus';
+  action:
+    | "todo_complete"
+    | "habit_checkin"
+    | "journal_entry"
+    | "perfect_day"
+    | "ring_streak_bonus";
   baseLight: number;
   multiplier: number;
   totalLight: number;
@@ -987,16 +1090,16 @@ export interface LightTier {
 }
 
 export const LIGHT_TIERS: LightTier[] = [
-  { tier: 1, title: 'Stargazer', lightRequired: 0 },
-  { tier: 2, title: 'Spark', lightRequired: 50 },
-  { tier: 3, title: 'Ember', lightRequired: 150 },
-  { tier: 4, title: 'Flame', lightRequired: 400 },
-  { tier: 5, title: 'Radiant', lightRequired: 800 },
-  { tier: 6, title: 'Flare', lightRequired: 1500 },
-  { tier: 7, title: 'Nova', lightRequired: 2800 },
-  { tier: 8, title: 'Pulsar', lightRequired: 5000 },
-  { tier: 9, title: 'Supernova', lightRequired: 8500 },
-  { tier: 10, title: 'Meridian', lightRequired: 13000 },
+  { tier: 1, title: "Stargazer", lightRequired: 0 },
+  { tier: 2, title: "Spark", lightRequired: 50 },
+  { tier: 3, title: "Ember", lightRequired: 150 },
+  { tier: 4, title: "Flame", lightRequired: 400 },
+  { tier: 5, title: "Radiant", lightRequired: 800 },
+  { tier: 6, title: "Flare", lightRequired: 1500 },
+  { tier: 7, title: "Nova", lightRequired: 2800 },
+  { tier: 8, title: "Pulsar", lightRequired: 5000 },
+  { tier: 9, title: "Supernova", lightRequired: 8500 },
+  { tier: 10, title: "Meridian", lightRequired: 13000 },
 ];
 
 export function getNextTier(currentTier: number): LightTier | null {
@@ -1004,7 +1107,10 @@ export function getNextTier(currentTier: number): LightTier | null {
   return LIGHT_TIERS[currentTier]; // tier is 1-indexed, array is 0-indexed, so currentTier gives next
 }
 
-export function getTierProgress(totalLight: number, currentTier: number): number {
+export function getTierProgress(
+  totalLight: number,
+  currentTier: number,
+): number {
   const current = LIGHT_TIERS[currentTier - 1];
   const next = LIGHT_TIERS[currentTier];
   if (!next) return 100; // Max tier
@@ -1017,8 +1123,9 @@ export function getTierProgress(totalLight: number, currentTier: number): number
 **Step 2: Add export to types index**
 
 Add to `packages/core/src/types/index.ts`:
+
 ```typescript
-export * from './light';
+export * from "./light";
 ```
 
 **Step 3: Commit**
@@ -1033,6 +1140,7 @@ git commit -m "feat(light): add frontend Light types and tier utilities"
 ### Task 11: Frontend API Client + React Query Hooks
 
 **Files:**
+
 - Create: `packages/core/src/api/light.ts`
 - Create: `apps/pwa/lib/api/light.ts`
 
@@ -1041,20 +1149,25 @@ git commit -m "feat(light): add frontend Light types and tier utilities"
 In `packages/core/src/api/light.ts`:
 
 ```typescript
-import type { AxiosInstance } from 'axios';
-import type { UserLight, LightEvent } from '../types/light';
+import type { AxiosInstance } from "axios";
+import type { UserLight, LightEvent } from "../types/light";
 
 export function createLightApi(client: AxiosInstance) {
   return {
     getMe: async (): Promise<UserLight> => {
-      const { data } = await client.get('/light/me');
+      const { data } = await client.get("/light/me");
       return data;
     },
     getEvents: async (
       limit = 20,
       offset = 0,
-    ): Promise<{ data: LightEvent[]; meta: { total: number; limit: number; offset: number } }> => {
-      const { data } = await client.get('/light/events', { params: { limit, offset } });
+    ): Promise<{
+      data: LightEvent[];
+      meta: { total: number; limit: number; offset: number };
+    }> => {
+      const { data } = await client.get("/light/events", {
+        params: { limit, offset },
+      });
       return data;
     },
   };
@@ -1062,8 +1175,9 @@ export function createLightApi(client: AxiosInstance) {
 ```
 
 Add export to `packages/core/src/api/index.ts`:
+
 ```typescript
-export * from './light';
+export * from "./light";
 ```
 
 **Step 2: Create React Query hooks**
@@ -1071,16 +1185,17 @@ export * from './light';
 In `apps/pwa/lib/api/light.ts`:
 
 ```typescript
-import { useQuery } from '@tanstack/react-query';
-import apiClient from '../api-client';
-import { createLightApi } from '@repo/core/api/light';
-import type { UserLight, LightEvent } from '@repo/core/types/light';
+import { useQuery } from "@tanstack/react-query";
+import apiClient from "../api-client";
+import { createLightApi } from "@repo/core/api/light";
+import type { UserLight, LightEvent } from "@repo/core/types/light";
 
 const lightApi = createLightApi(apiClient);
 
 export const lightKeys = {
-  me: ['light', 'me'] as const,
-  events: (limit: number, offset: number) => ['light', 'events', limit, offset] as const,
+  me: ["light", "me"] as const,
+  events: (limit: number, offset: number) =>
+    ["light", "events", limit, offset] as const,
 };
 
 export function useUserLight() {
@@ -1110,6 +1225,7 @@ git commit -m "feat(light): add Light API client and React Query hooks"
 ### Task 12: Star Visual Component
 
 **Files:**
+
 - Create: `apps/pwa/components/light/star-visual.tsx`
 
 **Step 1: Create the star SVG component that changes appearance per tier**
@@ -1238,6 +1354,7 @@ git commit -m "feat(light): add StarVisual SVG component with per-tier appearanc
 ### Task 13: Level Progress Bar Component
 
 **Files:**
+
 - Create: `apps/pwa/components/light/level-progress.tsx`
 
 **Step 1: Create the level progress bar**
@@ -1313,6 +1430,7 @@ git commit -m "feat(light): add LevelProgress bar component"
 ### Task 14: Integrate Star into Activity Rings Center
 
 **Files:**
+
 - Modify: `apps/pwa/components/activity-rings/activity-rings-visual.tsx`
 - Modify: `apps/pwa/components/activity-rings/activity-rings.tsx`
 
@@ -1350,6 +1468,7 @@ git commit -m "feat(light): render star visual in activity rings center"
 ### Task 15: Dashboard Integration
 
 **Files:**
+
 - Modify: `apps/pwa/app/[shortId]/dashboard/page.tsx`
 
 **Step 1: Add level progress bar below activity rings**
@@ -1375,6 +1494,7 @@ git commit -m "feat(light): add level progress bar to dashboard"
 ### Task 16: Level-Up Celebration Overlay
 
 **Files:**
+
 - Create: `apps/pwa/components/light/level-up-celebration.tsx`
 
 **Step 1: Create the celebration overlay**
@@ -1421,10 +1541,10 @@ export function LevelUpCelebration({ tier, onDismiss }: LevelUpCelebrationProps)
 Create `apps/pwa/lib/hooks/use-level-up.ts`:
 
 ```typescript
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import type { UserLight } from '@repo/core/types/light';
+import { useEffect, useRef, useState } from "react";
+import type { UserLight } from "@repo/core/types/light";
 
 export function useLevelUp(userLight: UserLight | undefined) {
   const prevTier = useRef<number | null>(null);
@@ -1468,6 +1588,7 @@ git commit -m "feat(light): add level-up celebration overlay with auto-dismiss"
 ### Task 17: Compact Sidebar Badge
 
 **Files:**
+
 - Modify: sidebar/nav component (find exact path during implementation)
 
 **Step 1: Add star badge next to user avatar in sidebar**
@@ -1497,6 +1618,7 @@ git commit -m "feat(light): add compact star badge to sidebar"
 ### Task 18: My Journey Page
 
 **Files:**
+
 - Create: `apps/pwa/app/[shortId]/journey/page.tsx`
 - Create: `apps/pwa/components/light/journey-streaks.tsx`
 - Create: `apps/pwa/components/light/journey-tier-map.tsx`
@@ -1794,6 +1916,7 @@ export default function JourneyPage() {
 **Step 6: Add Journey link to navigation**
 
 Find the sidebar/nav component and add a link:
+
 ```typescript
 { href: `/${shortId}/journey`, label: 'My Journey', icon: Star }
 ```
@@ -1810,6 +1933,7 @@ git commit -m "feat(light): add My Journey page with streaks, tier map, stats, a
 ### Task 19: Dashboard Link to Journey
 
 **Files:**
+
 - Modify: `apps/pwa/app/[shortId]/dashboard/page.tsx`
 
 **Step 1: Make the star + level bar clickable, linking to Journey page**

@@ -3,7 +3,7 @@ export interface Habit {
   workspaceId: string;
   name: string;
   description?: string;
-  frequency: 'daily' | 'weekly' | 'custom';
+  frequency: "daily" | "weekly" | "custom";
   targetCount: number;
   scheduledDays?: number[];
   unit?: string;
@@ -20,7 +20,7 @@ export interface HabitEntry {
   workspaceId: string;
   date: string;
   value: number;
-  type?: 'completion' | 'skip';
+  type?: "completion" | "skip";
   skipReason?: string;
   notes?: string;
   createdAt: string;

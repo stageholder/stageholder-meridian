@@ -23,7 +23,9 @@ export function getWorkspaceId(): string {
   if (typeof window !== "undefined") {
     const stored = localStorage.getItem("workspace-storage");
     if (stored) {
-      const parsed = JSON.parse(stored) as { state?: { activeWorkspaceId?: string } };
+      const parsed = JSON.parse(stored) as {
+        state?: { activeWorkspaceId?: string };
+      };
       return parsed?.state?.activeWorkspaceId || "";
     }
   }

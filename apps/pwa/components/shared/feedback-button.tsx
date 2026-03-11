@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquarePlus, Bug, Lightbulb, MessageCircle, Send } from "lucide-react";
+import {
+  MessageSquarePlus,
+  Bug,
+  Lightbulb,
+  MessageCircle,
+  Send,
+} from "lucide-react";
 import { toast } from "sonner";
 import apiClient from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -57,8 +63,6 @@ export function FeedbackButton({ onNavigate }: { onNavigate?: () => void }) {
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const activeType = feedbackTypes.find((ft) => ft.value === type)!;
-
   async function handleSubmit() {
     if (!message.trim()) return;
     setSubmitting(true);
@@ -88,7 +92,7 @@ export function FeedbackButton({ onNavigate }: { onNavigate?: () => void }) {
         <div className="p-4">
           <p className="text-sm font-semibold">How can we improve?</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            We'd love to hear from you
+            We&apos;d love to hear from you
           </p>
 
           {/* Type selector — card style */}
@@ -108,7 +112,9 @@ export function FeedbackButton({ onNavigate }: { onNavigate?: () => void }) {
                 >
                   <Icon
                     className={`size-4 transition-colors ${
-                      isActive ? ft.color : "text-muted-foreground group-hover:text-foreground/70"
+                      isActive
+                        ? ft.color
+                        : "text-muted-foreground group-hover:text-foreground/70"
                     }`}
                   />
                   <span

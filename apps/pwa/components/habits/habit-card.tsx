@@ -51,24 +51,38 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
   const [completing, setCompleting] = useState(false);
 
   const activeDateEntry = entries?.find(
-    (e: HabitEntry) => e.date.split("T")[0] === activeDate
+    (e: HabitEntry) => e.date.split("T")[0] === activeDate,
   );
   const activeDateValue = activeDateEntry?.value ?? 0;
   const isSkipped = activeDateEntry?.type === "skip";
   const isComplete = !isSkipped && activeDateValue >= habit.targetCount;
-  const activeDateObj = selectedDate ? new Date(selectedDate + "T00:00:00") : new Date();
+  const activeDateObj = selectedDate
+    ? new Date(selectedDate + "T00:00:00")
+    : new Date();
   const activeDow = activeDateObj.getDay();
-  const isScheduledOnActiveDate = !habit.scheduledDays || habit.scheduledDays.length === 0 || habit.scheduledDays.includes(activeDow);
-  const streak = calculateStreak(entries || [], habit.targetCount, habit.scheduledDays);
+  const isScheduledOnActiveDate =
+    !habit.scheduledDays ||
+    habit.scheduledDays.length === 0 ||
+    habit.scheduledDays.includes(activeDow);
+  const streak = calculateStreak(
+    entries || [],
+    habit.targetCount,
+    habit.scheduledDays,
+  );
 
   // Week dots data
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const date = addDays(weekStart, i);
     const dateStr = format(date, "yyyy-MM-dd");
-    const entry = entries?.find((e: HabitEntry) => e.date.split("T")[0] === dateStr);
+    const entry = entries?.find(
+      (e: HabitEntry) => e.date.split("T")[0] === dateStr,
+    );
     const dow = date.getDay();
-    const isScheduled = !habit.scheduledDays || habit.scheduledDays.length === 0 || habit.scheduledDays.includes(dow);
+    const isScheduled =
+      !habit.scheduledDays ||
+      habit.scheduledDays.length === 0 ||
+      habit.scheduledDays.includes(dow);
     return {
       label: format(date, "EEEEE"),
       dateStr,
@@ -82,7 +96,9 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
   function handleCheckIn() {
     if (isComplete || isSkipped || !isScheduledOnActiveDate) return;
 
-    const dateLabel = isViewingToday ? habit.name : `${habit.name} (${activeDate})`;
+    const dateLabel = isViewingToday
+      ? habit.name
+      : `${habit.name} (${activeDate})`;
     const onSuccess = () => {
       toast.success(`Checked in for ${dateLabel}`);
       setBouncing(true);
@@ -96,7 +112,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
     if (!activeDateEntry) {
       createEntry.mutate(
         { habitId: habit.id, data: { date: activeDate, value: 1 } },
-        { onSuccess, onError: () => toast.error("Failed to check in") }
+        { onSuccess, onError: () => toast.error("Failed to check in") },
       );
     } else {
       updateEntry.mutate(
@@ -105,19 +121,20 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
           entryId: activeDateEntry.id,
           data: { value: activeDateValue + 1 },
         },
-        { onSuccess, onError: () => toast.error("Failed to check in") }
+        { onSuccess, onError: () => toast.error("Failed to check in") },
       );
     }
   }
 
   function handleSkip() {
-    if (isComplete || isSkipped || !isScheduledOnActiveDate || activeDateEntry) return;
+    if (isComplete || isSkipped || !isScheduledOnActiveDate || activeDateEntry)
+      return;
     skipEntry.mutate(
       { habitId: habit.id, data: { date: activeDate } },
       {
         onSuccess: () => toast.success(`Skipped ${habit.name}`),
         onError: () => toast.error("Failed to skip"),
-      }
+      },
     );
   }
 
@@ -134,12 +151,13 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
       {
         onSuccess: () => toast.success(`Undid check-in for ${habit.name}`),
         onError: () => toast.error("Failed to undo"),
-      }
+      },
     );
   }
 
   function handleDelete() {
-    if (!window.confirm(`Delete "${habit.name}"? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete "${habit.name}"? This cannot be undone.`))
+      return;
 
     deleteHabit.mutate(habit.id, {
       onSuccess: () => toast.success(`"${habit.name}" deleted`),
@@ -147,7 +165,8 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
     });
   }
 
-  const isPending = createEntry.isPending || updateEntry.isPending || skipEntry.isPending;
+  const isPending =
+    createEntry.isPending || updateEntry.isPending || skipEntry.isPending;
   const habitColor = habit.color || "#3b82f6";
 
   return (
@@ -155,7 +174,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
       <div
         className={cn(
           "rounded-xl border border-border bg-card p-5 transition-all",
-          completing && "ring-2 ring-green-500/20"
+          completing && "ring-2 ring-green-500/20",
         )}
         style={completing ? { backgroundColor: habitColor + "08" } : undefined}
       >
@@ -171,15 +190,22 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
               {habit.icon || habit.name.charAt(0).toUpperCase()}
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-foreground">{habit.name}</h3>
+              <h3 className="text-sm font-semibold text-foreground">
+                {habit.name}
+              </h3>
               {habit.description && (
-                <p className="text-xs text-muted-foreground">{habit.description}</p>
+                <p className="text-xs text-muted-foreground">
+                  {habit.description}
+                </p>
               )}
             </div>
           </Link>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Habit options">
+              <button
+                className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                aria-label="Habit options"
+              >
                 <MoreHorizontal className="size-4" />
               </button>
             </DropdownMenuTrigger>
@@ -209,42 +235,68 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
         {/* Week dots */}
         <div className="mt-3 flex justify-between px-1">
           {weekDays.map((day) => {
-            const ratio = habit.targetCount > 0 ? day.value / habit.targetCount : 0;
+            const ratio =
+              habit.targetCount > 0 ? day.value / habit.targetCount : 0;
             const isDaySkipped = day.type === "skip";
             return (
-              <div key={day.dateStr} className="flex flex-col items-center gap-1">
-                <span className={cn("text-[10px]", day.isScheduled ? "text-muted-foreground" : "text-muted-foreground/40")}>{day.label}</span>
+              <div
+                key={day.dateStr}
+                className="flex flex-col items-center gap-1"
+              >
+                <span
+                  className={cn(
+                    "text-[10px]",
+                    day.isScheduled
+                      ? "text-muted-foreground"
+                      : "text-muted-foreground/40",
+                  )}
+                >
+                  {day.label}
+                </span>
                 {isDaySkipped ? (
                   <div
                     className={cn(
                       "flex h-3.5 w-3.5 items-center justify-center rounded-full border border-dashed border-muted-foreground/40",
-                      day.isToday && "ring-1 ring-offset-1 ring-offset-background"
+                      day.isToday &&
+                        "ring-1 ring-offset-1 ring-offset-background",
                     )}
                     title="Skipped"
                   >
-                    <span className="text-[8px] leading-none text-muted-foreground">—</span>
+                    <span className="text-[8px] leading-none text-muted-foreground">
+                      —
+                    </span>
                   </div>
                 ) : ratio >= 1 ? (
-                  <span className="text-sm leading-none" title={`${day.value}/${habit.targetCount}`}>🔥</span>
+                  <span
+                    className="text-sm leading-none"
+                    title={`${day.value}/${habit.targetCount}`}
+                  >
+                    🔥
+                  </span>
                 ) : (
-                <div
-                  className={cn(
-                    "h-3.5 w-3.5 rounded-full border transition-all",
-                    day.isToday && "ring-1 ring-offset-1 ring-offset-background",
-                    !day.isScheduled
-                      ? "border-dashed border-muted-foreground/20"
-                      : ratio > 0
+                  <div
+                    className={cn(
+                      "h-3.5 w-3.5 rounded-full border transition-all",
+                      day.isToday &&
+                        "ring-1 ring-offset-1 ring-offset-background",
+                      !day.isScheduled
+                        ? "border-dashed border-muted-foreground/20"
+                        : ratio > 0
                           ? "border-transparent"
-                          : "border-muted-foreground/30"
-                  )}
-                  style={
-                    !day.isScheduled
-                      ? undefined
-                      : ratio > 0
-                          ? { backgroundColor: habitColor + "60", borderColor: habitColor + "60" }
+                          : "border-muted-foreground/30",
+                    )}
+                    style={
+                      !day.isScheduled
+                        ? undefined
+                        : ratio > 0
+                          ? {
+                              backgroundColor: habitColor + "60",
+                              borderColor: habitColor + "60",
+                            }
                           : undefined
-                  }
-                />)}
+                    }
+                  />
+                )}
               </div>
             );
           })}
@@ -277,61 +329,65 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
                 Rest day
               </span>
             ) : (
-            <>
-              {!isComplete && !activeDateEntry && isScheduledOnActiveDate && (
+              <>
+                {!isComplete && !activeDateEntry && isScheduledOnActiveDate && (
+                  <button
+                    onClick={handleSkip}
+                    disabled={isPending}
+                    className="flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-xs text-muted-foreground transition-all hover:bg-accent hover:text-foreground disabled:opacity-50"
+                    title="Skip today"
+                  >
+                    <SkipForward className="size-3" />
+                    Skip
+                  </button>
+                )}
                 <button
-                  onClick={handleSkip}
-                  disabled={isPending}
-                  className="flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-xs text-muted-foreground transition-all hover:bg-accent hover:text-foreground disabled:opacity-50"
-                  title="Skip today"
+                  onClick={handleCheckIn}
+                  disabled={isComplete || isPending}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
+                    bouncing && "animate-bounce",
+                    isComplete
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50",
+                  )}
                 >
-                  <SkipForward className="size-3" />
-                  Skip
+                  {isComplete ? (
+                    <>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      Complete
+                    </>
+                  ) : isPending ? (
+                    "Checking..."
+                  ) : habit.targetCount > 1 ? (
+                    `${activeDateValue}/${habit.targetCount}`
+                  ) : (
+                    "Check In"
+                  )}
                 </button>
-              )}
-              <button
-                onClick={handleCheckIn}
-                disabled={isComplete || isPending}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
-                  bouncing && "animate-bounce",
-                  isComplete
-                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                    : "bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                )}
-              >
-                {isComplete ? (
-                  <>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    Complete
-                  </>
-                ) : isPending ? (
-                  "Checking..."
-                ) : habit.targetCount > 1 ? (
-                  `${activeDateValue}/${habit.targetCount}`
-                ) : (
-                  "Check In"
-                )}
-              </button>
-            </>
+              </>
             )}
           </div>
         </div>
       </div>
 
-      <EditHabitSheet habit={habit} open={editOpen} onOpenChange={setEditOpen} />
+      <EditHabitSheet
+        habit={habit}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
     </>
   );
 }
@@ -339,7 +395,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
 function calculateStreak(
   entries: HabitEntry[],
   targetCount: number,
-  scheduledDays?: number[]
+  scheduledDays?: number[],
 ): number {
   if (entries.length === 0) return 0;
 
@@ -362,7 +418,10 @@ function calculateStreak(
   const todayIsScheduled = !hasSchedule || scheduledDays!.includes(todayDow);
   const todayEntry = entryMap.get(todayStr);
   const todayIsSkipped = todayEntry?.type === "skip";
-  const todayCompleted = todayIsScheduled && !todayIsSkipped && (todayEntry?.value ?? 0) >= targetCount;
+  const todayCompleted =
+    todayIsScheduled &&
+    !todayIsSkipped &&
+    (todayEntry?.value ?? 0) >= targetCount;
   // Skipped today: don't break streak but don't count it either
   let streak = todayCompleted ? 1 : 0;
 

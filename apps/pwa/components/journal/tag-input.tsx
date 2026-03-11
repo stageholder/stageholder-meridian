@@ -96,7 +96,9 @@ export function TagInput({ tags, onChange, inline }: TagInputProps) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          onBlur={() => { if (input.trim()) addTag(input); }}
+          onBlur={() => {
+            if (input.trim()) addTag(input);
+          }}
           placeholder={tags.length === 0 ? "Add tags..." : ""}
           className="min-w-[80px] flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
         />

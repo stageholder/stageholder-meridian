@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import { ArrowLeft, Trash2, X } from "lucide-react";
@@ -39,7 +39,12 @@ export default function JournalEntryPage() {
   const [mood, setMood] = useState<number | undefined>(undefined);
   const [tags, setTags] = useState<string[]>([]);
   const [initialized, setInitialized] = useState(false);
-  const lastSavedRef = useRef({ title: "", content: "", mood: undefined as number | undefined, tags: [] as string[] });
+  const lastSavedRef = useRef({
+    title: "",
+    content: "",
+    mood: undefined as number | undefined,
+    tags: [] as string[],
+  });
   const journalDateRef = useRef("");
 
   const { scheduleSave, status } = useAutosave({ journalId: params.id });
@@ -53,7 +58,12 @@ export default function JournalEntryPage() {
       setContent(journal.content);
       setMood(journal.mood);
       setTags(journal.tags);
-      lastSavedRef.current = { title: journal.title, content: journal.content, mood: journal.mood, tags: journal.tags };
+      lastSavedRef.current = {
+        title: journal.title,
+        content: journal.content,
+        mood: journal.mood,
+        tags: journal.tags,
+      };
       journalDateRef.current = journal.date;
       setInitialized(true);
     }
@@ -68,8 +78,15 @@ export default function JournalEntryPage() {
       content === last.content &&
       mood === last.mood &&
       JSON.stringify(tags) === JSON.stringify(last.tags)
-    ) return;
-    const saveData = { title: title.trim() || last.title, content, mood, tags, date: journalDateRef.current };
+    )
+      return;
+    const saveData = {
+      title: title.trim() || last.title,
+      content,
+      mood,
+      tags,
+      date: journalDateRef.current,
+    };
     lastSavedRef.current = { title: saveData.title, content, mood, tags };
     scheduleSave(saveData);
   }, [initialized, title, content, mood, tags, scheduleSave]);
@@ -95,7 +112,9 @@ export default function JournalEntryPage() {
   if (!journal) {
     return (
       <div className="py-12 text-center">
-        <p className="text-sm text-muted-foreground">Journal entry not found.</p>
+        <p className="text-sm text-muted-foreground">
+          Journal entry not found.
+        </p>
       </div>
     );
   }
@@ -138,72 +157,87 @@ export default function JournalEntryPage() {
         {/* Metadata pills row */}
         <div className="mb-4 flex flex-wrap items-center gap-2">
           {/* Date pill (read-only for existing entries) */}
-        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-            <line x1="16" x2="16" y1="2" y2="6" />
-            <line x1="8" x2="8" y1="2" y2="6" />
-            <line x1="3" x2="21" y1="10" y2="10" />
-          </svg>
-          {dateLabel}
-        </span>
-
-        {/* Mood pill */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <button type="button" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-              {currentMood ? (
-                <span className="inline-flex items-center gap-1">
-                  <span className="text-sm">{currentMood.emoji}</span>
-                  {currentMood.label}
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 hover:border-foreground/30">
-                  <span className="text-xs">{"\u{1F642}"}</span>
-                  Mood
-                </span>
-              )}
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-auto p-1">
-            <div className="flex items-center gap-1">
-              {moods.map((m) => (
-                <button
-                  key={m.value}
-                  type="button"
-                  onClick={() => setMood(mood === m.value ? undefined : m.value)}
-                  className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-lg text-lg transition-colors",
-                    mood === m.value ? "bg-accent" : "hover:bg-accent"
-                  )}
-                  title={m.label}
-                >
-                  {m.emoji}
-                </button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
-
-        {/* Tag pills */}
-        {tags.map((tag) => (
-          <span
-            key={tag}
-            className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs text-accent-foreground"
-          >
-            {tag}
-            <button
-              type="button"
-              onClick={() => setTags(tags.filter((t) => t !== tag))}
-              className="text-muted-foreground hover:text-foreground"
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              <X className="size-3" />
-            </button>
+              <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+              <line x1="16" x2="16" y1="2" y2="6" />
+              <line x1="8" x2="8" y1="2" y2="6" />
+              <line x1="3" x2="21" y1="10" y2="10" />
+            </svg>
+            {dateLabel}
           </span>
-        ))}
 
-        {/* Add tag pill */}
-        <TagInput tags={tags} onChange={setTags} inline />
+          {/* Mood pill */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {currentMood ? (
+                  <span className="inline-flex items-center gap-1">
+                    <span className="text-sm">{currentMood.emoji}</span>
+                    {currentMood.label}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 hover:border-foreground/30">
+                    <span className="text-xs">{"\u{1F642}"}</span>
+                    Mood
+                  </span>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-auto p-1">
+              <div className="flex items-center gap-1">
+                {moods.map((m) => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() =>
+                      setMood(mood === m.value ? undefined : m.value)
+                    }
+                    className={cn(
+                      "flex h-9 w-9 items-center justify-center rounded-lg text-lg transition-colors",
+                      mood === m.value ? "bg-accent" : "hover:bg-accent",
+                    )}
+                    title={m.label}
+                  >
+                    {m.emoji}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Tag pills */}
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs text-accent-foreground"
+            >
+              {tag}
+              <button
+                type="button"
+                onClick={() => setTags(tags.filter((t) => t !== tag))}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="size-3" />
+              </button>
+            </span>
+          ))}
+
+          {/* Add tag pill */}
+          <TagInput tags={tags} onChange={setTags} inline />
         </div>
       </div>
 

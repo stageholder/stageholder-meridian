@@ -64,7 +64,12 @@ export default function OnboardingPage() {
           />
         );
       case 3:
-        return <TourStep selectedGoals={selectedGoals} onContinue={() => setStep(4)} />;
+        return (
+          <TourStep
+            selectedGoals={selectedGoals}
+            onContinue={() => setStep(4)}
+          />
+        );
       case 4:
         return (
           <FirstActionStep
@@ -90,7 +95,11 @@ export default function OnboardingPage() {
             key={i}
             className={cn(
               "size-2 rounded-full transition-colors",
-              i === step ? "bg-primary" : i < step ? "bg-primary/40" : "bg-muted-foreground/20",
+              i === step
+                ? "bg-primary"
+                : i < step
+                  ? "bg-primary/40"
+                  : "bg-muted-foreground/20",
             )}
           />
         ))}

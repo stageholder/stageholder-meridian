@@ -2,7 +2,14 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { format, parseISO, isToday, isYesterday, isThisWeek, isThisYear } from "date-fns";
+import {
+  format,
+  parseISO,
+  isToday,
+  isYesterday,
+  isThisWeek,
+  isThisYear,
+} from "date-fns";
 import { useWorkspace } from "@/lib/workspace-context";
 import { cn } from "@/lib/utils";
 import { MoodDisplay } from "./mood-picker";
@@ -23,7 +30,11 @@ function getDateGroup(dateStr: string): string {
   return format(date, "MMMM yyyy");
 }
 
-export function JournalList({ journals, isLoading, activeId }: JournalListProps) {
+export function JournalList({
+  journals,
+  isLoading,
+  activeId,
+}: JournalListProps) {
   const { workspace } = useWorkspace();
 
   const grouped = useMemo(() => {
@@ -43,7 +54,11 @@ export function JournalList({ journals, isLoading, activeId }: JournalListProps)
   }, [journals]);
 
   if (isLoading) {
-    return <div className="text-sm text-muted-foreground">Loading journal entries...</div>;
+    return (
+      <div className="text-sm text-muted-foreground">
+        Loading journal entries...
+      </div>
+    );
   }
 
   if (journals.length === 0) {
@@ -67,7 +82,10 @@ export function JournalList({ journals, isLoading, activeId }: JournalListProps)
             {group.entries.map((journal) => {
               const dateLabel = format(parseISO(journal.date), "EEE, MMM d");
               const plainText = journal.content.replace(/<[^>]*>/g, "");
-              const preview = plainText.length > 120 ? plainText.slice(0, 120) + "..." : plainText;
+              const preview =
+                plainText.length > 120
+                  ? plainText.slice(0, 120) + "..."
+                  : plainText;
 
               return (
                 <Link
@@ -77,7 +95,7 @@ export function JournalList({ journals, isLoading, activeId }: JournalListProps)
                     "block rounded-lg border p-3 transition-colors",
                     journal.id === activeId
                       ? "border-primary/50 bg-primary/5"
-                      : "border-border bg-card hover:bg-accent/50"
+                      : "border-border bg-card hover:bg-accent/50",
                   )}
                 >
                   <div className="flex items-center gap-2">
@@ -86,9 +104,13 @@ export function JournalList({ journals, isLoading, activeId }: JournalListProps)
                     </h4>
                     <MoodDisplay mood={journal.mood} />
                   </div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{dateLabel}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {dateLabel}
+                  </p>
                   {preview && (
-                    <p className="mt-1.5 text-xs text-muted-foreground line-clamp-2">{preview}</p>
+                    <p className="mt-1.5 text-xs text-muted-foreground line-clamp-2">
+                      {preview}
+                    </p>
                   )}
                   {journal.tags.length > 0 && (
                     <div className="mt-1.5 flex flex-wrap gap-1">

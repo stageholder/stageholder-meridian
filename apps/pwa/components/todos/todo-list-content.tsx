@@ -44,7 +44,9 @@ export function TodoListContent({
       <QuickAddTodo listId={listId} />
 
       {isLoading ? (
-        <div className="mt-3 text-sm text-muted-foreground">Loading todos...</div>
+        <div className="mt-3 text-sm text-muted-foreground">
+          Loading todos...
+        </div>
       ) : (
         <div className="mt-3 space-y-2">
           {pendingTodos.map((todo: Todo) => (

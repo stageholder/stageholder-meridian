@@ -18,7 +18,9 @@ export function ProfileStep({ onContinue }: { onContinue: () => void }) {
   useEffect(() => {
     if (user) {
       setName(user.name);
-      setTimezone(user.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+      setTimezone(
+        user.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+      );
     }
   }, [user]);
 
@@ -31,7 +33,10 @@ export function ProfileStep({ onContinue }: { onContinue: () => void }) {
         timezone,
       });
       // Merge with existing store data to preserve personalWorkspaceShortId
-      setUser({ ...res.data, personalWorkspaceShortId: user?.personalWorkspaceShortId });
+      setUser({
+        ...res.data,
+        personalWorkspaceShortId: user?.personalWorkspaceShortId,
+      });
     } catch {
       // continue anyway
     } finally {
@@ -43,7 +48,9 @@ export function ProfileStep({ onContinue }: { onContinue: () => void }) {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h2 className="text-xl font-bold text-foreground">Set up your profile</h2>
+        <h2 className="text-xl font-bold text-foreground">
+          Set up your profile
+        </h2>
         <p className="text-sm text-muted-foreground">
           Confirm your name and timezone so everything stays in sync.
         </p>
@@ -51,7 +58,10 @@ export function ProfileStep({ onContinue }: { onContinue: () => void }) {
 
       <div className="space-y-4">
         <div>
-          <label htmlFor="onboard-name" className="block text-sm font-medium text-foreground">
+          <label
+            htmlFor="onboard-name"
+            className="block text-sm font-medium text-foreground"
+          >
             Display name
           </label>
           <input
@@ -64,7 +74,10 @@ export function ProfileStep({ onContinue }: { onContinue: () => void }) {
         </div>
 
         <div>
-          <label htmlFor="onboard-tz" className="block text-sm font-medium text-foreground">
+          <label
+            htmlFor="onboard-tz"
+            className="block text-sm font-medium text-foreground"
+          >
             Timezone
           </label>
           <TimezoneSelect

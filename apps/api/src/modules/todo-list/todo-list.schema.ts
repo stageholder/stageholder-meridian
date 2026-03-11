@@ -1,13 +1,19 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
-import { randomUUID } from 'crypto';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document } from "mongoose";
+import { randomUUID } from "crypto";
 
 export type TodoListDocument = TodoListModel & Document<string>;
 
 @Schema({
-  collection: 'todo_lists',
-  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
-  toJSON: { transform: (_doc: any, ret: any) => { ret.id = ret._id; delete ret.__v; return ret; } },
+  collection: "todo_lists",
+  timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
+  toJSON: {
+    transform: (_doc: any, ret: any) => {
+      ret.id = ret._id;
+      delete ret.__v;
+      return ret;
+    },
+  },
 })
 export class TodoListModel {
   @Prop({ type: String, default: () => randomUUID() }) _id: string;
@@ -25,5 +31,8 @@ export const TodoListSchema = SchemaFactory.createForClass(TodoListModel);
 
 TodoListSchema.index(
   { workspace_id: 1, is_default: 1 },
-  { unique: true, partialFilterExpression: { is_default: true, deleted_at: null } },
+  {
+    unique: true,
+    partialFilterExpression: { is_default: true, deleted_at: null },
+  },
 );

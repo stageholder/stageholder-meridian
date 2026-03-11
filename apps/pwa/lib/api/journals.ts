@@ -1,4 +1,9 @@
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  useInfiniteQuery,
+} from "@tanstack/react-query";
 import apiClient from "@/lib/api-client";
 import { useWorkspace } from "@/lib/workspace-context";
 import type { Journal } from "@repo/core/types";
@@ -9,13 +14,18 @@ interface PaginatedResponse {
   meta: { total: number; page: number; limit: number; totalPages: number };
 }
 
-export function useJournals(params?: { startDate?: string; endDate?: string }, options?: { enabled?: boolean }) {
+export function useJournals(
+  params?: { startDate?: string; endDate?: string },
+  options?: { enabled?: boolean },
+) {
   const { workspace } = useWorkspace();
 
   return useQuery<Journal[]>({
     queryKey: ["journals", workspace.id, params],
     queryFn: async () => {
-      const res = await apiClient.get(`/workspaces/${workspace.id}/journals`, { params });
+      const res = await apiClient.get(`/workspaces/${workspace.id}/journals`, {
+        params,
+      });
       return res.data?.data ?? res.data;
     },
     enabled: options?.enabled,
@@ -49,7 +59,9 @@ export function useJournal(id: string) {
   return useQuery<Journal>({
     queryKey: ["journal", workspace.id, id],
     queryFn: async () => {
-      const res = await apiClient.get(`/workspaces/${workspace.id}/journals/${id}`);
+      const res = await apiClient.get(
+        `/workspaces/${workspace.id}/journals/${id}`,
+      );
       return res.data;
     },
     enabled: !!id,
@@ -68,7 +80,10 @@ export function useCreateJournal() {
       tags?: string[];
       date?: string;
     }) => {
-      const res = await apiClient.post(`/workspaces/${workspace.id}/journals`, data);
+      const res = await apiClient.post(
+        `/workspaces/${workspace.id}/journals`,
+        data,
+      );
       return res.data as Journal;
     },
     onMutate: async (newData) => {
@@ -96,7 +111,10 @@ export function useCreateJournal() {
       // Only update flat Journal[] caches (not paginated infinite query)
       for (const [queryKey, data] of previousQueries) {
         if (Array.isArray(data)) {
-          queryClient.setQueryData<Journal[]>(queryKey, [optimisticJournal, ...data]);
+          queryClient.setQueryData<Journal[]>(queryKey, [
+            optimisticJournal,
+            ...data,
+          ]);
         }
       }
 
@@ -110,9 +128,13 @@ export function useCreateJournal() {
       }
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ["journals", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["journals", workspace.id],
+      });
       void queryClient.invalidateQueries({ queryKey: lightKeys.me });
-      void queryClient.invalidateQueries({ queryKey: ["calendar", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["calendar", workspace.id],
+      });
     },
   });
 }
@@ -134,25 +156,38 @@ export function useUpdateJournal() {
         tags?: string[];
       };
     }) => {
-      const res = await apiClient.patch(`/workspaces/${workspace.id}/journals/${id}`, data);
+      const res = await apiClient.patch(
+        `/workspaces/${workspace.id}/journals/${id}`,
+        data,
+      );
       return res.data as Journal;
     },
     onMutate: async ({ id, data }) => {
       await queryClient.cancelQueries({ queryKey: ["journals", workspace.id] });
-      await queryClient.cancelQueries({ queryKey: ["journal", workspace.id, id] });
+      await queryClient.cancelQueries({
+        queryKey: ["journal", workspace.id, id],
+      });
 
       const previousQueries = queryClient.getQueriesData<Journal[]>({
         queryKey: ["journals", workspace.id],
         exact: false,
       });
 
-      const previousDetail = queryClient.getQueryData<Journal>(["journal", workspace.id, id]);
+      const previousDetail = queryClient.getQueryData<Journal>([
+        "journal",
+        workspace.id,
+        id,
+      ]);
 
       for (const [queryKey, old] of previousQueries) {
         if (Array.isArray(old)) {
           queryClient.setQueryData<Journal[]>(
             queryKey,
-            old.map((j) => (j.id === id ? { ...j, ...data, updatedAt: new Date().toISOString() } : j)),
+            old.map((j) =>
+              j.id === id
+                ? { ...j, ...data, updatedAt: new Date().toISOString() }
+                : j,
+            ),
           );
         }
       }
@@ -170,13 +205,22 @@ export function useUpdateJournal() {
         }
       }
       if (context?.previousDetail) {
-        queryClient.setQueryData(["journal", workspace.id, variables.id], context.previousDetail);
+        queryClient.setQueryData(
+          ["journal", workspace.id, variables.id],
+          context.previousDetail,
+        );
       }
     },
     onSettled: (_data, _err, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ["journals", workspace.id] });
-      void queryClient.invalidateQueries({ queryKey: ["journal", workspace.id, variables.id] });
-      void queryClient.invalidateQueries({ queryKey: ["calendar", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["journals", workspace.id],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["journal", workspace.id, variables.id],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["calendar", workspace.id],
+      });
     },
   });
 }
@@ -199,7 +243,10 @@ export function useDeleteJournal() {
 
       for (const [queryKey, old] of previousQueries) {
         if (Array.isArray(old)) {
-          queryClient.setQueryData<Journal[]>(queryKey, old.filter((j) => j.id !== id));
+          queryClient.setQueryData<Journal[]>(
+            queryKey,
+            old.filter((j) => j.id !== id),
+          );
         }
       }
 
@@ -213,8 +260,12 @@ export function useDeleteJournal() {
       }
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ["journals", workspace.id] });
-      void queryClient.invalidateQueries({ queryKey: ["calendar", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["journals", workspace.id],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["calendar", workspace.id],
+      });
     },
   });
 }

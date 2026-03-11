@@ -25,15 +25,22 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await apiClient.post<AuthUser>("/auth/login", { email, password });
+      const res = await apiClient.post<AuthUser>("/auth/login", {
+        email,
+        password,
+      });
       setUser(res.data);
       setLoggedInFlag();
       if (redirect) {
         router.push(redirect);
       } else if (!res.data.onboardingCompleted) {
-        router.push('/onboarding');
+        router.push("/onboarding");
       } else {
-        router.push(res.data.personalWorkspaceShortId ? `/${res.data.personalWorkspaceShortId}/dashboard` : "/workspaces");
+        router.push(
+          res.data.personalWorkspaceShortId
+            ? `/${res.data.personalWorkspaceShortId}/dashboard`
+            : "/workspaces",
+        );
       }
     } catch {
       setError("Invalid email or password. Please try again.");
@@ -46,7 +53,10 @@ export default function LoginPage() {
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-4">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-foreground">
+          <label
+            htmlFor="email"
+            className="block text-sm font-medium text-foreground"
+          >
             Email
           </label>
           <input
@@ -61,7 +71,10 @@ export default function LoginPage() {
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-foreground">
+          <label
+            htmlFor="password"
+            className="block text-sm font-medium text-foreground"
+          >
             Password
           </label>
           <input
@@ -91,7 +104,9 @@ export default function LoginPage() {
           <span className="w-full border-t border-border" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+          <span className="bg-card px-2 text-muted-foreground">
+            Or continue with
+          </span>
         </div>
       </div>
 
@@ -99,7 +114,14 @@ export default function LoginPage() {
 
       <p className="text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{" "}
-        <Link href={redirect ? `/register?redirect=${encodeURIComponent(redirect)}` : "/register"} className="font-medium text-primary hover:underline">
+        <Link
+          href={
+            redirect
+              ? `/register?redirect=${encodeURIComponent(redirect)}`
+              : "/register"
+          }
+          className="font-medium text-primary hover:underline"
+        >
           Sign up
         </Link>
       </p>

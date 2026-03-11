@@ -3,10 +3,10 @@
  */
 export function countWords(html: string): number {
   const text = html
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
   if (text.length === 0) return 0;
-  return text.split(' ').length;
+  return text.split(" ").length;
 }

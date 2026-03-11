@@ -38,7 +38,9 @@ export function TargetsSettings() {
   }
 
   if (isLoading) {
-    return <div className="text-sm text-muted-foreground">Loading targets...</div>;
+    return (
+      <div className="text-sm text-muted-foreground">Loading targets...</div>
+    );
   }
 
   return (
@@ -64,7 +66,11 @@ export function TargetsSettings() {
             min={1}
             max={50}
             value={todoTarget}
-            onChange={(e) => setTodoTarget(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))}
+            onChange={(e) =>
+              setTodoTarget(
+                Math.min(50, Math.max(1, parseInt(e.target.value) || 1)),
+              )
+            }
             className="h-9 w-16 rounded-lg border border-border bg-background px-2 text-center text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
           <button
@@ -96,7 +102,7 @@ export function TargetsSettings() {
                 "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
                 journalTarget === preset.value
                   ? "border-primary bg-primary/10 text-primary"
-                  : "border-border bg-background text-muted-foreground hover:text-foreground"
+                  : "border-border bg-background text-muted-foreground hover:text-foreground",
               )}
             >
               {preset.label} ({preset.value})
@@ -109,7 +115,11 @@ export function TargetsSettings() {
             min={10}
             max={5000}
             value={journalTarget}
-            onChange={(e) => setJournalTarget(Math.min(5000, Math.max(10, parseInt(e.target.value) || 10)))}
+            onChange={(e) =>
+              setJournalTarget(
+                Math.min(5000, Math.max(10, parseInt(e.target.value) || 10)),
+              )
+            }
             className="h-9 w-24 rounded-lg border border-border bg-background px-2 text-center text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
           <span className="text-sm text-muted-foreground">words / day</span>

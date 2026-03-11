@@ -1,5 +1,5 @@
-import axios, { type AxiosInstance } from 'axios';
-import type { PlatformConfig } from '@repo/core/platform';
+import axios, { type AxiosInstance } from "axios";
+import type { PlatformConfig } from "@repo/core/platform";
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -18,27 +18,30 @@ function processQueue(error: unknown) {
 export function createApiClient(config: PlatformConfig): AxiosInstance {
   const client = axios.create({
     baseURL: config.apiBaseUrl,
-    headers: { 'Content-Type': 'application/json' },
-    withCredentials: config.authStrategy === 'cookie',
+    headers: { "Content-Type": "application/json" },
+    withCredentials: config.authStrategy === "cookie",
   });
 
-  if (config.authStrategy === 'bearer') {
+  if (config.authStrategy === "bearer") {
     client.interceptors.request.use(async (reqConfig) => {
-      const token = await config.storage.getItem('access_token');
+      const token = await config.storage.getItem("access_token");
       if (token) {
         reqConfig.headers.Authorization = `Bearer ${token}`;
       }
-      reqConfig.headers['X-Auth-Strategy'] = 'bearer';
+      reqConfig.headers["X-Auth-Strategy"] = "bearer";
       return reqConfig;
     });
 
     // Store tokens from auth responses (login, register, social)
     client.interceptors.response.use(async (response) => {
-      const url = response.config.url || '';
+      const url = response.config.url || "";
       const isAuthEndpoint = /\/auth\/(login|register|social)$/.test(url);
       if (isAuthEndpoint && response.data?.accessToken) {
-        await config.storage.setItem('access_token', response.data.accessToken);
-        await config.storage.setItem('refresh_token', response.data.refreshToken);
+        await config.storage.setItem("access_token", response.data.accessToken);
+        await config.storage.setItem(
+          "refresh_token",
+          response.data.refreshToken,
+        );
       }
       return response;
     });
@@ -52,7 +55,7 @@ export function createApiClient(config: PlatformConfig): AxiosInstance {
       if (
         error.response?.status === 401 &&
         !originalRequest._retry &&
-        !originalRequest.url?.includes('/auth/')
+        !originalRequest.url?.includes("/auth/")
       ) {
         if (isRefreshing) {
           return new Promise((resolve, reject) => {
@@ -64,17 +67,23 @@ export function createApiClient(config: PlatformConfig): AxiosInstance {
         isRefreshing = true;
 
         try {
-          if (config.authStrategy === 'bearer') {
-            const refreshToken = await config.storage.getItem('refresh_token');
+          if (config.authStrategy === "bearer") {
+            const refreshToken = await config.storage.getItem("refresh_token");
             if (refreshToken) {
-              const res = await client.post('/auth/refresh', { refreshToken });
-              await config.storage.setItem('access_token', res.data.accessToken);
+              const res = await client.post("/auth/refresh", { refreshToken });
+              await config.storage.setItem(
+                "access_token",
+                res.data.accessToken,
+              );
               if (res.data.refreshToken) {
-                await config.storage.setItem('refresh_token', res.data.refreshToken);
+                await config.storage.setItem(
+                  "refresh_token",
+                  res.data.refreshToken,
+                );
               }
             }
           } else {
-            await client.post('/auth/refresh');
+            await client.post("/auth/refresh");
           }
 
           processQueue(null);

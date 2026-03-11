@@ -4,10 +4,30 @@ import { CheckSquare, Heart, BookOpen, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const GOALS = [
-  { id: "productivity", label: "Productivity", description: "Manage tasks and stay organized", icon: CheckSquare },
-  { id: "health", label: "Health", description: "Build healthy habits and track progress", icon: Heart },
-  { id: "journaling", label: "Journaling", description: "Reflect and write daily entries", icon: BookOpen },
-  { id: "habits", label: "Habit Tracking", description: "Create routines and maintain streaks", icon: Target },
+  {
+    id: "productivity",
+    label: "Productivity",
+    description: "Manage tasks and stay organized",
+    icon: CheckSquare,
+  },
+  {
+    id: "health",
+    label: "Health",
+    description: "Build healthy habits and track progress",
+    icon: Heart,
+  },
+  {
+    id: "journaling",
+    label: "Journaling",
+    description: "Reflect and write daily entries",
+    icon: BookOpen,
+  },
+  {
+    id: "habits",
+    label: "Habit Tracking",
+    description: "Create routines and maintain streaks",
+    icon: Target,
+  },
 ] as const;
 
 export function GoalsStep({
@@ -30,9 +50,12 @@ export function GoalsStep({
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h2 className="text-xl font-bold text-foreground">What are your goals?</h2>
+        <h2 className="text-xl font-bold text-foreground">
+          What are your goals?
+        </h2>
         <p className="text-sm text-muted-foreground">
-          Select what you&apos;d like to focus on. This helps us personalize your experience.
+          Select what you&apos;d like to focus on. This helps us personalize
+          your experience.
         </p>
       </div>
 
@@ -51,9 +74,18 @@ export function GoalsStep({
                   : "border-border hover:border-primary/30",
               )}
             >
-              <Icon className={cn("size-6", selected ? "text-primary" : "text-muted-foreground")} />
-              <span className="text-sm font-medium text-foreground">{goal.label}</span>
-              <span className="text-xs text-muted-foreground">{goal.description}</span>
+              <Icon
+                className={cn(
+                  "size-6",
+                  selected ? "text-primary" : "text-muted-foreground",
+                )}
+              />
+              <span className="text-sm font-medium text-foreground">
+                {goal.label}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {goal.description}
+              </span>
             </button>
           );
         })}

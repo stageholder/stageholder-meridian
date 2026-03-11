@@ -18,15 +18,10 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: asset: https://asset.localhost; font-src 'self' data:"
     }
   },
-  "plugins": {
-    "updater": {
-      "endpoints": ["https://releases.example.com/{{target}}/{{arch}}/{{current_version}}"],
-      "pubkey": "REPLACE_WITH_YOUR_PUBLIC_KEY"
-    }
-  },
+  "plugins": {},
   "bundle": {
     "active": true,
     "targets": "all",

@@ -22,11 +22,14 @@ RUN cd apps/api && bun run build
 FROM node:20-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nestjs
+COPY --from=builder --chown=nestjs:nodejs /app/apps/api/dist ./dist
+COPY --from=builder --chown=nestjs:nodejs /app/apps/api/node_modules ./node_modules
+COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./root_modules
+COPY --from=builder --chown=nestjs:nodejs /app/apps/api/package.json ./
 
-COPY --from=builder /app/apps/api/dist ./dist
-COPY --from=builder /app/apps/api/node_modules ./node_modules
-COPY --from=builder /app/node_modules ./root_modules
-COPY --from=builder /app/apps/api/package.json ./
+USER nestjs
 
 EXPOSE 4000
 CMD ["node", "dist/main"]

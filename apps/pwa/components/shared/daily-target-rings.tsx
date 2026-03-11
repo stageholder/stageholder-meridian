@@ -33,8 +33,19 @@ function CircleProgress({
   const offset = circumference - (filled / 100) * circumference;
 
   return (
-    <div className={cn("relative inline-flex items-center justify-center", className)} style={{ width: size, height: size }}>
-      <svg className="absolute inset-0 -rotate-90" width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <div
+      className={cn(
+        "relative inline-flex items-center justify-center",
+        className,
+      )}
+      style={{ width: size, height: size }}
+    >
+      <svg
+        className="absolute inset-0 -rotate-90"
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+      >
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -76,32 +87,58 @@ export function DailyTargetRings() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button className="flex items-center gap-1 rounded-md px-1 py-1 transition-colors hover:bg-accent" aria-label="View daily targets">
+        <button
+          className="flex items-center gap-1 rounded-md px-1 py-1 transition-colors hover:bg-accent"
+          aria-label="View daily targets"
+        >
           <CircleProgress
             percent={data.todo}
             color="var(--ring-todo)"
             trackColor="var(--ring-todo-track)"
           >
-            <CheckSquare className={cn("size-3.5", todoComplete ? "text-[var(--ring-todo)]" : "text-muted-foreground/60")} />
+            <CheckSquare
+              className={cn(
+                "size-3.5",
+                todoComplete
+                  ? "text-[var(--ring-todo)]"
+                  : "text-muted-foreground/60",
+              )}
+            />
           </CircleProgress>
           <CircleProgress
             percent={data.habit}
             color="var(--ring-habit)"
             trackColor="var(--ring-habit-track)"
           >
-            <Target className={cn("size-3.5", habitComplete ? "text-[var(--ring-habit)]" : "text-muted-foreground/60")} />
+            <Target
+              className={cn(
+                "size-3.5",
+                habitComplete
+                  ? "text-[var(--ring-habit)]"
+                  : "text-muted-foreground/60",
+              )}
+            />
           </CircleProgress>
           <CircleProgress
             percent={data.journal}
             color="var(--ring-journal)"
             trackColor="var(--ring-journal-track)"
           >
-            <BookOpen className={cn("size-3.5", journalComplete ? "text-[var(--ring-journal)]" : "text-muted-foreground/60")} />
+            <BookOpen
+              className={cn(
+                "size-3.5",
+                journalComplete
+                  ? "text-[var(--ring-journal)]"
+                  : "text-muted-foreground/60",
+              )}
+            />
           </CircleProgress>
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-52 p-3">
-        <p className="mb-2 text-xs font-semibold text-foreground">Daily Targets</p>
+        <p className="mb-2 text-xs font-semibold text-foreground">
+          Daily Targets
+        </p>
         <div className="space-y-2.5">
           <div className="flex items-center gap-2.5">
             <CircleProgress
@@ -111,7 +148,14 @@ export function DailyTargetRings() {
               size={32}
               strokeWidth={3}
             >
-              <CheckSquare className={cn("size-4", todoComplete ? "text-[var(--ring-todo)]" : "text-muted-foreground/60")} />
+              <CheckSquare
+                className={cn(
+                  "size-4",
+                  todoComplete
+                    ? "text-[var(--ring-todo)]"
+                    : "text-muted-foreground/60",
+                )}
+              />
             </CircleProgress>
             <div className="flex-1">
               <p className="text-xs font-medium text-foreground">Todos</p>
@@ -119,7 +163,9 @@ export function DailyTargetRings() {
                 {details.todoDone}/{details.todoTarget} completed
               </p>
             </div>
-            <span className="text-xs font-semibold tabular-nums text-foreground">{Math.round(data.todo)}%</span>
+            <span className="text-xs font-semibold tabular-nums text-foreground">
+              {Math.round(data.todo)}%
+            </span>
           </div>
           <div className="flex items-center gap-2.5">
             <CircleProgress
@@ -129,7 +175,14 @@ export function DailyTargetRings() {
               size={32}
               strokeWidth={3}
             >
-              <Target className={cn("size-4", habitComplete ? "text-[var(--ring-habit)]" : "text-muted-foreground/60")} />
+              <Target
+                className={cn(
+                  "size-4",
+                  habitComplete
+                    ? "text-[var(--ring-habit)]"
+                    : "text-muted-foreground/60",
+                )}
+              />
             </CircleProgress>
             <div className="flex-1">
               <p className="text-xs font-medium text-foreground">Habits</p>
@@ -137,7 +190,9 @@ export function DailyTargetRings() {
                 {details.habitDone}/{details.habitTotal} completed
               </p>
             </div>
-            <span className="text-xs font-semibold tabular-nums text-foreground">{Math.round(data.habit)}%</span>
+            <span className="text-xs font-semibold tabular-nums text-foreground">
+              {Math.round(data.habit)}%
+            </span>
           </div>
           <div className="flex items-center gap-2.5">
             <CircleProgress
@@ -147,7 +202,14 @@ export function DailyTargetRings() {
               size={32}
               strokeWidth={3}
             >
-              <BookOpen className={cn("size-4", journalComplete ? "text-[var(--ring-journal)]" : "text-muted-foreground/60")} />
+              <BookOpen
+                className={cn(
+                  "size-4",
+                  journalComplete
+                    ? "text-[var(--ring-journal)]"
+                    : "text-muted-foreground/60",
+                )}
+              />
             </CircleProgress>
             <div className="flex-1">
               <p className="text-xs font-medium text-foreground">Journal</p>
@@ -155,7 +217,9 @@ export function DailyTargetRings() {
                 {details.journalWords}/{details.journalTarget} words
               </p>
             </div>
-            <span className="text-xs font-semibold tabular-nums text-foreground">{Math.round(data.journal)}%</span>
+            <span className="text-xs font-semibold tabular-nums text-foreground">
+              {Math.round(data.journal)}%
+            </span>
           </div>
         </div>
       </PopoverContent>

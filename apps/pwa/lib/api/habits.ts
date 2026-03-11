@@ -22,7 +22,9 @@ export function useHabit(id: string) {
   return useQuery<Habit>({
     queryKey: ["habit", workspace.id, id],
     queryFn: async () => {
-      const res = await apiClient.get(`/workspaces/${workspace.id}/habits/${id}`);
+      const res = await apiClient.get(
+        `/workspaces/${workspace.id}/habits/${id}`,
+      );
       return res.data;
     },
     enabled: !!id,
@@ -31,7 +33,7 @@ export function useHabit(id: string) {
 
 export function useHabitEntries(
   habitId: string,
-  params?: { startDate?: string; endDate?: string }
+  params?: { startDate?: string; endDate?: string },
 ) {
   const { workspace } = useWorkspace();
 
@@ -40,7 +42,7 @@ export function useHabitEntries(
     queryFn: async () => {
       const res = await apiClient.get(
         `/workspaces/${workspace.id}/habits/${habitId}/entries`,
-        { params }
+        { params },
       );
       return res.data;
     },
@@ -63,11 +65,16 @@ export function useCreateHabit() {
       color?: string;
       icon?: string;
     }) => {
-      const res = await apiClient.post(`/workspaces/${workspace.id}/habits`, data);
+      const res = await apiClient.post(
+        `/workspaces/${workspace.id}/habits`,
+        data,
+      );
       return res.data as Habit;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["habits", workspace.id],
+      });
     },
   });
 }
@@ -93,11 +100,16 @@ export function useUpdateHabit() {
         icon?: string;
       };
     }) => {
-      const res = await apiClient.patch(`/workspaces/${workspace.id}/habits/${id}`, data);
+      const res = await apiClient.patch(
+        `/workspaces/${workspace.id}/habits/${id}`,
+        data,
+      );
       return res.data as Habit;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["habits", workspace.id],
+      });
     },
   });
 }
@@ -111,7 +123,9 @@ export function useDeleteHabit() {
       await apiClient.delete(`/workspaces/${workspace.id}/habits/${id}`);
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["habits", workspace.id],
+      });
     },
   });
 }
@@ -132,7 +146,7 @@ export function useUpdateHabitEntry() {
     }) => {
       const res = await apiClient.patch(
         `/workspaces/${workspace.id}/habits/${habitId}/entries/${entryId}`,
-        data
+        data,
       );
       return res.data as HabitEntry;
     },
@@ -140,7 +154,9 @@ export function useUpdateHabitEntry() {
       void queryClient.invalidateQueries({
         queryKey: ["habitEntries", workspace.id, variables.habitId],
       });
-      void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["habits", workspace.id],
+      });
       void queryClient.invalidateQueries({ queryKey: ["calendar"] });
       void queryClient.invalidateQueries({ queryKey: lightKeys.me });
     },
@@ -161,7 +177,7 @@ export function useCreateHabitEntry() {
     }) => {
       const res = await apiClient.post(
         `/workspaces/${workspace.id}/habits/${habitId}/entries`,
-        data
+        data,
       );
       return res.data as HabitEntry;
     },
@@ -169,7 +185,9 @@ export function useCreateHabitEntry() {
       void queryClient.invalidateQueries({
         queryKey: ["habitEntries", workspace.id, variables.habitId],
       });
-      void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["habits", workspace.id],
+      });
       void queryClient.invalidateQueries({ queryKey: ["calendar"] });
       void queryClient.invalidateQueries({ queryKey: lightKeys.me });
     },
@@ -190,7 +208,12 @@ export function useSkipHabitEntry() {
     }) => {
       const res = await apiClient.post(
         `/workspaces/${workspace.id}/habits/${habitId}/entries`,
-        { date: data.date, value: 0, type: "skip", skipReason: data.skipReason }
+        {
+          date: data.date,
+          value: 0,
+          type: "skip",
+          skipReason: data.skipReason,
+        },
       );
       return res.data as HabitEntry;
     },
@@ -198,7 +221,9 @@ export function useSkipHabitEntry() {
       void queryClient.invalidateQueries({
         queryKey: ["habitEntries", workspace.id, variables.habitId],
       });
-      void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["habits", workspace.id],
+      });
       void queryClient.invalidateQueries({ queryKey: ["calendar"] });
       void queryClient.invalidateQueries({ queryKey: lightKeys.me });
     },
