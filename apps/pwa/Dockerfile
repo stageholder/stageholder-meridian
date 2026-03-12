@@ -1,20 +1,25 @@
 FROM oven/bun:1 AS base
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
+# Prune the monorepo for the pwa workspace
+FROM base AS pruner
+WORKDIR /app
+RUN bun add -g turbo
+COPY . .
+RUN turbo prune pwa --docker
+
+# Install dependencies from pruned lockfile
 FROM base AS deps
 WORKDIR /app
-COPY package.json bun.lock turbo.json ./
-COPY apps/pwa/package.json apps/pwa/
-COPY packages/core/package.json packages/core/
-COPY packages/offline/package.json packages/offline/
-COPY packages/ui/package.json packages/ui/
+COPY --from=pruner /app/out/json/ .
 RUN bun install --frozen-lockfile
 
 # Build
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY --from=deps /app/packages/*/node_modules ./packages/
+COPY --from=pruner /app/out/full/ .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN cd apps/pwa && bun run build
 
