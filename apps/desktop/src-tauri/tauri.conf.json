@@ -23,8 +23,10 @@
   },
   "plugins": {
     "updater": {
-      "endpoints": ["https://BUCKET_NAME.REGION.vultrobjects.com/latest.json"],
-      "pubkey": "REPLACE_AFTER_KEY_GENERATION"
+      "endpoints": [
+        "https://meridian-releases.sgp1.vultrobjects.com/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDlCNjREREJCQzQ3N0YyRDUKUldUVjhuZkV1OTFrbTcweCs5OWJBR1R0V2JuYkdMWkNkYmQvQytCOEtEb2xHVXNVZ203a0NJSzMK"
     }
   },
   "bundle": {
