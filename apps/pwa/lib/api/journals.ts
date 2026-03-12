@@ -148,14 +148,17 @@ export function useCreateJournal() {
         }
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return { previousQueries } as any;
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: ((_err: Error, _data: any, context: any) => {
       if (context?.previousQueries) {
         for (const [queryKey, data] of context.previousQueries) {
           queryClient.setQueryData(queryKey, data);
         }
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any,
     onSettled: () => {
       void queryClient.invalidateQueries({
@@ -236,8 +239,10 @@ export function useUpdateJournal() {
         old ? { ...old, ...data, updatedAt: new Date().toISOString() } : old,
       );
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return { previousQueries, previousDetail } as any;
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: ((_err: Error, variables: any, context: any) => {
       if (context?.previousQueries) {
         for (const [queryKey, data] of context.previousQueries) {
@@ -250,7 +255,9 @@ export function useUpdateJournal() {
           context.previousDetail,
         );
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onSettled: ((_data: any, _err: any, variables: any) => {
       void queryClient.invalidateQueries({
         queryKey: ["journals", workspace.id],
@@ -261,6 +268,7 @@ export function useUpdateJournal() {
       void queryClient.invalidateQueries({
         queryKey: ["calendar", workspace.id],
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any,
   });
 }
@@ -273,6 +281,7 @@ export function useDeleteJournal() {
     mutationFn: async (id) => {
       await apiClient.delete(`/workspaces/${workspace.id}/journals/${id}`);
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     table: db.journals as any,
     entityType: "journals",
     buildPath: (id) => `/workspaces/${workspace.id}/journals/${id}`,
@@ -300,14 +309,17 @@ export function useDeleteJournal() {
         }
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return { previousQueries } as any;
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: ((_err: Error, _id: any, context: any) => {
       if (context?.previousQueries) {
         for (const [queryKey, data] of context.previousQueries) {
           queryClient.setQueryData(queryKey, data);
         }
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any,
     onSettled: () => {
       void queryClient.invalidateQueries({

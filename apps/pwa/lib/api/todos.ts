@@ -148,6 +148,7 @@ export function useDeleteTodoList() {
         `/workspaces/${workspace.id}/todo-lists/${listId}`,
       );
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     table: db.todoLists as any,
     entityType: "todoLists",
     buildPath: (listId) => `/workspaces/${workspace.id}/todo-lists/${listId}`,
@@ -241,6 +242,7 @@ export function useDeleteTodo() {
         `/workspaces/${workspace.id}/todos/${args.todoId}`,
       );
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     table: db.todos as any,
     entityType: "todos",
     buildPath: (args) => `/workspaces/${workspace.id}/todos/${args.todoId}`,

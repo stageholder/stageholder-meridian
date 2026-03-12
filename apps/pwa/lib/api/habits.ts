@@ -1,4 +1,3 @@
-import { useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api-client";
 import { useWorkspace } from "@/lib/workspace-context";
 import type { Habit, HabitEntry } from "@repo/core/types";
@@ -141,6 +140,7 @@ export function useDeleteHabit() {
     mutationFn: async (id) => {
       await apiClient.delete(`/workspaces/${workspace.id}/habits/${id}`);
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     table: db.habits as any,
     entityType: "habits",
     buildPath: (id) => `/workspaces/${workspace.id}/habits/${id}`,
