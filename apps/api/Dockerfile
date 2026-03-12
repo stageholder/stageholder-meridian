@@ -1,5 +1,4 @@
 FROM oven/bun:1 AS base
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
 # Prune the monorepo for the api workspace
 FROM base AS pruner
@@ -8,17 +7,11 @@ RUN bun add -g turbo
 COPY . .
 RUN turbo prune api --docker
 
-# Install dependencies from pruned lockfile
-FROM base AS deps
+# Install dependencies then build
+FROM base AS builder
 WORKDIR /app
 COPY --from=pruner /app/out/json/ .
 RUN bun install --frozen-lockfile
-
-# Build
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=pruner /app/out/full/ .
 RUN cd apps/api && bun run build
 
