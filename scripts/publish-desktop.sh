@@ -74,14 +74,18 @@ declare -A PLATFORM_KEY=(
   [aarch64-apple-darwin]="darwin-aarch64"
   [x86_64-apple-darwin]="darwin-x86_64"
   [x86_64-unknown-linux-gnu]="linux-x86_64"
+  [aarch64-unknown-linux-gnu]="linux-aarch64"
   [x86_64-pc-windows-msvc]="windows-x86_64"
+  [aarch64-pc-windows-msvc]="windows-aarch64"
 )
 
 declare -A ARTIFACT_GLOB=(
   [aarch64-apple-darwin]="*.app.tar.gz"
   [x86_64-apple-darwin]="*.app.tar.gz"
   [x86_64-unknown-linux-gnu]="*.AppImage.tar.gz"
+  [aarch64-unknown-linux-gnu]="*.AppImage.tar.gz"
   [x86_64-pc-windows-msvc]="*-setup.nsis.zip"
+  [aarch64-pc-windows-msvc]="*-setup.nsis.zip"
 )
 
 # Accumulate uploaded file basenames for the summary
