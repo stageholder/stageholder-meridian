@@ -42,6 +42,7 @@ const mockLightEventRepo = {
 const mockHabitRepo = {
   countByCreator: vi.fn(),
   countByWorkspaceCreator: vi.fn(),
+  findIdsByWorkspaceCreator: vi.fn().mockResolvedValue([]),
 };
 
 const mockUserService = {
@@ -60,6 +61,7 @@ describe("LightService", () => {
     mockUserLightRepo.save.mockResolvedValue(undefined);
     mockLightEventRepo.save.mockResolvedValue(undefined);
     mockNotificationService.create.mockResolvedValue(undefined);
+    mockHabitRepo.findIdsByWorkspaceCreator.mockResolvedValue([]);
     service = new LightService(
       mockUserLightRepo as any,
       mockLightEventRepo as any,
