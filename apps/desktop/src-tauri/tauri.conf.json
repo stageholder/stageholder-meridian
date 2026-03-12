@@ -23,8 +23,8 @@
   },
   "plugins": {
     "updater": {
-      "endpoints": [],
-      "pubkey": ""
+      "endpoints": ["https://BUCKET_NAME.REGION.vultrobjects.com/latest.json"],
+      "pubkey": "REPLACE_AFTER_KEY_GENERATION"
     }
   },
   "bundle": {

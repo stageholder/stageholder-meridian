@@ -9,6 +9,7 @@
     "notification:default",
     "updater:default",
     "oauth:allow-start",
-    "oauth:allow-cancel"
+    "oauth:allow-cancel",
+    "process:default"
   ]
 }
