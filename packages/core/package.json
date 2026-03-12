@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check-types": "tsc --noEmit",
+    "check": "tsc --noEmit",
     "lint": "eslint"
   },
   "exports": {
@@ -28,6 +28,7 @@
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
     "@tauri-apps/plugin-notification": "^2",
+    "@tauri-apps/plugin-process": "^2",
     "@tauri-apps/plugin-updater": "^2",
     "@types/react": "^19",
     "typescript": "^5"

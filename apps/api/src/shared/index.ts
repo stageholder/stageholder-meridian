@@ -1,6 +1,6 @@
-export { Entity, EntityProps } from './entity.base';
-export { Result, AsyncResult, Ok, Err } from './result';
-export { generateId, generateShortId } from './id.utils';
+export { Entity, EntityProps } from "./entity.base";
+export { Result, AsyncResult, Ok, Err } from "./result";
+export { generateId, generateShortId } from "./id.utils";
 export {
   PaginationParams,
   PaginatedResult,
@@ -8,4 +8,4 @@ export {
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
   MAX_LIMIT,
-} from './pagination';
+} from "./pagination";

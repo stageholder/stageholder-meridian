@@ -21,7 +21,14 @@ export interface LightEvent {
   id: string;
   userId: string;
   workspaceId: string;
-  action: 'todo_complete' | 'todo_create' | 'habit_checkin' | 'journal_entry' | 'perfect_day' | 'ring_streak_bonus' | 'ring_completion_bonus';
+  action:
+    | "todo_complete"
+    | "todo_create"
+    | "habit_checkin"
+    | "journal_entry"
+    | "perfect_day"
+    | "ring_streak_bonus"
+    | "ring_completion_bonus";
   baseLight: number;
   multiplier: number;
   totalLight: number;
@@ -38,16 +45,16 @@ export interface LightTier {
 }
 
 export const LIGHT_TIERS: LightTier[] = [
-  { tier: 1, title: 'Stargazer', lightRequired: 0 },
-  { tier: 2, title: 'Spark', lightRequired: 50 },
-  { tier: 3, title: 'Ember', lightRequired: 150 },
-  { tier: 4, title: 'Flame', lightRequired: 400 },
-  { tier: 5, title: 'Radiant', lightRequired: 800 },
-  { tier: 6, title: 'Flare', lightRequired: 1500 },
-  { tier: 7, title: 'Nova', lightRequired: 2800 },
-  { tier: 8, title: 'Pulsar', lightRequired: 5000 },
-  { tier: 9, title: 'Supernova', lightRequired: 8500 },
-  { tier: 10, title: 'Meridian', lightRequired: 13000 },
+  { tier: 1, title: "Stargazer", lightRequired: 0 },
+  { tier: 2, title: "Spark", lightRequired: 50 },
+  { tier: 3, title: "Ember", lightRequired: 150 },
+  { tier: 4, title: "Flame", lightRequired: 400 },
+  { tier: 5, title: "Radiant", lightRequired: 800 },
+  { tier: 6, title: "Flare", lightRequired: 1500 },
+  { tier: 7, title: "Nova", lightRequired: 2800 },
+  { tier: 8, title: "Pulsar", lightRequired: 5000 },
+  { tier: 9, title: "Supernova", lightRequired: 8500 },
+  { tier: 10, title: "Meridian", lightRequired: 13000 },
 ];
 
 export function getNextTier(currentTier: number): LightTier | null {
@@ -55,7 +62,10 @@ export function getNextTier(currentTier: number): LightTier | null {
   return LIGHT_TIERS[currentTier] ?? null;
 }
 
-export function getTierProgress(totalLight: number, currentTier: number): number {
+export function getTierProgress(
+  totalLight: number,
+  currentTier: number,
+): number {
   const current = LIGHT_TIERS[currentTier - 1];
   const next = LIGHT_TIERS[currentTier];
   if (!current || !next) return 100;

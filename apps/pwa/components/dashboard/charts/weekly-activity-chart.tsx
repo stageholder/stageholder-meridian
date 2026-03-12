@@ -1,7 +1,12 @@
 "use client";
 
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 import { useWeeklyActivity } from "@/lib/hooks/use-weekly-activity";
 
 const chartConfig = {
@@ -34,12 +39,38 @@ export function WeeklyActivityChart() {
     <ChartContainer config={chartConfig} className="h-[200px] w-full">
       <BarChart data={data} barGap={2}>
         <CartesianGrid vertical={false} strokeDasharray="3 3" />
-        <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} />
-        <YAxis tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} width={24} />
+        <XAxis
+          dataKey="label"
+          tickLine={false}
+          axisLine={false}
+          fontSize={12}
+        />
+        <YAxis
+          tickLine={false}
+          axisLine={false}
+          fontSize={12}
+          allowDecimals={false}
+          width={24}
+        />
         <ChartTooltip content={<ChartTooltipContent />} />
-        <Bar dataKey="todos" stackId="a" fill="var(--color-todos)" radius={[0, 0, 0, 0]} />
-        <Bar dataKey="habits" stackId="a" fill="var(--color-habits)" radius={[0, 0, 0, 0]} />
-        <Bar dataKey="journals" stackId="a" fill="var(--color-journals)" radius={[4, 4, 0, 0]} />
+        <Bar
+          dataKey="todos"
+          stackId="a"
+          fill="var(--color-todos)"
+          radius={[0, 0, 0, 0]}
+        />
+        <Bar
+          dataKey="habits"
+          stackId="a"
+          fill="var(--color-habits)"
+          radius={[0, 0, 0, 0]}
+        />
+        <Bar
+          dataKey="journals"
+          stackId="a"
+          fill="var(--color-journals)"
+          radius={[4, 4, 0, 0]}
+        />
       </BarChart>
     </ChartContainer>
   );

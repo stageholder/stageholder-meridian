@@ -7,8 +7,16 @@ import { useAllTodos, useTodoLists } from "@/lib/api/todos";
 import type { Todo, TodoList } from "@repo/core/types";
 
 export function TodayContent() {
-  const { data: todos, isLoading: todosLoading, isError: todosError } = useAllTodos();
-  const { data: lists, isLoading: listsLoading, isError: listsError } = useTodoLists();
+  const {
+    data: todos,
+    isLoading: todosLoading,
+    isError: todosError,
+  } = useAllTodos();
+  const {
+    data: lists,
+    isLoading: listsLoading,
+    isError: listsError,
+  } = useTodoLists();
 
   const isLoading = todosLoading || listsLoading;
   const isError = todosError || listsError;
@@ -52,16 +60,21 @@ export function TodayContent() {
       <div className="mb-6">
         <h1 className="text-xl font-bold text-foreground">Today</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {todayTodos.length} todo{todayTodos.length !== 1 ? "s" : ""} due today or overdue
+          {todayTodos.length} todo{todayTodos.length !== 1 ? "s" : ""} due today
+          or overdue
         </p>
       </div>
 
       {defaultList && <QuickAddTodo listId={defaultList.id} />}
 
       {isLoading ? (
-        <div className="mt-3 text-sm text-muted-foreground">Loading todos...</div>
+        <div className="mt-3 text-sm text-muted-foreground">
+          Loading todos...
+        </div>
       ) : isError ? (
-        <div className="mt-3 text-sm text-destructive">Failed to load todos. Please try refreshing the page.</div>
+        <div className="mt-3 text-sm text-destructive">
+          Failed to load todos. Please try refreshing the page.
+        </div>
       ) : (
         <div className="mt-3 space-y-6">
           {sortedListIds.map((listId) => {

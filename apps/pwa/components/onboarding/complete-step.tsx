@@ -17,9 +17,12 @@ export function CompleteStep({ onFinish }: { onFinish: () => void }) {
         <Check className="size-8 text-primary" />
       </div>
       <div className="space-y-2">
-        <h2 className="text-2xl font-bold text-foreground">You&apos;re all set!</h2>
+        <h2 className="text-2xl font-bold text-foreground">
+          You&apos;re all set!
+        </h2>
         <p className="text-muted-foreground">
-          Your workspace is ready. Start building habits, tracking tasks, and journaling your journey.
+          Your workspace is ready. Start building habits, tracking tasks, and
+          journaling your journey.
         </p>
       </div>
       <button

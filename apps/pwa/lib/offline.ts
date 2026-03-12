@@ -1,5 +1,5 @@
 import { db } from "@repo/offline/db";
-import { fullSync } from "@repo/offline/sync/sync-manager";
+import { fullSync, type SyncConflict } from "@repo/offline/sync/sync-manager";
 import { sendNativeNotification } from "@repo/core/platform/notifications";
 import { createTodosApi } from "@repo/core/api/todos";
 import { createJournalsApi } from "@repo/core/api/journals";
@@ -16,33 +16,57 @@ const tagsApi = createTagsApi(apiClient, getWorkspaceId);
 const notificationsApi = createNotificationsApi(apiClient);
 const workspacesApi = createWorkspacesApi(apiClient);
 
+let onConflicts: ((conflicts: SyncConflict[]) => void) | null = null;
+
+export function setConflictHandler(
+  handler: (conflicts: SyncConflict[]) => void,
+) {
+  onConflicts = handler;
+}
+
+function buildParams(since?: string): Record<string, string> | undefined {
+  if (!since) return undefined;
+  return { updatedSince: since, includeSoftDeleted: "true" };
+}
+
 export async function syncAll(): Promise<void> {
   const workspaceId = getWorkspaceId();
   if (!workspaceId) return;
 
   const fetchers = {
-    workspaces: () => workspacesApi.list(),
-    members: () => workspacesApi.listMembers(workspaceId),
-    todoLists: () => todosApi.listLists(),
-    todos: async () => {
+    workspaces: (since?: string) => workspacesApi.list(buildParams(since)),
+    members: (since?: string) =>
+      workspacesApi.listMembers(workspaceId, buildParams(since)),
+    todoLists: (since?: string) => todosApi.listLists(buildParams(since)),
+    todos: async (since?: string) => {
+      if (since) {
+        // Delta sync: fetch all updated todos directly
+        return todosApi.listAllTodos({ ...buildParams(since), limit: 1000 });
+      }
       const lists = await todosApi.listLists();
       const allTodos = await Promise.all(
         lists.map((list) => todosApi.listTodos(list.id)),
       );
       return allTodos.flat();
     },
-    journals: () => journalsApi.list(),
-    habits: () => habitsApi.list(),
-    habitEntries: async () => {
+    journals: (since?: string) => journalsApi.list(buildParams(since)),
+    habits: (since?: string) => habitsApi.list(buildParams(since)),
+    habitEntries: async (since?: string) => {
+      if (since) {
+        return habitsApi.listAllEntries({ ...buildParams(since), limit: 1000 });
+      }
       const habits = await habitsApi.list();
       const allEntries = await Promise.all(
         habits.map((habit) => habitsApi.listEntries(habit.id)),
       );
       return allEntries.flat();
     },
-    tags: () => tagsApi.list(),
-    notifications: async () => {
-      const result = await notificationsApi.list({ limit: 100 });
+    tags: (since?: string) => tagsApi.list(buildParams(since)),
+    notifications: async (since?: string) => {
+      const result = await notificationsApi.list({
+        limit: 100,
+        ...buildParams(since),
+      });
       return result.data;
     },
   };
@@ -60,15 +84,19 @@ export async function syncAll(): Promise<void> {
   };
 
   try {
-    await fullSync(
+    const conflicts = await fullSync(
       workspaceId,
       apiClient,
-      fetchers as Record<string, () => Promise<{ id: string }[]>>,
+      fetchers as Record<string, (since?: string) => Promise<{ id: string }[]>>,
       tables as Record<string, (typeof tables)[keyof typeof tables]>,
     );
+
+    if (conflicts.length > 0 && onConflicts) {
+      onConflicts(conflicts);
+    }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    sendNativeNotification('Sync failed', message);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    sendNativeNotification("Sync failed", message);
     throw error;
   }
 }

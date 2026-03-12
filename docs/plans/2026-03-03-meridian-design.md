@@ -12,18 +12,18 @@ Meridian is a multi-platform personal productivity application featuring todo li
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Monorepo | Turborepo + Bun |
-| Backend | NestJS + MongoDB (Mongoose) |
-| Frontend | Next.js + shadcn/ui (Radix + Tailwind) |
-| Local DB | Dexie (IndexedDB) |
-| Desktop | Tauri |
-| Mobile | Tauri Mobile |
-| State | Zustand (persisted, platform-aware) |
-| Rich Text | Tiptap |
-| Validation | Zod |
-| Testing | Vitest + Playwright |
+| Layer        | Technology                                 |
+| ------------ | ------------------------------------------ |
+| Monorepo     | Turborepo + Bun                            |
+| Backend      | NestJS + MongoDB (Mongoose)                |
+| Frontend     | Next.js + shadcn/ui (Radix + Tailwind)     |
+| Local DB     | Dexie (IndexedDB)                          |
+| Desktop      | Tauri                                      |
+| Mobile       | Tauri Mobile                               |
+| State        | Zustand (persisted, platform-aware)        |
+| Rich Text    | Tiptap                                     |
+| Validation   | Zod                                        |
+| Testing      | Vitest + Playwright                        |
 | Architecture | DDD (mirroring stageholder-atlas patterns) |
 
 ## Monorepo Structure
@@ -55,43 +55,53 @@ stageholder-meridian/
 ### Auth & Identity
 
 **User**
+
 - email, name, avatar, timezone, provider (local/google)
 - Auth: JWT access/refresh tokens, OAuth2 (Google)
 
 **Workspace**
+
 - name, slug, owner, settings
 - Root aggregate for multi-tenancy
 
 **WorkspaceMember**
+
 - userId, workspaceId, role (owner/admin/member)
 
 ### Todo Module
 
 **TodoList**
+
 - name, color, icon, workspaceId, isShared
 
 **Todo**
+
 - title, description, dueDate, priority (none/low/medium/high/urgent)
 - status (todo/in_progress/done), listId, assigneeId, order
 - Recurring configuration
 
 **TodoComment**
+
 - content, todoId, authorId
 
 ### Journal Module
 
 **Journal**
+
 - title, content (rich text via Tiptap), mood (1-5 scale), tags[], workspaceId, date
 
 **JournalTemplate**
+
 - name, content template, prompts[]
 
 ### Habit Module
 
 **Habit**
+
 - name, description, frequency (daily/weekly/custom), targetCount, unit, color, icon, workspaceId
 
 **HabitEntry**
+
 - habitId, date, value (number), notes
 
 ### Shared
@@ -103,6 +113,7 @@ stageholder-meridian/
 ### Entity Patterns (from atlas)
 
 All entities follow:
+
 - `Entity<T>` base class with id, createdAt, updatedAt, deletedAt (soft delete)
 - `Result<T, E>` type for creation (railway-oriented error handling)
 - Static `create()` factory method with validation
@@ -142,6 +153,7 @@ AppModule (root)
 ### Module Structure Pattern
 
 Each domain module contains:
+
 - `*.entity.ts` — Domain entity with business logic
 - `*.repository.ts` — Data access abstraction
 - `*.service.ts` — Business operations orchestration
@@ -156,18 +168,18 @@ Each domain module contains:
 
 ```typescript
 class MeridianDB extends Dexie {
-  workspaces!: EntityTable<Workspace, 'id'>;
-  workspaceMembers!: EntityTable<WorkspaceMember, 'id'>;
-  todoLists!: EntityTable<TodoList, 'id'>;
-  todos!: EntityTable<Todo, 'id'>;
-  todoComments!: EntityTable<TodoComment, 'id'>;
-  journals!: EntityTable<Journal, 'id'>;
-  journalTemplates!: EntityTable<JournalTemplate, 'id'>;
-  habits!: EntityTable<Habit, 'id'>;
-  habitEntries!: EntityTable<HabitEntry, 'id'>;
-  tags!: EntityTable<Tag, 'id'>;
-  notifications!: EntityTable<AppNotification, 'id'>;
-  pendingMutations!: EntityTable<PendingMutation, 'id'>;
+  workspaces!: EntityTable<Workspace, "id">;
+  workspaceMembers!: EntityTable<WorkspaceMember, "id">;
+  todoLists!: EntityTable<TodoList, "id">;
+  todos!: EntityTable<Todo, "id">;
+  todoComments!: EntityTable<TodoComment, "id">;
+  journals!: EntityTable<Journal, "id">;
+  journalTemplates!: EntityTable<JournalTemplate, "id">;
+  habits!: EntityTable<Habit, "id">;
+  habitEntries!: EntityTable<HabitEntry, "id">;
+  tags!: EntityTable<Tag, "id">;
+  notifications!: EntityTable<AppNotification, "id">;
+  pendingMutations!: EntityTable<PendingMutation, "id">;
   syncMeta!: Table<SyncMeta, [string, string]>;
 }
 ```
@@ -252,6 +264,7 @@ class MeridianDB extends Dexie {
 ## Reference
 
 This architecture mirrors stageholder-atlas patterns. See that project for implementation examples of:
+
 - Entity base class and Result type
 - Repository pattern with Mongoose
 - Sync manager and mutation queue

@@ -1,14 +1,14 @@
 export const LIGHT_TIERS = [
-  { tier: 1, title: 'Stargazer', lightRequired: 0 },
-  { tier: 2, title: 'Spark', lightRequired: 50 },
-  { tier: 3, title: 'Ember', lightRequired: 150 },
-  { tier: 4, title: 'Flame', lightRequired: 400 },
-  { tier: 5, title: 'Radiant', lightRequired: 800 },
-  { tier: 6, title: 'Flare', lightRequired: 1500 },
-  { tier: 7, title: 'Nova', lightRequired: 2800 },
-  { tier: 8, title: 'Pulsar', lightRequired: 5000 },
-  { tier: 9, title: 'Supernova', lightRequired: 8500 },
-  { tier: 10, title: 'Meridian', lightRequired: 13000 },
+  { tier: 1, title: "Stargazer", lightRequired: 0 },
+  { tier: 2, title: "Spark", lightRequired: 50 },
+  { tier: 3, title: "Ember", lightRequired: 150 },
+  { tier: 4, title: "Flame", lightRequired: 400 },
+  { tier: 5, title: "Radiant", lightRequired: 800 },
+  { tier: 6, title: "Flare", lightRequired: 1500 },
+  { tier: 7, title: "Nova", lightRequired: 2800 },
+  { tier: 8, title: "Pulsar", lightRequired: 5000 },
+  { tier: 9, title: "Supernova", lightRequired: 8500 },
+  { tier: 10, title: "Meridian", lightRequired: 13000 },
 ] as const;
 
 export type LightTier = (typeof LIGHT_TIERS)[number];
@@ -63,7 +63,8 @@ export function getMultiplier(perfectDayStreak: number): number {
 }
 
 export function getTodoLight(priority: string): number {
-  if (priority === 'high' || priority === 'urgent') return LIGHT_ACTIONS.TODO_COMPLETE_HIGH;
-  if (priority === 'medium') return LIGHT_ACTIONS.TODO_COMPLETE_MEDIUM;
+  if (priority === "high" || priority === "urgent")
+    return LIGHT_ACTIONS.TODO_COMPLETE_HIGH;
+  if (priority === "medium") return LIGHT_ACTIONS.TODO_COMPLETE_MEDIUM;
   return LIGHT_ACTIONS.TODO_COMPLETE_LOW;
 }

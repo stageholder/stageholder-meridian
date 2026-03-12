@@ -39,7 +39,7 @@ export default function SettingsPage() {
                 "border-b-2 pb-3 text-sm font-medium transition-colors",
                 activeTab === tab.id
                   ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
               )}
             >
               {tab.label}

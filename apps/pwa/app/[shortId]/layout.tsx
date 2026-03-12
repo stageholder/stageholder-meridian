@@ -27,6 +27,8 @@ import { useUserLight } from "@/lib/api/light";
 import { StarVisual } from "@/components/light/star-visual";
 import { getTierProgress, getNextTier } from "@repo/core/types/light";
 import { OfflineIndicator } from "@/components/shared/offline-indicator";
+import { SyncConflictListener } from "@/components/shared/sync-conflict-toast";
+import { UpdateChecker } from "@/components/shared/update-checker";
 import { DailyTargetRings } from "@/components/shared/daily-target-rings";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { FeedbackButton } from "@/components/shared/feedback-button";
@@ -92,25 +94,42 @@ function WorkspaceSelector({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-52">
-        <DropdownMenuLabel className="text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-xs text-muted-foreground">
+          Workspaces
+        </DropdownMenuLabel>
         {workspaces.map((ws) => (
           <DropdownMenuItem
             key={ws.id}
-            onClick={() => { onNavigate?.(); router.push(`/${ws.shortId}/dashboard`); }}
+            onClick={() => {
+              onNavigate?.();
+              router.push(`/${ws.shortId}/dashboard`);
+            }}
           >
             <div className="flex size-5 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
               {ws.name.charAt(0).toUpperCase()}
             </div>
             <span className="flex-1 truncate">{ws.name}</span>
-            {ws.id === workspace.id && <Check className="size-4 text-primary" />}
+            {ws.id === workspace.id && (
+              <Check className="size-4 text-primary" />
+            )}
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => { onNavigate?.(); router.push("/workspaces"); }}>
+        <DropdownMenuItem
+          onClick={() => {
+            onNavigate?.();
+            router.push("/workspaces");
+          }}
+        >
           <LayoutGrid className="size-4" />
           All workspaces
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => { onNavigate?.(); router.push("/workspaces"); }}>
+        <DropdownMenuItem
+          onClick={() => {
+            onNavigate?.();
+            router.push("/workspaces");
+          }}
+        >
           <Plus className="size-4" />
           Create workspace
         </DropdownMenuItem>
@@ -119,12 +138,21 @@ function WorkspaceSelector({
   );
 }
 
-function SidebarNav({ shortId, pathname, onNavigate }: { shortId: string; pathname: string; onNavigate?: () => void }) {
+function SidebarNav({
+  shortId,
+  pathname,
+  onNavigate,
+}: {
+  shortId: string;
+  pathname: string;
+  onNavigate?: () => void;
+}) {
   return (
     <nav className="flex flex-col gap-1 px-3 py-2">
       {navItems.map((item) => {
         const fullHref = `/${shortId}${item.href}`;
-        const isActive = pathname === fullHref || pathname.startsWith(fullHref + "/");
+        const isActive =
+          pathname === fullHref || pathname.startsWith(fullHref + "/");
         const Icon = item.icon;
         return (
           <Link
@@ -147,7 +175,11 @@ function SidebarNav({ shortId, pathname, onNavigate }: { shortId: string; pathna
   );
 }
 
-export default function WorkspaceLayout({ children }: { children: React.ReactNode }) {
+export default function WorkspaceLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const params = useParams<{ shortId: string }>();
   const shortId = params.shortId;
   const pathname = usePathname();
@@ -156,10 +188,14 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
   const user = useAuthStore((s) => s.user);
   const setActiveWorkspace = useWorkspaceStore((s) => s.setActiveWorkspace);
   const stableSyncAll = useCallback(() => syncAll(), []);
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+  const apiUrl =
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
   const heartbeatOnline = useNetworkStatusWithHeartbeat(`${apiUrl}/health`);
   const syncIntervalMs = isDesktop() ? 30_000 : 60_000;
-  useAutoSync(stableSyncAll, { intervalMs: syncIntervalMs, isOnline: heartbeatOnline });
+  useAutoSync(stableSyncAll, {
+    intervalMs: syncIntervalMs,
+    isOnline: heartbeatOnline,
+  });
   useSyncOnFocus(stableSyncAll);
 
   const { data: userLight } = useUserLight();
@@ -171,7 +207,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (user && user.onboardingCompleted === false) {
-      router.replace('/onboarding');
+      router.replace("/onboarding");
     }
   }, [user, router]);
 
@@ -197,11 +233,20 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
     }
 
     fetchWorkspace();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [shortId, router, setActiveWorkspace]);
 
   async function handleLogout() {
-    try { await apiClient.post("/auth/logout"); } catch (err) { console.warn("Server-side logout failed, proceeding with local cleanup:", err); }
+    try {
+      await apiClient.post("/auth/logout");
+    } catch (err) {
+      console.warn(
+        "Server-side logout failed, proceeding with local cleanup:",
+        err,
+      );
+    }
     clearUser();
     localStorage.removeItem("auth-storage");
     localStorage.removeItem("workspace-storage");
@@ -210,13 +255,17 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
   }
 
   const currentPage = navItems.find(
-    (item) => pathname === `/${shortId}${item.href}` || pathname.startsWith(`/${shortId}${item.href}/`)
+    (item) =>
+      pathname === `/${shortId}${item.href}` ||
+      pathname.startsWith(`/${shortId}${item.href}/`),
   );
 
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-sm text-muted-foreground">Loading workspace...</div>
+        <div className="text-sm text-muted-foreground">
+          Loading workspace...
+        </div>
       </div>
     );
   }
@@ -225,6 +274,8 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
 
   return (
     <WorkspaceProvider workspace={workspace}>
+      <SyncConflictListener />
+      <UpdateChecker />
       <div className="flex h-screen bg-background">
         {/* Desktop sidebar */}
         <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
@@ -266,7 +317,11 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
                     />
                   </SheetTitle>
                 </SheetHeader>
-                <SidebarNav shortId={shortId} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+                <SidebarNav
+                  shortId={shortId}
+                  pathname={pathname}
+                  onNavigate={() => setMobileOpen(false)}
+                />
                 <div className="mt-auto border-t border-sidebar-border px-3 py-2">
                   <FeedbackButton onNavigate={() => setMobileOpen(false)} />
                 </div>
@@ -278,7 +333,9 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
               {currentPage && (
                 <>
                   <currentPage.icon className="size-4 text-muted-foreground" />
-                  <h1 className="text-sm font-medium text-foreground">{currentPage.label}</h1>
+                  <h1 className="text-sm font-medium text-foreground">
+                    {currentPage.label}
+                  </h1>
                 </>
               )}
             </div>
@@ -292,121 +349,232 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
               <OfflineIndicator />
 
               {/* Journey progress popover */}
-              {userLight && (() => {
-                const progress = getTierProgress(userLight.totalLight, userLight.currentTier);
-                const nextTier = getNextTier(userLight.currentTier);
-                // Tier-specific color palettes matching star-visual.tsx
-                const tierColors: Record<number, { ring: [string, string, string]; track: string; glow: string }> = {
-                  1:  { ring: ["#94a3b8", "#cbd5e1", "#94a3b8"], track: "rgba(148,163,184,0.15)", glow: "#cbd5e1" },  // Stargazer — silver
-                  2:  { ring: ["#ef4444", "#fca5a5", "#ef4444"], track: "rgba(239,68,68,0.15)", glow: "#ef4444" },     // Spark — red
-                  3:  { ring: ["#dc2626", "#f59e0b", "#fbbf24"], track: "rgba(245,158,11,0.15)", glow: "#f59e0b" },    // Ember — red to amber
-                  4:  { ring: ["#dc2626", "#f97316", "#fbbf24"], track: "rgba(249,115,22,0.15)", glow: "#f97316" },    // Flame — red-orange-yellow
-                  5:  { ring: ["#ea580c", "#f97316", "#fbbf24"], track: "rgba(249,115,22,0.15)", glow: "#f97316" },    // Radiant — orange-gold
-                  6:  { ring: ["#a16207", "#eab308", "#fde68a"], track: "rgba(234,179,8,0.15)", glow: "#eab308" },     // Flare — deep gold
-                  7:  { ring: ["#a16207", "#fbbf24", "#fef9c3"], track: "rgba(251,191,36,0.15)", glow: "#fbbf24" },    // Nova — gold to white
-                  8:  { ring: ["#ca8a04", "#fde68a", "#ffffff"], track: "rgba(253,230,138,0.15)", glow: "#fde68a" },   // Pulsar — gold-white
-                  9:  { ring: ["#854d0e", "#eab308", "#fde68a"], track: "rgba(234,179,8,0.15)", glow: "#eab308" },     // Supernova — deep gold
-                  10: { ring: ["#f59e0b", "#fbbf24", "#ffffff"], track: "rgba(251,191,36,0.15)", glow: "#fbbf24" },    // Meridian — gold to white
-                };
-                const colors = (tierColors[userLight.currentTier] ?? tierColors[1])!;
-                return (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button className="group relative flex items-center gap-1.5 rounded-md py-1 pl-2 pr-1 transition-colors hover:bg-accent">
-                        {/* Title text with shimmer — left side */}
-                        <span
-                          className="relative text-[11px] font-semibold tracking-wide"
-                          style={{
-                            background: `linear-gradient(90deg, ${colors.ring[0]}, ${colors.ring[1]}, ${colors.ring[2]}, ${colors.ring[1]}, ${colors.ring[0]})`,
-                            backgroundSize: "200% 100%",
-                            WebkitBackgroundClip: "text",
-                            WebkitTextFillColor: "transparent",
-                            animation: "shimmer 3s ease-in-out infinite",
-                          }}
-                        >
-                          {userLight.currentTitle}
-                        </span>
-                        {/* Ring + star — right side, same size as daily target rings */}
-                        <div className="relative inline-flex shrink-0 items-center justify-center" style={{ width: 28, height: 28 }}>
-                          {/* Ambient glow */}
+              {userLight &&
+                (() => {
+                  const progress = getTierProgress(
+                    userLight.totalLight,
+                    userLight.currentTier,
+                  );
+                  const nextTier = getNextTier(userLight.currentTier);
+                  // Tier-specific color palettes matching star-visual.tsx
+                  const tierColors: Record<
+                    number,
+                    {
+                      ring: [string, string, string];
+                      track: string;
+                      glow: string;
+                    }
+                  > = {
+                    1: {
+                      ring: ["#94a3b8", "#cbd5e1", "#94a3b8"],
+                      track: "rgba(148,163,184,0.15)",
+                      glow: "#cbd5e1",
+                    }, // Stargazer — silver
+                    2: {
+                      ring: ["#ef4444", "#fca5a5", "#ef4444"],
+                      track: "rgba(239,68,68,0.15)",
+                      glow: "#ef4444",
+                    }, // Spark — red
+                    3: {
+                      ring: ["#dc2626", "#f59e0b", "#fbbf24"],
+                      track: "rgba(245,158,11,0.15)",
+                      glow: "#f59e0b",
+                    }, // Ember — red to amber
+                    4: {
+                      ring: ["#dc2626", "#f97316", "#fbbf24"],
+                      track: "rgba(249,115,22,0.15)",
+                      glow: "#f97316",
+                    }, // Flame — red-orange-yellow
+                    5: {
+                      ring: ["#ea580c", "#f97316", "#fbbf24"],
+                      track: "rgba(249,115,22,0.15)",
+                      glow: "#f97316",
+                    }, // Radiant — orange-gold
+                    6: {
+                      ring: ["#a16207", "#eab308", "#fde68a"],
+                      track: "rgba(234,179,8,0.15)",
+                      glow: "#eab308",
+                    }, // Flare — deep gold
+                    7: {
+                      ring: ["#a16207", "#fbbf24", "#fef9c3"],
+                      track: "rgba(251,191,36,0.15)",
+                      glow: "#fbbf24",
+                    }, // Nova — gold to white
+                    8: {
+                      ring: ["#ca8a04", "#fde68a", "#ffffff"],
+                      track: "rgba(253,230,138,0.15)",
+                      glow: "#fde68a",
+                    }, // Pulsar — gold-white
+                    9: {
+                      ring: ["#854d0e", "#eab308", "#fde68a"],
+                      track: "rgba(234,179,8,0.15)",
+                      glow: "#eab308",
+                    }, // Supernova — deep gold
+                    10: {
+                      ring: ["#f59e0b", "#fbbf24", "#ffffff"],
+                      track: "rgba(251,191,36,0.15)",
+                      glow: "#fbbf24",
+                    }, // Meridian — gold to white
+                  };
+                  const colors = (tierColors[userLight.currentTier] ??
+                    tierColors[1])!;
+                  return (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="group relative flex items-center gap-1.5 rounded-md py-1 pl-2 pr-1 transition-colors hover:bg-accent">
+                          {/* Title text with shimmer — left side */}
                           <span
-                            className="pointer-events-none absolute inset-0 m-auto size-6 rounded-full opacity-0 blur-md transition-opacity duration-500 group-hover:opacity-40"
-                            style={{ background: `radial-gradient(circle, ${colors.glow} 0%, transparent 70%)` }}
-                          />
-                          <svg className="absolute inset-0 -rotate-90" width={28} height={28} viewBox="0 0 28 28">
-                            <defs>
-                              <linearGradient id="light-ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stopColor={colors.ring[0]} />
-                                <stop offset="50%" stopColor={colors.ring[1]} />
-                                <stop offset="100%" stopColor={colors.ring[2]} />
-                              </linearGradient>
-                            </defs>
-                            <circle cx={14} cy={14} r={12.75} fill="none" stroke={colors.track} strokeWidth={2.5} />
-                            {progress > 0 && (
+                            className="relative text-[11px] font-semibold tracking-wide"
+                            style={{
+                              background: `linear-gradient(90deg, ${colors.ring[0]}, ${colors.ring[1]}, ${colors.ring[2]}, ${colors.ring[1]}, ${colors.ring[0]})`,
+                              backgroundSize: "200% 100%",
+                              WebkitBackgroundClip: "text",
+                              WebkitTextFillColor: "transparent",
+                              animation: "shimmer 3s ease-in-out infinite",
+                            }}
+                          >
+                            {userLight.currentTitle}
+                          </span>
+                          {/* Ring + star — right side, same size as daily target rings */}
+                          <div
+                            className="relative inline-flex shrink-0 items-center justify-center"
+                            style={{ width: 28, height: 28 }}
+                          >
+                            {/* Ambient glow */}
+                            <span
+                              className="pointer-events-none absolute inset-0 m-auto size-6 rounded-full opacity-0 blur-md transition-opacity duration-500 group-hover:opacity-40"
+                              style={{
+                                background: `radial-gradient(circle, ${colors.glow} 0%, transparent 70%)`,
+                              }}
+                            />
+                            <svg
+                              className="absolute inset-0 -rotate-90"
+                              width={28}
+                              height={28}
+                              viewBox="0 0 28 28"
+                            >
+                              <defs>
+                                <linearGradient
+                                  id="light-ring-grad"
+                                  x1="0%"
+                                  y1="0%"
+                                  x2="100%"
+                                  y2="100%"
+                                >
+                                  <stop
+                                    offset="0%"
+                                    stopColor={colors.ring[0]}
+                                  />
+                                  <stop
+                                    offset="50%"
+                                    stopColor={colors.ring[1]}
+                                  />
+                                  <stop
+                                    offset="100%"
+                                    stopColor={colors.ring[2]}
+                                  />
+                                </linearGradient>
+                              </defs>
                               <circle
-                                cx={14} cy={14} r={12.75}
+                                cx={14}
+                                cy={14}
+                                r={12.75}
                                 fill="none"
-                                stroke="url(#light-ring-grad)"
+                                stroke={colors.track}
                                 strokeWidth={2.5}
-                                strokeLinecap="round"
-                                strokeDasharray={`${2 * Math.PI * 12.75}`}
-                                strokeDashoffset={`${2 * Math.PI * 12.75 * (1 - Math.min(100, progress) / 100)}`}
-                                className="transition-all duration-700"
                               />
-                            )}
-                          </svg>
-                          <StarVisual tier={userLight.currentTier} size="xs" className="relative" />
-                        </div>
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent align="end" className="w-64 p-0">
-                      <div className="flex flex-col items-center gap-2 px-4 pt-4 pb-3">
-                        <StarVisual tier={userLight.currentTier} size="lg" animate />
-                        <p className="text-sm font-bold">{userLight.currentTitle}</p>
-                        {nextTier ? (
-                          <div className="w-full space-y-1">
-                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                              <div
-                                className="h-full rounded-full bg-amber-500 transition-all"
-                                style={{ width: `${progress}%` }}
-                              />
+                              {progress > 0 && (
+                                <circle
+                                  cx={14}
+                                  cy={14}
+                                  r={12.75}
+                                  fill="none"
+                                  stroke="url(#light-ring-grad)"
+                                  strokeWidth={2.5}
+                                  strokeLinecap="round"
+                                  strokeDasharray={`${2 * Math.PI * 12.75}`}
+                                  strokeDashoffset={`${2 * Math.PI * 12.75 * (1 - Math.min(100, progress) / 100)}`}
+                                  className="transition-all duration-700"
+                                />
+                              )}
+                            </svg>
+                            <StarVisual
+                              tier={userLight.currentTier}
+                              size="xs"
+                              className="relative"
+                            />
+                          </div>
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-64 p-0">
+                        <div className="flex flex-col items-center gap-2 px-4 pt-4 pb-3">
+                          <StarVisual
+                            tier={userLight.currentTier}
+                            size="lg"
+                            animate
+                          />
+                          <p className="text-sm font-bold">
+                            {userLight.currentTitle}
+                          </p>
+                          {nextTier ? (
+                            <div className="w-full space-y-1">
+                              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                                <div
+                                  className="h-full rounded-full bg-amber-500 transition-all"
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                              <p className="text-center text-[11px] text-muted-foreground">
+                                <span className="font-medium text-foreground">
+                                  {userLight.totalLight}
+                                </span>
+                                {" / "}
+                                {nextTier.lightRequired} Light
+                              </p>
                             </div>
-                            <p className="text-center text-[11px] text-muted-foreground">
-                              <span className="font-medium text-foreground">{userLight.totalLight}</span>
-                              {" / "}
-                              {nextTier.lightRequired} Light
+                          ) : (
+                            <p className="text-[11px] text-muted-foreground">
+                              {userLight.totalLight.toLocaleString()} Light —
+                              Max tier reached
+                            </p>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-3 border-t border-border/50 text-center">
+                          <div className="border-r border-border/50 py-2.5">
+                            <p className="text-xs font-bold">
+                              {userLight.perfectDayStreak}d
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              Streak
                             </p>
                           </div>
-                        ) : (
-                          <p className="text-[11px] text-muted-foreground">
-                            {userLight.totalLight.toLocaleString()} Light — Max tier reached
-                          </p>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-3 border-t border-border/50 text-center">
-                        <div className="border-r border-border/50 py-2.5">
-                          <p className="text-xs font-bold">{userLight.perfectDayStreak}d</p>
-                          <p className="text-[10px] text-muted-foreground">Streak</p>
+                          <div className="border-r border-border/50 py-2.5">
+                            <p className="text-xs font-bold">
+                              {userLight.perfectDaysTotal}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              Perfect
+                            </p>
+                          </div>
+                          <div className="py-2.5">
+                            <p className="text-xs font-bold">
+                              {userLight.longestPerfectStreak}d
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              Best
+                            </p>
+                          </div>
                         </div>
-                        <div className="border-r border-border/50 py-2.5">
-                          <p className="text-xs font-bold">{userLight.perfectDaysTotal}</p>
-                          <p className="text-[10px] text-muted-foreground">Perfect</p>
-                        </div>
-                        <div className="py-2.5">
-                          <p className="text-xs font-bold">{userLight.longestPerfectStreak}d</p>
-                          <p className="text-[10px] text-muted-foreground">Best</p>
-                        </div>
-                      </div>
-                      <Link
-                        href={`/${shortId}/journey`}
-                        className="flex w-full items-center justify-center gap-1.5 border-t border-border/50 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                      >
-                        My Journey →
-                      </Link>
-                    </PopoverContent>
-                  </Popover>
-                );
-              })()}
+                        <Link
+                          href={`/${shortId}/journey`}
+                          className="flex w-full items-center justify-center gap-1.5 border-t border-border/50 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                        >
+                          My Journey →
+                        </Link>
+                      </PopoverContent>
+                    </Popover>
+                  );
+                })()}
 
               <ThemeToggle />
 
@@ -415,7 +583,12 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon-sm">
                     <Avatar className="size-6">
-                      {user?.avatar && <AvatarImage src={user.avatar} alt={user?.name || "User"} />}
+                      {user?.avatar && (
+                        <AvatarImage
+                          src={user.avatar}
+                          alt={user?.name || "User"}
+                        />
+                      )}
                       <AvatarFallback className="bg-primary text-[10px] font-medium text-primary-foreground">
                         {user?.name?.charAt(0).toUpperCase() || "U"}
                       </AvatarFallback>
@@ -425,12 +598,19 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col gap-0.5">
-                      <p className="text-sm font-medium">{user?.name || "User"}</p>
-                      <p className="text-xs text-muted-foreground">{user?.email || ""}</p>
+                      <p className="text-sm font-medium">
+                        {user?.name || "User"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {user?.email || ""}
+                      </p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onClick={handleLogout}>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={handleLogout}
+                  >
                     <LogOut className="size-4" />
                     Sign out
                   </DropdownMenuItem>

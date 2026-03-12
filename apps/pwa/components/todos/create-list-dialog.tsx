@@ -20,7 +20,10 @@ interface CreateListDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function CreateListDialog({ open, onOpenChange }: CreateListDialogProps) {
+export function CreateListDialog({
+  open,
+  onOpenChange,
+}: CreateListDialogProps) {
   const [name, setName] = useState("");
   const [color, setColor] = useState("#3b82f6");
   const createList = useCreateTodoList();
@@ -41,7 +44,7 @@ export function CreateListDialog({ open, onOpenChange }: CreateListDialogProps) 
         onError: () => {
           toast.error("Failed to create list");
         },
-      }
+      },
     );
   }
 
@@ -49,12 +52,18 @@ export function CreateListDialog({ open, onOpenChange }: CreateListDialogProps) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/50" onClick={() => onOpenChange(false)} />
+      <div
+        className="fixed inset-0 bg-black/50"
+        onClick={() => onOpenChange(false)}
+      />
       <div className="relative z-50 w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-lg">
         <h2 className="text-lg font-semibold text-foreground">New List</h2>
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
-            <label htmlFor="list-name" className="block text-sm font-medium text-foreground">
+            <label
+              htmlFor="list-name"
+              className="block text-sm font-medium text-foreground"
+            >
               Name
             </label>
             <input
@@ -69,7 +78,9 @@ export function CreateListDialog({ open, onOpenChange }: CreateListDialogProps) 
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground">Color</label>
+            <label className="block text-sm font-medium text-foreground">
+              Color
+            </label>
             <div className="mt-2 flex gap-2">
               {colorOptions.map((opt) => (
                 <button
@@ -77,7 +88,9 @@ export function CreateListDialog({ open, onOpenChange }: CreateListDialogProps) 
                   type="button"
                   onClick={() => setColor(opt.value)}
                   className={`h-7 w-7 rounded-full border-2 transition-all ${
-                    color === opt.value ? "border-foreground scale-110" : "border-transparent"
+                    color === opt.value
+                      ? "border-foreground scale-110"
+                      : "border-transparent"
                   }`}
                   style={{ backgroundColor: opt.value }}
                   aria-label={opt.label}

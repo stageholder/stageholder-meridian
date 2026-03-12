@@ -19,7 +19,11 @@ interface UseAutosaveOptions {
   debounceMs?: number;
 }
 
-export function useAutosave({ journalId: initialId, onCreated, debounceMs = 1000 }: UseAutosaveOptions) {
+export function useAutosave({
+  journalId: initialId,
+  onCreated,
+  debounceMs = 1000,
+}: UseAutosaveOptions) {
   const [journalId, setJournalId] = useState<string | null>(initialId ?? null);
   const [status, setStatus] = useState<SaveStatus>("idle");
   const createJournal = useCreateJournal();
@@ -68,7 +72,13 @@ export function useAutosave({ journalId: initialId, onCreated, debounceMs = 1000
         });
       } else {
         const created = await createRef.current.mutateAsync({
-          title: data.title || new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+          title:
+            data.title ||
+            new Date().toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            }),
           content: data.content,
           mood: data.mood,
           tags: data.tags,
@@ -87,16 +97,19 @@ export function useAutosave({ journalId: initialId, onCreated, debounceMs = 1000
   }, []); // stable — no deps
 
   // scheduleSave is also stable
-  const scheduleSave = useCallback((data: AutosaveData) => {
-    latestDataRef.current = data;
-    setStatus("idle");
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      if (latestDataRef.current) {
-        doSave(latestDataRef.current);
-      }
-    }, debounceMs);
-  }, [doSave, debounceMs]);
+  const scheduleSave = useCallback(
+    (data: AutosaveData) => {
+      latestDataRef.current = data;
+      setStatus("idle");
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        if (latestDataRef.current) {
+          doSave(latestDataRef.current);
+        }
+      }, debounceMs);
+    },
+    [doSave, debounceMs],
+  );
 
   // Flush on unmount
   useEffect(() => {

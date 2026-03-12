@@ -1,20 +1,26 @@
-import type { AxiosInstance } from 'axios';
-import type { Tag } from '@repo/core/types';
-import { workspacePath } from './client';
+import type { AxiosInstance } from "axios";
+import type { Tag } from "@repo/core/types";
+import { workspacePath } from "./client";
 
-export function createTagsApi(client: AxiosInstance, getWorkspaceId: () => string) {
+export function createTagsApi(
+  client: AxiosInstance,
+  getWorkspaceId: () => string,
+) {
   const wp = (path: string) => workspacePath(getWorkspaceId(), path);
 
   return {
     create: async (data: { name: string; color: string }): Promise<Tag> => {
-      const res = await client.post(wp('/tags'), data);
+      const res = await client.post(wp("/tags"), data);
       return res.data;
     },
-    list: async (): Promise<Tag[]> => {
-      const res = await client.get(wp('/tags'));
+    list: async (params?: Record<string, string>): Promise<Tag[]> => {
+      const res = await client.get(wp("/tags"), { params });
       return res.data?.data ?? res.data;
     },
-    update: async (id: string, data: { name?: string; color?: string }): Promise<Tag> => {
+    update: async (
+      id: string,
+      data: { name?: string; color?: string },
+    ): Promise<Tag> => {
       const res = await client.patch(wp(`/tags/${id}`), data);
       return res.data;
     },

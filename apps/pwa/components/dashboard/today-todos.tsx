@@ -16,10 +16,16 @@ const PRIORITY_COLORS: Record<string, string> = {
   low: "bg-blue-400",
 };
 
-export function TodayTodos({ index = 0, className }: { index?: number; className?: string }) {
+export function TodayTodos({
+  index = 0,
+  className,
+}: {
+  index?: number;
+  className?: string;
+}) {
   const { workspace } = useWorkspace();
   const { data: todos, isLoading } = useAllTodos();
-  const { done, total, percentage } = useTodoStats();
+  const { total, percentage } = useTodoStats();
   const updateTodo = useUpdateTodo();
 
   const today = format(new Date(), "yyyy-MM-dd");
@@ -54,7 +60,10 @@ export function TodayTodos({ index = 0, className }: { index?: number; className
               {todayTodos.length} due
             </span>
           )}
-          <Link href={`/${workspace.shortId}/todos`} className="text-xs text-primary hover:underline">
+          <Link
+            href={`/${workspace.shortId}/todos`}
+            className="text-xs text-primary hover:underline"
+          >
             View all
           </Link>
         </div>
@@ -68,7 +77,9 @@ export function TodayTodos({ index = 0, className }: { index?: number; className
               style={{ width: `${percentage}%` }}
             />
           </div>
-          <span className="text-xs text-muted-foreground tabular-nums">{percentage}%</span>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {percentage}%
+          </span>
         </div>
       )}
 
@@ -77,7 +88,9 @@ export function TodayTodos({ index = 0, className }: { index?: number; className
           <p className="text-xs text-muted-foreground">Loading...</p>
         ) : todayTodos.length > 0 ? (
           todayTodos.slice(0, 5).map((todo: Todo) => {
-            const isOverdue = todo.dueDate ? new Date(todo.dueDate) < new Date(today) : false;
+            const isOverdue = todo.dueDate
+              ? new Date(todo.dueDate) < new Date(today)
+              : false;
             return (
               <div key={todo.id} className="flex items-center gap-3">
                 <button
@@ -86,17 +99,28 @@ export function TodayTodos({ index = 0, className }: { index?: number; className
                   aria-label="Mark as complete"
                 />
                 {todo.priority && PRIORITY_COLORS[todo.priority] && (
-                  <span className={cn("h-2 w-2 shrink-0 rounded-full", PRIORITY_COLORS[todo.priority])} />
+                  <span
+                    className={cn(
+                      "h-2 w-2 shrink-0 rounded-full",
+                      PRIORITY_COLORS[todo.priority],
+                    )}
+                  />
                 )}
-                <span className="flex-1 truncate text-sm text-foreground">{todo.title}</span>
+                <span className="flex-1 truncate text-sm text-foreground">
+                  {todo.title}
+                </span>
                 {isOverdue && (
-                  <span className="text-xs text-red-600 dark:text-red-400">Overdue</span>
+                  <span className="text-xs text-red-600 dark:text-red-400">
+                    Overdue
+                  </span>
                 )}
               </div>
             );
           })
         ) : (
-          <p className="text-xs text-muted-foreground">No todos due today. You&apos;re all caught up!</p>
+          <p className="text-xs text-muted-foreground">
+            No todos due today. You&apos;re all caught up!
+          </p>
         )}
       </div>
     </BentoCard>

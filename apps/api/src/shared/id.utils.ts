@@ -1,5 +1,5 @@
-import { randomUUID } from 'crypto';
-import { nanoid } from 'nanoid';
+import { randomUUID } from "crypto";
+import { nanoid } from "nanoid";
 
 export function generateId(): string {
   return randomUUID();

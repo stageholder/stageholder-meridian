@@ -16,7 +16,8 @@ export function useWeeklyActivity() {
   const sevenDaysAgo = subDays(today, 6);
   const prevMonth = format(sevenDaysAgo, "yyyy-MM");
 
-  const { data: currentData, isLoading: currentLoading } = useCalendarData(currentMonth);
+  const { data: currentData, isLoading: currentLoading } =
+    useCalendarData(currentMonth);
   const { data: prevData, isLoading: prevLoading } = useCalendarData(prevMonth);
 
   const needsPrevMonth = prevMonth !== currentMonth;
@@ -39,6 +40,7 @@ export function useWeeklyActivity() {
       });
     }
     return days;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentData, prevData, currentMonth]);
 
   return {

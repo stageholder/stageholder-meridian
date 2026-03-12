@@ -1,7 +1,7 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import type { AuthUser } from '@repo/core/types';
-import type { StorageAdapter } from '@repo/core/platform';
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import type { AuthUser } from "@repo/core/types";
+import type { StorageAdapter } from "@repo/core/platform";
 
 export interface AuthState {
   user: AuthUser | null;
@@ -30,13 +30,20 @@ export function createAuthStore(
         },
       }),
       {
-        name: 'auth-storage',
+        name: "auth-storage",
         storage: createJSONStorage(() => ({
           getItem: (key: string) => storage.getItem(key),
-          setItem: (key: string, value: string) => { void storage.setItem(key, value); },
-          removeItem: (key: string) => { void storage.removeItem(key); },
+          setItem: (key: string, value: string) => {
+            void storage.setItem(key, value);
+          },
+          removeItem: (key: string) => {
+            void storage.removeItem(key);
+          },
         })),
-        partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
+        partialize: (state) => ({
+          user: state.user,
+          isAuthenticated: state.isAuthenticated,
+        }),
       },
     ),
   );

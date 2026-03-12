@@ -7,6 +7,9 @@
     "core:default",
     "opener:default",
     "notification:default",
-    "updater:default"
+    "updater:default",
+    "oauth:allow-start",
+    "oauth:allow-cancel",
+    "process:default"
   ]
 }

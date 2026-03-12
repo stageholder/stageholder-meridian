@@ -15,24 +15,50 @@ interface ActivityRingsProps {
 }
 
 const CATEGORIES = [
-  { key: "todo" as const, label: "Todos", color: RING_COLORS.todo.color, icon: CheckSquare },
-  { key: "habit" as const, label: "Habits", color: RING_COLORS.habit.color, icon: Target },
-  { key: "journal" as const, label: "Journal", color: RING_COLORS.journal.color, icon: BookOpen },
+  {
+    key: "todo" as const,
+    label: "Todos",
+    color: RING_COLORS.todo.color,
+    icon: CheckSquare,
+  },
+  {
+    key: "habit" as const,
+    label: "Habits",
+    color: RING_COLORS.habit.color,
+    icon: Target,
+  },
+  {
+    key: "journal" as const,
+    label: "Journal",
+    color: RING_COLORS.journal.color,
+    icon: BookOpen,
+  },
 ] as const;
 
-export function ActivityRings({ date, size = "xl", showLabels, bare, className }: ActivityRingsProps) {
+export function ActivityRings({
+  date,
+  size = "xl",
+  showLabels,
+  bare,
+  className,
+}: ActivityRingsProps) {
   const { data, isLoading, details } = useActivityRings(date);
 
   if (isLoading) {
     return (
-      <div className={cn("flex items-center justify-center", className)} style={{ minHeight: size === "xl" ? 160 : 96 }}>
+      <div
+        className={cn("flex items-center justify-center", className)}
+        style={{ minHeight: size === "xl" ? 160 : 96 }}
+      >
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground/20 border-t-primary" />
       </div>
     );
   }
 
   if (!showLabels) {
-    return <ActivityRingsVisual data={data} size={size} className={className} />;
+    return (
+      <ActivityRingsVisual data={data} size={size} className={className} />
+    );
   }
 
   const fractions: Record<string, string> = {
@@ -48,7 +74,12 @@ export function ActivityRings({ date, size = "xl", showLabels, bare, className }
   };
 
   return (
-    <div className={cn(!bare && "rounded-xl border border-border bg-card p-5", className)}>
+    <div
+      className={cn(
+        !bare && "rounded-xl border border-border bg-card p-5",
+        className,
+      )}
+    >
       <div className="flex flex-col items-center gap-5 sm:flex-row">
         <ActivityRingsVisual data={data} size={size} />
         <div className="flex min-w-0 flex-1 flex-col gap-3">

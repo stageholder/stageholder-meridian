@@ -7,7 +7,11 @@ import type { Workspace } from "@repo/core/types";
 type ActionType = "habit" | "journal";
 
 function getActionType(goals: string[]): ActionType {
-  if (goals.includes("journaling") && !goals.includes("health") && !goals.includes("habits")) {
+  if (
+    goals.includes("journaling") &&
+    !goals.includes("health") &&
+    !goals.includes("habits")
+  ) {
     return "journal";
   }
   return "habit";
@@ -39,7 +43,9 @@ export function FirstActionStep({
     setWorkspaceError(false);
     try {
       if (personalWorkspaceShortId) {
-        const res = await apiClient.get<Workspace>(`/workspaces/${personalWorkspaceShortId}`);
+        const res = await apiClient.get<Workspace>(
+          `/workspaces/${personalWorkspaceShortId}`,
+        );
         setWorkspaceId(res.data.id);
       } else {
         // Fallback: fetch user's workspaces and pick the first one
@@ -75,7 +81,9 @@ export function FirstActionStep({
         const today = new Date().toISOString().split("T")[0];
         await apiClient.post(`/workspaces/${workspaceId}/journals`, {
           title: journalTitle.trim() || "Day one with Meridian",
-          content: journalContent.trim() || "Starting my journey with Meridian today. Excited to build better habits and stay organized.",
+          content:
+            journalContent.trim() ||
+            "Starting my journey with Meridian today. Excited to build better habits and stay organized.",
           date: today,
         });
       }
@@ -91,7 +99,9 @@ export function FirstActionStep({
     <div className="space-y-6">
       <div className="space-y-2">
         <h2 className="text-xl font-bold text-foreground">
-          {actionType === "habit" ? "Create your first habit" : "Write your first journal entry"}
+          {actionType === "habit"
+            ? "Create your first habit"
+            : "Write your first journal entry"}
         </h2>
         <p className="text-sm text-muted-foreground">
           {actionType === "habit"
@@ -103,7 +113,10 @@ export function FirstActionStep({
       {actionType === "habit" ? (
         <div className="space-y-4">
           <div>
-            <label htmlFor="habit-name" className="block text-sm font-medium text-foreground">
+            <label
+              htmlFor="habit-name"
+              className="block text-sm font-medium text-foreground"
+            >
               Habit name
             </label>
             <input
@@ -116,7 +129,10 @@ export function FirstActionStep({
             />
           </div>
           <div>
-            <label htmlFor="habit-target" className="block text-sm font-medium text-foreground">
+            <label
+              htmlFor="habit-target"
+              className="block text-sm font-medium text-foreground"
+            >
               Daily target
             </label>
             <input
@@ -132,7 +148,10 @@ export function FirstActionStep({
       ) : (
         <div className="space-y-4">
           <div>
-            <label htmlFor="journal-title" className="block text-sm font-medium text-foreground">
+            <label
+              htmlFor="journal-title"
+              className="block text-sm font-medium text-foreground"
+            >
               Title
             </label>
             <input
@@ -145,7 +164,10 @@ export function FirstActionStep({
             />
           </div>
           <div>
-            <label htmlFor="journal-content" className="block text-sm font-medium text-foreground">
+            <label
+              htmlFor="journal-content"
+              className="block text-sm font-medium text-foreground"
+            >
               Content
             </label>
             <textarea
@@ -179,7 +201,11 @@ export function FirstActionStep({
           disabled={saving || loadingWorkspace || !workspaceId}
           className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
-          {loadingWorkspace ? "Loading..." : saving ? "Creating..." : "Create & Continue"}
+          {loadingWorkspace
+            ? "Loading..."
+            : saving
+              ? "Creating..."
+              : "Create & Continue"}
         </button>
         <button
           onClick={onSkip}

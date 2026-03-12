@@ -36,12 +36,14 @@ export function MembersList() {
     mutationFn: async (data: { email: string; role?: string }) => {
       const res = await apiClient.post(
         `/workspaces/${workspace.id}/members/invite`,
-        data
+        data,
       );
       return res.data as WorkspaceMember;
     },
     onSuccess: (data) => {
-      void queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["workspaceMembers", workspace.id],
+      });
       if (data.inviteLink) {
         setLastInviteLink(data.inviteLink);
       }
@@ -55,15 +57,23 @@ export function MembersList() {
   });
 
   const updateRole = useMutation({
-    mutationFn: async ({ memberId, role }: { memberId: string; role: string }) => {
+    mutationFn: async ({
+      memberId,
+      role,
+    }: {
+      memberId: string;
+      role: string;
+    }) => {
       const res = await apiClient.patch(
         `/workspaces/${workspace.id}/members/${memberId}`,
-        { role }
+        { role },
       );
       return res.data as WorkspaceMember;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["workspaceMembers", workspace.id],
+      });
       toast.success("Role updated");
     },
     onError: () => {
@@ -76,7 +86,9 @@ export function MembersList() {
       await apiClient.delete(`/workspaces/${workspace.id}/members/${memberId}`);
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["workspaceMembers", workspace.id],
+      });
       toast.success("Member removed");
     },
     onError: () => {
@@ -87,12 +99,14 @@ export function MembersList() {
   const resendInvitation = useMutation({
     mutationFn: async (memberId: string) => {
       const res = await apiClient.post(
-        `/workspaces/${workspace.id}/members/resend/${memberId}`
+        `/workspaces/${workspace.id}/members/resend/${memberId}`,
       );
       return res.data as WorkspaceMember;
     },
     onSuccess: (data) => {
-      void queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["workspaceMembers", workspace.id],
+      });
       if (data.inviteLink) {
         setLastInviteLink(data.inviteLink);
       }
@@ -105,10 +119,14 @@ export function MembersList() {
 
   const cancelInvitation = useMutation({
     mutationFn: async (memberId: string) => {
-      await apiClient.post(`/workspaces/${workspace.id}/members/cancel/${memberId}`);
+      await apiClient.post(
+        `/workspaces/${workspace.id}/members/cancel/${memberId}`,
+      );
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["workspaceMembers", workspace.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["workspaceMembers", workspace.id],
+      });
       toast.success("Invitation cancelled");
     },
     onError: () => {
@@ -151,10 +169,15 @@ export function MembersList() {
       {/* Invite Form — only for owner/admin */}
       {isAdmin && (
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Invite Member</h3>
+          <h3 className="text-sm font-semibold text-foreground">
+            Invite Member
+          </h3>
           <form onSubmit={handleInvite} className="mt-3 flex items-end gap-3">
             <div className="flex-1 max-w-sm">
-              <label htmlFor="invite-email" className="block text-sm font-medium text-foreground">
+              <label
+                htmlFor="invite-email"
+                className="block text-sm font-medium text-foreground"
+              >
                 Email
               </label>
               <input
@@ -167,7 +190,10 @@ export function MembersList() {
               />
             </div>
             <div>
-              <label htmlFor="invite-role" className="block text-sm font-medium text-foreground">
+              <label
+                htmlFor="invite-role"
+                className="block text-sm font-medium text-foreground"
+              >
                 Role
               </label>
               <Select value={inviteRole} onValueChange={setInviteRole}>
@@ -193,7 +219,9 @@ export function MembersList() {
           {/* Invite Link */}
           {lastInviteLink && (
             <div className="mt-3 flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2">
-              <span className="flex-1 truncate text-sm text-muted-foreground">{lastInviteLink}</span>
+              <span className="flex-1 truncate text-sm text-muted-foreground">
+                {lastInviteLink}
+              </span>
               <button
                 type="button"
                 onClick={copyInviteLink}
@@ -213,7 +241,11 @@ export function MembersList() {
           {myRole && myRole !== "owner" && (
             <button
               onClick={() => {
-                if (window.confirm("Are you sure you want to leave this workspace?")) {
+                if (
+                  window.confirm(
+                    "Are you sure you want to leave this workspace?",
+                  )
+                ) {
                   leaveWorkspace.mutate();
                 }
               }}
@@ -225,25 +257,42 @@ export function MembersList() {
           )}
         </div>
         {isLoading ? (
-          <p className="mt-3 text-sm text-muted-foreground">Loading members...</p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Loading members...
+          </p>
         ) : members && members.length > 0 ? (
           <div className="mt-3 overflow-hidden rounded-lg border border-border">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/50">
-                  <th className="px-4 py-2 text-left font-medium text-foreground">Email</th>
-                  <th className="px-4 py-2 text-left font-medium text-foreground">Role</th>
-                  <th className="px-4 py-2 text-left font-medium text-foreground">Status</th>
-                  <th className="px-4 py-2 text-right font-medium text-foreground">Actions</th>
+                  <th className="px-4 py-2 text-left font-medium text-foreground">
+                    Email
+                  </th>
+                  <th className="px-4 py-2 text-left font-medium text-foreground">
+                    Role
+                  </th>
+                  <th className="px-4 py-2 text-left font-medium text-foreground">
+                    Status
+                  </th>
+                  <th className="px-4 py-2 text-right font-medium text-foreground">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {members.map((member: WorkspaceMember) => (
-                  <tr key={member.id} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3 text-foreground">{member.email}</td>
+                  <tr
+                    key={member.id}
+                    className="border-b border-border last:border-0"
+                  >
+                    <td className="px-4 py-3 text-foreground">
+                      {member.email}
+                    </td>
                     <td className="px-4 py-3">
                       {member.role === "owner" ? (
-                        <span className="text-xs font-medium text-foreground">Owner</span>
+                        <span className="text-xs font-medium text-foreground">
+                          Owner
+                        </span>
                       ) : isAdmin ? (
                         <Select
                           value={member.role}
@@ -264,7 +313,9 @@ export function MembersList() {
                           </SelectContent>
                         </Select>
                       ) : (
-                        <span className="text-xs capitalize text-foreground">{member.role}</span>
+                        <span className="text-xs capitalize text-foreground">
+                          {member.role}
+                        </span>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -302,18 +353,20 @@ export function MembersList() {
                             </button>
                           </>
                         )}
-                        {member.role !== "owner" && isAdmin && member.invitationStatus === "accepted" && (
-                          <button
-                            onClick={() => {
-                              if (window.confirm("Remove this member?")) {
-                                removeMember.mutate(member.id);
-                              }
-                            }}
-                            className="text-xs text-destructive hover:underline"
-                          >
-                            Remove
-                          </button>
-                        )}
+                        {member.role !== "owner" &&
+                          isAdmin &&
+                          member.invitationStatus === "accepted" && (
+                            <button
+                              onClick={() => {
+                                if (window.confirm("Remove this member?")) {
+                                  removeMember.mutate(member.id);
+                                }
+                              }}
+                              className="text-xs text-destructive hover:underline"
+                            >
+                              Remove
+                            </button>
+                          )}
                       </div>
                     </td>
                   </tr>
@@ -322,7 +375,9 @@ export function MembersList() {
             </table>
           </div>
         ) : (
-          <p className="mt-3 text-sm text-muted-foreground">No members yet. Invite someone above.</p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            No members yet. Invite someone above.
+          </p>
         )}
       </div>
     </div>

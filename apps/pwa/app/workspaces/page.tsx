@@ -24,7 +24,9 @@ export default function WorkspacesPage() {
     try {
       const res = await apiClient.get<Workspace[]>("/workspaces");
       const list = Array.isArray(res.data) ? res.data : [];
-      list.sort((a, b) => (a.isPersonal === b.isPersonal ? 0 : a.isPersonal ? -1 : 1));
+      list.sort((a, b) =>
+        a.isPersonal === b.isPersonal ? 0 : a.isPersonal ? -1 : 1,
+      );
       setWorkspaces(list);
     } catch {
       setError("Failed to load workspaces");
@@ -44,7 +46,9 @@ export default function WorkspacesPage() {
     setError("");
 
     try {
-      const res = await apiClient.post<Workspace>("/workspaces", { name: name.trim() });
+      const res = await apiClient.post<Workspace>("/workspaces", {
+        name: name.trim(),
+      });
       router.push(`/${res.data.shortId}/dashboard`);
     } catch {
       setError("Failed to create workspace");
@@ -65,13 +69,19 @@ export default function WorkspacesPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground">Welcome{user?.name ? `, ${user.name}` : ""}</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            Welcome{user?.name ? `, ${user.name}` : ""}
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {workspaces.length > 0 ? "Select a workspace to continue" : "Create a workspace to get started"}
+            {workspaces.length > 0
+              ? "Select a workspace to continue"
+              : "Create a workspace to get started"}
           </p>
         </div>
 
-        {error && <p className="text-center text-sm text-destructive">{error}</p>}
+        {error && (
+          <p className="text-center text-sm text-destructive">{error}</p>
+        )}
 
         {workspaces.length > 0 && (
           <div className="space-y-2">
@@ -91,10 +101,23 @@ export default function WorkspacesPage() {
                     )}
                   </p>
                   {ws.description && (
-                    <p className="mt-0.5 text-sm text-muted-foreground">{ws.description}</p>
+                    <p className="mt-0.5 text-sm text-muted-foreground">
+                      {ws.description}
+                    </p>
                   )}
                 </div>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-muted-foreground"
+                >
                   <path d="m9 18 6-6-6-6" />
                 </svg>
               </button>
@@ -112,9 +135,15 @@ export default function WorkspacesPage() {
         )}
 
         {showCreate && (
-          <form onSubmit={handleCreate} className="space-y-3 rounded-lg border border-border bg-card p-4">
+          <form
+            onSubmit={handleCreate}
+            className="space-y-3 rounded-lg border border-border bg-card p-4"
+          >
             <div>
-              <label htmlFor="ws-name" className="block text-sm font-medium text-foreground">
+              <label
+                htmlFor="ws-name"
+                className="block text-sm font-medium text-foreground"
+              >
                 Workspace name
               </label>
               <input

@@ -1,7 +1,7 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export const CreateTodoListDto = z.object({
-  name: z.string().min(1, 'Name is required').max(100),
+  name: z.string().min(1, "Name is required").max(100),
   color: z.string().max(20).optional(),
   icon: z.string().max(50).optional(),
   isShared: z.boolean().optional().default(false),

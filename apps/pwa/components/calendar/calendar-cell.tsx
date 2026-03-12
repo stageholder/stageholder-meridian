@@ -24,16 +24,26 @@ interface CalendarCellProps {
   onClick: () => void;
 }
 
-export function CalendarCell({ date, currentMonth, isSelected, dayData, habits, onClick }: CalendarCellProps) {
+export function CalendarCell({
+  date,
+  currentMonth,
+  isSelected,
+  dayData,
+  habits,
+  onClick,
+}: CalendarCellProps) {
   const today = isToday(date);
   const inMonth = isSameMonth(date, currentMonth);
 
-  const hasData = (dayData?.todos?.length ?? 0) > 0
-    || (dayData?.journals?.length ?? 0) > 0
-    || (dayData?.habitEntries?.length ?? 0) > 0;
+  const hasData =
+    (dayData?.todos?.length ?? 0) > 0 ||
+    (dayData?.journals?.length ?? 0) > 0 ||
+    (dayData?.habitEntries?.length ?? 0) > 0;
 
   const scheduledCount = countScheduledHabits(habits, date);
-  const ringsData = hasData ? computeActivityRings(dayData, scheduledCount) : null;
+  const ringsData = hasData
+    ? computeActivityRings(dayData, scheduledCount)
+    : null;
 
   return (
     <button

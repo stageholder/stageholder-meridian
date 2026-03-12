@@ -15,7 +15,11 @@ interface TimezoneSelectProps {
   className?: string;
 }
 
-export function TimezoneSelect({ value, onValueChange, className }: TimezoneSelectProps) {
+export function TimezoneSelect({
+  value,
+  onValueChange,
+  className,
+}: TimezoneSelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -34,14 +38,17 @@ export function TimezoneSelect({ value, onValueChange, className }: TimezoneSele
           type="button"
           className={cn(
             "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-            className
+            className,
           )}
         >
           <span className="truncate">{value || "Select timezone..."}</span>
           <ChevronDownIcon className="size-4 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] p-0"
+        align="start"
+      >
         <div className="border-b border-border px-3 py-2">
           <input
             type="text"
@@ -69,7 +76,8 @@ export function TimezoneSelect({ value, onValueChange, className }: TimezoneSele
                 }}
                 className={cn(
                   "flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground",
-                  value === tz && "bg-accent text-accent-foreground font-medium"
+                  value === tz &&
+                    "bg-accent text-accent-foreground font-medium",
                 )}
               >
                 {tz}

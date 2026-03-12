@@ -18,13 +18,15 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: asset: https://asset.localhost; font-src 'self' data:"
     }
   },
   "plugins": {
     "updater": {
-      "endpoints": ["https://releases.example.com/{{target}}/{{arch}}/{{current_version}}"],
-      "pubkey": "REPLACE_WITH_YOUR_PUBLIC_KEY"
+      "endpoints": [
+        "https://meridian-releases.sgp1.vultrobjects.com/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDlCNjREREJCQzQ3N0YyRDUKUldUVjhuZkV1OTFrbTcweCs5OWJBR1R0V2JuYkdMWkNkYmQvQytCOEtEb2xHVXNVZ203a0NJSzMK"
     }
   },
   "bundle": {

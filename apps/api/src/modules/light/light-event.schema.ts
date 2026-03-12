@@ -1,13 +1,19 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
-import { randomUUID } from 'crypto';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document } from "mongoose";
+import { randomUUID } from "crypto";
 
 export type LightEventDocument = LightEventModel & Document<string>;
 
 @Schema({
-  collection: 'light_events',
-  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
-  toJSON: { transform: (_doc: any, ret: any) => { ret.id = ret._id; delete ret.__v; return ret; } },
+  collection: "light_events",
+  timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
+  toJSON: {
+    transform: (_doc: any, ret: any) => {
+      ret.id = ret._id;
+      delete ret.__v;
+      return ret;
+    },
+  },
 })
 export class LightEventModel {
   @Prop({ type: String, default: () => randomUUID() }) _id: string;

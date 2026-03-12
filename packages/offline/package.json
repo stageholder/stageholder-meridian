@@ -4,14 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check-types": "tsc --noEmit",
+    "check": "tsc --noEmit",
     "lint": "eslint"
   },
   "exports": {
     "./db": "./src/db/index.ts",
     "./sync/*": "./src/sync/*.ts",
     "./network": "./src/network/index.ts",
-    "./hooks": "./src/hooks/index.ts"
+    "./hooks": "./src/hooks/index.ts",
+    "./hooks/*": "./src/hooks/*.ts"
   },
   "peerDependencies": {
     "react": "^19.0.0",

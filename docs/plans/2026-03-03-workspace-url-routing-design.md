@@ -47,9 +47,11 @@ No separate `workspace-context.tsx` file — the layout is the provider.
 ## API Hooks Changes
 
 All hooks (`useTodoLists`, `useJournals`, `useHabits`, etc.) change from:
+
 - `useWorkspaceStore().activeWorkspaceId` + `workspacePath(path)`
 
 To:
+
 - `useWorkspace().workspace.id` + direct path construction
 
 The `getWorkspaceId()` and `workspacePath()` helpers in `api-client.ts` are removed.
@@ -57,9 +59,11 @@ The `getWorkspaceId()` and `workspacePath()` helpers in `api-client.ts` are remo
 ## Workspace Picker
 
 `/workspaces` page `selectWorkspace()` changes from:
+
 - `setActiveWorkspace(ws.id); router.push("/")`
 
 To:
+
 - `router.push("/${ws.slug}/dashboard")`
 
 ## Dead Code Removal

@@ -23,7 +23,13 @@ interface CalendarGridProps {
   onSelectDate: (date: Date) => void;
 }
 
-export function CalendarGrid({ currentMonth, selectedDate, calendarData, habits, onSelectDate }: CalendarGridProps) {
+export function CalendarGrid({
+  currentMonth,
+  selectedDate,
+  calendarData,
+  habits,
+  onSelectDate,
+}: CalendarGridProps) {
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const gridStart = startOfWeek(monthStart);

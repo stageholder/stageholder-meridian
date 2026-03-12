@@ -1,25 +1,27 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export const RegisterDto = z.object({
-  email: z.string().email('Invalid email address'),
-  name: z.string().min(1, 'Name is required').max(100),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  email: z.string().email("Invalid email address"),
+  name: z.string().min(1, "Name is required").max(100),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 export type RegisterDto = z.infer<typeof RegisterDto>;
 
 export const LoginDto = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(1, 'Password is required'),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
 });
 export type LoginDto = z.infer<typeof LoginDto>;
 
-export const SocialLoginDto = z.object({
-  provider: z.literal('google'),
-  idToken: z.string().optional(),
-  accessToken: z.string().optional(),
-}).refine((data) => data.idToken || data.accessToken, {
-  message: 'Either idToken or accessToken is required',
-});
+export const SocialLoginDto = z
+  .object({
+    provider: z.literal("google"),
+    idToken: z.string().optional(),
+    accessToken: z.string().optional(),
+  })
+  .refine((data) => data.idToken || data.accessToken, {
+    message: "Either idToken or accessToken is required",
+  });
 export type SocialLoginDto = z.infer<typeof SocialLoginDto>;
 
 export const RefreshDto = z.object({

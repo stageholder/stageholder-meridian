@@ -1,30 +1,30 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { CalendarIcon, XIcon } from "lucide-react"
-import { format, parseISO } from "date-fns"
+import * as React from "react";
+import { CalendarIcon, XIcon } from "lucide-react";
+import { format, parseISO } from "date-fns";
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/components/ui/popover";
 
 interface DatePickerProps {
   /** ISO date string (YYYY-MM-DD) or empty string */
-  value: string
+  value: string;
   /** Called with ISO date string or empty string */
-  onChange: (value: string) => void
-  placeholder?: string
+  onChange: (value: string) => void;
+  placeholder?: string;
   /** Allow clearing the date */
-  clearable?: boolean
+  clearable?: boolean;
   /** Disable dates after this */
-  maxDate?: Date
-  className?: string
-  id?: string
+  maxDate?: Date;
+  className?: string;
+  id?: string;
 }
 
 function DatePicker({
@@ -36,18 +36,18 @@ function DatePicker({
   className,
   id,
 }: DatePickerProps) {
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = React.useState(false);
 
-  const selected = value ? parseISO(value) : undefined
+  const selected = value ? parseISO(value) : undefined;
 
   function handleSelect(date: Date | undefined) {
     if (date) {
-      const iso = format(date, "yyyy-MM-dd")
-      onChange(iso)
+      const iso = format(date, "yyyy-MM-dd");
+      onChange(iso);
     } else {
-      onChange("")
+      onChange("");
     }
-    setOpen(false)
+    setOpen(false);
   }
 
   return (
@@ -59,7 +59,7 @@ function DatePicker({
           className={cn(
             "w-full justify-start text-left font-normal",
             !value && "text-muted-foreground",
-            className
+            className,
           )}
         >
           <CalendarIcon className="size-4 text-muted-foreground" />
@@ -68,8 +68,8 @@ function DatePicker({
             <XIcon
               className="ml-auto size-3.5 text-muted-foreground hover:text-foreground"
               onClick={(e) => {
-                e.stopPropagation()
-                onChange("")
+                e.stopPropagation();
+                onChange("");
               }}
             />
           )}
@@ -85,7 +85,7 @@ function DatePicker({
         />
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
-export { DatePicker }
+export { DatePicker };

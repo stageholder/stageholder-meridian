@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import type { UserLight } from '@repo/core/types/light';
+import { useEffect, useRef, useState } from "react";
+import type { UserLight } from "@repo/core/types/light";
 
 export function useLevelUp(userLight: UserLight | undefined) {
   const prevTier = useRef<number | null>(null);
@@ -13,6 +13,7 @@ export function useLevelUp(userLight: UserLight | undefined) {
       setLevelUpTier(userLight.currentTier);
     }
     prevTier.current = userLight.currentTier;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userLight?.currentTier]);
 
   return { levelUpTier, dismiss: () => setLevelUpTier(null) };

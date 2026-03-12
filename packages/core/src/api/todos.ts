@@ -1,25 +1,41 @@
-import type { AxiosInstance } from 'axios';
-import type { TodoList, Todo } from '@repo/core/types';
-import { workspacePath } from './client';
+import type { AxiosInstance } from "axios";
+import type { TodoList, Todo } from "@repo/core/types";
+import { workspacePath } from "./client";
 
-export function createTodosApi(client: AxiosInstance, getWorkspaceId: () => string) {
+export function createTodosApi(
+  client: AxiosInstance,
+  getWorkspaceId: () => string,
+) {
   const wp = (path: string) => workspacePath(getWorkspaceId(), path);
 
   return {
     // Todo Lists
-    createList: async (data: { name: string; color?: string; icon?: string; isShared?: boolean }): Promise<TodoList> => {
-      const res = await client.post(wp('/todo-lists'), data);
+    createList: async (data: {
+      name: string;
+      color?: string;
+      icon?: string;
+      isShared?: boolean;
+    }): Promise<TodoList> => {
+      const res = await client.post(wp("/todo-lists"), data);
       return res.data;
     },
-    listLists: async (): Promise<TodoList[]> => {
-      const res = await client.get(wp('/todo-lists'));
+    listLists: async (params?: Record<string, string>): Promise<TodoList[]> => {
+      const res = await client.get(wp("/todo-lists"), { params });
       return res.data?.data ?? res.data;
     },
     getList: async (listId: string): Promise<TodoList> => {
       const res = await client.get(wp(`/todo-lists/${listId}`));
       return res.data;
     },
-    updateList: async (listId: string, data: { name?: string; color?: string; icon?: string; isShared?: boolean }): Promise<TodoList> => {
+    updateList: async (
+      listId: string,
+      data: {
+        name?: string;
+        color?: string;
+        icon?: string;
+        isShared?: boolean;
+      },
+    ): Promise<TodoList> => {
       const res = await client.patch(wp(`/todo-lists/${listId}`), data);
       return res.data;
     },
@@ -28,68 +44,101 @@ export function createTodosApi(client: AxiosInstance, getWorkspaceId: () => stri
     },
 
     // Todos
-    createTodo: async (listId: string, data: {
-      title: string;
-      description?: string;
-      status?: string;
-      priority?: string;
-      dueDate?: string;
-      doDate?: string;
-      assigneeId?: string;
-    }): Promise<Todo> => {
-      const res = await client.post(wp('/todos'), { ...data, listId });
+    createTodo: async (
+      listId: string,
+      data: {
+        title: string;
+        description?: string;
+        status?: string;
+        priority?: string;
+        dueDate?: string;
+        doDate?: string;
+        assigneeId?: string;
+      },
+    ): Promise<Todo> => {
+      const res = await client.post(wp("/todos"), { ...data, listId });
       return res.data;
     },
     listTodos: async (listId: string): Promise<Todo[]> => {
-      const res = await client.get(wp('/todos'), { params: { listId } });
+      const res = await client.get(wp("/todos"), { params: { listId } });
       return res.data?.data ?? res.data;
     },
     getTodo: async (_listId: string, todoId: string): Promise<Todo> => {
       const res = await client.get(wp(`/todos/${todoId}`));
       return res.data;
     },
-    updateTodo: async (_listId: string, todoId: string, data: {
-      title?: string;
-      description?: string;
-      status?: string;
-      priority?: string;
-      dueDate?: string;
-      doDate?: string;
-      assigneeId?: string;
-    }): Promise<Todo> => {
+    updateTodo: async (
+      _listId: string,
+      todoId: string,
+      data: {
+        title?: string;
+        description?: string;
+        status?: string;
+        priority?: string;
+        dueDate?: string;
+        doDate?: string;
+        assigneeId?: string;
+      },
+    ): Promise<Todo> => {
       const res = await client.patch(wp(`/todos/${todoId}`), data);
       return res.data;
     },
     deleteTodo: async (_listId: string, todoId: string): Promise<void> => {
       await client.delete(wp(`/todos/${todoId}`));
     },
-    reorderTodos: async (_listId: string, data: { todoIds: string[] }): Promise<void> => {
-      await client.post(wp('/todos/reorder'), data);
+    reorderTodos: async (
+      _listId: string,
+      data: { todoIds: string[] },
+    ): Promise<void> => {
+      await client.post(wp("/todos/reorder"), data);
     },
 
     // Subtasks
-    addSubtask: async (todoId: string, data: {
-      title: string;
-      priority?: string;
-    }): Promise<Todo> => {
+    addSubtask: async (
+      todoId: string,
+      data: {
+        title: string;
+        priority?: string;
+      },
+    ): Promise<Todo> => {
       const res = await client.post(wp(`/todos/${todoId}/subtasks`), data);
       return res.data;
     },
-    updateSubtask: async (todoId: string, subtaskId: string, data: {
-      title?: string;
-      status?: string;
-      priority?: string;
-    }): Promise<Todo> => {
-      const res = await client.patch(wp(`/todos/${todoId}/subtasks/${subtaskId}`), data);
+    updateSubtask: async (
+      todoId: string,
+      subtaskId: string,
+      data: {
+        title?: string;
+        status?: string;
+        priority?: string;
+      },
+    ): Promise<Todo> => {
+      const res = await client.patch(
+        wp(`/todos/${todoId}/subtasks/${subtaskId}`),
+        data,
+      );
       return res.data;
     },
     removeSubtask: async (todoId: string, subtaskId: string): Promise<Todo> => {
-      const res = await client.delete(wp(`/todos/${todoId}/subtasks/${subtaskId}`));
+      const res = await client.delete(
+        wp(`/todos/${todoId}/subtasks/${subtaskId}`),
+      );
       return res.data;
     },
-    reorderSubtasks: async (todoId: string, data: { items: { id: string; order: number }[] }): Promise<Todo> => {
-      const res = await client.post(wp(`/todos/${todoId}/subtasks/reorder`), data);
+    reorderSubtasks: async (
+      todoId: string,
+      data: { items: { id: string; order: number }[] },
+    ): Promise<Todo> => {
+      const res = await client.post(
+        wp(`/todos/${todoId}/subtasks/reorder`),
+        data,
+      );
       return res.data;
+    },
+
+    listAllTodos: async (params?: Record<string, unknown>): Promise<Todo[]> => {
+      const res = await client.get(wp("/todos"), { params });
+      return res.data?.data ?? res.data;
     },
   };
 }

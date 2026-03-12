@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { Flame, CheckCircle2, Repeat2, BookOpen } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { UserLight } from '@repo/core/types/light';
+import { Flame, CheckCircle2, Repeat2, BookOpen } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { UserLight } from "@repo/core/types/light";
 
 interface JourneyStreaksProps {
   userLight: UserLight;
@@ -10,48 +10,58 @@ interface JourneyStreaksProps {
 
 const streakCards = [
   {
-    label: 'Perfect Day',
+    label: "Perfect Day",
     icon: Flame,
-    color: 'text-amber-500',
-    ringColor: 'stroke-amber-500',
-    trackColor: 'stroke-amber-500/15',
-    currentKey: 'perfectDayStreak' as const,
-    bestKey: 'longestPerfectStreak' as const,
+    color: "text-amber-500",
+    ringColor: "stroke-amber-500",
+    trackColor: "stroke-amber-500/15",
+    currentKey: "perfectDayStreak" as const,
+    bestKey: "longestPerfectStreak" as const,
     maxDays: 30,
   },
   {
-    label: 'Todos',
+    label: "Todos",
     icon: CheckCircle2,
-    color: 'text-blue-500',
-    ringColor: 'stroke-blue-500',
-    trackColor: 'stroke-blue-500/15',
-    currentKey: 'todoRingStreak' as const,
+    color: "text-blue-500",
+    ringColor: "stroke-blue-500",
+    trackColor: "stroke-blue-500/15",
+    currentKey: "todoRingStreak" as const,
     bestKey: null,
     maxDays: 14,
   },
   {
-    label: 'Habits',
+    label: "Habits",
     icon: Repeat2,
-    color: 'text-orange-500',
-    ringColor: 'stroke-orange-500',
-    trackColor: 'stroke-orange-500/15',
-    currentKey: 'habitRingStreak' as const,
+    color: "text-orange-500",
+    ringColor: "stroke-orange-500",
+    trackColor: "stroke-orange-500/15",
+    currentKey: "habitRingStreak" as const,
     bestKey: null,
     maxDays: 14,
   },
   {
-    label: 'Journal',
+    label: "Journal",
     icon: BookOpen,
-    color: 'text-emerald-500',
-    ringColor: 'stroke-emerald-500',
-    trackColor: 'stroke-emerald-500/15',
-    currentKey: 'journalRingStreak' as const,
+    color: "text-emerald-500",
+    ringColor: "stroke-emerald-500",
+    trackColor: "stroke-emerald-500/15",
+    currentKey: "journalRingStreak" as const,
     bestKey: null,
     maxDays: 14,
   },
 ] as const;
 
-function StreakRing({ current, max, ringColor, trackColor }: { current: number; max: number; ringColor: string; trackColor: string }) {
+function StreakRing({
+  current,
+  max,
+  ringColor,
+  trackColor,
+}: {
+  current: number;
+  max: number;
+  ringColor: string;
+  trackColor: string;
+}) {
   const pct = Math.min(100, (current / max) * 100);
   const r = 20;
   const circumference = 2 * Math.PI * r;
@@ -59,7 +69,14 @@ function StreakRing({ current, max, ringColor, trackColor }: { current: number; 
 
   return (
     <svg width="52" height="52" viewBox="0 0 52 52" className="shrink-0">
-      <circle cx="26" cy="26" r={r} fill="none" strokeWidth="4" className={trackColor} />
+      <circle
+        cx="26"
+        cy="26"
+        r={r}
+        fill="none"
+        strokeWidth="4"
+        className={trackColor}
+      />
       <circle
         cx="26"
         cy="26"
@@ -71,7 +88,7 @@ function StreakRing({ current, max, ringColor, trackColor }: { current: number; 
         strokeDasharray={circumference}
         strokeDashoffset={dashOffset}
         transform="rotate(-90 26 26)"
-        style={{ transition: 'stroke-dashoffset 1s ease-out' }}
+        style={{ transition: "stroke-dashoffset 1s ease-out" }}
       />
     </svg>
   );
@@ -97,13 +114,17 @@ export function JourneyStreaks({ userLight }: JourneyStreaksProps) {
                 ringColor={card.ringColor}
                 trackColor={card.trackColor}
               />
-              <Icon className={cn('absolute size-4', card.color)} />
+              <Icon className={cn("absolute size-4", card.color)} />
             </div>
             <div className="min-w-0">
-              <p className="text-lg font-bold tabular-nums leading-tight">{current}d</p>
+              <p className="text-lg font-bold tabular-nums leading-tight">
+                {current}d
+              </p>
               <p className="text-xs text-muted-foreground">{card.label}</p>
               {best !== null && (
-                <p className="text-[10px] text-muted-foreground">Best: {best}d</p>
+                <p className="text-[10px] text-muted-foreground">
+                  Best: {best}d
+                </p>
               )}
             </div>
           </div>

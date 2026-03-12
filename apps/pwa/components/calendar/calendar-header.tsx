@@ -10,7 +10,12 @@ interface CalendarHeaderProps {
   onToday: () => void;
 }
 
-export function CalendarHeader({ currentMonth, onPrevMonth, onNextMonth, onToday }: CalendarHeaderProps) {
+export function CalendarHeader({
+  currentMonth,
+  onPrevMonth,
+  onNextMonth,
+  onToday,
+}: CalendarHeaderProps) {
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">

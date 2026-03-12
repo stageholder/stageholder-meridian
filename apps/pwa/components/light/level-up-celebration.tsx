@@ -1,17 +1,20 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { StarVisual } from './star-visual';
-import { LIGHT_TIERS } from '@repo/core/types/light';
+import { useEffect } from "react";
+import { StarVisual } from "./star-visual";
+import { LIGHT_TIERS } from "@repo/core/types/light";
 
 interface LevelUpCelebrationProps {
   tier: number;
   onDismiss: () => void;
 }
 
-export function LevelUpCelebration({ tier, onDismiss }: LevelUpCelebrationProps) {
+export function LevelUpCelebration({
+  tier,
+  onDismiss,
+}: LevelUpCelebrationProps) {
   const tierInfo = LIGHT_TIERS[tier - 1];
-  const tierTitle = tierInfo?.title ?? 'Unknown';
+  const tierTitle = tierInfo?.title ?? "Unknown";
 
   useEffect(() => {
     const timer = setTimeout(onDismiss, 4000);
@@ -25,7 +28,7 @@ export function LevelUpCelebration({ tier, onDismiss }: LevelUpCelebrationProps)
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') onDismiss();
+        if (e.key === "Enter" || e.key === " ") onDismiss();
       }}
     >
       <div className="flex flex-col items-center gap-6 text-center">

@@ -1,59 +1,80 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api-client";
 import { useWorkspace } from "@/lib/workspace-context";
 import type { Habit, HabitEntry } from "@repo/core/types";
+import {
+  useOfflineQuery,
+  useOfflineQuerySingle,
+  useOfflineQueryFiltered,
+  useOfflineMutation,
+  useOfflineDeleteMutation,
+} from "@repo/offline/hooks";
+import { db } from "@repo/offline/db";
 import { lightKeys } from "./light";
+import { useCallback } from "react";
 
 export function useHabits() {
   const { workspace } = useWorkspace();
 
-  return useQuery<Habit[]>({
-    queryKey: ["habits", workspace.id],
-    queryFn: async () => {
+  return useOfflineQuery<Habit>(
+    ["habits", workspace.id],
+    db.habits,
+    async () => {
       const res = await apiClient.get(`/workspaces/${workspace.id}/habits`);
       return res.data?.data ?? res.data;
     },
-  });
+  );
 }
 
 export function useHabit(id: string) {
   const { workspace } = useWorkspace();
 
-  return useQuery<Habit>({
-    queryKey: ["habit", workspace.id, id],
-    queryFn: async () => {
-      const res = await apiClient.get(`/workspaces/${workspace.id}/habits/${id}`);
+  return useOfflineQuerySingle<Habit>(
+    ["habit", workspace.id, id],
+    db.habits,
+    id,
+    async () => {
+      const res = await apiClient.get(
+        `/workspaces/${workspace.id}/habits/${id}`,
+      );
       return res.data;
     },
-    enabled: !!id,
-  });
+    { enabled: !!id },
+  );
 }
 
 export function useHabitEntries(
   habitId: string,
-  params?: { startDate?: string; endDate?: string }
+  params?: { startDate?: string; endDate?: string },
 ) {
   const { workspace } = useWorkspace();
 
-  return useQuery<HabitEntry[]>({
-    queryKey: ["habitEntries", workspace.id, habitId, params],
-    queryFn: async () => {
+  const localQueryFn = useCallback(
+    () => db.habitEntries.where("habitId").equals(habitId).toArray(),
+    [habitId],
+  );
+
+  return useOfflineQueryFiltered<HabitEntry>(
+    ["habitEntries", workspace.id, habitId, params],
+    localQueryFn,
+    async () => {
       const res = await apiClient.get(
         `/workspaces/${workspace.id}/habits/${habitId}/entries`,
-        { params }
+        { params },
       );
       return res.data;
     },
-    enabled: !!habitId,
-  });
+    db.habitEntries,
+    { enabled: !!habitId },
+  );
 }
 
 export function useCreateHabit() {
-  const queryClient = useQueryClient();
   const { workspace } = useWorkspace();
 
-  return useMutation({
-    mutationFn: async (data: {
+  return useOfflineMutation<
+    Habit,
+    {
       name: string;
       description?: string;
       frequency?: string;
@@ -62,25 +83,29 @@ export function useCreateHabit() {
       unit?: string;
       color?: string;
       icon?: string;
-    }) => {
-      const res = await apiClient.post(`/workspaces/${workspace.id}/habits`, data);
+    }
+  >({
+    mutationFn: async (data) => {
+      const res = await apiClient.post(
+        `/workspaces/${workspace.id}/habits`,
+        data,
+      );
       return res.data as Habit;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
-    },
+    table: db.habits,
+    entityType: "habits",
+    operation: "create",
+    buildPath: () => `/workspaces/${workspace.id}/habits`,
+    invalidateKeys: [["habits", workspace.id]],
   });
 }
 
 export function useUpdateHabit() {
-  const queryClient = useQueryClient();
   const { workspace } = useWorkspace();
 
-  return useMutation({
-    mutationFn: async ({
-      id,
-      data,
-    }: {
+  return useOfflineMutation<
+    Habit,
+    {
       id: string;
       data: {
         name?: string;
@@ -92,115 +117,133 @@ export function useUpdateHabit() {
         color?: string;
         icon?: string;
       };
-    }) => {
-      const res = await apiClient.patch(`/workspaces/${workspace.id}/habits/${id}`, data);
+    }
+  >({
+    mutationFn: async ({ id, data }) => {
+      const res = await apiClient.patch(
+        `/workspaces/${workspace.id}/habits/${id}`,
+        data,
+      );
       return res.data as Habit;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
-    },
+    table: db.habits,
+    entityType: "habits",
+    operation: "update",
+    buildPath: ({ id }) => `/workspaces/${workspace.id}/habits/${id}`,
+    invalidateKeys: [["habits", workspace.id]],
   });
 }
 
 export function useDeleteHabit() {
-  const queryClient = useQueryClient();
   const { workspace } = useWorkspace();
 
-  return useMutation({
-    mutationFn: async (id: string) => {
+  return useOfflineDeleteMutation<string>({
+    mutationFn: async (id) => {
       await apiClient.delete(`/workspaces/${workspace.id}/habits/${id}`);
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
-    },
+    table: db.habits as any,
+    entityType: "habits",
+    buildPath: (id) => `/workspaces/${workspace.id}/habits/${id}`,
+    getEntityId: (id) => id,
+    invalidateKeys: [["habits", workspace.id]],
   });
 }
 
 export function useUpdateHabitEntry() {
-  const queryClient = useQueryClient();
   const { workspace } = useWorkspace();
 
-  return useMutation({
-    mutationFn: async ({
-      habitId,
-      entryId,
-      data,
-    }: {
+  return useOfflineMutation<
+    HabitEntry,
+    {
       habitId: string;
       entryId: string;
       data: { value?: number; notes?: string };
-    }) => {
+    }
+  >({
+    mutationFn: async ({ habitId, entryId, data }) => {
       const res = await apiClient.patch(
         `/workspaces/${workspace.id}/habits/${habitId}/entries/${entryId}`,
-        data
+        data,
       );
       return res.data as HabitEntry;
     },
-    onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({
-        queryKey: ["habitEntries", workspace.id, variables.habitId],
-      });
-      void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
-      void queryClient.invalidateQueries({ queryKey: ["calendar"] });
-      void queryClient.invalidateQueries({ queryKey: lightKeys.me });
-    },
+    table: db.habitEntries,
+    entityType: "habitEntries",
+    operation: "update",
+    buildPath: ({ habitId, entryId }) =>
+      `/workspaces/${workspace.id}/habits/${habitId}/entries/${entryId}`,
+    invalidateKeys: [
+      ["habitEntries", workspace.id],
+      ["habits", workspace.id],
+      ["calendar"],
+      [...lightKeys.me],
+    ],
   });
 }
 
 export function useCreateHabitEntry() {
-  const queryClient = useQueryClient();
   const { workspace } = useWorkspace();
 
-  return useMutation({
-    mutationFn: async ({
-      habitId,
-      data,
-    }: {
+  return useOfflineMutation<
+    HabitEntry,
+    {
       habitId: string;
       data: { date: string; value: number; notes?: string };
-    }) => {
+    }
+  >({
+    mutationFn: async ({ habitId, data }) => {
       const res = await apiClient.post(
         `/workspaces/${workspace.id}/habits/${habitId}/entries`,
-        data
+        data,
       );
       return res.data as HabitEntry;
     },
-    onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({
-        queryKey: ["habitEntries", workspace.id, variables.habitId],
-      });
-      void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
-      void queryClient.invalidateQueries({ queryKey: ["calendar"] });
-      void queryClient.invalidateQueries({ queryKey: lightKeys.me });
-    },
+    table: db.habitEntries,
+    entityType: "habitEntries",
+    operation: "create",
+    buildPath: ({ habitId }) =>
+      `/workspaces/${workspace.id}/habits/${habitId}/entries`,
+    invalidateKeys: [
+      ["habitEntries", workspace.id],
+      ["habits", workspace.id],
+      ["calendar"],
+      [...lightKeys.me],
+    ],
   });
 }
 
 export function useSkipHabitEntry() {
-  const queryClient = useQueryClient();
   const { workspace } = useWorkspace();
 
-  return useMutation({
-    mutationFn: async ({
-      habitId,
-      data,
-    }: {
+  return useOfflineMutation<
+    HabitEntry,
+    {
       habitId: string;
       data: { date: string; skipReason?: string };
-    }) => {
+    }
+  >({
+    mutationFn: async ({ habitId, data }) => {
       const res = await apiClient.post(
         `/workspaces/${workspace.id}/habits/${habitId}/entries`,
-        { date: data.date, value: 0, type: "skip", skipReason: data.skipReason }
+        {
+          date: data.date,
+          value: 0,
+          type: "skip",
+          skipReason: data.skipReason,
+        },
       );
       return res.data as HabitEntry;
     },
-    onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({
-        queryKey: ["habitEntries", workspace.id, variables.habitId],
-      });
-      void queryClient.invalidateQueries({ queryKey: ["habits", workspace.id] });
-      void queryClient.invalidateQueries({ queryKey: ["calendar"] });
-      void queryClient.invalidateQueries({ queryKey: lightKeys.me });
-    },
+    table: db.habitEntries,
+    entityType: "habitEntries",
+    operation: "create",
+    buildPath: ({ habitId }) =>
+      `/workspaces/${workspace.id}/habits/${habitId}/entries`,
+    invalidateKeys: [
+      ["habitEntries", workspace.id],
+      ["habits", workspace.id],
+      ["calendar"],
+      [...lightKeys.me],
+    ],
   });
 }

@@ -26,13 +26,21 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const res = await apiClient.post<AuthUser>("/auth/register", { name, email, password });
+      const res = await apiClient.post<AuthUser>("/auth/register", {
+        name,
+        email,
+        password,
+      });
       setUser(res.data);
       setLoggedInFlag();
       if (redirect) {
         router.push(redirect);
       } else {
-        router.push(res.data.onboardingCompleted ? `/${res.data.personalWorkspaceShortId}/dashboard` : '/onboarding');
+        router.push(
+          res.data.onboardingCompleted
+            ? `/${res.data.personalWorkspaceShortId}/dashboard`
+            : "/onboarding",
+        );
       }
     } catch {
       setError("Registration failed. Please try again.");
@@ -45,7 +53,10 @@ export default function RegisterPage() {
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-4">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-foreground">
+          <label
+            htmlFor="name"
+            className="block text-sm font-medium text-foreground"
+          >
             Full name
           </label>
           <input
@@ -60,7 +71,10 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-foreground">
+          <label
+            htmlFor="email"
+            className="block text-sm font-medium text-foreground"
+          >
             Email
           </label>
           <input
@@ -75,7 +89,10 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-foreground">
+          <label
+            htmlFor="password"
+            className="block text-sm font-medium text-foreground"
+          >
             Password
           </label>
           <input
@@ -106,7 +123,9 @@ export default function RegisterPage() {
           <span className="w-full border-t border-border" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+          <span className="bg-card px-2 text-muted-foreground">
+            Or continue with
+          </span>
         </div>
       </div>
 
@@ -114,7 +133,14 @@ export default function RegisterPage() {
 
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link href={redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : "/login"} className="font-medium text-primary hover:underline">
+        <Link
+          href={
+            redirect
+              ? `/login?redirect=${encodeURIComponent(redirect)}`
+              : "/login"
+          }
+          className="font-medium text-primary hover:underline"
+        >
           Sign in
         </Link>
       </p>

@@ -1,10 +1,10 @@
-import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { UserModel, UserSchema } from '../user/user.schema';
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
-import { UserModule } from '../user/user.module';
-import { WorkspaceModule } from '../workspace/workspace.module';
+import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { UserModel, UserSchema } from "../user/user.schema";
+import { AuthService } from "./auth.service";
+import { AuthController } from "./auth.controller";
+import { UserModule } from "../user/user.module";
+import { WorkspaceModule } from "../workspace/workspace.module";
 
 @Module({
   imports: [

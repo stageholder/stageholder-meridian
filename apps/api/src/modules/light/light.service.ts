@@ -1,15 +1,18 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { format, subDays } from 'date-fns';
-import { UserLightRepository } from './repository/user-light.repository';
-import { LightEventRepository } from './repository/light-event.repository';
-import { HabitRepository } from '../habit/habit.repository';
-import { HabitEntryModel, HabitEntryDocument } from '../habit-entry/habit-entry.schema';
-import { UserService } from '../user/user.service';
-import { NotificationService } from '../notification/notification.service';
-import { UserLight } from './domain/user-light.entity';
-import { LightEvent, LightAction } from './domain/light-event.entity';
+import { Injectable, Logger } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
+import { format, subDays } from "date-fns";
+import { UserLightRepository } from "./repository/user-light.repository";
+import { LightEventRepository } from "./repository/light-event.repository";
+import { HabitRepository } from "../habit/habit.repository";
+import {
+  HabitEntryModel,
+  HabitEntryDocument,
+} from "../habit-entry/habit-entry.schema";
+import { UserService } from "../user/user.service";
+import { NotificationService } from "../notification/notification.service";
+import { UserLight } from "./domain/user-light.entity";
+import { LightEvent, LightAction } from "./domain/light-event.entity";
 import {
   LIGHT_ACTIONS,
   RING_STREAK_MILESTONES,
@@ -17,7 +20,7 @@ import {
   DEFAULT_TARGETS,
   getMultiplier,
   getTodoLight,
-} from './domain/light-config';
+} from "./domain/light-config";
 
 @Injectable()
 export class LightService {
@@ -27,7 +30,8 @@ export class LightService {
     private readonly userLightRepo: UserLightRepository,
     private readonly lightEventRepo: LightEventRepository,
     private readonly habitRepo: HabitRepository,
-    @InjectModel(HabitEntryModel.name) private readonly habitEntryModel: Model<HabitEntryDocument>,
+    @InjectModel(HabitEntryModel.name)
+    private readonly habitEntryModel: Model<HabitEntryDocument>,
     private readonly userService: UserService,
     private readonly notificationService: NotificationService,
   ) {}
@@ -50,7 +54,10 @@ export class LightService {
     return this.lightEventRepo.findByUser(userId, limit, offset);
   }
 
-  async updateTargets(userId: string, targets: { todoTargetDaily?: number; journalTargetDailyWords?: number }): Promise<UserLight> {
+  async updateTargets(
+    userId: string,
+    targets: { todoTargetDaily?: number; journalTargetDailyWords?: number },
+  ): Promise<UserLight> {
     const userLight = await this.getOrCreateUserLight(userId);
     userLight.updateTargets(targets);
     await this.userLightRepo.save(userLight);
@@ -65,15 +72,22 @@ export class LightService {
     const date = await this.getTodayForUser(userId);
     const exists = await this.lightEventRepo.existsForEntityOnDate(
       userId,
-      'todo_create',
+      "todo_create",
       date,
       todoId,
     );
     if (exists) return;
 
-    await this.awardLight(userId, workspaceId, 'todo_create', LIGHT_ACTIONS.TODO_CREATE, date, {
-      entityId: todoId,
-    });
+    await this.awardLight(
+      userId,
+      workspaceId,
+      "todo_create",
+      LIGHT_ACTIONS.TODO_CREATE,
+      date,
+      {
+        entityId: todoId,
+      },
+    );
   }
 
   async awardTodoComplete(
@@ -85,17 +99,24 @@ export class LightService {
     const date = await this.getTodayForUser(userId);
     const exists = await this.lightEventRepo.existsForEntityOnDate(
       userId,
-      'todo_complete',
+      "todo_complete",
       date,
       todoId,
     );
     if (exists) return;
 
     const baseLight = getTodoLight(priority);
-    await this.awardLight(userId, workspaceId, 'todo_complete', baseLight, date, {
-      entityId: todoId,
-      priority,
-    });
+    await this.awardLight(
+      userId,
+      workspaceId,
+      "todo_complete",
+      baseLight,
+      date,
+      {
+        entityId: todoId,
+        priority,
+      },
+    );
   }
 
   async awardHabitCheckin(
@@ -107,16 +128,23 @@ export class LightService {
     const date = await this.getTodayForUser(userId);
     const exists = await this.lightEventRepo.existsForEntityOnDate(
       userId,
-      'habit_checkin',
+      "habit_checkin",
       date,
       entryId,
     );
     if (exists) return;
 
-    await this.awardLight(userId, workspaceId, 'habit_checkin', LIGHT_ACTIONS.HABIT_CHECKIN, date, {
-      entityId: entryId,
-      habitId,
-    });
+    await this.awardLight(
+      userId,
+      workspaceId,
+      "habit_checkin",
+      LIGHT_ACTIONS.HABIT_CHECKIN,
+      date,
+      {
+        entityId: entryId,
+        habitId,
+      },
+    );
   }
 
   async awardJournalEntry(
@@ -127,15 +155,22 @@ export class LightService {
     const date = await this.getTodayForUser(userId);
     const exists = await this.lightEventRepo.existsForEntityOnDate(
       userId,
-      'journal_entry',
+      "journal_entry",
       date,
       journalId,
     );
     if (exists) return;
 
-    await this.awardLight(userId, workspaceId, 'journal_entry', LIGHT_ACTIONS.JOURNAL_ENTRY, date, {
-      entityId: journalId,
-    });
+    await this.awardLight(
+      userId,
+      workspaceId,
+      "journal_entry",
+      LIGHT_ACTIONS.JOURNAL_ENTRY,
+      date,
+      {
+        entityId: journalId,
+      },
+    );
   }
 
   async evaluateDay(
@@ -145,8 +180,14 @@ export class LightService {
     dateOverride?: string,
   ): Promise<void> {
     const userLight = await this.getOrCreateUserLight(userId);
-    const date = dateOverride ?? await this.getTodayForUser(userId);
-    await this.evaluateDayForEntity(userLight, userId, workspaceId, rings, date);
+    const date = dateOverride ?? (await this.getTodayForUser(userId));
+    await this.evaluateDayForEntity(
+      userLight,
+      userId,
+      workspaceId,
+      rings,
+      date,
+    );
   }
 
   private async evaluateDayForEntity(
@@ -157,15 +198,34 @@ export class LightService {
     dateOverride?: string,
   ): Promise<void> {
     const date = dateOverride ?? this.getToday();
-    const previousDay = format(subDays(new Date(date + 'T00:00:00'), 1), 'yyyy-MM-dd');
+    const previousDay = format(
+      subDays(new Date(date + "T00:00:00"), 1),
+      "yyyy-MM-dd",
+    );
     const isConsecutive = userLight.lastActiveDate === previousDay;
 
-    const todoRingStreak = rings.todo ? (isConsecutive ? userLight.todoRingStreak + 1 : 1) : 0;
-    const habitRingStreak = rings.habit ? (isConsecutive ? userLight.habitRingStreak + 1 : 1) : 0;
-    const journalRingStreak = rings.journal ? (isConsecutive ? userLight.journalRingStreak + 1 : 1) : 0;
+    const todoRingStreak = rings.todo
+      ? isConsecutive
+        ? userLight.todoRingStreak + 1
+        : 1
+      : 0;
+    const habitRingStreak = rings.habit
+      ? isConsecutive
+        ? userLight.habitRingStreak + 1
+        : 1
+      : 0;
+    const journalRingStreak = rings.journal
+      ? isConsecutive
+        ? userLight.journalRingStreak + 1
+        : 1
+      : 0;
 
     const isPerfectDay = rings.todo && rings.habit && rings.journal;
-    const perfectDayStreak = isPerfectDay ? (isConsecutive ? userLight.perfectDayStreak + 1 : 1) : 0;
+    const perfectDayStreak = isPerfectDay
+      ? isConsecutive
+        ? userLight.perfectDayStreak + 1
+        : 1
+      : 0;
 
     userLight.updateStreaks({
       perfectDayStreak,
@@ -183,7 +243,7 @@ export class LightService {
       const eventResult = LightEvent.create({
         userId,
         workspaceId,
-        action: 'perfect_day',
+        action: "perfect_day",
         baseLight: LIGHT_ACTIONS.PERFECT_DAY,
         multiplier,
         totalLight,
@@ -192,16 +252,45 @@ export class LightService {
       });
       if (eventResult.ok) {
         await this.lightEventRepo.save(eventResult.value);
-        const { tieredUp, newTitle } = this.addLightAndDetectTierUp(userLight, totalLight);
+        const { tieredUp, newTitle } = this.addLightAndDetectTierUp(
+          userLight,
+          totalLight,
+        );
         if (tieredUp) {
-          this.notifyAchievement(userId, workspaceId, 'Tier Up!', `You've reached ${newTitle}!`);
+          this.notifyAchievement(
+            userId,
+            workspaceId,
+            "Tier Up!",
+            `You've reached ${newTitle}!`,
+          );
         }
       }
     }
 
-    await this.checkStreakMilestones(userLight, userId, workspaceId, date, 'todo', todoRingStreak);
-    await this.checkStreakMilestones(userLight, userId, workspaceId, date, 'habit', habitRingStreak);
-    await this.checkStreakMilestones(userLight, userId, workspaceId, date, 'journal', journalRingStreak);
+    await this.checkStreakMilestones(
+      userLight,
+      userId,
+      workspaceId,
+      date,
+      "todo",
+      todoRingStreak,
+    );
+    await this.checkStreakMilestones(
+      userLight,
+      userId,
+      workspaceId,
+      date,
+      "habit",
+      habitRingStreak,
+    );
+    await this.checkStreakMilestones(
+      userLight,
+      userId,
+      workspaceId,
+      date,
+      "journal",
+      journalRingStreak,
+    );
 
     await this.userLightRepo.save(userLight);
   }
@@ -219,7 +308,7 @@ export class LightService {
         const eventResult = LightEvent.create({
           userId,
           workspaceId,
-          action: 'ring_streak_bonus',
+          action: "ring_streak_bonus",
           baseLight: milestone.bonus,
           multiplier: 1,
           totalLight: milestone.bonus,
@@ -228,15 +317,23 @@ export class LightService {
         });
         if (eventResult.ok) {
           await this.lightEventRepo.save(eventResult.value);
-          const { tieredUp, newTitle } = this.addLightAndDetectTierUp(userLight, milestone.bonus);
+          const { tieredUp, newTitle } = this.addLightAndDetectTierUp(
+            userLight,
+            milestone.bonus,
+          );
           this.notifyAchievement(
             userId,
             workspaceId,
-            'Streak Milestone!',
+            "Streak Milestone!",
             `Your ${ring} ring hit a ${milestone.days}-day streak! +${milestone.bonus} light`,
           );
           if (tieredUp) {
-            this.notifyAchievement(userId, workspaceId, 'Tier Up!', `You've reached ${newTitle}!`);
+            this.notifyAchievement(
+              userId,
+              workspaceId,
+              "Tier Up!",
+              `You've reached ${newTitle}!`,
+            );
           }
         }
       }
@@ -255,7 +352,12 @@ export class LightService {
 
     // Lazy evaluation: if this is a new day, evaluate the previous day first
     if (userLight.lastActiveDate && userLight.lastActiveDate !== date) {
-      await this.evaluatePreviousDay(userLight, userId, workspaceId, userLight.lastActiveDate);
+      await this.evaluatePreviousDay(
+        userLight,
+        userId,
+        workspaceId,
+        userLight.lastActiveDate,
+      );
     }
 
     const multiplier = getMultiplier(userLight.perfectDayStreak);
@@ -274,35 +376,76 @@ export class LightService {
     if (!eventResult.ok) return;
 
     await this.lightEventRepo.save(eventResult.value);
-    const { tieredUp, newTitle } = this.addLightAndDetectTierUp(userLight, totalLight);
+    const { tieredUp, newTitle } = this.addLightAndDetectTierUp(
+      userLight,
+      totalLight,
+    );
     if (tieredUp) {
-      this.notifyAchievement(userId, workspaceId, 'Tier Up!', `You've reached ${newTitle}!`);
+      this.notifyAchievement(
+        userId,
+        workspaceId,
+        "Tier Up!",
+        `You've reached ${newTitle}!`,
+      );
     }
 
     // Update streaks in real-time based on current day's ring completion
-    const currentRings = await this.computeRingCompletion(workspaceId, userId, date, userLight.todoTargetDaily);
-    const previousDay = format(subDays(new Date(date + 'T00:00:00'), 1), 'yyyy-MM-dd');
-    const wasConsecutive = userLight.lastActiveDate === previousDay || userLight.lastActiveDate === date;
+    const currentRings = await this.computeRingCompletion(
+      workspaceId,
+      userId,
+      date,
+      userLight.todoTargetDaily,
+    );
+    const previousDay = format(
+      subDays(new Date(date + "T00:00:00"), 1),
+      "yyyy-MM-dd",
+    );
+    const wasConsecutive =
+      userLight.lastActiveDate === previousDay ||
+      userLight.lastActiveDate === date;
     const alreadyActiveToday = userLight.lastActiveDate === date;
 
     userLight.updateStreaks({
       todoRingStreak: currentRings.todo
-        ? (alreadyActiveToday ? userLight.todoRingStreak : (wasConsecutive ? userLight.todoRingStreak + 1 : 1))
+        ? alreadyActiveToday
+          ? userLight.todoRingStreak
+          : wasConsecutive
+            ? userLight.todoRingStreak + 1
+            : 1
         : 0,
       habitRingStreak: currentRings.habit
-        ? (alreadyActiveToday ? userLight.habitRingStreak : (wasConsecutive ? userLight.habitRingStreak + 1 : 1))
+        ? alreadyActiveToday
+          ? userLight.habitRingStreak
+          : wasConsecutive
+            ? userLight.habitRingStreak + 1
+            : 1
         : 0,
       journalRingStreak: currentRings.journal
-        ? (alreadyActiveToday ? userLight.journalRingStreak : (wasConsecutive ? userLight.journalRingStreak + 1 : 1))
+        ? alreadyActiveToday
+          ? userLight.journalRingStreak
+          : wasConsecutive
+            ? userLight.journalRingStreak + 1
+            : 1
         : 0,
-      perfectDayStreak: (currentRings.todo && currentRings.habit && currentRings.journal)
-        ? (alreadyActiveToday ? userLight.perfectDayStreak : (wasConsecutive ? userLight.perfectDayStreak + 1 : 1))
-        : userLight.perfectDayStreak,
+      perfectDayStreak:
+        currentRings.todo && currentRings.habit && currentRings.journal
+          ? alreadyActiveToday
+            ? userLight.perfectDayStreak
+            : wasConsecutive
+              ? userLight.perfectDayStreak + 1
+              : 1
+          : userLight.perfectDayStreak,
       lastActiveDate: date,
     });
 
     // Check ring completion bonuses
-    await this.checkRingCompletionBonus(userLight, userId, workspaceId, date, currentRings);
+    await this.checkRingCompletionBonus(
+      userLight,
+      userId,
+      workspaceId,
+      date,
+      currentRings,
+    );
 
     await this.userLightRepo.save(userLight);
   }
@@ -315,9 +458,9 @@ export class LightService {
     currentRings: { todo: boolean; habit: boolean; journal: boolean },
   ): Promise<void> {
     const ringChecks: { ring: string; complete: boolean }[] = [
-      { ring: 'todo', complete: currentRings.todo },
-      { ring: 'habit', complete: currentRings.habit },
-      { ring: 'journal', complete: currentRings.journal },
+      { ring: "todo", complete: currentRings.todo },
+      { ring: "habit", complete: currentRings.habit },
+      { ring: "journal", complete: currentRings.journal },
     ];
 
     for (const { ring, complete } of ringChecks) {
@@ -326,7 +469,7 @@ export class LightService {
       const entityId = `ring_${ring}_${date}`;
       const exists = await this.lightEventRepo.existsForEntityOnDate(
         userId,
-        'ring_completion_bonus',
+        "ring_completion_bonus",
         date,
         entityId,
       );
@@ -335,7 +478,7 @@ export class LightService {
       const eventResult = LightEvent.create({
         userId,
         workspaceId,
-        action: 'ring_completion_bonus',
+        action: "ring_completion_bonus",
         baseLight: RING_COMPLETION_BONUS.SINGLE_RING,
         multiplier: 1,
         totalLight: RING_COMPLETION_BONUS.SINGLE_RING,
@@ -344,9 +487,17 @@ export class LightService {
       });
       if (eventResult.ok) {
         await this.lightEventRepo.save(eventResult.value);
-        const { tieredUp, newTitle } = this.addLightAndDetectTierUp(userLight, RING_COMPLETION_BONUS.SINGLE_RING);
+        const { tieredUp, newTitle } = this.addLightAndDetectTierUp(
+          userLight,
+          RING_COMPLETION_BONUS.SINGLE_RING,
+        );
         if (tieredUp) {
-          this.notifyAchievement(userId, workspaceId, 'Tier Up!', `You've reached ${newTitle}!`);
+          this.notifyAchievement(
+            userId,
+            workspaceId,
+            "Tier Up!",
+            `You've reached ${newTitle}!`,
+          );
         }
       }
     }
@@ -356,7 +507,7 @@ export class LightService {
       const allRingsEntityId = `ring_all_${date}`;
       const allRingsExists = await this.lightEventRepo.existsForEntityOnDate(
         userId,
-        'ring_completion_bonus',
+        "ring_completion_bonus",
         date,
         allRingsEntityId,
       );
@@ -364,24 +515,32 @@ export class LightService {
         const eventResult = LightEvent.create({
           userId,
           workspaceId,
-          action: 'ring_completion_bonus',
+          action: "ring_completion_bonus",
           baseLight: RING_COMPLETION_BONUS.ALL_RINGS,
           multiplier: 1,
           totalLight: RING_COMPLETION_BONUS.ALL_RINGS,
           date,
-          metadata: { entityId: allRingsEntityId, ring: 'all' },
+          metadata: { entityId: allRingsEntityId, ring: "all" },
         });
         if (eventResult.ok) {
           await this.lightEventRepo.save(eventResult.value);
-          const { tieredUp, newTitle } = this.addLightAndDetectTierUp(userLight, RING_COMPLETION_BONUS.ALL_RINGS);
+          const { tieredUp, newTitle } = this.addLightAndDetectTierUp(
+            userLight,
+            RING_COMPLETION_BONUS.ALL_RINGS,
+          );
           this.notifyAchievement(
             userId,
             workspaceId,
-            'All Rings Complete!',
+            "All Rings Complete!",
             `You completed all daily rings! +${RING_COMPLETION_BONUS.ALL_RINGS} bonus light`,
           );
           if (tieredUp) {
-            this.notifyAchievement(userId, workspaceId, 'Tier Up!', `You've reached ${newTitle}!`);
+            this.notifyAchievement(
+              userId,
+              workspaceId,
+              "Tier Up!",
+              `You've reached ${newTitle}!`,
+            );
           }
         }
       }
@@ -394,8 +553,19 @@ export class LightService {
     workspaceId: string,
     previousDate: string,
   ): Promise<void> {
-    const rings = await this.computeRingCompletion(workspaceId, userId, previousDate, userLight.todoTargetDaily);
-    await this.evaluateDayForEntity(userLight, userId, workspaceId, rings, previousDate);
+    const rings = await this.computeRingCompletion(
+      workspaceId,
+      userId,
+      previousDate,
+      userLight.todoTargetDaily,
+    );
+    await this.evaluateDayForEntity(
+      userLight,
+      userId,
+      workspaceId,
+      rings,
+      previousDate,
+    );
   }
 
   private async computeRingCompletion(
@@ -406,24 +576,42 @@ export class LightService {
   ): Promise<{ todo: boolean; habit: boolean; journal: boolean }> {
     const [todoEvents, habitEvents, journalEvents, userHabitIds] =
       await Promise.all([
-        this.lightEventRepo.countByUserActionDate(userId, 'todo_complete', date),
-        this.lightEventRepo.countByUserActionDate(userId, 'habit_checkin', date),
-        this.lightEventRepo.countByUserActionDate(userId, 'journal_entry', date),
+        this.lightEventRepo.countByUserActionDate(
+          userId,
+          "todo_complete",
+          date,
+        ),
+        this.lightEventRepo.countByUserActionDate(
+          userId,
+          "habit_checkin",
+          date,
+        ),
+        this.lightEventRepo.countByUserActionDate(
+          userId,
+          "journal_entry",
+          date,
+        ),
         this.habitRepo.findIdsByWorkspaceCreator(workspaceId, userId),
       ]);
 
     const totalHabits = userHabitIds.length;
     // Only count skips for this user's habits
-    const skipCount = totalHabits > 0
-      ? await this.habitEntryModel.countDocuments({ habit_id: { $in: userHabitIds }, date, type: 'skip', deleted_at: null })
-      : 0;
+    const skipCount =
+      totalHabits > 0
+        ? await this.habitEntryModel.countDocuments({
+            habit_id: { $in: userHabitIds },
+            date,
+            type: "skip",
+            deleted_at: null,
+          })
+        : 0;
 
     const effectiveTodoTarget = todoTarget ?? DEFAULT_TARGETS.todoDaily;
 
     return {
       todo: todoEvents >= effectiveTodoTarget,
       // Habit ring complete if all habits checked in or skipped, or no habits exist
-      habit: totalHabits === 0 || (habitEvents + skipCount) >= totalHabits,
+      habit: totalHabits === 0 || habitEvents + skipCount >= totalHabits,
       journal: journalEvents > 0,
     };
   }
@@ -436,18 +624,18 @@ export class LightService {
   private getToday(timezone?: string): string {
     if (timezone) {
       try {
-        const formatter = new Intl.DateTimeFormat('en-CA', {
+        const formatter = new Intl.DateTimeFormat("en-CA", {
           timeZone: timezone,
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
         });
         return formatter.format(new Date());
       } catch {
         // Fall back to UTC if timezone is invalid
       }
     }
-    return format(new Date(), 'yyyy-MM-dd');
+    return format(new Date(), "yyyy-MM-dd");
   }
 
   private addLightAndDetectTierUp(
@@ -469,7 +657,9 @@ export class LightService {
     message: string,
   ): void {
     this.notificationService
-      .create({ recipientId, workspaceId, type: 'achievement', title, message })
-      .catch((err) => this.logger.warn(`Failed to create notification: ${err.message}`));
+      .create({ recipientId, workspaceId, type: "achievement", title, message })
+      .catch((err) =>
+        this.logger.warn(`Failed to create notification: ${err.message}`),
+      );
   }
 }

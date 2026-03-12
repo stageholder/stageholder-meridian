@@ -7,7 +7,13 @@ import { MoodDisplay } from "@/components/journal/mood-picker";
 import { BentoCard } from "./bento-card";
 import type { Journal } from "@repo/core/types";
 
-export function RecentJournals({ index = 0, className }: { index?: number; className?: string }) {
+export function RecentJournals({
+  index = 0,
+  className,
+}: {
+  index?: number;
+  className?: string;
+}) {
   const { workspace } = useWorkspace();
   const { data: journals, isLoading } = useJournals();
   const recentJournals = (journals || []).slice(0, 5);
@@ -19,7 +25,10 @@ export function RecentJournals({ index = 0, className }: { index?: number; class
       index={index}
       className={className}
       action={
-        <Link href={`/${workspace.shortId}/journal`} className="text-xs text-primary hover:underline">
+        <Link
+          href={`/${workspace.shortId}/journal`}
+          className="text-xs text-primary hover:underline"
+        >
           View all
         </Link>
       }
@@ -42,13 +51,17 @@ export function RecentJournals({ index = 0, className }: { index?: number; class
               >
                 <div className="flex items-center gap-1.5">
                   <MoodDisplay mood={journal.mood} />
-                  <span className="text-xs text-muted-foreground">{dateStr}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {dateStr}
+                  </span>
                 </div>
                 <span className="line-clamp-2 text-sm font-medium text-foreground">
                   {journal.title}
                 </span>
                 {journal.wordCount > 0 && (
-                  <span className="text-[10px] text-muted-foreground">{journal.wordCount} words</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {journal.wordCount} words
+                  </span>
                 )}
               </Link>
             );

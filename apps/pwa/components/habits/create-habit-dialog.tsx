@@ -126,7 +126,10 @@ const iconOptions: { emoji: string; keywords: string }[] = [
   { emoji: "🪥", keywords: "toothbrush teeth hygiene brush" },
 ];
 
-export function CreateHabitDialog({ open, onOpenChange }: CreateHabitDialogProps) {
+export function CreateHabitDialog({
+  open,
+  onOpenChange,
+}: CreateHabitDialogProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [frequency, setFrequency] = useState("daily");
@@ -174,19 +177,28 @@ export function CreateHabitDialog({ open, onOpenChange }: CreateHabitDialogProps
         onError: () => {
           toast.error("Failed to create habit");
         },
-      }
+      },
     );
   }
 
   return (
-    <Sheet open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
+    <Sheet
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) resetForm();
+        onOpenChange(v);
+      }}
+    >
       <SheetContent side="right" className="overflow-y-auto">
         <SheetHeader>
           <SheetTitle>New Habit</SheetTitle>
         </SheetHeader>
         <form onSubmit={handleSubmit} className="space-y-4 px-4 pb-4">
           <div>
-            <label htmlFor="habit-name" className="block text-sm font-medium text-foreground">
+            <label
+              htmlFor="habit-name"
+              className="block text-sm font-medium text-foreground"
+            >
               Name
             </label>
             <input
@@ -201,7 +213,10 @@ export function CreateHabitDialog({ open, onOpenChange }: CreateHabitDialogProps
           </div>
 
           <div>
-            <label htmlFor="habit-description" className="block text-sm font-medium text-foreground">
+            <label
+              htmlFor="habit-description"
+              className="block text-sm font-medium text-foreground"
+            >
               Description
             </label>
             <textarea
@@ -216,7 +231,10 @@ export function CreateHabitDialog({ open, onOpenChange }: CreateHabitDialogProps
 
           <div className="flex gap-4">
             <div className="flex-1">
-              <label htmlFor="habit-frequency" className="block text-sm font-medium text-foreground">
+              <label
+                htmlFor="habit-frequency"
+                className="block text-sm font-medium text-foreground"
+              >
                 Frequency
               </label>
               <Select
@@ -236,7 +254,10 @@ export function CreateHabitDialog({ open, onOpenChange }: CreateHabitDialogProps
               </Select>
             </div>
             <div className="w-24">
-              <label htmlFor="habit-target" className="block text-sm font-medium text-foreground">
+              <label
+                htmlFor="habit-target"
+                className="block text-sm font-medium text-foreground"
+              >
                 Target
               </label>
               <input
@@ -249,7 +270,10 @@ export function CreateHabitDialog({ open, onOpenChange }: CreateHabitDialogProps
               />
             </div>
             <div className="flex-1">
-              <label htmlFor="habit-unit" className="block text-sm font-medium text-foreground">
+              <label
+                htmlFor="habit-unit"
+                className="block text-sm font-medium text-foreground"
+              >
                 Unit
               </label>
               <input
@@ -265,7 +289,9 @@ export function CreateHabitDialog({ open, onOpenChange }: CreateHabitDialogProps
 
           {frequency === "weekly" && (
             <div>
-              <label className="block text-sm font-medium text-foreground">Days</label>
+              <label className="block text-sm font-medium text-foreground">
+                Days
+              </label>
               <div className="mt-2 flex gap-1.5">
                 {DAY_OPTIONS.map((day) => {
                   const active = scheduledDays.includes(day.value);
@@ -277,7 +303,7 @@ export function CreateHabitDialog({ open, onOpenChange }: CreateHabitDialogProps
                         setScheduledDays(
                           active
                             ? scheduledDays.filter((d) => d !== day.value)
-                            : [...scheduledDays, day.value].sort()
+                            : [...scheduledDays, day.value].sort(),
                         )
                       }
                       className={`flex h-9 w-9 items-center justify-center rounded-lg text-xs font-medium transition-all ${
@@ -295,7 +321,9 @@ export function CreateHabitDialog({ open, onOpenChange }: CreateHabitDialogProps
           )}
 
           <div>
-            <label className="block text-sm font-medium text-foreground">Icon</label>
+            <label className="block text-sm font-medium text-foreground">
+              Icon
+            </label>
             <button
               type="button"
               onClick={() => setIconPickerOpen(!iconPickerOpen)}
@@ -321,8 +349,10 @@ export function CreateHabitDialog({ open, onOpenChange }: CreateHabitDialogProps
                 <div className="max-h-40 overflow-y-auto p-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-track]:bg-transparent">
                   <div className="grid grid-cols-7 gap-1.5">
                     {iconOptions
-                      .filter((opt) =>
-                        !iconSearch || opt.keywords.includes(iconSearch.toLowerCase())
+                      .filter(
+                        (opt) =>
+                          !iconSearch ||
+                          opt.keywords.includes(iconSearch.toLowerCase()),
                       )
                       .map((opt) => (
                         <button
@@ -349,7 +379,9 @@ export function CreateHabitDialog({ open, onOpenChange }: CreateHabitDialogProps
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground">Color</label>
+            <label className="block text-sm font-medium text-foreground">
+              Color
+            </label>
             <div className="mt-2 flex gap-2">
               {colorOptions.map((opt) => (
                 <button
@@ -357,7 +389,9 @@ export function CreateHabitDialog({ open, onOpenChange }: CreateHabitDialogProps
                   type="button"
                   onClick={() => setColor(opt.value)}
                   className={`h-7 w-7 rounded-full border-2 transition-all ${
-                    color === opt.value ? "border-foreground scale-110" : "border-transparent"
+                    color === opt.value
+                      ? "border-foreground scale-110"
+                      : "border-transparent"
                   }`}
                   style={{ backgroundColor: opt.value }}
                   aria-label={opt.label}
@@ -369,7 +403,10 @@ export function CreateHabitDialog({ open, onOpenChange }: CreateHabitDialogProps
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
-              onClick={() => { resetForm(); onOpenChange(false); }}
+              onClick={() => {
+                resetForm();
+                onOpenChange(false);
+              }}
               className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
             >
               Cancel

@@ -1,7 +1,13 @@
-import { Injectable } from '@nestjs/common';
-import { NotificationRepository } from './notification.repository';
-import { Notification } from './notification.entity';
-import { PaginatedResult, buildPaginationMeta, DEFAULT_PAGE, DEFAULT_LIMIT, MAX_LIMIT } from '../../shared';
+import { Injectable } from "@nestjs/common";
+import { NotificationRepository } from "./notification.repository";
+import { Notification } from "./notification.entity";
+import {
+  PaginatedResult,
+  buildPaginationMeta,
+  DEFAULT_PAGE,
+  DEFAULT_LIMIT,
+  MAX_LIMIT,
+} from "../../shared";
 
 export interface CreateNotificationParams {
   recipientId: string;
@@ -25,21 +31,46 @@ export class NotificationService {
     return result.value;
   }
 
-  async listForUser(userId: string, unreadOnly = false): Promise<Notification[]> {
+  async listForUser(
+    userId: string,
+    unreadOnly = false,
+  ): Promise<Notification[]> {
     return this.repository.findByRecipient(userId, unreadOnly);
   }
 
-  async listForUserPaginated(userId: string, unreadOnly: boolean, page?: number, limit?: number): Promise<PaginatedResult<ReturnType<Notification['toObject']>>> {
+  async listForUserPaginated(
+    userId: string,
+    unreadOnly: boolean,
+    page?: number,
+    limit?: number,
+  ): Promise<PaginatedResult<ReturnType<Notification["toObject"]>>> {
     const p = Math.max(page || DEFAULT_PAGE, 1);
     const l = Math.min(Math.max(limit || DEFAULT_LIMIT, 1), MAX_LIMIT);
-    const { docs, total } = await this.repository.findByRecipientPaginated(userId, unreadOnly, p, l);
-    return { data: docs.map((d) => d.toObject()), meta: buildPaginationMeta(total, p, l) };
+    const { docs, total } = await this.repository.findByRecipientPaginated(
+      userId,
+      unreadOnly,
+      p,
+      l,
+    );
+    return {
+      data: docs.map((d) => d.toObject()),
+      meta: buildPaginationMeta(total, p, l),
+    };
+  }
+
+  async findUpdatedSince(
+    userId: string,
+    since: string,
+    includeSoftDeleted = false,
+  ): Promise<Notification[]> {
+    return this.repository.findUpdatedSince(userId, since, includeSoftDeleted);
   }
 
   async markAsRead(userId: string, id: string): Promise<void> {
     const notification = await this.repository.findById(id);
-    if (!notification) throw new Error('Notification not found');
-    if (notification.recipientId !== userId) throw new Error('Notification not found');
+    if (!notification) throw new Error("Notification not found");
+    if (notification.recipientId !== userId)
+      throw new Error("Notification not found");
     notification.markAsRead();
     await this.repository.save(notification);
   }

@@ -44,7 +44,9 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
     return params;
   }, [startDate, endDate]);
 
-  const dateRangeQuery = useJournals(hasDateFilter ? queryParams : undefined, { enabled: hasDateFilter });
+  const dateRangeQuery = useJournals(hasDateFilter ? queryParams : undefined, {
+    enabled: hasDateFilter,
+  });
   const paginatedQuery = useJournalsPaginated();
 
   const journals: Journal[] = useMemo(() => {
@@ -55,7 +57,9 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
     return paginatedQuery.data.pages.flatMap((page) => page.data);
   }, [hasDateFilter, dateRangeQuery.data, paginatedQuery.data]);
 
-  const isLoading = hasDateFilter ? dateRangeQuery.isLoading : paginatedQuery.isLoading;
+  const isLoading = hasDateFilter
+    ? dateRangeQuery.isLoading
+    : paginatedQuery.isLoading;
 
   const filteredJournals = useMemo(() => {
     if (moodFilter === 0) return journals;

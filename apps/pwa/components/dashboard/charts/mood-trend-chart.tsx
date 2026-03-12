@@ -1,7 +1,12 @@
 "use client";
 
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 import { useMoodTrend } from "@/lib/hooks/use-mood-trend";
 
 const chartConfig = {
@@ -38,8 +43,20 @@ export function MoodTrendChart() {
           </linearGradient>
         </defs>
         <CartesianGrid vertical={false} strokeDasharray="3 3" />
-        <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} interval="preserveStartEnd" />
-        <YAxis domain={[1, 5]} tickLine={false} axisLine={false} fontSize={12} width={24} />
+        <XAxis
+          dataKey="label"
+          tickLine={false}
+          axisLine={false}
+          fontSize={12}
+          interval="preserveStartEnd"
+        />
+        <YAxis
+          domain={[1, 5]}
+          tickLine={false}
+          axisLine={false}
+          fontSize={12}
+          width={24}
+        />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Area
           type="monotone"

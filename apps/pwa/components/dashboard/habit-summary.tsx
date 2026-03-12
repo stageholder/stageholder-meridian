@@ -10,16 +10,24 @@ import { useWorkspace } from "@/lib/workspace-context";
 import { BentoCard } from "./bento-card";
 import type { Habit } from "@repo/core/types";
 
-export function HabitSummary({ index = 0, className }: { index?: number; className?: string }) {
+export function HabitSummary({
+  index = 0,
+  className,
+}: {
+  index?: number;
+  className?: string;
+}) {
   const { workspace } = useWorkspace();
   const { data: habits, isLoading: habitsLoading } = useHabits();
   const currentMonth = format(new Date(), "yyyy-MM");
-  const { data: calendarData, isLoading: calendarLoading } = useCalendarData(currentMonth);
+  const { data: calendarData, isLoading: calendarLoading } =
+    useCalendarData(currentMonth);
 
   const today = format(new Date(), "yyyy-MM-dd");
 
   const habitProgress = useMemo(() => {
-    if (!habits || !calendarData?.[today]) return new Map<string, { value: number; type?: string }>();
+    if (!habits || !calendarData?.[today])
+      return new Map<string, { value: number; type?: string }>();
     const valueMap = new Map<string, { value: number; type?: string }>();
     for (const entry of calendarData[today].habitEntries) {
       const existing = valueMap.get(entry.habitId);
@@ -40,7 +48,10 @@ export function HabitSummary({ index = 0, className }: { index?: number; classNa
       index={index}
       className={className}
       action={
-        <Link href={`/${workspace.shortId}/habits`} className="text-xs text-primary hover:underline">
+        <Link
+          href={`/${workspace.shortId}/habits`}
+          className="text-xs text-primary hover:underline"
+        >
           View all
         </Link>
       }
@@ -51,7 +62,10 @@ export function HabitSummary({ index = 0, className }: { index?: number; classNa
         ) : habits && habits.length > 0 ? (
           habits.slice(0, 5).map((habit: Habit) => {
             const todayDow = new Date().getDay();
-            const isScheduledToday = !habit.scheduledDays || habit.scheduledDays.length === 0 || habit.scheduledDays.includes(todayDow);
+            const isScheduledToday =
+              !habit.scheduledDays ||
+              habit.scheduledDays.length === 0 ||
+              habit.scheduledDays.includes(todayDow);
             const progress = habitProgress.get(habit.id);
             const value = progress?.value ?? 0;
             const isSkipped = progress?.type === "skip";
@@ -62,8 +76,12 @@ export function HabitSummary({ index = 0, className }: { index?: number; classNa
             if (!isScheduledToday) {
               return (
                 <div key={habit.id} className="flex items-center gap-3">
-                  <span className="flex-1 truncate text-sm text-muted-foreground">{habit.name}</span>
-                  <span className="text-[10px] text-muted-foreground/60">Rest day</span>
+                  <span className="flex-1 truncate text-sm text-muted-foreground">
+                    {habit.name}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/60">
+                    Rest day
+                  </span>
                 </div>
               );
             }
@@ -71,8 +89,12 @@ export function HabitSummary({ index = 0, className }: { index?: number; classNa
             if (isSkipped) {
               return (
                 <div key={habit.id} className="flex items-center gap-3">
-                  <span className="flex-1 truncate text-sm text-muted-foreground">{habit.name}</span>
-                  <span className="text-[10px] text-muted-foreground/60">Skipped</span>
+                  <span className="flex-1 truncate text-sm text-muted-foreground">
+                    {habit.name}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/60">
+                    Skipped
+                  </span>
                 </div>
               );
             }
@@ -83,7 +105,9 @@ export function HabitSummary({ index = 0, className }: { index?: number; classNa
                   <span
                     className={cn(
                       "truncate text-sm",
-                      isComplete ? "text-muted-foreground line-through" : "text-foreground"
+                      isComplete
+                        ? "text-muted-foreground line-through"
+                        : "text-foreground",
                     )}
                   >
                     {habit.name}
@@ -96,7 +120,9 @@ export function HabitSummary({ index = 0, className }: { index?: number; classNa
                   <div
                     className={cn(
                       "h-full rounded-full transition-all",
-                      isComplete ? "bg-green-500 dark:bg-green-400" : "bg-orange-500 dark:bg-orange-400"
+                      isComplete
+                        ? "bg-green-500 dark:bg-green-400"
+                        : "bg-orange-500 dark:bg-orange-400",
                     )}
                     style={{ width: `${pct}%` }}
                   />
@@ -105,7 +131,9 @@ export function HabitSummary({ index = 0, className }: { index?: number; classNa
             );
           })
         ) : (
-          <p className="text-xs text-muted-foreground">No habits to track yet.</p>
+          <p className="text-xs text-muted-foreground">
+            No habits to track yet.
+          </p>
         )}
       </div>
     </BentoCard>

@@ -13,6 +13,7 @@
 ## Task 1: Backend — Calendar Service
 
 **Files:**
+
 - Create: `apps/api/src/modules/calendar/calendar.service.ts`
 
 **Step 1: Create the calendar service**
@@ -21,17 +22,30 @@ This service queries across the existing TodoRepository, JournalRepository, and 
 
 ```typescript
 // apps/api/src/modules/calendar/calendar.service.ts
-import { Injectable } from '@nestjs/common';
-import { TodoRepository } from '../todo/todo.repository';
-import { JournalRepository } from '../journal/journal.repository';
-import { HabitEntryRepository } from '../habit-entry/habit-entry.repository';
-import { HabitRepository } from '../habit/habit.repository';
-import { WorkspaceMemberService } from '../workspace-member/workspace-member.service';
+import { Injectable } from "@nestjs/common";
+import { TodoRepository } from "../todo/todo.repository";
+import { JournalRepository } from "../journal/journal.repository";
+import { HabitEntryRepository } from "../habit-entry/habit-entry.repository";
+import { HabitRepository } from "../habit/habit.repository";
+import { WorkspaceMemberService } from "../workspace-member/workspace-member.service";
 
 interface CalendarDayData {
-  todos: Array<{ id: string; title: string; status: string; priority: string; dueDate: string; listId: string }>;
+  todos: Array<{
+    id: string;
+    title: string;
+    status: string;
+    priority: string;
+    dueDate: string;
+    listId: string;
+  }>;
   journals: Array<{ id: string; title: string; date: string }>;
-  habitEntries: Array<{ id: string; habitId: string; habitName: string; value: number; date: string }>;
+  habitEntries: Array<{
+    id: string;
+    habitId: string;
+    habitName: string;
+    value: number;
+    date: string;
+  }>;
 }
 
 @Injectable()
@@ -44,13 +58,30 @@ export class CalendarService {
     private readonly memberService: WorkspaceMemberService,
   ) {}
 
-  async getMonthData(workspaceId: string, userId: string, startDate: string, endDate: string): Promise<Record<string, CalendarDayData>> {
-    await this.memberService.requireRole(workspaceId, userId, ['owner', 'admin', 'member']);
+  async getMonthData(
+    workspaceId: string,
+    userId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<Record<string, CalendarDayData>> {
+    await this.memberService.requireRole(workspaceId, userId, [
+      "owner",
+      "admin",
+      "member",
+    ]);
 
     const [todos, journals, habitEntries, habits] = await Promise.all([
-      this.todoRepository.findByWorkspaceAndDateRange(workspaceId, startDate, endDate),
+      this.todoRepository.findByWorkspaceAndDateRange(
+        workspaceId,
+        startDate,
+        endDate,
+      ),
       this.journalRepository.findByDateRange(workspaceId, startDate, endDate),
-      this.habitEntryRepository.findByWorkspaceAndDateRange(workspaceId, startDate, endDate),
+      this.habitEntryRepository.findByWorkspaceAndDateRange(
+        workspaceId,
+        startDate,
+        endDate,
+      ),
       this.habitRepository.findByWorkspace(workspaceId),
     ]);
 
@@ -58,28 +89,46 @@ export class CalendarService {
     const result: Record<string, CalendarDayData> = {};
 
     const getDay = (date: string) => {
-      if (!result[date]) result[date] = { todos: [], journals: [], habitEntries: [] };
+      if (!result[date])
+        result[date] = { todos: [], journals: [], habitEntries: [] };
       return result[date];
     };
 
     for (const todo of todos) {
       const obj = todo.toObject();
       if (obj.dueDate) {
-        const day = obj.dueDate.split('T')[0] || obj.dueDate;
-        getDay(day).todos.push({ id: obj.id, title: obj.title, status: obj.status, priority: obj.priority, dueDate: obj.dueDate, listId: obj.listId });
+        const day = obj.dueDate.split("T")[0] || obj.dueDate;
+        getDay(day).todos.push({
+          id: obj.id,
+          title: obj.title,
+          status: obj.status,
+          priority: obj.priority,
+          dueDate: obj.dueDate,
+          listId: obj.listId,
+        });
       }
     }
 
     for (const journal of journals) {
       const obj = journal.toObject();
-      const day = obj.date.split('T')[0] || obj.date;
-      getDay(day).journals.push({ id: obj.id, title: obj.title, date: obj.date });
+      const day = obj.date.split("T")[0] || obj.date;
+      getDay(day).journals.push({
+        id: obj.id,
+        title: obj.title,
+        date: obj.date,
+      });
     }
 
     for (const entry of habitEntries) {
       const obj = entry.toObject();
-      const day = obj.date.split('T')[0] || obj.date;
-      getDay(day).habitEntries.push({ id: obj.id, habitId: obj.habitId, habitName: habitMap.get(obj.habitId) || 'Unknown', value: obj.value, date: obj.date });
+      const day = obj.date.split("T")[0] || obj.date;
+      getDay(day).habitEntries.push({
+        id: obj.id,
+        habitId: obj.habitId,
+        habitName: habitMap.get(obj.habitId) || "Unknown",
+        value: obj.value,
+        date: obj.date,
+      });
     }
 
     return result;
@@ -132,6 +181,7 @@ git commit -m "feat(api): add CalendarService with date-range repository methods
 ## Task 2: Backend — Calendar Controller & Module
 
 **Files:**
+
 - Create: `apps/api/src/modules/calendar/calendar.controller.ts`
 - Create: `apps/api/src/modules/calendar/calendar.module.ts`
 - Modify: `apps/api/src/app.module.ts`
@@ -142,25 +192,33 @@ The controller parses the `month` query param (format: `YYYY-MM`), computes the 
 
 ```typescript
 // apps/api/src/modules/calendar/calendar.controller.ts
-import { Controller, Get, Param, Query, BadRequestException } from '@nestjs/common';
-import { CalendarService } from './calendar.service';
-import { CurrentUserId } from '../../common/decorators/current-user.decorator';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  BadRequestException,
+} from "@nestjs/common";
+import { CalendarService } from "./calendar.service";
+import { CurrentUserId } from "../../common/decorators/current-user.decorator";
 
-@Controller('workspaces/:workspaceId/calendar')
+@Controller("workspaces/:workspaceId/calendar")
 export class CalendarController {
   constructor(private readonly service: CalendarService) {}
 
   @Get()
   async getMonthData(
-    @Param('workspaceId') workspaceId: string,
+    @Param("workspaceId") workspaceId: string,
     @CurrentUserId() userId: string,
-    @Query('month') month?: string,
+    @Query("month") month?: string,
   ) {
     if (!month || !/^\d{4}-\d{2}$/.test(month)) {
-      throw new BadRequestException('month query param required in YYYY-MM format');
+      throw new BadRequestException(
+        "month query param required in YYYY-MM format",
+      );
     }
 
-    const [yearStr, monthStr] = month.split('-');
+    const [yearStr, monthStr] = month.split("-");
     const year = parseInt(yearStr, 10);
     const mo = parseInt(monthStr, 10);
 
@@ -180,8 +238,8 @@ export class CalendarController {
     const gridEnd = new Date(lastDay);
     gridEnd.setDate(gridEnd.getDate() + endOffset);
 
-    const startDate = gridStart.toISOString().split('T')[0];
-    const endDate = gridEnd.toISOString().split('T')[0];
+    const startDate = gridStart.toISOString().split("T")[0];
+    const endDate = gridEnd.toISOString().split("T")[0];
 
     return this.service.getMonthData(workspaceId, userId, startDate, endDate);
   }
@@ -192,17 +250,23 @@ export class CalendarController {
 
 ```typescript
 // apps/api/src/modules/calendar/calendar.module.ts
-import { Module } from '@nestjs/common';
-import { CalendarController } from './calendar.controller';
-import { CalendarService } from './calendar.service';
-import { TodoModule } from '../todo/todo.module';
-import { JournalModule } from '../journal/journal.module';
-import { HabitEntryModule } from '../habit-entry/habit-entry.module';
-import { HabitModule } from '../habit/habit.module';
-import { WorkspaceMemberModule } from '../workspace-member/workspace-member.module';
+import { Module } from "@nestjs/common";
+import { CalendarController } from "./calendar.controller";
+import { CalendarService } from "./calendar.service";
+import { TodoModule } from "../todo/todo.module";
+import { JournalModule } from "../journal/journal.module";
+import { HabitEntryModule } from "../habit-entry/habit-entry.module";
+import { HabitModule } from "../habit/habit.module";
+import { WorkspaceMemberModule } from "../workspace-member/workspace-member.module";
 
 @Module({
-  imports: [TodoModule, JournalModule, HabitEntryModule, HabitModule, WorkspaceMemberModule],
+  imports: [
+    TodoModule,
+    JournalModule,
+    HabitEntryModule,
+    HabitModule,
+    WorkspaceMemberModule,
+  ],
   controllers: [CalendarController],
   providers: [CalendarService],
 })
@@ -249,6 +313,7 @@ git commit -m "feat(api): add calendar controller and module with month data end
 ## Task 3: Frontend — Calendar API Hook
 
 **Files:**
+
 - Create: `apps/pwa/lib/api/calendar.ts`
 
 **Step 1: Create the calendar hook**
@@ -263,9 +328,22 @@ import { useWorkspace } from "@/lib/workspace-context";
 import type { Todo, Journal, HabitEntry } from "@repo/core/types";
 
 export interface CalendarDayData {
-  todos: Array<{ id: string; title: string; status: string; priority: string; dueDate: string; listId: string }>;
+  todos: Array<{
+    id: string;
+    title: string;
+    status: string;
+    priority: string;
+    dueDate: string;
+    listId: string;
+  }>;
   journals: Array<{ id: string; title: string; date: string }>;
-  habitEntries: Array<{ id: string; habitId: string; habitName: string; value: number; date: string }>;
+  habitEntries: Array<{
+    id: string;
+    habitId: string;
+    habitName: string;
+    value: number;
+    date: string;
+  }>;
 }
 
 export type CalendarData = Record<string, CalendarDayData>;
@@ -276,10 +354,9 @@ export function useCalendarData(month: string) {
   return useQuery<CalendarData>({
     queryKey: ["calendar", workspace.id, month],
     queryFn: async () => {
-      const res = await apiClient.get(
-        `/workspaces/${workspace.id}/calendar`,
-        { params: { month } }
-      );
+      const res = await apiClient.get(`/workspaces/${workspace.id}/calendar`, {
+        params: { month },
+      });
       return res.data?.data ?? res.data;
     },
     enabled: !!month,
@@ -299,6 +376,7 @@ git commit -m "feat(pwa): add useCalendarData hook"
 ## Task 4: Frontend — Calendar Header Component
 
 **Files:**
+
 - Create: `apps/pwa/components/calendar/calendar-header.tsx`
 
 **Step 1: Create the header**
@@ -319,7 +397,12 @@ interface CalendarHeaderProps {
   onToday: () => void;
 }
 
-export function CalendarHeader({ currentMonth, onPrevMonth, onNextMonth, onToday }: CalendarHeaderProps) {
+export function CalendarHeader({
+  currentMonth,
+  onPrevMonth,
+  onNextMonth,
+  onToday,
+}: CalendarHeaderProps) {
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">
@@ -364,6 +447,7 @@ git commit -m "feat(pwa): add CalendarHeader component"
 ## Task 5: Frontend — Calendar Cell Component
 
 **Files:**
+
 - Create: `apps/pwa/components/calendar/calendar-cell.tsx`
 
 **Step 1: Create the cell**
@@ -386,7 +470,13 @@ interface CalendarCellProps {
   onClick: () => void;
 }
 
-export function CalendarCell({ date, currentMonth, isSelected, dayData, onClick }: CalendarCellProps) {
+export function CalendarCell({
+  date,
+  currentMonth,
+  isSelected,
+  dayData,
+  onClick,
+}: CalendarCellProps) {
   const today = isToday(date);
   const inMonth = isSameMonth(date, currentMonth);
 
@@ -415,8 +505,12 @@ export function CalendarCell({ date, currentMonth, isSelected, dayData, onClick 
       </span>
       <div className="flex items-center gap-1">
         {hasTodos && <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />}
-        {hasJournals && <span className="h-1.5 w-1.5 rounded-full bg-green-500" />}
-        {hasHabits && <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />}
+        {hasJournals && (
+          <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+        )}
+        {hasHabits && (
+          <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+        )}
       </div>
     </button>
   );
@@ -435,6 +529,7 @@ git commit -m "feat(pwa): add CalendarCell component with dot indicators"
 ## Task 6: Frontend — Calendar Grid Component
 
 **Files:**
+
 - Create: `apps/pwa/components/calendar/calendar-grid.tsx`
 
 **Step 1: Create the grid**
@@ -466,7 +561,12 @@ interface CalendarGridProps {
   onSelectDate: (date: Date) => void;
 }
 
-export function CalendarGrid({ currentMonth, selectedDate, calendarData, onSelectDate }: CalendarGridProps) {
+export function CalendarGrid({
+  currentMonth,
+  selectedDate,
+  calendarData,
+  onSelectDate,
+}: CalendarGridProps) {
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const gridStart = startOfWeek(monthStart);
@@ -518,6 +618,7 @@ git commit -m "feat(pwa): add CalendarGrid component"
 ## Task 7: Frontend — Day Panel Component
 
 **Files:**
+
 - Create: `apps/pwa/components/calendar/day-panel.tsx`
 
 **Step 1: Create the day panel**
@@ -540,10 +641,25 @@ import type { CalendarDayData } from "@/lib/api/calendar";
 import Link from "next/link";
 
 const priorityConfig: Record<string, { label: string; className: string }> = {
-  urgent: { label: "Urgent", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
-  high: { label: "High", className: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" },
-  medium: { label: "Medium", className: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" },
-  low: { label: "Low", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
+  urgent: {
+    label: "Urgent",
+    className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  },
+  high: {
+    label: "High",
+    className:
+      "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+  },
+  medium: {
+    label: "Medium",
+    className:
+      "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+  },
+  low: {
+    label: "Low",
+    className:
+      "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  },
   none: { label: "", className: "" },
 };
 
@@ -561,7 +677,11 @@ export function DayPanel({ date, dayData }: DayPanelProps) {
 
   const dateStr = format(date, "yyyy-MM-dd");
 
-  function handleToggleTodo(todoId: string, listId: string, currentStatus: string) {
+  function handleToggleTodo(
+    todoId: string,
+    listId: string,
+    currentStatus: string,
+  ) {
     updateTodo.mutate({
       listId,
       todoId,
@@ -585,26 +705,43 @@ export function DayPanel({ date, dayData }: DayPanelProps) {
           <div className="mt-2 space-y-1.5">
             {dayData.todos.map((todo) => {
               const isDone = todo.status === "done";
-              const priority = priorityConfig[todo.priority] ?? { label: "", className: "" };
+              const priority = priorityConfig[todo.priority] ?? {
+                label: "",
+                className: "",
+              };
               return (
                 <div
                   key={todo.id}
-                  onClick={() => handleToggleTodo(todo.id, todo.listId, todo.status)}
+                  onClick={() =>
+                    handleToggleTodo(todo.id, todo.listId, todo.status)
+                  }
                   className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent/50"
                 >
                   <div
                     className={cn(
                       "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-                      isDone ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40"
+                      isDone
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-muted-foreground/40",
                     )}
                   >
                     {isDone && <CheckCircle2 className="h-3 w-3" />}
                   </div>
-                  <span className={cn("flex-1 text-sm", isDone && "line-through text-muted-foreground")}>
+                  <span
+                    className={cn(
+                      "flex-1 text-sm",
+                      isDone && "line-through text-muted-foreground",
+                    )}
+                  >
                     {todo.title}
                   </span>
                   {priority.label && (
-                    <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-medium", priority.className)}>
+                    <span
+                      className={cn(
+                        "rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                        priority.className,
+                      )}
+                    >
                       {priority.label}
                     </span>
                   )}
@@ -636,7 +773,9 @@ export function DayPanel({ date, dayData }: DayPanelProps) {
             ))}
           </div>
         ) : (
-          <p className="mt-2 text-xs text-muted-foreground">No journal entries</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            No journal entries
+          </p>
         )}
       </div>
 
@@ -655,7 +794,7 @@ export function DayPanel({ date, dayData }: DayPanelProps) {
                   "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium",
                   entry.value > 0
                     ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                    : "bg-muted text-muted-foreground"
+                    : "bg-muted text-muted-foreground",
                 )}
               >
                 {entry.value > 0 ? "✓" : "✗"} {entry.habitName}
@@ -700,6 +839,7 @@ export function DayPanel({ date, dayData }: DayPanelProps) {
 **Note:** The `CreateTodoDialog` currently doesn't accept a `defaultDueDate` prop. You'll need to add that prop to it so the calendar can pre-fill the date. Add an optional `defaultDueDate?: string` prop and initialize the `dueDate` state with it:
 
 In `apps/pwa/components/todos/create-todo-dialog.tsx`:
+
 - Add `defaultDueDate?: string` to the `CreateTodoDialogProps` interface
 - Change `const [dueDate, setDueDate] = useState("");` to `const [dueDate, setDueDate] = useState(defaultDueDate || "");`
 - Pass `defaultDueDate={dateStr}` from DayPanel
@@ -716,6 +856,7 @@ git commit -m "feat(pwa): add DayPanel component with quick actions"
 ## Task 8: Frontend — Calendar View (Main Container)
 
 **Files:**
+
 - Create: `apps/pwa/components/calendar/calendar-view.tsx`
 
 **Step 1: Create the main calendar view**
@@ -735,7 +876,9 @@ import { useCalendarData } from "@/lib/api/calendar";
 import type { CalendarDayData } from "@/lib/api/calendar";
 
 export function CalendarView() {
-  const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
+  const [currentMonth, setCurrentMonth] = useState(() =>
+    startOfMonth(new Date()),
+  );
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
   const monthKey = format(currentMonth, "yyyy-MM");
@@ -775,7 +918,9 @@ export function CalendarView() {
       {selectedDate && (
         <DayPanel
           date={selectedDate}
-          dayData={selectedDayData || { todos: [], journals: [], habitEntries: [] }}
+          dayData={
+            selectedDayData || { todos: [], journals: [], habitEntries: [] }
+          }
         />
       )}
     </div>
@@ -795,6 +940,7 @@ git commit -m "feat(pwa): add CalendarView main container component"
 ## Task 9: Frontend — Calendar Page & Navigation
 
 **Files:**
+
 - Create: `apps/pwa/app/[shortId]/calendar/page.tsx`
 - Modify: `apps/pwa/app/[shortId]/layout.tsx`
 
@@ -830,7 +976,7 @@ const navItems = [
 Add the Calendar item between Dashboard and Todos:
 
 ```typescript
-import { CalendarDays } from "lucide-react";  // Add to imports
+import { CalendarDays } from "lucide-react"; // Add to imports
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -860,6 +1006,7 @@ git commit -m "feat(pwa): add calendar page and sidebar navigation"
 ## Task 10: Integration — Wire Up CreateTodoDialog defaultDueDate
 
 **Files:**
+
 - Modify: `apps/pwa/components/todos/create-todo-dialog.tsx`
 - Modify: `apps/pwa/components/calendar/day-panel.tsx`
 
@@ -922,6 +1069,7 @@ git commit -m "feat(pwa): wire up defaultDueDate prop for calendar quick-add"
 ## Task 11: Integration — Handle journal new page date param
 
 **Files:**
+
 - Modify: `apps/pwa/app/[shortId]/journal/new/page.tsx`
 
 **Step 1: Read the date query param**

@@ -34,18 +34,23 @@ export function UpcomingContent() {
   const today = format(new Date(), "yyyy-MM-dd");
 
   const hasCustomRange = customRange?.from != null;
-  const customFrom = customRange?.from ? format(customRange.from, "yyyy-MM-dd") : null;
-  const customTo = customRange?.to ? format(customRange.to, "yyyy-MM-dd") : null;
+  const customFrom = customRange?.from
+    ? format(customRange.from, "yyyy-MM-dd")
+    : null;
+  const customTo = customRange?.to
+    ? format(customRange.to, "yyyy-MM-dd")
+    : null;
 
   // Compute filter bounds
   const rangeStart = hasCustomRange && customFrom ? customFrom : today;
-  const rangeEnd = hasCustomRange && customTo
-    ? customTo
-    : hasCustomRange && customFrom
-      ? customFrom
-      : selectedDays > 0
-        ? format(addDays(new Date(), selectedDays), "yyyy-MM-dd")
-        : null; // null = show all
+  const rangeEnd =
+    hasCustomRange && customTo
+      ? customTo
+      : hasCustomRange && customFrom
+        ? customFrom
+        : selectedDays > 0
+          ? format(addDays(new Date(), selectedDays), "yyyy-MM-dd")
+          : null; // null = show all
 
   const listMap = new Map<string, TodoList>();
   for (const list of lists || []) {
@@ -116,7 +121,8 @@ export function UpcomingContent() {
     setCustomOpen(false);
   }
 
-  const isPresetActive = (days: number) => !hasCustomRange && selectedDays === days;
+  const isPresetActive = (days: number) =>
+    !hasCustomRange && selectedDays === days;
 
   const filterLabel = hasCustomRange
     ? customFrom && customTo && customFrom !== customTo
@@ -133,7 +139,8 @@ export function UpcomingContent() {
       <div className="mb-4">
         <h1 className="text-xl font-bold text-foreground">Upcoming</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {upcomingTodos.length} upcoming todo{upcomingTodos.length !== 1 ? "s" : ""}
+          {upcomingTodos.length} upcoming todo
+          {upcomingTodos.length !== 1 ? "s" : ""}
         </p>
       </div>
 
@@ -148,7 +155,7 @@ export function UpcomingContent() {
               "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
               isPresetActive(preset.days)
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+                : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
             )}
           >
             {preset.label}
@@ -164,10 +171,20 @@ export function UpcomingContent() {
                 "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
                 hasCustomRange
                   ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+                  : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M8 2v4" />
                 <path d="M16 2v4" />
                 <rect width="18" height="18" x="3" y="4" rx="2" />
@@ -211,7 +228,9 @@ export function UpcomingContent() {
       {defaultList && <QuickAddTodo listId={defaultList.id} />}
 
       {isLoading ? (
-        <div className="mt-3 text-sm text-muted-foreground">Loading todos...</div>
+        <div className="mt-3 text-sm text-muted-foreground">
+          Loading todos...
+        </div>
       ) : (
         <div className="mt-3 space-y-6">
           {sortedDates.map((date) => {
@@ -237,7 +256,9 @@ export function UpcomingContent() {
                         <div className="mb-2 flex items-center gap-2">
                           <span
                             className="inline-block h-3 w-3 rounded-full"
-                            style={{ backgroundColor: list?.color || "#6b7280" }}
+                            style={{
+                              backgroundColor: list?.color || "#6b7280",
+                            }}
                           />
                           <span className="text-xs font-medium text-muted-foreground">
                             {list?.name || "Unknown List"}
@@ -245,7 +266,11 @@ export function UpcomingContent() {
                         </div>
                         <div className="space-y-2">
                           {listTodos.map((todo) => (
-                            <TodoItem key={todo.id} todo={todo} listId={listId} />
+                            <TodoItem
+                              key={todo.id}
+                              todo={todo}
+                              listId={listId}
+                            />
                           ))}
                         </div>
                       </div>
@@ -272,7 +297,9 @@ export function UpcomingContent() {
 function getEarliestDate(todo: Todo, today: string): string {
   const dueDateStr = todo.dueDate?.split("T")[0];
   const doDateStr = todo.doDate?.split("T")[0];
-  const dates = [dueDateStr, doDateStr].filter((d): d is string => d !== undefined && d > today);
+  const dates = [dueDateStr, doDateStr].filter(
+    (d): d is string => d !== undefined && d > today,
+  );
   dates.sort();
   return dates[0] || "";
 }

@@ -15,10 +15,25 @@ import Link from "next/link";
 import type { Habit } from "@repo/core/types";
 
 const priorityConfig: Record<string, { label: string; className: string }> = {
-  urgent: { label: "Urgent", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
-  high: { label: "High", className: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" },
-  medium: { label: "Medium", className: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" },
-  low: { label: "Low", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
+  urgent: {
+    label: "Urgent",
+    className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  },
+  high: {
+    label: "High",
+    className:
+      "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+  },
+  medium: {
+    label: "Medium",
+    className:
+      "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+  },
+  low: {
+    label: "Low",
+    className:
+      "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  },
   none: { label: "", className: "" },
 };
 
@@ -46,17 +61,35 @@ export function DayPanel({ date, dayData, habits }: DayPanelProps) {
 
   const dateStr = format(date, "yyyy-MM-dd");
 
-  function handleToggleTodo(todoId: string, listId: string, currentStatus: string) {
+  function handleToggleTodo(
+    todoId: string,
+    listId: string,
+    currentStatus: string,
+  ) {
     updateTodo.mutate(
-      { listId, todoId, data: { status: currentStatus === "done" ? "todo" : "done" } },
-      { onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ["calendar"] }); } },
+      {
+        listId,
+        todoId,
+        data: { status: currentStatus === "done" ? "todo" : "done" },
+      },
+      {
+        onSuccess: () => {
+          void queryClient.invalidateQueries({ queryKey: ["calendar"] });
+        },
+      },
     );
   }
 
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center gap-3">
-        <ActivityRingsVisual data={computeActivityRings(dayData, countScheduledHabits(habits, date))} size="md" />
+        <ActivityRingsVisual
+          data={computeActivityRings(
+            dayData,
+            countScheduledHabits(habits, date),
+          )}
+          size="md"
+        />
         <h3 className="text-sm font-semibold text-foreground">
           {format(date, "EEEE, MMMM d, yyyy")}
         </h3>
@@ -72,30 +105,57 @@ export function DayPanel({ date, dayData, habits }: DayPanelProps) {
           <div className="mt-2 space-y-1.5">
             {dayData.todos.map((todo) => {
               const isDone = todo.status === "done";
-              const priority = priorityConfig[todo.priority] ?? { label: "", className: "" };
+              const priority = priorityConfig[todo.priority] ?? {
+                label: "",
+                className: "",
+              };
               return (
                 <div
                   key={todo.id}
-                  onClick={() => handleToggleTodo(todo.id, todo.listId, todo.status)}
+                  onClick={() =>
+                    handleToggleTodo(todo.id, todo.listId, todo.status)
+                  }
                   className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent/50"
                 >
                   <div
                     className={cn(
                       "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-                      isDone ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40"
+                      isDone
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-muted-foreground/40",
                     )}
                   >
                     {isDone && (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="10"
+                        height="10"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                     )}
                   </div>
-                  <span className={cn("flex-1 text-sm", isDone && "line-through text-muted-foreground")}>
+                  <span
+                    className={cn(
+                      "flex-1 text-sm",
+                      isDone && "line-through text-muted-foreground",
+                    )}
+                  >
                     {todo.title}
                   </span>
                   {priority.label && (
-                    <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-medium", priority.className)}>
+                    <span
+                      className={cn(
+                        "rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                        priority.className,
+                      )}
+                    >
                       {priority.label}
                     </span>
                   )}
@@ -127,7 +187,9 @@ export function DayPanel({ date, dayData, habits }: DayPanelProps) {
             ))}
           </div>
         ) : (
-          <p className="mt-2 text-xs text-muted-foreground">No journal entries</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            No journal entries
+          </p>
         )}
       </div>
 
@@ -150,10 +212,11 @@ export function DayPanel({ date, dayData, habits }: DayPanelProps) {
                       ? "border border-dashed border-muted-foreground/40 bg-muted/50 text-muted-foreground"
                       : entry.value > 0
                         ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                        : "bg-muted text-muted-foreground"
+                        : "bg-muted text-muted-foreground",
                   )}
                 >
-                  {isSkip ? "Skipped" : entry.value > 0 ? "\u2713" : "\u2717"} {entry.habitName}
+                  {isSkip ? "Skipped" : entry.value > 0 ? "\u2713" : "\u2717"}{" "}
+                  {entry.habitName}
                 </span>
               );
             })}

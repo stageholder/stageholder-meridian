@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { cn } from '@/lib/utils';
+import { cn } from "@/lib/utils";
 
 interface StarVisualProps {
   tier: number;
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
   animate?: boolean;
   className?: string;
 }
@@ -13,7 +13,7 @@ const SIZES = { xs: 20, sm: 32, md: 48, lg: 64, xl: 96 };
 
 export function StarVisual({
   tier,
-  size = 'md',
+  size = "md",
   animate = true,
   className,
 }: StarVisualProps) {
@@ -26,7 +26,7 @@ export function StarVisual({
       width={px}
       height={px}
       viewBox="0 0 100 100"
-      className={cn('shrink-0', className)}
+      className={cn("shrink-0", className)}
       aria-hidden
     >
       <defs>
@@ -51,20 +51,79 @@ export function StarVisual({
       {t === 1 && (
         <>
           {/* Faint cross twinkle */}
-          <line x1={50} y1={32} x2={50} y2={68} stroke="#94a3b8" strokeWidth={1} opacity={0.4} />
-          <line x1={32} y1={50} x2={68} y2={50} stroke="#94a3b8" strokeWidth={1} opacity={0.4} />
-          <line x1={38} y1={38} x2={62} y2={62} stroke="#94a3b8" strokeWidth={0.5} opacity={0.25} />
-          <line x1={62} y1={38} x2={38} y2={62} stroke="#94a3b8" strokeWidth={0.5} opacity={0.25} />
+          <line
+            x1={50}
+            y1={32}
+            x2={50}
+            y2={68}
+            stroke="#94a3b8"
+            strokeWidth={1}
+            opacity={0.4}
+          />
+          <line
+            x1={32}
+            y1={50}
+            x2={68}
+            y2={50}
+            stroke="#94a3b8"
+            strokeWidth={1}
+            opacity={0.4}
+          />
+          <line
+            x1={38}
+            y1={38}
+            x2={62}
+            y2={62}
+            stroke="#94a3b8"
+            strokeWidth={0.5}
+            opacity={0.25}
+          />
+          <line
+            x1={62}
+            y1={38}
+            x2={38}
+            y2={62}
+            stroke="#94a3b8"
+            strokeWidth={0.5}
+            opacity={0.25}
+          />
           {/* Core dot */}
           <circle cx={50} cy={50} r={4} fill="#cbd5e1" />
           <circle cx={50} cy={50} r={2} fill="#ffffff" />
           {animate && (
             <>
-              <line x1={50} y1={32} x2={50} y2={68} stroke="#cbd5e1" strokeWidth={1.5} opacity={0}>
-                <animate attributeName="opacity" values="0;0.6;0" dur="4s" repeatCount="indefinite" />
+              <line
+                x1={50}
+                y1={32}
+                x2={50}
+                y2={68}
+                stroke="#cbd5e1"
+                strokeWidth={1.5}
+                opacity={0}
+              >
+                <animate
+                  attributeName="opacity"
+                  values="0;0.6;0"
+                  dur="4s"
+                  repeatCount="indefinite"
+                />
               </line>
-              <line x1={32} y1={50} x2={68} y2={50} stroke="#cbd5e1" strokeWidth={1.5} opacity={0}>
-                <animate attributeName="opacity" values="0;0.6;0" dur="4s" begin="2s" repeatCount="indefinite" />
+              <line
+                x1={32}
+                y1={50}
+                x2={68}
+                y2={50}
+                stroke="#cbd5e1"
+                strokeWidth={1.5}
+                opacity={0}
+              >
+                <animate
+                  attributeName="opacity"
+                  values="0;0.6;0"
+                  dur="4s"
+                  begin="2s"
+                  repeatCount="indefinite"
+                />
               </line>
             </>
           )}
@@ -75,7 +134,14 @@ export function StarVisual({
       {t === 2 && (
         <>
           {/* Electric glow */}
-          <circle cx={50} cy={50} r={18} fill="#ef4444" opacity={0.15} filter={`url(#${id}-glow)`} />
+          <circle
+            cx={50}
+            cy={50}
+            r={18}
+            fill="#ef4444"
+            opacity={0.15}
+            filter={`url(#${id}-glow)`}
+          />
           {/* Lightning bolt shape */}
           <path
             d="M 50 22 L 44 46 L 54 44 L 48 78 L 56 48 L 46 50 Z"
@@ -98,7 +164,14 @@ export function StarVisual({
                 { x: 38, y: 60 },
                 { x: 62, y: 58 },
               ].map((p, i) => (
-                <circle key={i} cx={p.x} cy={p.y} r={1.5} fill="#fca5a5" opacity={0}>
+                <circle
+                  key={i}
+                  cx={p.x}
+                  cy={p.y}
+                  r={1.5}
+                  fill="#fca5a5"
+                  opacity={0}
+                >
                   <animate
                     attributeName="opacity"
                     values="0;1;0"
@@ -125,25 +198,66 @@ export function StarVisual({
             </radialGradient>
           </defs>
           {/* Heat shimmer */}
-          <circle cx={50} cy={50} r={30} fill="#f59e0b" opacity={0.1} filter={`url(#${id}-glow)`} />
+          <circle
+            cx={50}
+            cy={50}
+            r={30}
+            fill="#f59e0b"
+            opacity={0.1}
+            filter={`url(#${id}-glow)`}
+          />
           {/* Ember body — irregular hot coal shape */}
           <ellipse cx={50} cy={52} rx={22} ry={18} fill={`url(#${id}-ember)`} />
           {/* Cracks of light */}
-          <path d="M 38 48 Q 45 44 50 48 Q 55 52 62 48" stroke="#fbbf24" strokeWidth={1.5} fill="none" opacity={0.7} />
-          <path d="M 42 56 Q 48 52 55 56" stroke="#fde68a" strokeWidth={1} fill="none" opacity={0.5} />
+          <path
+            d="M 38 48 Q 45 44 50 48 Q 55 52 62 48"
+            stroke="#fbbf24"
+            strokeWidth={1.5}
+            fill="none"
+            opacity={0.7}
+          />
+          <path
+            d="M 42 56 Q 48 52 55 56"
+            stroke="#fde68a"
+            strokeWidth={1}
+            fill="none"
+            opacity={0.5}
+          />
           {/* Hot center glow */}
           <ellipse cx={48} cy={48} rx={8} ry={6} fill="#fbbf24" opacity={0.5} />
           <ellipse cx={48} cy={48} rx={4} ry={3} fill="#fde68a" opacity={0.7} />
           {animate && (
             <>
-              <ellipse cx={50} cy={52} rx={22} ry={18} fill="#f59e0b" opacity={0}>
-                <animate attributeName="opacity" values="0;0.2;0" dur="2.5s" repeatCount="indefinite" />
+              <ellipse
+                cx={50}
+                cy={52}
+                rx={22}
+                ry={18}
+                fill="#f59e0b"
+                opacity={0}
+              >
+                <animate
+                  attributeName="opacity"
+                  values="0;0.2;0"
+                  dur="2.5s"
+                  repeatCount="indefinite"
+                />
               </ellipse>
               {/* Rising heat particles */}
               {[42, 50, 58].map((x, i) => (
                 <circle key={i} cx={x} cy={36} r={1} fill="#f59e0b" opacity={0}>
-                  <animate attributeName="cy" values="36;24;16" dur={`${2 + i * 0.4}s`} repeatCount="indefinite" />
-                  <animate attributeName="opacity" values="0.6;0.3;0" dur={`${2 + i * 0.4}s`} repeatCount="indefinite" />
+                  <animate
+                    attributeName="cy"
+                    values="36;24;16"
+                    dur={`${2 + i * 0.4}s`}
+                    repeatCount="indefinite"
+                  />
+                  <animate
+                    attributeName="opacity"
+                    values="0.6;0.3;0"
+                    dur={`${2 + i * 0.4}s`}
+                    repeatCount="indefinite"
+                  />
                 </circle>
               ))}
             </>
@@ -163,7 +277,15 @@ export function StarVisual({
             </linearGradient>
           </defs>
           {/* Flame glow */}
-          <ellipse cx={50} cy={50} rx={24} ry={30} fill="#f97316" opacity={0.12} filter={`url(#${id}-glow)`} />
+          <ellipse
+            cx={50}
+            cy={50}
+            rx={24}
+            ry={30}
+            fill="#f97316"
+            opacity={0.12}
+            filter={`url(#${id}-glow)`}
+          />
           {/* Outer flame */}
           <path
             d="M 50 16 C 38 30 30 48 34 62 C 36 70 42 76 50 78 C 58 76 64 70 66 62 C 70 48 62 30 50 16 Z"
@@ -215,7 +337,14 @@ export function StarVisual({
             </radialGradient>
           </defs>
           {/* Heat waves */}
-          <circle cx={50} cy={50} r={38} fill="#f97316" opacity={0.08} filter={`url(#${id}-glow)`} />
+          <circle
+            cx={50}
+            cy={50}
+            r={38}
+            fill="#f97316"
+            opacity={0.08}
+            filter={`url(#${id}-glow)`}
+          />
           {/* Wavy rays */}
           {[0, 45, 90, 135, 180, 225, 270, 315].map((angle, i) => {
             const rad = (angle * Math.PI) / 180;
@@ -226,8 +355,11 @@ export function StarVisual({
             return (
               <line
                 key={angle}
-                x1={x1} y1={y1} x2={x2} y2={y2}
-                stroke={i % 2 === 0 ? '#fbbf24' : '#f97316'}
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                stroke={i % 2 === 0 ? "#fbbf24" : "#f97316"}
                 strokeWidth={i % 2 === 0 ? 3.5 : 2}
                 strokeLinecap="round"
                 opacity={0.6}
@@ -262,11 +394,18 @@ export function StarVisual({
             </radialGradient>
           </defs>
           {/* Flare eruptions — curved arcs shooting out */}
-          <circle cx={50} cy={50} r={42} fill="#eab308" opacity={0.06} filter={`url(#${id}-heavyglow)`} />
+          <circle
+            cx={50}
+            cy={50}
+            r={42}
+            fill="#eab308"
+            opacity={0.06}
+            filter={`url(#${id}-heavyglow)`}
+          />
           {[
-            'M 30 38 Q 18 50 30 62',
-            'M 70 38 Q 82 50 70 62',
-            'M 38 28 Q 50 14 62 28',
+            "M 30 38 Q 18 50 30 62",
+            "M 70 38 Q 82 50 70 62",
+            "M 38 28 Q 50 14 62 28",
           ].map((d, i) => (
             <path
               key={i}
@@ -288,23 +427,33 @@ export function StarVisual({
             </path>
           ))}
           {/* Starburst rays */}
-          {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((angle, i) => {
-            const rad = (angle * Math.PI) / 180;
-            const len = i % 3 === 0 ? 38 : i % 3 === 1 ? 30 : 26;
-            return (
-              <line
-                key={angle}
-                x1={50 + Math.cos(rad) * 16} y1={50 + Math.sin(rad) * 16}
-                x2={50 + Math.cos(rad) * len} y2={50 + Math.sin(rad) * len}
-                stroke="#fbbf24"
-                strokeWidth={i % 3 === 0 ? 2.5 : 1}
-                strokeLinecap="round"
-                opacity={0.45}
-              />
-            );
-          })}
+          {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map(
+            (angle, i) => {
+              const rad = (angle * Math.PI) / 180;
+              const len = i % 3 === 0 ? 38 : i % 3 === 1 ? 30 : 26;
+              return (
+                <line
+                  key={angle}
+                  x1={50 + Math.cos(rad) * 16}
+                  y1={50 + Math.sin(rad) * 16}
+                  x2={50 + Math.cos(rad) * len}
+                  y2={50 + Math.sin(rad) * len}
+                  stroke="#fbbf24"
+                  strokeWidth={i % 3 === 0 ? 2.5 : 1}
+                  strokeLinecap="round"
+                  opacity={0.45}
+                />
+              );
+            },
+          )}
           {/* Core */}
-          <circle cx={50} cy={50} r={16} fill={`url(#${id}-flare)`} filter={`url(#${id}-glow)`} />
+          <circle
+            cx={50}
+            cy={50}
+            r={16}
+            fill={`url(#${id}-flare)`}
+            filter={`url(#${id}-glow)`}
+          />
           <circle cx={50} cy={50} r={6} fill="#ffffff" opacity={0.85} />
         </>
       )}
@@ -320,13 +469,38 @@ export function StarVisual({
               <stop offset="100%" stopColor="#a16207" stopOpacity={0} />
             </radialGradient>
           </defs>
-          <circle cx={50} cy={50} r={44} fill="#fbbf24" opacity={0.06} filter={`url(#${id}-heavyglow)`} />
+          <circle
+            cx={50}
+            cy={50}
+            r={44}
+            fill="#fbbf24"
+            opacity={0.06}
+            filter={`url(#${id}-heavyglow)`}
+          />
           {/* Shockwave ring */}
-          <circle cx={50} cy={50} r={36} fill="none" stroke="#fde68a" strokeWidth={1.5} opacity={0.3}>
+          <circle
+            cx={50}
+            cy={50}
+            r={36}
+            fill="none"
+            stroke="#fde68a"
+            strokeWidth={1.5}
+            opacity={0.3}
+          >
             {animate && (
               <>
-                <animate attributeName="r" values="28;40;28" dur="3s" repeatCount="indefinite" />
-                <animate attributeName="opacity" values="0.4;0.1;0.4" dur="3s" repeatCount="indefinite" />
+                <animate
+                  attributeName="r"
+                  values="28;40;28"
+                  dur="3s"
+                  repeatCount="indefinite"
+                />
+                <animate
+                  attributeName="opacity"
+                  values="0.4;0.1;0.4"
+                  dur="3s"
+                  repeatCount="indefinite"
+                />
               </>
             )}
           </circle>
@@ -343,12 +517,28 @@ export function StarVisual({
             opacity={0.4}
           />
           {/* Core */}
-          <circle cx={50} cy={50} r={14} fill={`url(#${id}-nova)`} filter={`url(#${id}-glow)`} />
+          <circle
+            cx={50}
+            cy={50}
+            r={14}
+            fill={`url(#${id}-nova)`}
+            filter={`url(#${id}-glow)`}
+          />
           <circle cx={50} cy={50} r={6} fill="#ffffff" opacity={0.9} />
           {animate && (
             <circle cx={50} cy={50} r={14} fill="#fef9c3" opacity={0}>
-              <animate attributeName="opacity" values="0;0.4;0" dur="2s" repeatCount="indefinite" />
-              <animate attributeName="r" values="14;22;14" dur="2s" repeatCount="indefinite" />
+              <animate
+                attributeName="opacity"
+                values="0;0.4;0"
+                dur="2s"
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="r"
+                values="14;22;14"
+                dur="2s"
+                repeatCount="indefinite"
+              />
             </circle>
           )}
         </>
@@ -365,40 +555,94 @@ export function StarVisual({
               <stop offset="100%" stopColor="#ca8a04" stopOpacity={0} />
             </radialGradient>
           </defs>
-          <circle cx={50} cy={50} r={44} fill="#fde68a" opacity={0.05} filter={`url(#${id}-heavyglow)`} />
+          <circle
+            cx={50}
+            cy={50}
+            r={44}
+            fill="#fde68a"
+            opacity={0.05}
+            filter={`url(#${id}-heavyglow)`}
+          />
           {/* Rotating beam */}
           <g opacity={0.5}>
-            <ellipse cx={50} cy={50} rx={42} ry={4} fill="#fef9c3" filter={`url(#${id}-glow)`}>
+            <ellipse
+              cx={50}
+              cy={50}
+              rx={42}
+              ry={4}
+              fill="#fef9c3"
+              filter={`url(#${id}-glow)`}
+            >
               {animate && (
                 <animateTransform
-                  attributeName="transform" type="rotate"
-                  from="0 50 50" to="360 50 50" dur="4s" repeatCount="indefinite"
+                  attributeName="transform"
+                  type="rotate"
+                  from="0 50 50"
+                  to="360 50 50"
+                  dur="4s"
+                  repeatCount="indefinite"
                 />
               )}
             </ellipse>
           </g>
           {/* Second beam perpendicular */}
           <g opacity={0.3}>
-            <ellipse cx={50} cy={50} rx={36} ry={3} fill="#ffffff" filter={`url(#${id}-glow)`}>
+            <ellipse
+              cx={50}
+              cy={50}
+              rx={36}
+              ry={3}
+              fill="#ffffff"
+              filter={`url(#${id}-glow)`}
+            >
               {animate && (
                 <animateTransform
-                  attributeName="transform" type="rotate"
-                  from="90 50 50" to="450 50 50" dur="6s" repeatCount="indefinite"
+                  attributeName="transform"
+                  type="rotate"
+                  from="90 50 50"
+                  to="450 50 50"
+                  dur="6s"
+                  repeatCount="indefinite"
                 />
               )}
             </ellipse>
           </g>
           {/* Emission rings */}
           {[28, 36].map((r, i) => (
-            <circle key={i} cx={50} cy={50} r={r} fill="none" stroke="#fde68a" strokeWidth={0.8} opacity={0.2} />
+            <circle
+              key={i}
+              cx={50}
+              cy={50}
+              r={r}
+              fill="none"
+              stroke="#fde68a"
+              strokeWidth={0.8}
+              opacity={0.2}
+            />
           ))}
           {/* Core */}
-          <circle cx={50} cy={50} r={12} fill={`url(#${id}-pulsar)`} filter={`url(#${id}-glow)`} />
+          <circle
+            cx={50}
+            cy={50}
+            r={12}
+            fill={`url(#${id}-pulsar)`}
+            filter={`url(#${id}-glow)`}
+          />
           <circle cx={50} cy={50} r={5} fill="#ffffff" opacity={0.95} />
           {animate && (
             <circle cx={50} cy={50} r={12} fill="#fef9c3" opacity={0}>
-              <animate attributeName="opacity" values="0.5;0;0.5" dur="1.5s" repeatCount="indefinite" />
-              <animate attributeName="r" values="12;18;12" dur="1.5s" repeatCount="indefinite" />
+              <animate
+                attributeName="opacity"
+                values="0.5;0;0.5"
+                dur="1.5s"
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="r"
+                values="12;18;12"
+                dur="1.5s"
+                repeatCount="indefinite"
+              />
             </circle>
           )}
         </>
@@ -416,12 +660,42 @@ export function StarVisual({
             </radialGradient>
           </defs>
           {/* Expanding outer shockwave */}
-          <circle cx={50} cy={50} r={46} fill="#eab308" opacity={0.05} filter={`url(#${id}-heavyglow)`} />
+          <circle
+            cx={50}
+            cy={50}
+            r={46}
+            fill="#eab308"
+            opacity={0.05}
+            filter={`url(#${id}-heavyglow)`}
+          />
           {animate && (
-            <circle cx={50} cy={50} r={30} fill="none" stroke="#fbbf24" strokeWidth={2} opacity={0}>
-              <animate attributeName="r" values="20;46;20" dur="3.5s" repeatCount="indefinite" />
-              <animate attributeName="opacity" values="0.5;0;0.5" dur="3.5s" repeatCount="indefinite" />
-              <animate attributeName="stroke-width" values="3;0.5;3" dur="3.5s" repeatCount="indefinite" />
+            <circle
+              cx={50}
+              cy={50}
+              r={30}
+              fill="none"
+              stroke="#fbbf24"
+              strokeWidth={2}
+              opacity={0}
+            >
+              <animate
+                attributeName="r"
+                values="20;46;20"
+                dur="3.5s"
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="opacity"
+                values="0.5;0;0.5"
+                dur="3.5s"
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="stroke-width"
+                values="3;0.5;3"
+                dur="3.5s"
+                repeatCount="indefinite"
+              />
             </circle>
           )}
           {/* Debris rays — explosive pattern */}
@@ -433,35 +707,62 @@ export function StarVisual({
             return (
               <line
                 key={i}
-                x1={50 + Math.cos(rad) * 14} y1={50 + Math.sin(rad) * 14}
-                x2={50 + Math.cos(rad) * len} y2={50 + Math.sin(rad) * len}
-                stroke={i % 4 === 0 ? '#fde68a' : '#eab308'}
+                x1={50 + Math.cos(rad) * 14}
+                y1={50 + Math.sin(rad) * 14}
+                x2={50 + Math.cos(rad) * len}
+                y2={50 + Math.sin(rad) * len}
+                stroke={i % 4 === 0 ? "#fde68a" : "#eab308"}
                 strokeWidth={w}
                 strokeLinecap="round"
                 opacity={0.5}
               >
                 {animate && (
                   <animate
-                    attributeName="opacity" values="0.3;0.7;0.3"
-                    dur={`${1.2 + i * 0.08}s`} repeatCount="indefinite"
+                    attributeName="opacity"
+                    values="0.3;0.7;0.3"
+                    dur={`${1.2 + i * 0.08}s`}
+                    repeatCount="indefinite"
                   />
                 )}
               </line>
             );
           })}
           {/* Inner bright nebula cloud */}
-          <circle cx={50} cy={50} r={20} fill="#fbbf24" opacity={0.2} filter={`url(#${id}-heavyglow)`} />
+          <circle
+            cx={50}
+            cy={50}
+            r={20}
+            fill="#fbbf24"
+            opacity={0.2}
+            filter={`url(#${id}-heavyglow)`}
+          />
           {/* Core */}
-          <circle cx={50} cy={50} r={14} fill={`url(#${id}-sn)`} filter={`url(#${id}-glow)`} />
+          <circle
+            cx={50}
+            cy={50}
+            r={14}
+            fill={`url(#${id}-sn)`}
+            filter={`url(#${id}-glow)`}
+          />
           <circle cx={50} cy={50} r={6} fill="#ffffff" opacity={0.95} />
           {/* Scattered debris particles */}
           {animate &&
             [0, 55, 110, 165, 220, 275, 330].map((startAngle, i) => (
-              <circle key={i} cx={50} cy={50 - 34} r={1.5} fill="#fde68a" opacity={0.7}>
+              <circle
+                key={i}
+                cx={50}
+                cy={50 - 34}
+                r={1.5}
+                fill="#fde68a"
+                opacity={0.7}
+              >
                 <animateTransform
-                  attributeName="transform" type="rotate"
-                  from={`${startAngle} 50 50`} to={`${startAngle + 360} 50 50`}
-                  dur={`${5 + i * 0.6}s`} repeatCount="indefinite"
+                  attributeName="transform"
+                  type="rotate"
+                  from={`${startAngle} 50 50`}
+                  to={`${startAngle + 360} 50 50`}
+                  dur={`${5 + i * 0.6}s`}
+                  repeatCount="indefinite"
                 />
               </circle>
             ))}
@@ -496,20 +797,61 @@ export function StarVisual({
           {/* Double expanding shockwaves */}
           {animate && (
             <>
-              <circle cx={50} cy={50} r={30} fill="none" stroke="#fbbf24" strokeWidth={1.5} opacity={0}>
-                <animate attributeName="r" values="20;48;20" dur="5s" repeatCount="indefinite" />
-                <animate attributeName="opacity" values="0.4;0;0.4" dur="5s" repeatCount="indefinite" />
+              <circle
+                cx={50}
+                cy={50}
+                r={30}
+                fill="none"
+                stroke="#fbbf24"
+                strokeWidth={1.5}
+                opacity={0}
+              >
+                <animate
+                  attributeName="r"
+                  values="20;48;20"
+                  dur="5s"
+                  repeatCount="indefinite"
+                />
+                <animate
+                  attributeName="opacity"
+                  values="0.4;0;0.4"
+                  dur="5s"
+                  repeatCount="indefinite"
+                />
               </circle>
-              <circle cx={50} cy={50} r={25} fill="none" stroke="#fde68a" strokeWidth={1} opacity={0}>
-                <animate attributeName="r" values="18;44;18" dur="4s" begin="1.5s" repeatCount="indefinite" />
-                <animate attributeName="opacity" values="0.3;0;0.3" dur="4s" begin="1.5s" repeatCount="indefinite" />
+              <circle
+                cx={50}
+                cy={50}
+                r={25}
+                fill="none"
+                stroke="#fde68a"
+                strokeWidth={1}
+                opacity={0}
+              >
+                <animate
+                  attributeName="r"
+                  values="18;44;18"
+                  dur="4s"
+                  begin="1.5s"
+                  repeatCount="indefinite"
+                />
+                <animate
+                  attributeName="opacity"
+                  values="0.3;0;0.3"
+                  dur="4s"
+                  begin="1.5s"
+                  repeatCount="indefinite"
+                />
               </circle>
             </>
           )}
 
           {/* Orbital ring — the meridian line itself */}
           <ellipse
-            cx={50} cy={50} rx={38} ry={12}
+            cx={50}
+            cy={50}
+            rx={38}
+            ry={12}
             fill="none"
             stroke={`url(#${id}-m-ring)`}
             strokeWidth={1.5}
@@ -517,14 +859,21 @@ export function StarVisual({
           >
             {animate && (
               <animateTransform
-                attributeName="transform" type="rotate"
-                from="0 50 50" to="360 50 50" dur="12s" repeatCount="indefinite"
+                attributeName="transform"
+                type="rotate"
+                from="0 50 50"
+                to="360 50 50"
+                dur="12s"
+                repeatCount="indefinite"
               />
             )}
           </ellipse>
           {/* Second orbital ring — perpendicular */}
           <ellipse
-            cx={50} cy={50} rx={34} ry={10}
+            cx={50}
+            cy={50}
+            rx={34}
+            ry={10}
             fill="none"
             stroke="#fde68a"
             strokeWidth={1}
@@ -532,8 +881,12 @@ export function StarVisual({
           >
             {animate && (
               <animateTransform
-                attributeName="transform" type="rotate"
-                from="60 50 50" to="420 50 50" dur="16s" repeatCount="indefinite"
+                attributeName="transform"
+                type="rotate"
+                from="60 50 50"
+                to="420 50 50"
+                dur="16s"
+                repeatCount="indefinite"
               />
             )}
           </ellipse>
@@ -546,17 +899,21 @@ export function StarVisual({
             return (
               <line
                 key={i}
-                x1={50 + Math.cos(rad) * 18} y1={50 + Math.sin(rad) * 18}
-                x2={50 + Math.cos(rad) * len} y2={50 + Math.sin(rad) * len}
-                stroke={i % 4 === 0 ? '#ffffff' : '#fbbf24'}
+                x1={50 + Math.cos(rad) * 18}
+                y1={50 + Math.sin(rad) * 18}
+                x2={50 + Math.cos(rad) * len}
+                y2={50 + Math.sin(rad) * len}
+                stroke={i % 4 === 0 ? "#ffffff" : "#fbbf24"}
                 strokeWidth={i % 4 === 0 ? 2.5 : 1.2}
                 strokeLinecap="round"
                 opacity={0.45}
               >
                 {animate && (
                   <animate
-                    attributeName="opacity" values="0.2;0.65;0.2"
-                    dur={`${2 + i * 0.15}s`} repeatCount="indefinite"
+                    attributeName="opacity"
+                    values="0.2;0.65;0.2"
+                    dur={`${2 + i * 0.15}s`}
+                    repeatCount="indefinite"
                   />
                 )}
               </line>
@@ -564,10 +921,23 @@ export function StarVisual({
           })}
 
           {/* Inner nebula glow */}
-          <circle cx={50} cy={50} r={22} fill="#fbbf24" opacity={0.2} filter={`url(#${id}-heavyglow)`} />
+          <circle
+            cx={50}
+            cy={50}
+            r={22}
+            fill="#fbbf24"
+            opacity={0.2}
+            filter={`url(#${id}-heavyglow)`}
+          />
 
           {/* Core celestial body */}
-          <circle cx={50} cy={50} r={16} fill={`url(#${id}-m-core)`} filter={`url(#${id}-glow)`} />
+          <circle
+            cx={50}
+            cy={50}
+            r={16}
+            fill={`url(#${id}-m-core)`}
+            filter={`url(#${id}-glow)`}
+          />
 
           {/* Inner white-hot core */}
           <circle cx={50} cy={50} r={8} fill="#ffffff" opacity={0.9} />
@@ -576,8 +946,18 @@ export function StarVisual({
           {/* Breathing pulse */}
           {animate && (
             <circle cx={50} cy={50} r={16} fill="#fde68a" opacity={0}>
-              <animate attributeName="r" values="16;24;16" dur="3s" repeatCount="indefinite" />
-              <animate attributeName="opacity" values="0;0.3;0" dur="3s" repeatCount="indefinite" />
+              <animate
+                attributeName="r"
+                values="16;24;16"
+                dur="3s"
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="opacity"
+                values="0;0.3;0"
+                dur="3s"
+                repeatCount="indefinite"
+              />
             </circle>
           )}
 
@@ -585,20 +965,40 @@ export function StarVisual({
           {animate && (
             <>
               {[0, 120, 240].map((angle, i) => (
-                <circle key={`a${i}`} cx={50} cy={50 - 36} r={2} fill="#ffffff" opacity={0.8}>
+                <circle
+                  key={`a${i}`}
+                  cx={50}
+                  cy={50 - 36}
+                  r={2}
+                  fill="#ffffff"
+                  opacity={0.8}
+                >
                   <animateTransform
-                    attributeName="transform" type="rotate"
-                    from={`${angle} 50 50`} to={`${angle + 360} 50 50`}
-                    dur={`${8 + i}s`} repeatCount="indefinite"
+                    attributeName="transform"
+                    type="rotate"
+                    from={`${angle} 50 50`}
+                    to={`${angle + 360} 50 50`}
+                    dur={`${8 + i}s`}
+                    repeatCount="indefinite"
                   />
                 </circle>
               ))}
               {[60, 180, 300].map((angle, i) => (
-                <circle key={`b${i}`} cx={50} cy={50 - 30} r={1.5} fill="#fbbf24" opacity={0.6}>
+                <circle
+                  key={`b${i}`}
+                  cx={50}
+                  cy={50 - 30}
+                  r={1.5}
+                  fill="#fbbf24"
+                  opacity={0.6}
+                >
                   <animateTransform
-                    attributeName="transform" type="rotate"
-                    from={`${angle} 50 50`} to={`${angle + 360} 50 50`}
-                    dur={`${10 + i}s`} repeatCount="indefinite"
+                    attributeName="transform"
+                    type="rotate"
+                    from={`${angle} 50 50`}
+                    to={`${angle + 360} 50 50`}
+                    dur={`${10 + i}s`}
+                    repeatCount="indefinite"
                   />
                 </circle>
               ))}

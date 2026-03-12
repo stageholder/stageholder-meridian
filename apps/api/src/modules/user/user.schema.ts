@@ -1,12 +1,12 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
-import { randomUUID } from 'crypto';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document } from "mongoose";
+import { randomUUID } from "crypto";
 
 export type UserDocument = UserModel & Document<string>;
 
 @Schema({
-  collection: 'users',
-  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+  collection: "users",
+  timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
   toJSON: {
     transform: (_doc: any, ret: any) => {
       ret.id = ret._id;
@@ -19,10 +19,23 @@ export type UserDocument = UserModel & Document<string>;
 })
 export class UserModel {
   @Prop({ type: String, default: () => randomUUID() }) _id: string;
-  @Prop({ type: String, required: true, unique: true, lowercase: true, trim: true }) email: string;
+  @Prop({
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+    trim: true,
+  })
+  email: string;
   @Prop({ type: String, required: true, trim: true }) name: string;
   @Prop({ type: String }) password_hash: string;
-  @Prop({ type: String, required: true, enum: ['local', 'google'], default: 'local' }) provider: string;
+  @Prop({
+    type: String,
+    required: true,
+    enum: ["local", "google"],
+    default: "local",
+  })
+  provider: string;
   @Prop({ type: String }) provider_id: string;
   @Prop({ type: Boolean, default: false }) email_verified: boolean;
   @Prop({ type: String }) avatar: string;
