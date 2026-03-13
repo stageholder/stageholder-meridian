@@ -61,6 +61,12 @@ jobs:
           args: --target ${{ matrix.target }}
           tauriScript: bunx tauri
 
+      - name: List all bundle files
+        shell: bash
+        run: |
+          echo "=== All files in bundle directory ==="
+          find "apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle" -type f | sort
+
       - name: Collect updater artifacts
         shell: bash
         run: |
@@ -68,6 +74,8 @@ jobs:
           find "apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle" -type f \
             \( -name "*.tar.gz" -o -name "*.tar.gz.sig" -o -name "*.AppImage" -o -name "*.AppImage.sig" -o -name "*-setup.exe" -o -name "*-setup.exe.sig" \) \
             -exec cp {} updater-staging/ \;
+          echo "=== Staged files ==="
+          ls -la updater-staging/
 
       - name: Upload updater artifacts
         uses: actions/upload-artifact@v4
