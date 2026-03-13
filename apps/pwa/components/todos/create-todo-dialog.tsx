@@ -80,6 +80,18 @@ export function CreateTodoDialog({
     );
   }
 
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onOpenChange(false);
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, onOpenChange]);
+
   if (!open) return null;
 
   return (

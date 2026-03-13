@@ -130,6 +130,19 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing]);
 
+  // Listen for global "N" shortcut event (quick add focus)
+  const handleActivateRef = useRef(handleActivate);
+  handleActivateRef.current = handleActivate;
+  useEffect(() => {
+    function onQuickAdd() {
+      handleActivateRef.current();
+    }
+    window.addEventListener("meridian:quick-add-todo", onQuickAdd);
+    return () => {
+      window.removeEventListener("meridian:quick-add-todo", onQuickAdd);
+    };
+  }, []);
+
   const selectedList = lists?.find((l) => l.id === selectedListId);
 
   const doDateInfo = doDate

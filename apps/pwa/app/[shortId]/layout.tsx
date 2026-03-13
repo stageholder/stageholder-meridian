@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import {
@@ -16,6 +16,8 @@ import {
   Plus,
   Check,
   LayoutGrid,
+  Search,
+  Keyboard,
 } from "lucide-react";
 import { useAutoSync, useSyncOnFocus } from "@repo/offline/hooks";
 import { useNetworkStatusWithHeartbeat } from "@repo/offline/network";
@@ -32,6 +34,10 @@ import { UpdateChecker } from "@/components/shared/update-checker";
 import { DailyTargetRings } from "@/components/shared/daily-target-rings";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { FeedbackButton } from "@/components/shared/feedback-button";
+import { CommandPalette } from "@/components/shared/command-palette";
+import { ShortcutsDialog } from "@/components/shared/shortcuts-dialog";
+import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
+import { CreateTodoDialog } from "@/components/todos/create-todo-dialog";
 import apiClient from "@/lib/api-client";
 import { clearLoggedInFlag } from "@/lib/auth-helpers";
 import { useAuthStore } from "@/stores/auth-store";
@@ -61,12 +67,17 @@ import {
 } from "@/components/ui/popover";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: Home },
-  { href: "/calendar", label: "Calendar", icon: CalendarDays },
-  { href: "/todos", label: "Todos", icon: CheckSquare },
-  { href: "/habits", label: "Habits", icon: Target },
-  { href: "/journal", label: "Journal", icon: BookOpen },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard", label: "Dashboard", icon: Home, shortcutKey: "D" },
+  {
+    href: "/calendar",
+    label: "Calendar",
+    icon: CalendarDays,
+    shortcutKey: "C",
+  },
+  { href: "/todos", label: "Todos", icon: CheckSquare, shortcutKey: "T" },
+  { href: "/habits", label: "Habits", icon: Target, shortcutKey: "H" },
+  { href: "/journal", label: "Journal", icon: BookOpen, shortcutKey: "J" },
+  { href: "/settings", label: "Settings", icon: Settings, shortcutKey: "S" },
 ];
 
 function WorkspaceSelector({
@@ -168,6 +179,14 @@ function SidebarNav({
           >
             <Icon className="size-4" />
             {item.label}
+            <span className="ml-auto hidden items-center gap-0.5 md:inline-flex">
+              <kbd className="rounded border border-sidebar-border bg-sidebar-accent/50 px-1 font-mono text-[10px] font-medium text-muted-foreground/60">
+                G
+              </kbd>
+              <kbd className="rounded border border-sidebar-border bg-sidebar-accent/50 px-1 font-mono text-[10px] font-medium text-muted-foreground/60">
+                {item.shortcutKey}
+              </kbd>
+            </span>
           </Link>
         );
       })}
@@ -204,6 +223,19 @@ export default function WorkspaceLayout({
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
+  const [createTodoDialogOpen, setCreateTodoDialogOpen] = useState(false);
+
+  const shortcutCallbacks = useMemo(
+    () => ({
+      setCommandPaletteOpen,
+      setShortcutsDialogOpen,
+      setCreateTodoDialogOpen,
+    }),
+    [],
+  );
+  useGlobalShortcuts(shortId, shortcutCallbacks);
 
   useEffect(() => {
     if (user && user.onboardingCompleted === false) {
@@ -276,6 +308,22 @@ export default function WorkspaceLayout({
     <WorkspaceProvider workspace={workspace}>
       <SyncConflictListener />
       <UpdateChecker />
+      <CommandPalette
+        open={commandPaletteOpen}
+        onOpenChange={setCommandPaletteOpen}
+        shortId={shortId}
+        onOpenShortcuts={() => setShortcutsDialogOpen(true)}
+        onCreateTodo={() => setCreateTodoDialogOpen(true)}
+      />
+      <ShortcutsDialog
+        open={shortcutsDialogOpen}
+        onOpenChange={setShortcutsDialogOpen}
+      />
+      <CreateTodoDialog
+        open={createTodoDialogOpen}
+        onOpenChange={setCreateTodoDialogOpen}
+        listId=""
+      />
       <div className="flex h-screen bg-background">
         {/* Desktop sidebar */}
         <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
@@ -289,8 +337,20 @@ export default function WorkspaceLayout({
             <SidebarNav shortId={shortId} pathname={pathname} />
           </div>
 
-          {/* Feedback */}
+          {/* Bottom actions */}
           <div className="border-t border-sidebar-border px-3 py-2">
+            <button
+              onClick={() => setShortcutsDialogOpen(true)}
+              className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+            >
+              <Keyboard className="size-4" />
+              Shortcuts
+              <span className="ml-auto inline-flex items-center">
+                <kbd className="rounded border border-sidebar-border bg-sidebar-accent/50 px-1 font-mono text-[10px] font-medium text-muted-foreground/60">
+                  ?
+                </kbd>
+              </span>
+            </button>
             <FeedbackButton />
           </div>
         </aside>
@@ -344,6 +404,18 @@ export default function WorkspaceLayout({
 
             {/* Right side */}
             <div className="flex items-center gap-1.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCommandPaletteOpen(true)}
+                className="hidden gap-2 text-muted-foreground sm:flex"
+              >
+                <Search className="size-3.5" />
+                <span className="text-xs">Search...</span>
+                <kbd className="pointer-events-none ml-1 hidden rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground sm:inline-flex">
+                  ⌘K
+                </kbd>
+              </Button>
               <DailyTargetRings />
               <div className="mx-0.5 h-4 w-px bg-border" />
               <OfflineIndicator />
