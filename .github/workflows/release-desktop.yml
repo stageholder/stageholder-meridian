@@ -118,6 +118,11 @@ jobs:
           path: artifacts
           pattern: updater-*
 
+      - name: List downloaded artifacts
+        run: |
+          echo "=== All downloaded files ==="
+          find artifacts/ -type f | sort
+
       - name: Reorganize artifacts
         run: |
           for dir in artifacts/updater-*; do
