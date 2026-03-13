@@ -23,9 +23,7 @@
   },
   "plugins": {
     "updater": {
-      "endpoints": [
-        "https://meridian-releases.sgp1.vultrobjects.com/latest.json"
-      ],
+      "endpoints": ["https://releases.meridian.stageholder.com/latest.json"],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDlCNjREREJCQzQ3N0YyRDUKUldUVjhuZkV1OTFrbTcweCs5OWJBR1R0V2JuYkdMWkNkYmQvQytCOEtEb2xHVXNVZ203a0NJSzMK"
     }
   },

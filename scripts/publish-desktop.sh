@@ -4,17 +4,22 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # publish-desktop.sh
 # Called by CI after all platform builds complete.
-# Uploads Tauri updater artifacts to Vultr Object Storage and publishes
-# latest.json for the Tauri updater endpoint.
+# Uploads Tauri updater artifacts to any S3-compatible object storage
+# and publishes latest.json for the Tauri updater endpoint.
 #
 # Usage:
 #   publish-desktop.sh <VERSION> [NOTES]
 #
 # Required env vars:
-#   VULTR_OBJ_ACCESS_KEY
-#   VULTR_OBJ_SECRET_KEY
-#   VULTR_OBJ_REGION
-#   VULTR_OBJ_BUCKET
+#   S3_ACCESS_KEY_ID      - S3 access key
+#   S3_SECRET_ACCESS_KEY  - S3 secret key
+#   S3_ENDPOINT_URL       - S3 endpoint (e.g. https://acct.r2.cloudflarestorage.com)
+#   S3_BUCKET             - Bucket name
+#   S3_PUBLIC_URL         - Public base URL for the bucket (e.g. https://releases.example.com)
+#
+# Optional env vars:
+#   S3_REGION             - Region (default: auto)
+#   ARTIFACTS_DIR         - Directory containing build artifacts (default: .)
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
@@ -32,7 +37,7 @@ NOTES="${2:-Release v${VERSION}}"
 # Required environment variable validation
 # ---------------------------------------------------------------------------
 MISSING=()
-for var in VULTR_OBJ_ACCESS_KEY VULTR_OBJ_SECRET_KEY VULTR_OBJ_REGION VULTR_OBJ_BUCKET; do
+for var in S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY S3_ENDPOINT_URL S3_BUCKET S3_PUBLIC_URL; do
   if [[ -z "${!var:-}" ]]; then
     MISSING+=("$var")
   fi
@@ -46,25 +51,29 @@ if [[ ${#MISSING[@]} -gt 0 ]]; then
   exit 1
 fi
 
-# ---------------------------------------------------------------------------
-# Configure AWS CLI with Vultr credentials
-# ---------------------------------------------------------------------------
-aws configure set aws_access_key_id     "$VULTR_OBJ_ACCESS_KEY"
-aws configure set aws_secret_access_key "$VULTR_OBJ_SECRET_KEY"
-aws configure set default.region        "$VULTR_OBJ_REGION"
+S3_REGION="${S3_REGION:-auto}"
 
-ENDPOINT="https://${VULTR_OBJ_REGION}.vultrobjects.com"
+# ---------------------------------------------------------------------------
+# Configure AWS CLI with S3-compatible credentials
+# ---------------------------------------------------------------------------
+aws configure set aws_access_key_id     "$S3_ACCESS_KEY_ID"
+aws configure set aws_secret_access_key "$S3_SECRET_ACCESS_KEY"
+aws configure set default.region        "$S3_REGION"
 
 # ---------------------------------------------------------------------------
 # Artifacts directory (default: current directory)
 # ---------------------------------------------------------------------------
 ARTIFACTS_DIR="${ARTIFACTS_DIR:-.}"
 
+# Strip trailing slash from public URL
+S3_PUBLIC_URL="${S3_PUBLIC_URL%/}"
+
 echo "============================================================"
 echo "Publishing Meridian Desktop v${VERSION}"
 echo "Artifacts dir : ${ARTIFACTS_DIR}"
-echo "Bucket        : ${VULTR_OBJ_BUCKET}"
-echo "Endpoint      : ${ENDPOINT}"
+echo "Bucket        : ${S3_BUCKET}"
+echo "Endpoint      : ${S3_ENDPOINT_URL}"
+echo "Public URL    : ${S3_PUBLIC_URL}"
 echo "============================================================"
 
 # ---------------------------------------------------------------------------
@@ -128,20 +137,18 @@ for TARGET in "${!PLATFORM_KEY[@]}"; do
 
   ARTIFACT_BASENAME="$(basename "$ARTIFACT")"
   DEST_KEY="v${VERSION}/${ARTIFACT_BASENAME}"
-  PUBLIC_URL="https://${VULTR_OBJ_BUCKET}.${VULTR_OBJ_REGION}.vultrobjects.com/${DEST_KEY}"
+  PUBLIC_URL="${S3_PUBLIC_URL}/${DEST_KEY}"
   SIGNATURE="$(cat "$SIG_FILE")"
 
   # Upload artifact
   echo "Uploading [${PLATFORM}]: ${ARTIFACT_BASENAME}"
-  aws s3 cp "$ARTIFACT" "s3://${VULTR_OBJ_BUCKET}/${DEST_KEY}" \
-    --endpoint-url "$ENDPOINT" \
-    --acl public-read
+  aws s3 cp "$ARTIFACT" "s3://${S3_BUCKET}/${DEST_KEY}" \
+    --endpoint-url "$S3_ENDPOINT_URL"
 
   # Upload .sig file alongside the artifact
   echo "Uploading [${PLATFORM}]: ${ARTIFACT_BASENAME}.sig"
-  aws s3 cp "$SIG_FILE" "s3://${VULTR_OBJ_BUCKET}/${DEST_KEY}.sig" \
-    --endpoint-url "$ENDPOINT" \
-    --acl public-read
+  aws s3 cp "$SIG_FILE" "s3://${S3_BUCKET}/${DEST_KEY}.sig" \
+    --endpoint-url "$S3_ENDPOINT_URL"
 
   UPLOADED+=("${DEST_KEY}" "${DEST_KEY}.sig")
   UPLOAD_COUNT=$((UPLOAD_COUNT + 1))
@@ -191,9 +198,8 @@ echo ""
 # Upload latest.json to bucket root
 # ---------------------------------------------------------------------------
 echo "Uploading latest.json to bucket root..."
-aws s3 cp /tmp/latest.json "s3://${VULTR_OBJ_BUCKET}/latest.json" \
-  --endpoint-url "$ENDPOINT" \
-  --acl public-read \
+aws s3 cp /tmp/latest.json "s3://${S3_BUCKET}/latest.json" \
+  --endpoint-url "$S3_ENDPOINT_URL" \
   --cache-control "max-age=60"
 
 UPLOADED+=("latest.json")
@@ -206,9 +212,9 @@ echo "============================================================"
 echo "Publish complete — v${VERSION}"
 echo "------------------------------------------------------------"
 for item in "${UPLOADED[@]}"; do
-  echo "  s3://${VULTR_OBJ_BUCKET}/${item}"
+  echo "  s3://${S3_BUCKET}/${item}"
 done
 echo ""
 echo "Updater endpoint:"
-echo "  https://${VULTR_OBJ_BUCKET}.${VULTR_OBJ_REGION}.vultrobjects.com/latest.json"
+echo "  ${S3_PUBLIC_URL}/latest.json"
 echo "============================================================"
