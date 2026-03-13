@@ -391,7 +391,6 @@ describe("LightService", () => {
 
   describe("timezone handling", () => {
     it("should use user timezone for determining today", async () => {
-      const ul = makeUserLight();
       mockUserService.findById.mockResolvedValue({ timezone: "Asia/Jakarta" });
       mockLightEventRepo.existsForEntityOnDate.mockResolvedValue(true);
 

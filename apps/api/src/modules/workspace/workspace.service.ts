@@ -18,7 +18,7 @@ export class WorkspaceService {
   async createPersonal(
     userId: string,
     email: string,
-    userName: string,
+    _userName: string,
   ): Promise<Workspace> {
     const existing = await this.repository.findPersonalByOwner(userId);
     if (existing) return existing;

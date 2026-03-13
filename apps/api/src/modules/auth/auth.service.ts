@@ -180,7 +180,7 @@ export class AuthService {
 
   async exchangeGoogleCode(
     code: string,
-    redirectUri: string,
+    _redirectUri: string,
   ): Promise<{
     user: User;
     tokens: TokenPair;

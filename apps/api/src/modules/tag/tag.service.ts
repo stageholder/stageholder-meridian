@@ -4,7 +4,6 @@ import { Tag } from "./tag.entity";
 import { CreateTagDto, UpdateTagDto } from "./tag.dto";
 import { WorkspaceMemberService } from "../workspace-member/workspace-member.service";
 import {
-  PaginatedResult,
   buildPaginationMeta,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,

@@ -1,6 +1,12 @@
 "use client";
 
-import { Suspense, useState, useEffect, type FormEvent } from "react";
+import {
+  Suspense,
+  useState,
+  useEffect,
+  useCallback,
+  type FormEvent,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, ChevronRight } from "lucide-react";
 import apiClient from "@/lib/api-client";
@@ -90,11 +96,7 @@ function WorkspacesContent() {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    loadWorkspaces();
-  }, []);
-
-  async function loadWorkspaces() {
+  const loadWorkspaces = useCallback(async () => {
     try {
       const res = await apiClient.get<Workspace[]>("/workspaces");
       const list = Array.isArray(res.data) ? res.data : [];
@@ -114,7 +116,11 @@ function WorkspacesContent() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [router, wantsCreate, wantsBrowse]);
+
+  useEffect(() => {
+    loadWorkspaces();
+  }, [loadWorkspaces]);
 
   function selectWorkspace(ws: Workspace) {
     router.push(`/${ws.shortId}/dashboard`);

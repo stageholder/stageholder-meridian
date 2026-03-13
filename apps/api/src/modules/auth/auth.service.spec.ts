@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { UnauthorizedException, BadRequestException } from "@nestjs/common";
+import { UnauthorizedException } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { User, AuthProvider } from "../user/user.entity";
 

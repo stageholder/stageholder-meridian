@@ -10,7 +10,6 @@ import { CreateHabitEntryDto, UpdateHabitEntryDto } from "./habit-entry.dto";
 import { WorkspaceMemberService } from "../workspace-member/workspace-member.service";
 import { LightService } from "../light/light.service";
 import {
-  PaginatedResult,
   buildPaginationMeta,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,

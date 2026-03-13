@@ -4,7 +4,6 @@ import { Habit, HabitFrequency } from "./habit.entity";
 import { CreateHabitDto, UpdateHabitDto } from "./habit.dto";
 import { WorkspaceMemberService } from "../workspace-member/workspace-member.service";
 import {
-  PaginatedResult,
   buildPaginationMeta,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
