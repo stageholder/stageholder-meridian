@@ -49,24 +49,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
 
-      - name: Verify signing key is set
-        shell: bash
-        run: |
-          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
-            echo "TAURI_SIGNING_PRIVATE_KEY is set (length: ${#TAURI_SIGNING_PRIVATE_KEY})"
-          else
-            echo "ERROR: TAURI_SIGNING_PRIVATE_KEY is NOT set!"
-            exit 1
-          fi
-          if [ -n "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" ]; then
-            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD is set"
-          else
-            echo "WARN: TAURI_SIGNING_PRIVATE_KEY_PASSWORD is not set"
-          fi
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-
       - name: Build Tauri app
         id: tauri-build
         uses: tauri-apps/tauri-action@v0
@@ -78,12 +60,6 @@ jobs:
           projectPath: apps/desktop
           args: --target ${{ matrix.target }}
           tauriScript: bunx tauri
-
-      - name: List all bundle files
-        shell: bash
-        run: |
-          echo "=== All files in bundle directory ==="
-          find "apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle" -type f | sort
 
       - name: Collect updater artifacts
         shell: bash
@@ -98,7 +74,7 @@ jobs:
       - name: Upload updater artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: updater-${{ matrix.target }}
+          name: meridian-${{ matrix.target }}
           path: updater-staging/
           if-no-files-found: error
 
@@ -113,17 +89,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-          pattern: updater-*
-
-      - name: List downloaded artifacts
-        run: |
-          echo "=== All downloaded files ==="
-          find artifacts/ -type f | sort
+          pattern: meridian-*
 
       - name: Reorganize artifacts
         run: |
-          for dir in artifacts/updater-*; do
-            target="${dir#artifacts/updater-}"
+          for dir in artifacts/meridian-*; do
+            target="${dir#artifacts/meridian-}"
             mkdir -p "artifacts/${target}"
             find "$dir" -type f \( -name "*.tar.gz" -o -name "*.tar.gz.sig" -o -name "*.AppImage" -o -name "*.AppImage.sig" -o -name "*-setup.exe" -o -name "*-setup.exe.sig" \) -exec mv {} "artifacts/${target}/" \;
             rm -rf "$dir"
