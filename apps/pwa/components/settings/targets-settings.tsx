@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 
 const JOURNAL_PRESETS = [
   { label: "Quick", value: 50 },
-  { label: "Standard", value: 150 },
+  { label: "Standard", value: 75 },
+  { label: "Moderate", value: 150 },
   { label: "Deep", value: 250 },
   { label: "Extensive", value: 500 },
 ] as const;
@@ -17,7 +18,7 @@ export function TargetsSettings() {
   const updateTargets = useUpdateTargets();
 
   const [todoTarget, setTodoTarget] = useState(3);
-  const [journalTarget, setJournalTarget] = useState(150);
+  const [journalTarget, setJournalTarget] = useState(75);
 
   useEffect(() => {
     if (userLight) {

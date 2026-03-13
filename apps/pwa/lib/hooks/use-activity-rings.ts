@@ -11,7 +11,7 @@ interface Targets {
   journalDailyWords: number;
 }
 
-const DEFAULT_TARGETS: Targets = { todoDaily: 3, journalDailyWords: 150 };
+const DEFAULT_TARGETS: Targets = { todoDaily: 3, journalDailyWords: 75 };
 
 function countScheduledHabits(
   habits: Habit[] | undefined,

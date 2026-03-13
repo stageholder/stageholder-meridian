@@ -57,7 +57,7 @@ export class UserLightRepository {
         longestPerfectStreak: doc.longest_perfect_streak,
         perfectDaysTotal: doc.perfect_days_total,
         todoTargetDaily: doc.todo_target_daily ?? 3,
-        journalTargetDailyWords: doc.journal_target_daily_words ?? 150,
+        journalTargetDailyWords: doc.journal_target_daily_words ?? 75,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at,
       },

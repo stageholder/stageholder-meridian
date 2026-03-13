@@ -30,7 +30,7 @@ export function JournalEditor({
   saveStatus,
 }: JournalEditorProps) {
   const { data: userLight } = useUserLight();
-  const target = userLight?.journalTargetDailyWords ?? 150;
+  const target = userLight?.journalTargetDailyWords ?? 75;
   const [wordCount, setWordCount] = useState(() => countWords(content));
 
   // Fetch all entries for the same day to compute cumulative word count
