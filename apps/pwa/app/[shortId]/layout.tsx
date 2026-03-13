@@ -118,7 +118,7 @@ function WorkspaceSelector({
         <DropdownMenuItem
           onClick={() => {
             onNavigate?.();
-            router.push("/workspaces");
+            router.push("/workspaces?browse=true");
           }}
         >
           <LayoutGrid className="size-4" />
@@ -127,7 +127,7 @@ function WorkspaceSelector({
         <DropdownMenuItem
           onClick={() => {
             onNavigate?.();
-            router.push("/workspaces");
+            router.push("/workspaces?create=true");
           }}
         >
           <Plus className="size-4" />
