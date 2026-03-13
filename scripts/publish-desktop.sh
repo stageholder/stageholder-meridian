@@ -4,8 +4,9 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # publish-desktop.sh
 # Called by CI after all platform builds complete.
-# Uploads Tauri updater artifacts to any S3-compatible object storage
-# and publishes latest.json for the Tauri updater endpoint.
+# Uploads Tauri updater artifacts and installer artifacts to any
+# S3-compatible object storage and publishes latest.json for the Tauri
+# updater endpoint.
 #
 # Usage:
 #   publish-desktop.sh <VERSION> [NOTES]
@@ -19,7 +20,9 @@ set -euo pipefail
 #
 # Optional env vars:
 #   S3_REGION             - Region (default: auto)
-#   ARTIFACTS_DIR         - Directory containing build artifacts (default: .)
+#   UPDATER_DIR           - Directory containing updater artifacts (default: ARTIFACTS_DIR)
+#   INSTALLER_DIR         - Directory containing installer artifacts (default: empty = skip)
+#   ARTIFACTS_DIR         - Legacy fallback for UPDATER_DIR (default: .)
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
@@ -61,16 +64,19 @@ aws configure set aws_secret_access_key "$S3_SECRET_ACCESS_KEY"
 aws configure set default.region        "$S3_REGION"
 
 # ---------------------------------------------------------------------------
-# Artifacts directory (default: current directory)
+# Artifacts directories
 # ---------------------------------------------------------------------------
 ARTIFACTS_DIR="${ARTIFACTS_DIR:-.}"
+UPDATER_DIR="${UPDATER_DIR:-$ARTIFACTS_DIR}"
+INSTALLER_DIR="${INSTALLER_DIR:-}"
 
 # Strip trailing slash from public URL
 S3_PUBLIC_URL="${S3_PUBLIC_URL%/}"
 
 echo "============================================================"
 echo "Publishing Meridian Desktop v${VERSION}"
-echo "Artifacts dir : ${ARTIFACTS_DIR}"
+echo "Updater dir   : ${UPDATER_DIR}"
+echo "Installer dir : ${INSTALLER_DIR:-<none>}"
 echo "Bucket        : ${S3_BUCKET}"
 echo "Endpoint      : ${S3_ENDPOINT_URL}"
 echo "Public URL    : ${S3_PUBLIC_URL}"
@@ -95,17 +101,25 @@ declare -A ARTIFACT_GLOB=(
   [x86_64-pc-windows-msvc]="*-setup.exe"
 )
 
+declare -A INSTALLER_GLOB=(
+  [aarch64-apple-darwin]="*.dmg"
+  [x86_64-apple-darwin]="*.dmg"
+  [x86_64-unknown-linux-gnu]="*.deb"
+  [aarch64-unknown-linux-gnu]="*.deb"
+  [x86_64-pc-windows-msvc]="*-setup.exe"
+)
+
 # Accumulate uploaded file basenames for the summary
 UPLOADED=()
 
 # ---------------------------------------------------------------------------
-# Walk artifact directories, upload, and collect platform metadata
+# Walk updater artifact directories, upload, and collect platform metadata
 # ---------------------------------------------------------------------------
 PLATFORMS_JSON="{}"
 UPLOAD_COUNT=0
 
 for TARGET in "${!PLATFORM_KEY[@]}"; do
-  TARGET_DIR="${ARTIFACTS_DIR}/${TARGET}"
+  TARGET_DIR="${UPDATER_DIR}/${TARGET}"
 
   if [[ ! -d "$TARGET_DIR" ]]; then
     echo "WARN: directory not found, skipping target: ${TARGET_DIR}" >&2
@@ -165,7 +179,7 @@ for TARGET in "${!PLATFORM_KEY[@]}"; do
 done
 
 if [[ $UPLOAD_COUNT -eq 0 ]]; then
-  echo "ERROR: No artifacts were found or uploaded. Aborting." >&2
+  echo "ERROR: No updater artifacts were found or uploaded. Aborting." >&2
   exit 1
 fi
 
@@ -205,6 +219,50 @@ aws s3 cp /tmp/latest.json "s3://${S3_BUCKET}/latest.json" \
 UPLOADED+=("latest.json")
 
 # ---------------------------------------------------------------------------
+# Upload installer artifacts (DMG, DEB, setup.exe for direct download)
+# ---------------------------------------------------------------------------
+INSTALLER_COUNT=0
+
+if [[ -n "$INSTALLER_DIR" ]]; then
+  echo ""
+  echo "------------------------------------------------------------"
+  echo "Uploading installer artifacts..."
+  echo "------------------------------------------------------------"
+
+  for TARGET in "${!INSTALLER_GLOB[@]}"; do
+    TARGET_DIR="${INSTALLER_DIR}/${TARGET}"
+
+    if [[ ! -d "$TARGET_DIR" ]]; then
+      echo "WARN: installer directory not found, skipping: ${TARGET_DIR}" >&2
+      continue
+    fi
+
+    GLOB="${INSTALLER_GLOB[$TARGET]}"
+    PLATFORM="${PLATFORM_KEY[$TARGET]}"
+
+    mapfile -t MATCHES < <(find "$TARGET_DIR" -maxdepth 1 -name "$GLOB" ! -name "*.sig" 2>/dev/null | sort)
+
+    if [[ ${#MATCHES[@]} -eq 0 ]]; then
+      echo "WARN: no installer matching '${GLOB}' found in ${TARGET_DIR}, skipping." >&2
+      continue
+    fi
+
+    INSTALLER="${MATCHES[0]}"
+    INSTALLER_BASENAME="$(basename "$INSTALLER")"
+    DEST_KEY="v${VERSION}/installers/${INSTALLER_BASENAME}"
+
+    echo "Uploading installer [${PLATFORM}]: ${INSTALLER_BASENAME}"
+    aws s3 cp "$INSTALLER" "s3://${S3_BUCKET}/${DEST_KEY}" \
+      --endpoint-url "$S3_ENDPOINT_URL"
+
+    UPLOADED+=("${DEST_KEY}")
+    INSTALLER_COUNT=$((INSTALLER_COUNT + 1))
+  done
+
+  echo "Uploaded ${INSTALLER_COUNT} installer artifact(s)."
+fi
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 echo ""
@@ -217,4 +275,9 @@ done
 echo ""
 echo "Updater endpoint:"
 echo "  ${S3_PUBLIC_URL}/latest.json"
+if [[ $INSTALLER_COUNT -gt 0 ]]; then
+  echo ""
+  echo "Installer downloads:"
+  echo "  ${S3_PUBLIC_URL}/v${VERSION}/installers/"
+fi
 echo "============================================================"

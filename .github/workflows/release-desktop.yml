@@ -59,6 +59,12 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           MERIDIAN_FRONTEND_URL: ${{ vars.MERIDIAN_FRONTEND_URL }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           projectPath: apps/desktop
           args: --target ${{ matrix.target }}
@@ -71,15 +77,33 @@ jobs:
           find "apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle" -type f \
             \( -name "*.tar.gz" -o -name "*.tar.gz.sig" -o -name "*.AppImage" -o -name "*.AppImage.sig" -o -name "*-setup.exe" -o -name "*-setup.exe.sig" \) \
             -exec cp {} updater-staging/ \;
-          echo "=== Staged files ==="
+          echo "=== Updater artifacts ==="
           ls -la updater-staging/
+
+      - name: Collect installer artifacts
+        shell: bash
+        run: |
+          mkdir -p installer-staging
+          find "apps/desktop/src-tauri/target/${{ matrix.target }}/release/bundle" -type f \
+            \( -name "*.dmg" -o -name "*.deb" -o -name "*-setup.exe" \) \
+            ! -name "*.sig" \
+            -exec cp {} installer-staging/ \;
+          echo "=== Installer artifacts ==="
+          ls -la installer-staging/
 
       - name: Upload updater artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: meridian-${{ matrix.target }}
+          name: updater-${{ matrix.target }}
           path: updater-staging/
           if-no-files-found: error
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.target }}
+          path: installer-staging/
+          if-no-files-found: warn
 
   publish:
     needs: build
@@ -88,18 +112,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download all artifacts
+      - name: Download updater artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
-          pattern: meridian-*
+          path: updater-artifacts
+          pattern: updater-*
 
-      - name: Reorganize artifacts
+      - name: Download installer artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: installer-artifacts
+          pattern: installer-*
+
+      - name: Reorganize updater artifacts
         run: |
-          for dir in artifacts/meridian-*; do
-            target="${dir#artifacts/meridian-}"
-            mkdir -p "artifacts/${target}"
-            find "$dir" -type f \( -name "*.tar.gz" -o -name "*.tar.gz.sig" -o -name "*.AppImage" -o -name "*.AppImage.sig" -o -name "*-setup.exe" -o -name "*-setup.exe.sig" \) -exec mv {} "artifacts/${target}/" \;
+          for dir in updater-artifacts/updater-*; do
+            target="${dir#updater-artifacts/updater-}"
+            mkdir -p "updater-artifacts/${target}"
+            find "$dir" -type f \( -name "*.tar.gz" -o -name "*.tar.gz.sig" -o -name "*.AppImage" -o -name "*.AppImage.sig" -o -name "*-setup.exe" -o -name "*-setup.exe.sig" \) -exec mv {} "updater-artifacts/${target}/" \;
+            rm -rf "$dir"
+          done
+
+      - name: Reorganize installer artifacts
+        run: |
+          for dir in installer-artifacts/installer-*; do
+            target="${dir#installer-artifacts/installer-}"
+            mkdir -p "installer-artifacts/${target}"
+            find "$dir" -type f \( -name "*.dmg" -o -name "*.deb" -o -name "*-setup.exe" \) ! -name "*.sig" -exec mv {} "installer-artifacts/${target}/" \;
             rm -rf "$dir"
           done
 
@@ -115,4 +154,4 @@ jobs:
           S3_REGION: ${{ vars.S3_REGION }}
         run: |
           chmod +x scripts/publish-desktop.sh
-          ARTIFACTS_DIR=artifacts ./scripts/publish-desktop.sh "$RELEASE_VERSION" "$RELEASE_NOTES"
+          UPDATER_DIR=updater-artifacts INSTALLER_DIR=installer-artifacts ./scripts/publish-desktop.sh "$RELEASE_VERSION" "$RELEASE_NOTES"
