@@ -1,6 +1,7 @@
 import { db } from "@repo/offline/db";
 import { fullSync, type SyncConflict } from "@repo/offline/sync/sync-manager";
 import { sendNativeNotification } from "@repo/core/platform/notifications";
+import { logger } from "@repo/core/platform/logger";
 import { createTodosApi } from "@repo/core/api/todos";
 import { createJournalsApi } from "@repo/core/api/journals";
 import { createHabitsApi } from "@repo/core/api/habits";
@@ -96,6 +97,8 @@ export async function syncAll(): Promise<void> {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    const stack = error instanceof Error ? error.stack : "";
+    logger.error(`[Sync] Failed: ${message}\n${stack ?? ""}`);
     sendNativeNotification("Sync failed", message);
     throw error;
   }

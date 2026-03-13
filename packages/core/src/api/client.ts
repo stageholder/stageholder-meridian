@@ -1,5 +1,6 @@
 import axios, { type AxiosInstance } from "axios";
 import type { PlatformConfig } from "@repo/core/platform";
+import { logger } from "@repo/core/platform/logger";
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -94,6 +95,11 @@ export function createApiClient(config: PlatformConfig): AxiosInstance {
           processQueue(null);
           return client(originalRequest);
         } catch (refreshError) {
+          const msg =
+            refreshError instanceof Error
+              ? refreshError.message
+              : String(refreshError);
+          logger.error(`[API] Token refresh failed: ${msg}`);
           processQueue(refreshError);
           // Only logout if online — offline users keep their session
           if (typeof navigator !== "undefined" && navigator.onLine) {

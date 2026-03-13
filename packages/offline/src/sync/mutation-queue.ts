@@ -1,6 +1,7 @@
 import type { AxiosInstance } from "axios";
 import { db, type PendingMutation } from "../db/index";
 import { reconcileId } from "./id-reconciler";
+import { logger } from "@repo/core/platform/logger";
 
 const MAX_RETRIES = 5;
 
@@ -54,7 +55,11 @@ export async function flush(
 
       await db.pendingMutations.delete(mutation.id!);
       success++;
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.warn(
+        `[MutationQueue] ${mutation.operation} ${mutation.path} failed (attempt ${mutation.retryCount + 1}/${MAX_RETRIES}): ${message}`,
+      );
       await db.pendingMutations.update(mutation.id!, {
         status: "failed",
         retryCount: mutation.retryCount + 1,

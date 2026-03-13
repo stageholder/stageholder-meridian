@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/lib/theme-provider";
 import { QueryProvider } from "@/lib/query-provider";
 import { Toaster } from "sonner";
 import { ServiceWorkerRegister } from "@/components/shared/sw-register";
+import { LogProvider } from "@/components/shared/log-provider";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -42,7 +43,7 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <QueryProvider>
-            {children}
+            <LogProvider>{children}</LogProvider>
             <Toaster />
             <ServiceWorkerRegister />
           </QueryProvider>
