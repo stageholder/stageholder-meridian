@@ -91,16 +91,16 @@ export function ShortcutsDialog({ open, onOpenChange }: ShortcutsDialogProps) {
                       </span>
                       <div className="flex items-center gap-1">
                         {keys.map((key, i) => (
-                          <span key={i}>
+                          <span
+                            key={i}
+                            className="inline-flex items-center gap-1"
+                          >
                             <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1.5 font-mono text-[11px] font-medium text-muted-foreground">
                               {key}
                             </kbd>
                             {i < keys.length - 1 && keys.length > 1 && (
-                              <span className="mx-0.5 text-[10px] text-muted-foreground/50">
-                                {group.heading === "Navigation" ||
-                                group.heading === "Actions"
-                                  ? ""
-                                  : "+"}
+                              <span className="text-[9px] text-muted-foreground/50">
+                                {group.heading === "Navigation" ? "→" : "+"}
                               </span>
                             )}
                           </span>

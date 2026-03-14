@@ -171,7 +171,7 @@ function SidebarNav({
             href={fullHref}
             onClick={onNavigate}
             className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
               isActive
                 ? "bg-sidebar-accent text-sidebar-accent-foreground"
                 : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
@@ -179,10 +179,11 @@ function SidebarNav({
           >
             <Icon className="size-4" />
             {item.label}
-            <span className="ml-auto hidden items-center gap-0.5 md:inline-flex">
+            <span className="ml-auto hidden items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 md:inline-flex">
               <kbd className="rounded border border-sidebar-border bg-sidebar-accent/50 px-1 font-mono text-[10px] font-medium text-muted-foreground/60">
                 G
               </kbd>
+              <span className="text-[9px] text-muted-foreground/40">→</span>
               <kbd className="rounded border border-sidebar-border bg-sidebar-accent/50 px-1 font-mono text-[10px] font-medium text-muted-foreground/60">
                 {item.shortcutKey}
               </kbd>

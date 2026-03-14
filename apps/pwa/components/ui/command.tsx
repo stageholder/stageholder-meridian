@@ -146,19 +146,31 @@ function CommandShortcut({
   const keys =
     typeof children === "string" ? children.split(/\s+/) : [children];
 
+  // Detect if this is a chord (sequential) shortcut vs modifier shortcut
+  const modifiers = new Set(["⌘", "⇧", "Ctrl", "Alt", "Shift", "⌥"]);
+  const isChord =
+    keys.length > 1 &&
+    keys.every(
+      (k) => typeof k === "string" && k.length === 1 && !modifiers.has(k),
+    );
+
   return (
     <span
       data-slot="command-shortcut"
-      className={cn("ml-auto flex items-center gap-0.5", className)}
+      className={cn("ml-auto flex items-center gap-1", className)}
       {...props}
     >
       {keys.map((key, i) => (
-        <kbd
-          key={i}
-          className="inline-flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1 font-mono text-[10px] font-medium text-muted-foreground"
-        >
-          {key}
-        </kbd>
+        <React.Fragment key={i}>
+          <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1 font-mono text-[10px] font-medium text-muted-foreground">
+            {key}
+          </kbd>
+          {i < keys.length - 1 && (
+            <span className="text-[9px] text-muted-foreground/50">
+              {isChord ? "→" : "+"}
+            </span>
+          )}
+        </React.Fragment>
       ))}
     </span>
   );
