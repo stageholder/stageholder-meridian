@@ -70,7 +70,7 @@ export function JournalEditor({
     editorProps: {
       attributes: {
         class:
-          "prose prose-sm dark:prose-invert max-w-none min-h-[300px] focus:outline-none",
+          "prose prose-sm dark:prose-invert max-w-none min-h-[300px] cursor-text focus:outline-none",
       },
     },
   });

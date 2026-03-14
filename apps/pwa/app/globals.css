@@ -162,8 +162,12 @@ a,
 label[for],
 select,
 summary,
-[tabindex]:not([tabindex="-1"]) {
+[tabindex]:not([tabindex="-1"]):not([contenteditable]) {
   cursor: pointer;
+}
+
+[contenteditable] {
+  cursor: text;
 }
 
 @keyframes shimmer {
