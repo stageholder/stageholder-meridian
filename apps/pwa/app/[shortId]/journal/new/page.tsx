@@ -83,7 +83,13 @@ function NewJournalContent() {
   shortIdRef.current = workspace.shortId;
 
   const onCreatedRef = useRef((id: string) => {
-    routerRef.current.replace(`/${shortIdRef.current}/journal/${id}`);
+    // Update URL silently without unmounting/remounting the page so the
+    // editor keeps focus and doesn't blink during the first autosave.
+    window.history.replaceState(
+      null,
+      "",
+      `/${shortIdRef.current}/journal/${id}`,
+    );
   });
 
   const { scheduleSave, status, journalId } = useAutosave({

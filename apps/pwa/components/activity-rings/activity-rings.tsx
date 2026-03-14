@@ -70,7 +70,7 @@ export function ActivityRings({
   const percentages: Record<string, number> = {
     todo: Math.round(data.todo),
     habit: Math.round(data.habit),
-    journal: data.journal,
+    journal: Math.round(data.journal),
   };
 
   return (

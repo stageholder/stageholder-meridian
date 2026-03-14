@@ -44,9 +44,14 @@ export function computeActivityRings(
       ? 0
       : Math.min(100, ((habitDone + habitSkipped) / scheduledHabitCount) * 100);
 
-  // Journal ring is binary: complete if any journal entry exists for the day
-  // (matches backend behavior). Word count target is a secondary display-only indicator.
-  const journalPct = dayData.journals.length > 0 ? 100 : 0;
+  const journalWords = dayData.journals.reduce(
+    (sum, j) => sum + (j.wordCount ?? 0),
+    0,
+  );
+  const journalPct = Math.min(
+    100,
+    (journalWords / targets.journalDailyWords) * 100,
+  );
 
   return { todo: todoPct, habit: habitPct, journal: journalPct };
 }
