@@ -1,16 +1,16 @@
-FROM oven/bun:1 AS pruner
+FROM oven/bun:1.3.6 AS pruner
 WORKDIR /app
 RUN bun add -g turbo@^2
 COPY . .
 RUN turbo prune pwa --docker
 
-FROM oven/bun:1 AS installer
+FROM oven/bun:1.3.6 AS installer
 WORKDIR /app
 COPY --from=pruner /app/out/json/ .
 COPY --from=pruner /app/out/bun.lock ./bun.lock
 RUN bun install --ignore-scripts
 
-FROM oven/bun:1 AS builder
+FROM oven/bun:1.3.6 AS builder
 WORKDIR /app
 RUN bun add -g turbo@^2
 COPY --from=installer /app/ .
@@ -25,7 +25,7 @@ RUN turbo build --filter=pwa --no-daemon && \
       echo "ERROR: Next.js standalone build failed"; exit 1; \
     fi
 
-FROM oven/bun:1-slim AS runner
+FROM oven/bun:1.3.6-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
