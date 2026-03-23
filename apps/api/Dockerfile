@@ -1,32 +1,32 @@
-FROM oven/bun:1 AS base
-
-# Prune the monorepo for the api workspace
-FROM base AS pruner
+FROM oven/bun:1 AS pruner
 WORKDIR /app
-RUN bun add -g turbo
+RUN bun add -g turbo@^2
 COPY . .
 RUN turbo prune api --docker
 
-# Install dependencies then build
-FROM base AS builder
+FROM oven/bun:1 AS installer
 WORKDIR /app
 COPY --from=pruner /app/out/json/ .
-RUN bun install --frozen-lockfile
-COPY --from=pruner /app/out/full/ .
-RUN cd apps/api && bun run build
+COPY --from=pruner /app/out/bun.lock ./bun.lock
+RUN bun install --ignore-scripts
 
-# Runtime — Node for NestJS compatibility
-FROM node:20-slim AS runner
+FROM oven/bun:1 AS builder
+WORKDIR /app
+RUN bun add -g turbo@^2
+COPY --from=installer /app/ .
+COPY --from=pruner /app/out/full/ .
+RUN turbo build --filter=api --no-daemon
+
+FROM oven/bun:1-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nestjs
-COPY --from=builder --chown=nestjs:nodejs /app/apps/api/dist ./dist
-COPY --from=builder --chown=nestjs:nodejs /app/apps/api/node_modules ./node_modules
-COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./root_modules
-COPY --from=builder --chown=nestjs:nodejs /app/apps/api/package.json ./
-
-USER nestjs
-
+COPY --from=builder --chown=bun:bun /app/node_modules ./node_modules
+COPY --from=builder --chown=bun:bun /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=builder --chown=bun:bun /app/apps/api/dist ./apps/api/dist
+COPY --from=builder --chown=bun:bun /app/apps/api/package.json ./apps/api/package.json
+USER bun
+WORKDIR /app/apps/api
 EXPOSE 4000
-CMD ["node", "dist/main"]
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD bun -e "fetch('http://localhost:4000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+CMD ["bun", "run", "dist/main.js"]
