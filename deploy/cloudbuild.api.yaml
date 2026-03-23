@@ -32,7 +32,7 @@ steps:
 substitutions:
   _GCR_HOSTNAME: gcr.io
   _SERVICE_NAME: stageholder-meridian-api
-  _DEPLOY_REGION: asia-southeast2
+  _DEPLOY_REGION: asia-southeast1
 
 options:
   logging: CLOUD_LOGGING_ONLY
