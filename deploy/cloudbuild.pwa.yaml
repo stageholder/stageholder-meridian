@@ -3,9 +3,9 @@ steps:
     args:
       - build
       - -t
-      - $_AR_HOSTNAME/$PROJECT_ID/meridian/pwa:$COMMIT_SHA
+      - $_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/pwa:$COMMIT_SHA
       - -t
-      - $_AR_HOSTNAME/$PROJECT_ID/meridian/pwa:latest
+      - $_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/pwa:latest
       - --build-arg
       - NEXT_PUBLIC_API_URL=$_NEXT_PUBLIC_API_URL
       - -f
@@ -14,23 +14,23 @@ steps:
   - name: gcr.io/cloud-builders/docker
     args:
       - push
-      - $_AR_HOSTNAME/$PROJECT_ID/meridian/pwa:$COMMIT_SHA
+      - $_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/pwa:$COMMIT_SHA
   - name: gcr.io/cloud-builders/docker
     args:
       - push
-      - $_AR_HOSTNAME/$PROJECT_ID/meridian/pwa:latest
+      - $_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/pwa:latest
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     args:
       - gcloud
       - run
       - deploy
       - $_SERVICE_NAME
-      - --image=$_AR_HOSTNAME/$PROJECT_ID/meridian/pwa:$COMMIT_SHA
+      - --image=$_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/pwa:$COMMIT_SHA
       - --region=$_DEPLOY_REGION
       - --platform=managed
 
 substitutions:
-  _AR_HOSTNAME: asia-southeast2-docker.pkg.dev
+  _GCR_HOSTNAME: gcr.io
   _SERVICE_NAME: meridian-pwa
   _DEPLOY_REGION: asia-southeast2
   _NEXT_PUBLIC_API_URL: https://api.meridian.stageholder.com/api/v1

@@ -3,32 +3,32 @@ steps:
     args:
       - build
       - -t
-      - $_AR_HOSTNAME/$PROJECT_ID/meridian/api:$COMMIT_SHA
+      - $_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/api:$COMMIT_SHA
       - -t
-      - $_AR_HOSTNAME/$PROJECT_ID/meridian/api:latest
+      - $_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/api:latest
       - -f
       - apps/api/Dockerfile
       - .
   - name: gcr.io/cloud-builders/docker
     args:
       - push
-      - $_AR_HOSTNAME/$PROJECT_ID/meridian/api:$COMMIT_SHA
+      - $_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/api:$COMMIT_SHA
   - name: gcr.io/cloud-builders/docker
     args:
       - push
-      - $_AR_HOSTNAME/$PROJECT_ID/meridian/api:latest
+      - $_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/api:latest
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     args:
       - gcloud
       - run
       - deploy
       - $_SERVICE_NAME
-      - --image=$_AR_HOSTNAME/$PROJECT_ID/meridian/api:$COMMIT_SHA
+      - --image=$_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/api:$COMMIT_SHA
       - --region=$_DEPLOY_REGION
       - --platform=managed
 
 substitutions:
-  _AR_HOSTNAME: asia-southeast2-docker.pkg.dev
+  _GCR_HOSTNAME: gcr.io
   _SERVICE_NAME: meridian-api
   _DEPLOY_REGION: asia-southeast2
 
