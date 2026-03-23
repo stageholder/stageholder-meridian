@@ -26,6 +26,8 @@ steps:
       - --image=$_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/api:$COMMIT_SHA
       - --region=$_DEPLOY_REGION
       - --platform=managed
+      - --port=4000
+      - --allow-unauthenticated
 
 substitutions:
   _GCR_HOSTNAME: gcr.io
