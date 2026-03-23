@@ -31,7 +31,7 @@ steps:
 
 substitutions:
   _GCR_HOSTNAME: gcr.io
-  _SERVICE_NAME: meridian-api
+  _SERVICE_NAME: stageholder-meridian-api
   _DEPLOY_REGION: asia-southeast2
 
 options:

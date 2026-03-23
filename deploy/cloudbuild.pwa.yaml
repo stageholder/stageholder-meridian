@@ -33,7 +33,7 @@ steps:
 
 substitutions:
   _GCR_HOSTNAME: gcr.io
-  _SERVICE_NAME: meridian-pwa
+  _SERVICE_NAME: stageholder-meridian-pwa
   _DEPLOY_REGION: asia-southeast2
   _NEXT_PUBLIC_API_URL: https://api.meridian.stageholder.com/api/v1
 
