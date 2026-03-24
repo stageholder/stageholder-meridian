@@ -7,6 +7,7 @@ import { StarVisual } from "@/components/light/star-visual";
 import { LevelProgress } from "@/components/light/level-progress";
 import { LevelUpCelebration } from "@/components/light/level-up-celebration";
 import { useLevelUp } from "@/lib/hooks/use-level-up";
+import { LIGHT_TIERS } from "@repo/core/types/light";
 import { JourneyStreaks } from "@/components/light/journey-streaks";
 import { JourneyTierMap } from "@/components/light/journey-tier-map";
 import { JourneyStats } from "@/components/light/journey-stats";
@@ -42,6 +43,9 @@ export default function JourneyPage() {
           </h1>
           <p className="mt-1 text-sm tabular-nums text-muted-foreground">
             {userLight.totalLight.toLocaleString()} Light earned
+          </p>
+          <p className="mt-3 text-xs text-muted-foreground text-center leading-relaxed max-w-sm mx-auto">
+            {LIGHT_TIERS[userLight.currentTier - 1]?.description}
           </p>
           <LevelProgress userLight={userLight} className="mt-5 w-full" />
         </div>

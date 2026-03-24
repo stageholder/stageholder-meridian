@@ -27,7 +27,11 @@ import { cn } from "@/lib/utils";
 import { syncAll } from "@/lib/offline";
 import { useUserLight } from "@/lib/api/light";
 import { StarVisual } from "@/components/light/star-visual";
-import { getTierProgress, getNextTier } from "@repo/core/types/light";
+import {
+  getTierProgress,
+  getNextTier,
+  LIGHT_TIERS,
+} from "@repo/core/types/light";
 import { OfflineIndicator } from "@/components/shared/offline-indicator";
 import { SyncConflictListener } from "@/components/shared/sync-conflict-toast";
 import { UpdateChecker } from "@/components/shared/update-checker";
@@ -578,6 +582,12 @@ export default function WorkspaceLayout({
                           />
                           <p className="text-sm font-bold">
                             {userLight.currentTitle}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground text-center leading-snug px-1">
+                            {
+                              LIGHT_TIERS[userLight.currentTier - 1]
+                                ?.shortDescription
+                            }
                           </p>
                           {nextTier ? (
                             <div className="w-full space-y-1">

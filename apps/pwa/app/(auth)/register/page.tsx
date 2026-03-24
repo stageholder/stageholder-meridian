@@ -43,8 +43,28 @@ export default function RegisterPage() {
             : "/onboarding",
         );
       }
-    } catch {
-      setError("Registration failed. Please try again.");
+    } catch (err: unknown) {
+      const status =
+        err && typeof err === "object" && "response" in err
+          ? (
+              err as {
+                response?: { status?: number; data?: { message?: string } };
+              }
+            ).response?.status
+          : undefined;
+      const message =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { data?: { message?: string } } }).response
+              ?.data?.message
+          : undefined;
+
+      if (status === 409 || message?.toLowerCase().includes("already")) {
+        setError(
+          "An account with this email already exists. Please sign in instead.",
+        );
+      } else {
+        setError(message || "Registration failed. Please try again.");
+      }
       setShake(true);
       setTimeout(() => setShake(false), 500);
     } finally {

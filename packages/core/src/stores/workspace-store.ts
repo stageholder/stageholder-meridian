@@ -38,6 +38,7 @@ export function createWorkspaceStore(storage: StorageAdapter) {
             void storage.removeItem(key);
           },
         })),
+        version: 0,
         partialize: (state) => ({
           activeWorkspaceId: state.activeWorkspaceId,
           sidebarOpen: state.sidebarOpen,

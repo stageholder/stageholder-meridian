@@ -7,7 +7,7 @@
     "build:desktop": "turbo run build --filter=desktop",
     "build:desktop:production": "turbo run build:production --filter=desktop",
     "dev": "turbo run dev",
-    "dev:pwa": "turbo run dev --filter=pwa",
+    "dev:pwa": "turbo run dev --filter=pwa --filter=api",
     "dev:desktop": "turbo run dev --filter=pwa --filter=desktop --filter=api",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",

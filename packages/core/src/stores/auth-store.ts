@@ -40,6 +40,7 @@ export function createAuthStore(
             void storage.removeItem(key);
           },
         })),
+        version: 0,
         partialize: (state) => ({
           user: state.user,
           isAuthenticated: state.isAuthenticated,
