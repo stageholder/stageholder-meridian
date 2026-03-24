@@ -44,9 +44,6 @@ export default function JourneyPage() {
           <p className="mt-1 text-sm tabular-nums text-muted-foreground">
             {userLight.totalLight.toLocaleString()} Light earned
           </p>
-          <p className="mt-3 text-xs text-muted-foreground text-center leading-relaxed max-w-sm mx-auto">
-            {LIGHT_TIERS[userLight.currentTier - 1]?.description}
-          </p>
           <LevelProgress userLight={userLight} className="mt-5 w-full" />
         </div>
 
@@ -61,6 +58,11 @@ export default function JourneyPage() {
           <JourneyStats userLight={userLight} />
         </div>
       </div>
+
+      {/* Tier description — full width below hero */}
+      <p className="text-sm text-muted-foreground text-center leading-relaxed max-w-lg mx-auto">
+        {LIGHT_TIERS[userLight.currentTier - 1]?.description}
+      </p>
 
       {/* Streaks */}
       <section>
