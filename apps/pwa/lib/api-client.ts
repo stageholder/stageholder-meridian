@@ -12,6 +12,8 @@ const apiClient = createApiClient({
     if (typeof window !== "undefined") {
       localStorage.removeItem("auth-storage");
       localStorage.removeItem("workspace-storage");
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
       document.cookie = "logged_in=; path=/; max-age=0";
       window.location.href = "/login";
     }

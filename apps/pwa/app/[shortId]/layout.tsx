@@ -39,7 +39,7 @@ import { ShortcutsDialog } from "@/components/shared/shortcuts-dialog";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 import { CreateTodoDialog } from "@/components/todos/create-todo-dialog";
 import apiClient from "@/lib/api-client";
-import { clearLoggedInFlag } from "@/lib/auth-helpers";
+import { logout } from "@/lib/logout";
 import { useAuthStore } from "@/stores/auth-store";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { WorkspaceProvider } from "@/lib/workspace-context";
@@ -272,18 +272,8 @@ export default function WorkspaceLayout({
   }, [shortId, router, setActiveWorkspace]);
 
   async function handleLogout() {
-    try {
-      await apiClient.post("/auth/logout");
-    } catch (err) {
-      console.warn(
-        "Server-side logout failed, proceeding with local cleanup:",
-        err,
-      );
-    }
+    await logout();
     clearUser();
-    localStorage.removeItem("auth-storage");
-    localStorage.removeItem("workspace-storage");
-    clearLoggedInFlag();
     router.push("/login");
   }
 

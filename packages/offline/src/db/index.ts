@@ -71,6 +71,26 @@ class MeridianDB extends Dexie {
 
 export const db = new MeridianDB();
 
+/**
+ * Wipe all user data from IndexedDB.
+ * Must be called on logout to prevent data leakage between accounts.
+ */
+export async function clearAllUserData(): Promise<void> {
+  await Promise.all([
+    db.workspaces.clear(),
+    db.members.clear(),
+    db.todoLists.clear(),
+    db.todos.clear(),
+    db.journals.clear(),
+    db.habits.clear(),
+    db.habitEntries.clear(),
+    db.tags.clear(),
+    db.notifications.clear(),
+    db.pendingMutations.clear(),
+    db.syncMeta.clear(),
+  ]);
+}
+
 export function getTableForEntity(entityType: string) {
   const map: Record<string, EntityTable<any, any>> = {
     habits: db.habits,
