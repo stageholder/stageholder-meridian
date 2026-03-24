@@ -19,6 +19,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [shake, setShake] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -44,18 +45,32 @@ export default function RegisterPage() {
       }
     } catch {
       setError("Registration failed. Please try again.");
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-4">
-        <div>
+    <div>
+      <div className="auth-animate auth-stagger-1">
+        <h2 className="text-2xl font-[family-name:var(--font-display)] font-semibold tracking-tight text-foreground">
+          Start your journey
+        </h2>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          Create an account to begin building better habits
+        </p>
+      </div>
+
+      <form
+        onSubmit={handleSubmit}
+        className={`mt-8 space-y-5 ${shake ? "auth-error" : ""}`}
+      >
+        <div className="auth-animate auth-stagger-2">
           <label
             htmlFor="name"
-            className="block text-sm font-medium text-foreground"
+            className="block text-sm font-medium text-foreground mb-1.5"
           >
             Full name
           </label>
@@ -63,17 +78,18 @@ export default function RegisterPage() {
             id="name"
             type="text"
             required
+            autoComplete="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="John Doe"
-            className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+            placeholder="Your name"
+            className="block w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
           />
         </div>
 
-        <div>
+        <div className="auth-animate auth-stagger-3">
           <label
             htmlFor="email"
-            className="block text-sm font-medium text-foreground"
+            className="block text-sm font-medium text-foreground mb-1.5"
           >
             Email
           </label>
@@ -81,17 +97,18 @@ export default function RegisterPage() {
             id="email"
             type="email"
             required
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
-            className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+            className="block w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
           />
         </div>
 
-        <div>
+        <div className="auth-animate auth-stagger-4">
           <label
             htmlFor="password"
-            className="block text-sm font-medium text-foreground"
+            className="block text-sm font-medium text-foreground mb-1.5"
           >
             Password
           </label>
@@ -99,39 +116,58 @@ export default function RegisterPage() {
             id="password"
             type="password"
             required
+            autoComplete="new-password"
             minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="At least 8 characters"
-            className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+            className="block w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
           />
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            Must be at least 8 characters
+          </p>
         </div>
-      </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && (
+          <p className="text-sm text-destructive auth-animate auth-stagger-1">
+            {error}
+          </p>
+        )}
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {loading ? "Creating account..." : "Create account"}
-      </button>
-
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-border" />
+        <div className="auth-animate auth-stagger-5">
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2 focus:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 transition-all active:scale-[0.98]"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground" />
+                Creating account...
+              </span>
+            ) : (
+              "Create account"
+            )}
+          </button>
         </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-2 text-muted-foreground">
-            Or continue with
-          </span>
+
+        <div className="auth-animate auth-stagger-6 relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-border" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-3 text-muted-foreground tracking-wider">
+              or
+            </span>
+          </div>
         </div>
-      </div>
 
-      <GoogleSignInButton />
+        <div className="auth-animate auth-stagger-7">
+          <GoogleSignInButton />
+        </div>
+      </form>
 
-      <p className="text-center text-sm text-muted-foreground">
+      <p className="mt-8 text-center text-sm text-muted-foreground auth-animate auth-stagger-8">
         Already have an account?{" "}
         <Link
           href={
@@ -139,11 +175,11 @@ export default function RegisterPage() {
               ? `/login?redirect=${encodeURIComponent(redirect)}`
               : "/login"
           }
-          className="font-medium text-primary hover:underline"
+          className="font-semibold text-primary hover:text-primary/80 transition-colors"
         >
           Sign in
         </Link>
       </p>
-    </form>
+    </div>
   );
 }
