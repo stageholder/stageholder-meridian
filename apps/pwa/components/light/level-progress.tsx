@@ -55,7 +55,7 @@ export function LevelProgress({ userLight, className }: LevelProgressProps) {
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span className="tabular-nums">
           {nextTier
-            ? `${lightInTier.toLocaleString()} / ${tierRange.toLocaleString()} Light`
+            ? `${totalLight.toLocaleString()} / ${nextTier.lightRequired.toLocaleString()} Light`
             : `${totalLight.toLocaleString()} Light (Max)`}
         </span>
         {perfectDayStreak > 0 && (
