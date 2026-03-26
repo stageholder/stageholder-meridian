@@ -21,11 +21,14 @@ import { CalendarModule } from "./modules/calendar/calendar.module";
 import { LightModule } from "./modules/light/light.module";
 import { FeedbackModule } from "./modules/feedback/feedback.module";
 import { HealthModule } from "./modules/health/health.module";
+import { EncryptionModule } from "./modules/encryption";
+import { EncryptionKeysModule } from "./modules/encryption-keys/encryption-keys.module";
 import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    EncryptionModule,
     LoggerModule.forRoot({
       pinoHttp: {
         genReqId: (req: any) => req.headers["x-request-id"] || randomUUID(),
@@ -72,6 +75,7 @@ import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
     LightModule,
     FeedbackModule,
     HealthModule,
+    EncryptionKeysModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

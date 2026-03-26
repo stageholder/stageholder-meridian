@@ -3,21 +3,29 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { HabitModel, HabitDocument } from "./habit.schema";
 import { Habit } from "./habit.entity";
+import { EncryptionService } from "../encryption";
+
+const ENCRYPTED_FIELDS = ["name", "description"];
 
 @Injectable()
 export class HabitRepository {
   constructor(
     @InjectModel(HabitModel.name) private model: Model<HabitDocument>,
+    private readonly encryption: EncryptionService,
   ) {}
 
   async save(habit: Habit): Promise<void> {
     const data = habit.toObject();
+    const enc = this.encryption.encryptRecord(
+      { name: data.name, description: data.description },
+      ENCRYPTED_FIELDS,
+    );
     await this.model.updateOne(
       { _id: data.id },
       {
         $set: {
-          name: data.name,
-          description: data.description,
+          name: enc.name,
+          description: enc.description,
           frequency: data.frequency,
           target_count: data.targetCount,
           scheduled_days: data.scheduledDays,
@@ -117,10 +125,14 @@ export class HabitRepository {
   }
 
   private toDomain(doc: any): Habit {
+    const dec = this.encryption.decryptRecord(
+      { name: doc.name, description: doc.description },
+      ENCRYPTED_FIELDS,
+    );
     return Habit.reconstitute(
       {
-        name: doc.name,
-        description: doc.description,
+        name: dec.name,
+        description: dec.description,
         frequency: doc.frequency,
         targetCount: doc.target_count,
         scheduledDays: doc.scheduled_days,

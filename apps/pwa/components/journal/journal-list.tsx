@@ -112,9 +112,9 @@ export function JournalList({
                       {preview}
                     </p>
                   )}
-                  {journal.tags.length > 0 && (
+                  {Array.isArray(journal.tags) && journal.tags.length > 0 && (
                     <div className="mt-1.5 flex flex-wrap gap-1">
-                      {journal.tags.map((tag) => (
+                      {(journal.tags as string[]).map((tag: string) => (
                         <span
                           key={tag}
                           className="inline-flex rounded-full bg-accent px-1.5 py-0.5 text-[10px] text-accent-foreground"

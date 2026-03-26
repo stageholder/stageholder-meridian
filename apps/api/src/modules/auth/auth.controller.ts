@@ -53,6 +53,7 @@ function toUserResponse(user: User) {
     provider: obj.provider,
     emailVerified: obj.emailVerified,
     onboardingCompleted: obj.onboardingCompleted,
+    encryptionEnabled: obj.encryptionEnabled,
     createdAt: obj.createdAt,
   };
 }

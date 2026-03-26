@@ -2,6 +2,7 @@ import apiClient from "@/lib/api-client";
 import { clearLoggedInFlag } from "@/lib/auth-helpers";
 import { getQueryClient } from "@/lib/query-provider";
 import { clearAllUserData } from "@repo/offline/db";
+import { useEncryptionStore } from "@/lib/crypto/encryption-store";
 
 /**
  * Centralized logout that clears ALL user data to prevent leakage
@@ -41,6 +42,9 @@ export async function logout(): Promise<void> {
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
 
-  // 5. Clear cookies
+  // 5. Clear encryption key from memory
+  useEncryptionStore.getState().lock();
+
+  // 6. Clear cookies
   clearLoggedInFlag();
 }

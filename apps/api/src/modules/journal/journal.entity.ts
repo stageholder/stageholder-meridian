@@ -14,11 +14,12 @@ export interface JournalProps extends EntityProps {
   title: string;
   content: string;
   mood?: number;
-  tags: string[];
+  tags: string[] | string;
   workspaceId: string;
   authorId: string;
   date: string;
   wordCount: number;
+  encrypted?: boolean;
 }
 
 export class Journal extends Entity<JournalProps> {
@@ -35,7 +36,7 @@ export class Journal extends Entity<JournalProps> {
   get mood(): number | undefined {
     return this.get("mood");
   }
-  get tags(): string[] {
+  get tags(): string[] | string {
     return this.get("tags");
   }
   get workspaceId(): string {
@@ -50,18 +51,26 @@ export class Journal extends Entity<JournalProps> {
   get wordCount(): number {
     return this.get("wordCount");
   }
+  get encrypted(): boolean {
+    return this.get("encrypted") ?? false;
+  }
 
   updateTitle(title: string): void {
     this.set("title", title);
   }
   updateContent(content: string): void {
     this.set("content", content);
-    this.set("wordCount", countWords(content));
+    if (!this.encrypted) {
+      this.set("wordCount", countWords(content));
+    }
+  }
+  updateWordCount(wordCount: number): void {
+    this.set("wordCount", wordCount);
   }
   updateMood(mood: number | undefined): void {
     this.set("mood", mood);
   }
-  updateTags(tags: string[]): void {
+  updateTags(tags: string[] | string): void {
     this.set("tags", tags);
   }
   updateDate(date: string): void {
@@ -69,10 +78,20 @@ export class Journal extends Entity<JournalProps> {
   }
 
   static create(
-    props: Omit<JournalProps, "id" | "createdAt" | "updatedAt" | "wordCount">,
+    props: Omit<
+      JournalProps,
+      "id" | "createdAt" | "updatedAt" | "wordCount"
+    > & {
+      wordCount?: number;
+    },
   ): Result<Journal> {
-    if (!props.title || props.title.trim().length === 0)
-      return Err(new Error("Journal title is required"));
+    const isEncrypted = props.encrypted ?? false;
+    if (!isEncrypted) {
+      if (!props.title || props.title.trim().length === 0)
+        return Err(new Error("Journal title is required"));
+    } else {
+      if (!props.title) return Err(new Error("Journal title is required"));
+    }
     if (!props.workspaceId) return Err(new Error("Workspace is required"));
     if (!props.authorId) return Err(new Error("Author is required"));
     if (!props.date) return Err(new Error("Date is required"));
@@ -82,7 +101,10 @@ export class Journal extends Entity<JournalProps> {
       new Journal({
         ...props,
         tags: props.tags || [],
-        wordCount: countWords(props.content || ""),
+        wordCount:
+          props.wordCount ??
+          (isEncrypted ? 0 : countWords(props.content || "")),
+        encrypted: isEncrypted,
       } as JournalProps),
     );
   }

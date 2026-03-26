@@ -11,6 +11,7 @@ import { WorkspaceMember, MemberRole } from "./workspace-member.entity";
 import { InviteMemberDto, UpdateMemberRoleDto } from "./workspace-member.dto";
 import { NotificationService } from "../notification/notification.service";
 import { UserService } from "../user/user.service";
+import { WorkspaceRepository } from "../workspace/workspace.repository";
 import {
   PaginatedResult,
   buildPaginationMeta,
@@ -26,6 +27,7 @@ export class WorkspaceMemberService {
     private readonly notificationService: NotificationService,
     private readonly userService: UserService,
     private readonly config: ConfigService,
+    private readonly workspaceRepository: WorkspaceRepository,
   ) {}
 
   async addOwner(
@@ -49,6 +51,13 @@ export class WorkspaceMemberService {
     workspaceId: string,
     dto: InviteMemberDto,
   ): Promise<WorkspaceMember> {
+    const workspace = await this.workspaceRepository.findById(workspaceId);
+    if (!workspace) throw new NotFoundException("Workspace not found");
+    if (workspace.isPersonal) {
+      throw new ForbiddenException(
+        "Cannot invite members to a personal workspace",
+      );
+    }
     const existing = await this.repository.findByWorkspaceAndEmail(
       workspaceId,
       dto.email,

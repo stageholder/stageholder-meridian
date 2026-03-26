@@ -5,6 +5,20 @@ import { logger } from "@repo/core/platform/logger";
 
 const MAX_RETRIES = 5;
 
+type PayloadTransform = (
+  payload: unknown,
+  operation: string,
+) => Promise<unknown>;
+
+const payloadTransforms: Record<string, PayloadTransform> = {};
+
+export function registerPayloadTransform(
+  entityType: string,
+  transform: PayloadTransform,
+): void {
+  payloadTransforms[entityType] = transform;
+}
+
 export async function enqueue(
   mutation: Omit<PendingMutation, "id" | "retryCount" | "status" | "timestamp">,
 ): Promise<void> {
@@ -33,9 +47,15 @@ export async function flush(
     try {
       await db.pendingMutations.update(mutation.id!, { status: "in-flight" });
 
+      let payload = mutation.payload;
+      const transform = payloadTransforms[mutation.entityType];
+      if (transform) {
+        payload = await transform(payload, mutation.operation);
+      }
+
       switch (mutation.operation) {
         case "create": {
-          const res = await client.post(mutation.path, mutation.payload);
+          const res = await client.post(mutation.path, payload);
           if (
             mutation.tempId &&
             res.data?.id &&
@@ -46,7 +66,7 @@ export async function flush(
           break;
         }
         case "update":
-          await client.patch(mutation.path, mutation.payload);
+          await client.patch(mutation.path, payload);
           break;
         case "delete":
           await client.delete(mutation.path);

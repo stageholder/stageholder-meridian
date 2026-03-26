@@ -3,20 +3,28 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { TodoListModel, TodoListDocument } from "./todo-list.schema";
 import { TodoList } from "./todo-list.entity";
+import { EncryptionService } from "../encryption";
+
+const ENCRYPTED_FIELDS = ["name"];
 
 @Injectable()
 export class TodoListRepository {
   constructor(
     @InjectModel(TodoListModel.name) private model: Model<TodoListDocument>,
+    private readonly encryption: EncryptionService,
   ) {}
 
   async save(todoList: TodoList): Promise<void> {
     const data = todoList.toObject();
+    const enc = this.encryption.encryptRecord(
+      { name: data.name },
+      ENCRYPTED_FIELDS,
+    );
     await this.model.updateOne(
       { _id: data.id },
       {
         $set: {
-          name: data.name,
+          name: enc.name,
           color: data.color,
           icon: data.icon,
           workspace_id: data.workspaceId,
@@ -95,9 +103,13 @@ export class TodoListRepository {
   }
 
   private toDomain(doc: any): TodoList {
+    const dec = this.encryption.decryptRecord(
+      { name: doc.name },
+      ENCRYPTED_FIELDS,
+    );
     return TodoList.reconstitute(
       {
-        name: doc.name,
+        name: dec.name,
         color: doc.color,
         icon: doc.icon,
         workspaceId: doc.workspace_id,

@@ -45,6 +45,8 @@ export class JournalService {
       workspaceId,
       authorId: userId,
       date: dto.date,
+      encrypted: dto.encrypted,
+      wordCount: dto.wordCount,
     });
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);
@@ -163,8 +165,9 @@ export class JournalService {
     if (dto.title) journal.updateTitle(dto.title);
     if (dto.content !== undefined) journal.updateContent(dto.content);
     if (dto.mood !== undefined) journal.updateMood(dto.mood ?? undefined);
-    if (dto.tags) journal.updateTags(dto.tags);
+    if (dto.tags !== undefined) journal.updateTags(dto.tags);
     if (dto.date) journal.updateDate(dto.date);
+    if (dto.wordCount !== undefined) journal.updateWordCount(dto.wordCount);
     await this.repository.save(journal);
     return journal;
   }

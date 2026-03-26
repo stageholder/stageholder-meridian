@@ -3,15 +3,26 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { HabitEntryModel, HabitEntryDocument } from "./habit-entry.schema";
 import { HabitEntry } from "./habit-entry.entity";
+import { EncryptionService } from "../encryption";
+
+// Two lists because HabitEntry entity uses camelCase (skipReason) while the MongoDB doc uses snake_case (skip_reason).
+// save() operates on entity shape, toDomain() operates on document shape.
+const ENCRYPTED_ENTITY_FIELDS = ["notes", "skipReason"];
+const ENCRYPTED_DOC_FIELDS = ["notes", "skip_reason"];
 
 @Injectable()
 export class HabitEntryRepository {
   constructor(
     @InjectModel(HabitEntryModel.name) private model: Model<HabitEntryDocument>,
+    private readonly encryption: EncryptionService,
   ) {}
 
   async save(entry: HabitEntry): Promise<void> {
     const data = entry.toObject();
+    const enc = this.encryption.encryptRecord(
+      { notes: data.notes, skipReason: data.skipReason },
+      ENCRYPTED_ENTITY_FIELDS,
+    );
     await this.model.updateOne(
       { _id: data.id },
       {
@@ -20,8 +31,8 @@ export class HabitEntryRepository {
           date: data.date,
           value: data.value,
           type: data.type || "completion",
-          skip_reason: data.skipReason,
-          notes: data.notes,
+          skip_reason: enc.skipReason,
+          notes: enc.notes,
           workspace_id: data.workspaceId,
         },
       },
@@ -136,14 +147,18 @@ export class HabitEntryRepository {
   }
 
   private toDomain(doc: any): HabitEntry {
+    const dec = this.encryption.decryptRecord(
+      { notes: doc.notes, skip_reason: doc.skip_reason },
+      ENCRYPTED_DOC_FIELDS,
+    );
     return HabitEntry.reconstitute(
       {
         habitId: doc.habit_id,
         date: doc.date,
         value: doc.value,
         type: doc.type || "completion",
-        skipReason: doc.skip_reason,
-        notes: doc.notes,
+        skipReason: dec.skip_reason,
+        notes: dec.notes,
         workspaceId: doc.workspace_id,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at,

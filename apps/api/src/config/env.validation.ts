@@ -19,6 +19,11 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
+  ENCRYPTION_KEY: isProd()
+    ? z
+        .string()
+        .min(32, "ENCRYPTION_KEY must be at least 32 characters in production")
+    : z.string().optional(),
   INVITATION_EXPIRY_DAYS: z.coerce.number().int().positive().default(7),
 });
 

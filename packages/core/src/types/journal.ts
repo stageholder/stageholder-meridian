@@ -4,10 +4,11 @@ export interface Journal {
   title: string;
   content: string;
   mood?: number;
-  tags: string[];
+  tags: string[] | string;
   authorId: string;
   date: string;
   wordCount: number;
+  encrypted?: boolean;
   createdAt: string;
   updatedAt: string;
 }

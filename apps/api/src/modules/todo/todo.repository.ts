@@ -3,21 +3,36 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { TodoModel, TodoDocument } from "./todo.schema";
 import { Todo } from "./todo.entity";
+import { EncryptionService } from "../encryption";
+
+const ENCRYPTED_FIELDS = ["title", "description", "subtasks[*].title"];
 
 @Injectable()
 export class TodoRepository {
   constructor(
     @InjectModel(TodoModel.name) private model: Model<TodoDocument>,
+    private readonly encryption: EncryptionService,
   ) {}
 
   async save(todo: Todo): Promise<void> {
     const data = todo.toObject();
+    const enc = this.encryption.encryptRecord(
+      {
+        title: data.title,
+        description: data.description,
+        subtasks: (data.subtasks || []).map((s: any) => ({
+          ...s,
+          title: s.title,
+        })),
+      },
+      ENCRYPTED_FIELDS,
+    );
     await this.model.updateOne(
       { _id: data.id },
       {
         $set: {
-          title: data.title,
-          description: data.description,
+          title: enc.title,
+          description: enc.description,
           status: data.status,
           priority: data.priority,
           due_date: data.dueDate,
@@ -27,7 +42,7 @@ export class TodoRepository {
           assignee_id: data.assigneeId,
           creator_id: data.creatorId,
           order: data.order,
-          subtasks: (data.subtasks || []).map((s: any) => ({
+          subtasks: (enc.subtasks || []).map((s: any) => ({
             _id: s.id,
             title: s.title,
             status: s.status,
@@ -137,10 +152,18 @@ export class TodoRepository {
   }
 
   private toDomain(doc: any): Todo {
-    return Todo.reconstitute(
+    const dec = this.encryption.decryptRecord(
       {
         title: doc.title,
         description: doc.description,
+        subtasks: doc.subtasks || [],
+      },
+      ENCRYPTED_FIELDS,
+    );
+    return Todo.reconstitute(
+      {
+        title: dec.title,
+        description: dec.description,
         status: doc.status,
         priority: doc.priority,
         dueDate: doc.due_date,
@@ -150,7 +173,7 @@ export class TodoRepository {
         assigneeId: doc.assignee_id,
         creatorId: doc.creator_id,
         order: doc.order,
-        subtasks: (doc.subtasks || []).map((s: any) => ({
+        subtasks: (dec.subtasks || []).map((s: any) => ({
           id: s._id,
           title: s.title,
           status: s.status,

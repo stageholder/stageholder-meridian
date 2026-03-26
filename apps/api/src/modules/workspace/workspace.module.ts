@@ -15,6 +15,6 @@ import { WorkspaceMemberModule } from "../workspace-member/workspace-member.modu
   ],
   controllers: [WorkspaceController],
   providers: [WorkspaceRepository, WorkspaceService],
-  exports: [WorkspaceService],
+  exports: [WorkspaceService, WorkspaceRepository],
 })
 export class WorkspaceModule {}

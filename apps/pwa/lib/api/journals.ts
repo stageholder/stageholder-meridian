@@ -11,6 +11,12 @@ import {
 import { db } from "@repo/offline/db";
 import { lightKeys } from "./light";
 import { useCallback } from "react";
+import { useEncryptionStore } from "@/lib/crypto/encryption-store";
+import {
+  encryptJournalPayload,
+  decryptJournalResponse,
+  decryptJournalList,
+} from "@/lib/crypto/journal-crypto";
 
 interface PaginatedResponse {
   data: Journal[];
@@ -33,6 +39,10 @@ export function useJournals(
     return db.journals.where("workspaceId").equals(workspace.id).toArray();
   }, [workspace.id, params?.startDate, params?.endDate]);
 
+  const dek = useEncryptionStore((s) => s.dek);
+  const isSetup = useEncryptionStore((s) => s.isSetup);
+  const isLocked = isSetup && !dek;
+
   return useOfflineQueryFiltered<Journal>(
     ["journals", workspace.id, params],
     localQueryFn,
@@ -40,15 +50,18 @@ export function useJournals(
       const res = await apiClient.get(`/workspaces/${workspace.id}/journals`, {
         params,
       });
-      return res.data?.data ?? res.data;
+      const journals: Journal[] = res.data?.data ?? res.data;
+      if (dek) return decryptJournalList(journals, dek);
+      return journals;
     },
     db.journals,
-    { enabled: options?.enabled },
+    { enabled: options?.enabled !== false && !isLocked },
   );
 }
 
 export function useJournalsPaginated(limit = 20) {
   const { workspace } = useWorkspace();
+  const dek = useEncryptionStore((s) => s.dek);
 
   return useInfiniteQuery<PaginatedResponse>({
     queryKey: ["journals", workspace.id, "paginated"],
@@ -56,7 +69,11 @@ export function useJournalsPaginated(limit = 20) {
       const res = await apiClient.get(`/workspaces/${workspace.id}/journals`, {
         params: { page: pageParam, limit },
       });
-      return res.data;
+      const page = res.data as PaginatedResponse;
+      if (dek) {
+        page.data = await decryptJournalList(page.data, dek);
+      }
+      return page;
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage) => {
@@ -70,6 +87,9 @@ export function useJournalsPaginated(limit = 20) {
 
 export function useJournal(id: string) {
   const { workspace } = useWorkspace();
+  const dek = useEncryptionStore((s) => s.dek);
+  const isSetup = useEncryptionStore((s) => s.isSetup);
+  const isLocked = isSetup && !dek;
 
   return useOfflineQuerySingle<Journal>(
     ["journal", workspace.id, id],
@@ -79,15 +99,18 @@ export function useJournal(id: string) {
       const res = await apiClient.get(
         `/workspaces/${workspace.id}/journals/${id}`,
       );
-      return res.data;
+      const journal: Journal = res.data;
+      if (dek) return decryptJournalResponse(journal, dek);
+      return journal;
     },
-    { enabled: !!id },
+    { enabled: !!id && !isLocked },
   );
 }
 
 export function useCreateJournal() {
   const queryClient = useQueryClient();
   const { workspace } = useWorkspace();
+  const dek = useEncryptionStore((s) => s.dek);
 
   return useOfflineMutation<
     Journal,
@@ -100,11 +123,15 @@ export function useCreateJournal() {
     }
   >({
     mutationFn: async (data) => {
+      const payload = dek ? await encryptJournalPayload(data, dek) : data;
       const res = await apiClient.post(
         `/workspaces/${workspace.id}/journals`,
-        data,
+        payload,
       );
-      return res.data as Journal;
+      const journal: Journal = res.data;
+      // Decrypt response before it's stored in Dexie
+      if (dek) return decryptJournalResponse(journal, dek);
+      return journal;
     },
     table: db.journals,
     entityType: "journals",
@@ -175,6 +202,7 @@ export function useCreateJournal() {
 export function useUpdateJournal() {
   const queryClient = useQueryClient();
   const { workspace } = useWorkspace();
+  const dek = useEncryptionStore((s) => s.dek);
 
   return useOfflineMutation<
     Journal,
@@ -189,11 +217,25 @@ export function useUpdateJournal() {
     }
   >({
     mutationFn: async ({ id, data }) => {
+      const payload = dek
+        ? await encryptJournalPayload(
+            {
+              title: data.title || "",
+              content: data.content || "",
+              tags: data.tags,
+              mood: data.mood,
+            },
+            dek,
+          )
+        : data;
       const res = await apiClient.patch(
         `/workspaces/${workspace.id}/journals/${id}`,
-        data,
+        payload,
       );
-      return res.data as Journal;
+      const journal: Journal = res.data;
+      // Decrypt response before it's stored in Dexie
+      if (dek) return decryptJournalResponse(journal, dek);
+      return journal;
     },
     table: db.journals,
     entityType: "journals",

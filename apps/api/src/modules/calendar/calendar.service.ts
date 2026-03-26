@@ -113,7 +113,7 @@ export class CalendarService {
       const day = obj.date.split("T")[0] || obj.date;
       getDay(day).journals.push({
         id: obj.id,
-        title: obj.title,
+        title: obj.encrypted ? "Encrypted journal entry" : obj.title,
         date: obj.date,
         wordCount: obj.wordCount ?? 0,
       });

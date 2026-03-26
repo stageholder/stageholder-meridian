@@ -42,6 +42,10 @@ export class UserModel {
   @Prop({ type: String }) timezone: string;
   @Prop({ type: Boolean, default: false }) onboarding_completed: boolean;
   @Prop({ type: String }) refresh_token_hash: string;
+  @Prop({ type: String }) encrypted_dek: string;
+  @Prop({ type: String }) dek_salt: string;
+  @Prop({ type: String }) recovery_codes_hash: string;
+  @Prop({ type: Boolean, default: false }) encryption_enabled: boolean;
   @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 

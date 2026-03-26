@@ -57,12 +57,12 @@ export default function JournalEntryPage() {
       setTitle(journal.title);
       setContent(journal.content);
       setMood(journal.mood);
-      setTags(journal.tags);
+      setTags(Array.isArray(journal.tags) ? journal.tags : []);
       lastSavedRef.current = {
         title: journal.title,
         content: journal.content,
         mood: journal.mood,
-        tags: journal.tags,
+        tags: Array.isArray(journal.tags) ? journal.tags : [],
       };
       journalDateRef.current = journal.date;
       setInitialized(true);

@@ -9,6 +9,12 @@ import { createTagsApi } from "@repo/core/api/tags";
 import { createNotificationsApi } from "@repo/core/api/notifications";
 import { createWorkspacesApi } from "@repo/core/api/workspaces";
 import apiClient, { getWorkspaceId } from "@/lib/api-client";
+import { useEncryptionStore } from "@/lib/crypto/encryption-store";
+import { decryptJournalList } from "@/lib/crypto/journal-crypto";
+import { registerJournalEncryptionTransform } from "@/lib/crypto/register-transforms";
+
+// Register encryption transform for offline journal mutations
+registerJournalEncryptionTransform();
 
 const todosApi = createTodosApi(apiClient, getWorkspaceId);
 const journalsApi = createJournalsApi(apiClient, getWorkspaceId);
@@ -50,7 +56,14 @@ export async function syncAll(): Promise<void> {
       );
       return allTodos.flat();
     },
-    journals: (since?: string) => journalsApi.list(buildParams(since)),
+    journals: async (since?: string) => {
+      const { isSetup, isUnlocked, dek } = useEncryptionStore.getState();
+      // Skip journal sync when encryption is set up but locked
+      if (isSetup && !isUnlocked) return [];
+      const journals = await journalsApi.list(buildParams(since));
+      if (dek) return decryptJournalList(journals, dek);
+      return journals;
+    },
     habits: (since?: string) => habitsApi.list(buildParams(since)),
     habitEntries: async (since?: string) => {
       if (since) {

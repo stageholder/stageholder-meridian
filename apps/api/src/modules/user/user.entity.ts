@@ -15,6 +15,10 @@ export interface UserProps extends EntityProps {
   avatar?: string;
   timezone?: string;
   onboardingCompleted: boolean;
+  encryptedDek?: string;
+  dekSalt?: string;
+  recoveryCodesHash?: string;
+  encryptionEnabled?: boolean;
 }
 
 export class User extends Entity<UserProps> {
@@ -49,6 +53,18 @@ export class User extends Entity<UserProps> {
   get onboardingCompleted(): boolean {
     return this.get("onboardingCompleted");
   }
+  get encryptedDek(): string | undefined {
+    return this.get("encryptedDek");
+  }
+  get dekSalt(): string | undefined {
+    return this.get("dekSalt");
+  }
+  get recoveryCodesHash(): string | undefined {
+    return this.get("recoveryCodesHash");
+  }
+  get encryptionEnabled(): boolean {
+    return this.get("encryptionEnabled") ?? false;
+  }
 
   updateName(name: string): void {
     this.set("name", name);
@@ -68,6 +84,20 @@ export class User extends Entity<UserProps> {
   completeOnboarding(): void {
     this.set("onboardingCompleted", true);
   }
+  enableEncryption(
+    encryptedDek: string,
+    dekSalt: string,
+    recoveryCodesHash: string,
+  ): void {
+    this.set("encryptedDek", encryptedDek);
+    this.set("dekSalt", dekSalt);
+    this.set("recoveryCodesHash", recoveryCodesHash);
+    this.set("encryptionEnabled", true);
+  }
+  updateWrappedDek(encryptedDek: string, dekSalt: string): void {
+    this.set("encryptedDek", encryptedDek);
+    this.set("dekSalt", dekSalt);
+  }
 
   static create(
     props: Omit<
@@ -81,7 +111,13 @@ export class User extends Entity<UserProps> {
       return Err(new Error("Name is required"));
     if (props.provider === AuthProvider.LOCAL && !props.passwordHash)
       return Err(new Error("Password is required for local accounts"));
-    return Ok(new User({ ...props, onboardingCompleted: false } as UserProps));
+    return Ok(
+      new User({
+        ...props,
+        onboardingCompleted: false,
+        encryptionEnabled: false,
+      } as UserProps),
+    );
   }
 
   static reconstitute(props: UserProps, id: string): User {

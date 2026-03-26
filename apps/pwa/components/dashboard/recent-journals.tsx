@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useJournals } from "@/lib/api/journals";
 import { useWorkspace } from "@/lib/workspace-context";
+import { useEncryptionStore } from "@/lib/crypto/encryption-store";
 import { MoodDisplay } from "@/components/journal/mood-picker";
 import { BentoCard } from "./bento-card";
 import type { Journal } from "@repo/core/types";
@@ -15,7 +16,11 @@ export function RecentJournals({
   className?: string;
 }) {
   const { workspace } = useWorkspace();
-  const { data: journals, isLoading } = useJournals();
+  const { isSetup, isUnlocked } = useEncryptionStore();
+  const isLocked = isSetup && !isUnlocked;
+  const { data: journals, isLoading } = useJournals(undefined, {
+    enabled: !isLocked,
+  });
   const recentJournals = (journals || []).slice(0, 5);
 
   return (
@@ -33,7 +38,11 @@ export function RecentJournals({
         </Link>
       }
     >
-      {isLoading ? (
+      {isLocked ? (
+        <p className="text-xs text-muted-foreground">
+          Unlock your journal to see recent entries.
+        </p>
+      ) : isLoading ? (
         <p className="text-xs text-muted-foreground">Loading...</p>
       ) : recentJournals.length > 0 ? (
         <div className="flex gap-3 overflow-x-auto pb-1 snap-x">
