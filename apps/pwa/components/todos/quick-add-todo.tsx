@@ -64,6 +64,13 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
   const createTodo = useCreateTodo();
   const { data: lists } = useTodoLists();
 
+  // Sync selectedListId when listId prop changes (e.g., lists finish loading)
+  useEffect(() => {
+    if (listId && !selectedListId) {
+      setSelectedListId(listId);
+    }
+  }, [listId, selectedListId]);
+
   function resetForm() {
     setTitle("");
     setDoDate("");

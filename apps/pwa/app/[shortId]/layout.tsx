@@ -317,7 +317,6 @@ export default function WorkspaceLayout({
       <CreateTodoDialog
         open={createTodoDialogOpen}
         onOpenChange={setCreateTodoDialogOpen}
-        listId=""
       />
       <div className="flex h-screen bg-background">
         {/* Desktop sidebar */}

@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 interface CreateTodoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  listId: string;
+  listId?: string;
   defaultDueDate?: string;
 }
 
@@ -28,7 +28,7 @@ export function CreateTodoDialog({
   listId,
   defaultDueDate,
 }: CreateTodoDialogProps) {
-  const [selectedListId, setSelectedListId] = useState(listId);
+  const [selectedListId, setSelectedListId] = useState(listId || "");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("none");
@@ -38,14 +38,22 @@ export function CreateTodoDialog({
   const createTodo = useCreateTodo();
   const { data: lists } = useTodoLists();
 
+  const defaultListId =
+    lists?.find((l) => l.isDefault)?.id || lists?.[0]?.id || "";
+
   useEffect(() => {
     if (open) {
-      setSelectedListId(
-        listId || lists?.find((l) => l.isDefault)?.id || lists?.[0]?.id || "",
-      );
+      setSelectedListId(listId || defaultListId);
       if (defaultDueDate) setDueDate(defaultDueDate);
     }
-  }, [open, listId, defaultDueDate, lists]);
+  }, [open, listId, defaultDueDate, defaultListId]);
+
+  // Ensure selectedListId is always valid when lists are loaded
+  useEffect(() => {
+    if (open && !selectedListId && defaultListId) {
+      setSelectedListId(defaultListId);
+    }
+  }, [open, selectedListId, defaultListId]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -53,7 +61,7 @@ export function CreateTodoDialog({
 
     createTodo.mutate(
       {
-        listId: selectedListId,
+        listId: selectedListId || defaultListId,
         data: {
           title: title.trim(),
           description: description.trim() || undefined,
@@ -110,7 +118,7 @@ export function CreateTodoDialog({
               </label>
               <div className="mt-1">
                 <Select
-                  value={selectedListId}
+                  value={selectedListId || defaultListId}
                   onValueChange={setSelectedListId}
                 >
                   <SelectTrigger className="w-full rounded-lg border-border bg-background">
