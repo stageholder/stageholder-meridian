@@ -8,15 +8,19 @@ import { useEncryptionStore } from "@/lib/crypto/encryption-store";
  * Centralized logout that clears ALL user data to prevent leakage
  * between accounts. Must be used everywhere instead of ad-hoc cleanup.
  */
-export async function logout(): Promise<void> {
+export async function logout({
+  skipServerCall = false,
+}: { skipServerCall?: boolean } = {}): Promise<void> {
   // 1. Server-side logout (invalidate session/token)
-  try {
-    await apiClient.post("/auth/logout");
-  } catch (err) {
-    console.warn(
-      "Server-side logout failed, proceeding with local cleanup:",
-      err,
-    );
+  if (!skipServerCall) {
+    try {
+      await apiClient.post("/auth/logout");
+    } catch (err) {
+      console.warn(
+        "Server-side logout failed, proceeding with local cleanup:",
+        err,
+      );
+    }
   }
 
   // 2. Clear IndexedDB (Dexie) — all offline-cached workspace data

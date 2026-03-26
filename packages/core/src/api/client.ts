@@ -2,6 +2,11 @@ import axios, { type AxiosInstance } from "axios";
 import type { PlatformConfig } from "@repo/core/platform";
 import { logger } from "@repo/core/platform/logger";
 
+export interface ApiClient extends AxiosInstance {
+  /** Proactive silent refresh that respects the isRefreshing guard. */
+  silentRefresh: () => void;
+}
+
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (value?: unknown) => void;
@@ -16,7 +21,7 @@ function processQueue(error: unknown) {
   failedQueue = [];
 }
 
-export function createApiClient(config: PlatformConfig): AxiosInstance {
+export function createApiClient(config: PlatformConfig): ApiClient {
   const client = axios.create({
     baseURL: config.apiBaseUrl,
     headers: { "Content-Type": "application/json" },
@@ -93,6 +98,7 @@ export function createApiClient(config: PlatformConfig): AxiosInstance {
           }
 
           processQueue(null);
+          config.onRefreshSuccess?.();
           return client(originalRequest);
         } catch (refreshError) {
           const msg =
@@ -115,7 +121,45 @@ export function createApiClient(config: PlatformConfig): AxiosInstance {
     },
   );
 
-  return client;
+  /**
+   * Proactive silent refresh that respects the isRefreshing guard.
+   * Safe to call from timers/visibility handlers — will no-op if a
+   * reactive refresh (from a 401 interceptor) is already in flight.
+   */
+  function silentRefresh() {
+    if (isRefreshing) return; // reactive refresh in flight, skip
+    isRefreshing = true;
+
+    const doRefresh = async () => {
+      if (config.authStrategy === "bearer") {
+        const refreshToken = await config.storage.getItem("refresh_token");
+        if (!refreshToken) return;
+        const res = await client.post("/auth/refresh", { refreshToken });
+        await config.storage.setItem("access_token", res.data.accessToken);
+        if (res.data.refreshToken) {
+          await config.storage.setItem("refresh_token", res.data.refreshToken);
+        }
+      } else {
+        await client.post("/auth/refresh");
+      }
+      processQueue(null);
+      config.onRefreshSuccess?.();
+    };
+
+    doRefresh()
+      .catch(() => {
+        // Swallow — let the next real request's 401 interceptor handle logout
+      })
+      .finally(() => {
+        // Always drain any queued requests and release the lock
+        processQueue(null);
+        isRefreshing = false;
+      });
+  }
+
+  (client as ApiClient).silentRefresh = silentRefresh;
+
+  return client as ApiClient;
 }
 
 export function workspacePath(workspaceId: string, path: string): string {

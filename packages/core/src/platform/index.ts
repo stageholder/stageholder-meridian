@@ -10,6 +10,7 @@ export interface PlatformConfig {
   storage: StorageAdapter;
   navigate?: (path: string) => void;
   onLogout?: () => void;
+  onRefreshSuccess?: () => void;
 }
 
 export function detectPlatform(): "web" | "desktop" {

@@ -41,7 +41,7 @@ export class AuthService {
     this.jwtSecret = this.config.getOrThrow<string>("JWT_SECRET");
     this.jwtExpiresIn = this.config.get<string>("JWT_EXPIRES_IN", "15m");
     this.refreshExpiresIn = parseInt(
-      this.config.get<string>("REFRESH_TOKEN_EXPIRES_IN", "7"),
+      this.config.get<string>("REFRESH_TOKEN_EXPIRES_IN", "30"),
       10,
     );
     this.googleClient = new OAuth2Client(
@@ -249,6 +249,17 @@ export class AuthService {
       .lean();
     if (!doc)
       throw new UnauthorizedException("Invalid or expired refresh token");
+    // Enforce server-side expiry
+    if (
+      doc.refresh_token_expires_at &&
+      new Date(doc.refresh_token_expires_at) < new Date()
+    ) {
+      await this.userModel.updateOne(
+        { _id: doc._id },
+        { $unset: { refresh_token_hash: 1, refresh_token_expires_at: 1 } },
+      );
+      throw new UnauthorizedException("Refresh token has expired");
+    }
     const user = await this.userService.findById(doc._id as string);
     if (!user) throw new UnauthorizedException("User not found");
     const tokens = await this.generateTokenPair(user);
@@ -258,7 +269,7 @@ export class AuthService {
   async logout(userId: string): Promise<void> {
     await this.userModel.updateOne(
       { _id: userId },
-      { $unset: { refresh_token_hash: 1 } },
+      { $unset: { refresh_token_hash: 1, refresh_token_expires_at: 1 } },
     );
   }
 
@@ -306,9 +317,16 @@ export class AuthService {
   }
 
   private async storeRefreshToken(userId: string, hash: string): Promise<void> {
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + this.refreshExpiresIn);
     await this.userModel.updateOne(
       { _id: userId },
-      { $set: { refresh_token_hash: hash } },
+      {
+        $set: {
+          refresh_token_hash: hash,
+          refresh_token_expires_at: expiresAt,
+        },
+      },
     );
   }
 }

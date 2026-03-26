@@ -41,6 +41,7 @@ import { FeedbackButton } from "@/components/shared/feedback-button";
 import { CommandPalette } from "@/components/shared/command-palette";
 import { ShortcutsDialog } from "@/components/shared/shortcuts-dialog";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
+import { useSessionKeepAlive } from "@/hooks/use-session-keep-alive";
 import { CreateTodoDialog } from "@/components/todos/create-todo-dialog";
 import apiClient from "@/lib/api-client";
 import { logout } from "@/lib/logout";
@@ -221,6 +222,7 @@ export default function WorkspaceLayout({
     isOnline: heartbeatOnline,
   });
   useSyncOnFocus(stableSyncAll);
+  useSessionKeepAlive();
 
   const { data: userLight } = useUserLight();
 

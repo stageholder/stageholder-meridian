@@ -1,5 +1,6 @@
 export function setLoggedInFlag(): void {
-  document.cookie = "logged_in=1; path=/; max-age=604800; samesite=lax";
+  const secure = location.protocol === "https:" ? "; secure" : "";
+  document.cookie = `logged_in=1; path=/; max-age=2592000; SameSite=Lax${secure}`;
 }
 
 export function clearLoggedInFlag(): void {

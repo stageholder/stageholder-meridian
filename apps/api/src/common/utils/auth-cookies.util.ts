@@ -20,7 +20,7 @@ export function setAuthCookies(
   });
   res.cookie("refresh_token", refreshToken, {
     ...COOKIE_OPTIONS,
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: 30 * 24 * 60 * 60 * 1000,
     path: "/api/v1/auth",
   });
 }
