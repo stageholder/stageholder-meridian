@@ -13,6 +13,7 @@ export type UserDocument = UserModel & Document<string>;
       delete ret.__v;
       delete ret.password_hash;
       delete ret.refresh_token_hash;
+      delete ret.prev_refresh_token_hash;
       return ret;
     },
   },
@@ -43,6 +44,8 @@ export class UserModel {
   @Prop({ type: Boolean, default: false }) onboarding_completed: boolean;
   @Prop({ type: String }) refresh_token_hash: string;
   @Prop({ type: Date }) refresh_token_expires_at: Date;
+  @Prop({ type: String }) prev_refresh_token_hash: string;
+  @Prop({ type: Date }) prev_refresh_token_expires_at: Date;
   @Prop({ type: String }) encrypted_dek: string;
   @Prop({ type: String }) dek_salt: string;
   @Prop({ type: String }) recovery_codes_hash: string;

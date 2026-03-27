@@ -44,6 +44,7 @@ import { ShortcutsDialog } from "@/components/shared/shortcuts-dialog";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 import { useSessionKeepAlive } from "@/hooks/use-session-keep-alive";
 import { CreateTodoDialog } from "@/components/todos/create-todo-dialog";
+import { waitForRefresh } from "@repo/core/api/client";
 import apiClient from "@/lib/api-client";
 import { logout } from "@/lib/logout";
 import { useAuthStore } from "@/stores/auth-store";
@@ -221,8 +222,9 @@ export default function WorkspaceLayout({
   useAutoSync(stableSyncAll, {
     intervalMs: syncIntervalMs,
     isOnline: heartbeatOnline,
+    waitForRefresh,
   });
-  useSyncOnFocus(stableSyncAll);
+  useSyncOnFocus(stableSyncAll, { waitForRefresh });
   useSessionKeepAlive();
 
   const { data: userLight } = useUserLight();
@@ -230,6 +232,8 @@ export default function WorkspaceLayout({
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<"network" | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
@@ -265,8 +269,19 @@ export default function WorkspaceLayout({
         setActiveWorkspace(wsRes.data.id);
         const list = Array.isArray(listRes.data) ? listRes.data : [];
         setWorkspaces(list);
-      } catch {
-        if (!cancelled) router.replace("/workspaces");
+      } catch (err: any) {
+        if (cancelled) return;
+        const status = err?.response?.status;
+        if (status === 401) {
+          // onLogout interceptor handles redirect — do nothing here
+          return;
+        }
+        if (status === 403 || status === 404) {
+          router.replace("/workspaces");
+          return;
+        }
+        // Network error or unexpected — show retry
+        setFetchError("network");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -276,7 +291,7 @@ export default function WorkspaceLayout({
     return () => {
       cancelled = true;
     };
-  }, [shortId, router, setActiveWorkspace]);
+  }, [shortId, router, setActiveWorkspace, retryKey]);
 
   async function handleLogout() {
     await logout();
@@ -296,6 +311,27 @@ export default function WorkspaceLayout({
         <div className="text-sm text-muted-foreground">
           Loading workspace...
         </div>
+      </div>
+    );
+  }
+
+  if (fetchError === "network") {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background">
+        <p className="text-sm text-muted-foreground">
+          Could not connect to the server.
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setFetchError(null);
+            setLoading(true);
+            setRetryKey((k) => k + 1);
+          }}
+        >
+          Try again
+        </Button>
       </div>
     );
   }

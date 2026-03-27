@@ -242,9 +242,17 @@ export function useFailedMutations() {
 
 export function useAutoSync(
   syncFn: () => Promise<void>,
-  options: { intervalMs?: number; isOnline?: boolean } = {},
+  options: {
+    intervalMs?: number;
+    isOnline?: boolean;
+    waitForRefresh?: () => Promise<void>;
+  } = {},
 ) {
-  const { intervalMs = 60000, isOnline: isOnlineOverride } = options;
+  const {
+    intervalMs = 60000,
+    isOnline: isOnlineOverride,
+    waitForRefresh,
+  } = options;
   const browserOnline = useNetworkStatus();
   const isOnline = isOnlineOverride ?? browserOnline;
 
@@ -259,30 +267,48 @@ export function useAutoSync(
   useEffect(() => {
     if (!isOnline) return;
 
-    syncFn();
-
-    const handleOnline = () => {
+    const guardedSync = async () => {
+      if (waitForRefresh) {
+        try {
+          await waitForRefresh();
+        } catch {
+          return;
+        }
+      }
       syncFn();
     };
-    window.addEventListener("online", handleOnline);
 
-    const id = setInterval(() => {
-      if (isOnline) syncFn();
-    }, intervalMs);
+    guardedSync();
+
+    window.addEventListener("online", guardedSync);
+
+    const id = setInterval(guardedSync, intervalMs);
 
     return () => {
-      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("online", guardedSync);
       clearInterval(id);
     };
-  }, [isOnline, syncFn, intervalMs]);
+  }, [isOnline, syncFn, intervalMs, waitForRefresh]);
 }
 
-export function useSyncOnFocus(syncFn: () => Promise<void>) {
+export function useSyncOnFocus(
+  syncFn: () => Promise<void>,
+  options?: { waitForRefresh?: () => Promise<void> },
+) {
+  const { waitForRefresh } = options ?? {};
+
   useEffect(() => {
-    const handleFocus = () => {
+    const handleFocus = async () => {
+      if (waitForRefresh) {
+        try {
+          await waitForRefresh();
+        } catch {
+          return;
+        }
+      }
       syncFn();
     };
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
-  }, [syncFn]);
+  }, [syncFn, waitForRefresh]);
 }

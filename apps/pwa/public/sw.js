@@ -50,8 +50,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-first for navigation
-  event.respondWith(
-    fetch(request).catch(() => caches.match(request))
-  );
+  // Network-first for navigation, fall back to cached shell
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(() =>
+        caches.match('/').then((cached) => cached || fetch(request))
+      )
+    );
+    return;
+  }
+
+  // All other requests — network only
+  event.respondWith(fetch(request));
 });

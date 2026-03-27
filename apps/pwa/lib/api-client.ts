@@ -11,10 +11,12 @@ const apiClient = createApiClient({
   storage,
   onLogout: async () => {
     if (typeof window !== "undefined") {
-      // Use the same thorough cleanup as explicit logout.
-      // Skip the server call — the token is already dead (refresh just failed).
-      const { logout } = await import("@/lib/logout");
-      await logout({ skipServerCall: true });
+      const { sessionExpired } = await import("@/lib/logout");
+      await sessionExpired();
+      const { toast } = await import("sonner");
+      toast.error("Session expired", {
+        description: "Please sign in again.",
+      });
       window.location.href = "/login";
     }
   },

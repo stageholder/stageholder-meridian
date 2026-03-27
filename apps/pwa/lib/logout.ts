@@ -52,3 +52,24 @@ export async function logout({
   // 6. Clear cookies
   clearLoggedInFlag();
 }
+
+/**
+ * Lightweight cleanup for automatic session expiry.
+ * Preserves IndexedDB (unsynced data) — only clears auth state.
+ */
+export async function sessionExpired(): Promise<void> {
+  try {
+    const queryClient = getQueryClient();
+    if (queryClient) queryClient.clear();
+  } catch {
+    // ignore
+  }
+
+  localStorage.removeItem("auth-storage");
+  localStorage.removeItem("workspace-storage");
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+
+  useEncryptionStore.getState().lock();
+  clearLoggedInFlag();
+}

@@ -244,11 +244,24 @@ export class AuthService {
     refreshToken: string,
   ): Promise<{ user: User; tokens: TokenPair }> {
     const tokenHash = this.hashRefreshToken(refreshToken);
-    const doc = await this.userModel
+
+    // Check current hash first, then grace-period previous hash
+    let doc = await this.userModel
       .findOne({ refresh_token_hash: tokenHash })
       .lean();
+
+    if (!doc) {
+      doc = await this.userModel
+        .findOne({
+          prev_refresh_token_hash: tokenHash,
+          prev_refresh_token_expires_at: { $gt: new Date() },
+        })
+        .lean();
+    }
+
     if (!doc)
       throw new UnauthorizedException("Invalid or expired refresh token");
+
     // Enforce server-side expiry
     if (
       doc.refresh_token_expires_at &&
@@ -256,10 +269,18 @@ export class AuthService {
     ) {
       await this.userModel.updateOne(
         { _id: doc._id },
-        { $unset: { refresh_token_hash: 1, refresh_token_expires_at: 1 } },
+        {
+          $unset: {
+            refresh_token_hash: 1,
+            refresh_token_expires_at: 1,
+            prev_refresh_token_hash: 1,
+            prev_refresh_token_expires_at: 1,
+          },
+        },
       );
       throw new UnauthorizedException("Refresh token has expired");
     }
+
     const user = await this.userService.findById(doc._id as string);
     if (!user) throw new UnauthorizedException("User not found");
     const tokens = await this.generateTokenPair(user);
@@ -269,7 +290,14 @@ export class AuthService {
   async logout(userId: string): Promise<void> {
     await this.userModel.updateOne(
       { _id: userId },
-      { $unset: { refresh_token_hash: 1, refresh_token_expires_at: 1 } },
+      {
+        $unset: {
+          refresh_token_hash: 1,
+          refresh_token_expires_at: 1,
+          prev_refresh_token_hash: 1,
+          prev_refresh_token_expires_at: 1,
+        },
+      },
     );
   }
 
@@ -316,15 +344,34 @@ export class AuthService {
     return createHash("sha256").update(token).digest("hex");
   }
 
+  private static readonly GRACE_PERIOD_SECONDS = 30;
+
   private async storeRefreshToken(userId: string, hash: string): Promise<void> {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + this.refreshExpiresIn);
+
+    // Keep the current hash as a grace-period fallback for concurrent requests
+    const current = await this.userModel
+      .findById(userId)
+      .select("refresh_token_hash")
+      .lean();
+
+    const graceExpiry = new Date(
+      Date.now() + AuthService.GRACE_PERIOD_SECONDS * 1000,
+    );
+
     await this.userModel.updateOne(
       { _id: userId },
       {
         $set: {
           refresh_token_hash: hash,
           refresh_token_expires_at: expiresAt,
+          ...(current?.refresh_token_hash
+            ? {
+                prev_refresh_token_hash: current.refresh_token_hash,
+                prev_refresh_token_expires_at: graceExpiry,
+              }
+            : {}),
         },
       },
     );

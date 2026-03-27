@@ -4,7 +4,13 @@ import { logger } from "@repo/core/platform/logger";
 
 export interface ApiClient extends AxiosInstance {
   /** Proactive silent refresh that respects the isRefreshing guard. */
-  silentRefresh: () => void;
+  silentRefresh: () => Promise<void>;
+}
+
+let refreshPromise: Promise<void> | null = null;
+
+export function waitForRefresh(): Promise<void> {
+  return refreshPromise ?? Promise.resolve();
 }
 
 let isRefreshing = false;
@@ -94,7 +100,7 @@ export function createApiClient(config: PlatformConfig): ApiClient {
               }
             }
           } else {
-            await client.post("/auth/refresh");
+            await client.post("/auth/refresh", {});
           }
 
           processQueue(null);
@@ -126,11 +132,11 @@ export function createApiClient(config: PlatformConfig): ApiClient {
    * Safe to call from timers/visibility handlers — will no-op if a
    * reactive refresh (from a 401 interceptor) is already in flight.
    */
-  function silentRefresh() {
-    if (isRefreshing) return; // reactive refresh in flight, skip
+  function silentRefresh(): Promise<void> {
+    if (isRefreshing) return refreshPromise ?? Promise.resolve();
     isRefreshing = true;
 
-    const doRefresh = async () => {
+    refreshPromise = (async () => {
       if (config.authStrategy === "bearer") {
         const refreshToken = await config.storage.getItem("refresh_token");
         if (!refreshToken) return;
@@ -140,21 +146,21 @@ export function createApiClient(config: PlatformConfig): ApiClient {
           await config.storage.setItem("refresh_token", res.data.refreshToken);
         }
       } else {
-        await client.post("/auth/refresh");
+        await client.post("/auth/refresh", {});
       }
       processQueue(null);
       config.onRefreshSuccess?.();
-    };
-
-    doRefresh()
-      .catch(() => {
-        // Swallow — let the next real request's 401 interceptor handle logout
+    })()
+      .catch((err) => {
+        processQueue(err);
+        throw err;
       })
       .finally(() => {
-        // Always drain any queued requests and release the lock
-        processQueue(null);
         isRefreshing = false;
+        refreshPromise = null;
       });
+
+    return refreshPromise;
   }
 
   (client as ApiClient).silentRefresh = silentRefresh;
