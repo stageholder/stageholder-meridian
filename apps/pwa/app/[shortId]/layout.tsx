@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { syncAll } from "@/lib/offline";
 import { useUserLight } from "@/lib/api/light";
 import { StarVisual } from "@/components/light/star-visual";
+import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import {
   getTierProgress,
   getNextTier,
@@ -320,7 +321,7 @@ export default function WorkspaceLayout({
         open={createTodoDialogOpen}
         onOpenChange={setCreateTodoDialogOpen}
       />
-      <div className="flex h-screen bg-background">
+      <div className="flex h-screen overflow-hidden bg-background safe-area-top">
         {/* Desktop sidebar */}
         <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
           {/* Workspace selector */}
@@ -352,9 +353,9 @@ export default function WorkspaceLayout({
         </aside>
 
         {/* Main content area */}
-        <div className="flex flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col">
           {/* Top header */}
-          <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-background px-4">
+          <header className="flex h-12 shrink-0 items-center gap-3 overflow-hidden border-b border-border bg-background px-4">
             {/* Mobile menu trigger */}
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild>
@@ -574,7 +575,10 @@ export default function WorkspaceLayout({
                           </div>
                         </button>
                       </PopoverTrigger>
-                      <PopoverContent align="end" className="w-64 p-0">
+                      <PopoverContent
+                        align="end"
+                        className="w-64 max-w-[calc(100vw-2rem)] p-0"
+                      >
                         <div className="flex flex-col items-center gap-2 px-4 pt-4 pb-3">
                           <StarVisual
                             tier={userLight.currentTier}
@@ -694,7 +698,12 @@ export default function WorkspaceLayout({
           </header>
 
           {/* Page content */}
-          <main className="flex-1 overflow-y-auto">{children}</main>
+          <main className="flex-1 overflow-y-auto pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] md:pb-0">
+            {children}
+          </main>
+
+          {/* Mobile bottom navigation */}
+          <MobileBottomNav />
         </div>
       </div>
     </WorkspaceProvider>

@@ -13,7 +13,8 @@ import { CalendarCell } from "./calendar-cell";
 import type { CalendarData } from "@/lib/api/calendar";
 import type { Habit } from "@repo/core/types";
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAYS_SHORT = ["S", "M", "T", "W", "T", "F", "S"];
+const WEEKDAYS_LONG = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 interface CalendarGridProps {
   currentMonth: Date;
@@ -39,17 +40,18 @@ export function CalendarGrid({
 
   return (
     <div>
-      <div className="grid grid-cols-7 gap-1 mb-1">
-        {WEEKDAYS.map((day) => (
+      <div className="grid grid-cols-7 gap-0.5 mb-1 sm:gap-1">
+        {WEEKDAYS_LONG.map((day, i) => (
           <div
             key={day}
             className="py-2 text-center text-xs font-medium text-muted-foreground"
           >
-            {day}
+            <span className="hidden sm:inline">{day}</span>
+            <span className="sm:hidden">{WEEKDAYS_SHORT[i]}</span>
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
         {days.map((day) => {
           const dateKey = format(day, "yyyy-MM-dd");
           return (

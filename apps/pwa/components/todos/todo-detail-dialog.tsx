@@ -162,7 +162,11 @@ export function TodoDetailDialog({
         className="fixed inset-0 bg-black/50"
         onClick={() => onOpenChange(false)}
       />
-      <div className="relative z-50 w-full max-w-2xl rounded-xl border border-border bg-card shadow-lg">
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="relative z-50 mx-4 w-full max-w-2xl rounded-xl border border-border bg-card shadow-lg max-h-[90vh] overflow-y-auto"
+      >
         {/* Header */}
         <div className="flex items-start gap-3 border-b border-border p-5">
           <button
@@ -245,7 +249,7 @@ export function TodoDetailDialog({
         </div>
 
         {/* Body — two columns */}
-        <div className="flex divide-x divide-border">
+        <div className="flex flex-col divide-y divide-border md:flex-row md:divide-x md:divide-y-0">
           {/* Left column: Description & Subtasks */}
           <div className="flex-1 space-y-4 p-5 min-w-0">
             {/* Description (editable) */}
@@ -401,7 +405,7 @@ export function TodoDetailDialog({
                               subtaskId: subtask.id,
                             })
                           }
-                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover/subtask:opacity-100"
+                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover/subtask:opacity-100"
                           aria-label="Delete subtask"
                         >
                           <svg
@@ -449,7 +453,7 @@ export function TodoDetailDialog({
           </div>
 
           {/* Right column: Task details (interactive) */}
-          <div className="w-60 shrink-0 space-y-1 p-3">
+          <div className="w-full space-y-1 p-3 md:w-60 md:shrink-0">
             {/* Priority */}
             <div ref={priorityRef} className="relative">
               <p className="px-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">

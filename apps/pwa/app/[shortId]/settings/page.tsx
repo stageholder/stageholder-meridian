@@ -30,7 +30,7 @@ export default function SettingsPage() {
 
       {/* Tabs */}
       <div className="border-b border-border">
-        <nav className="flex gap-6">
+        <nav className="scrollbar-hide flex gap-4 overflow-x-auto sm:gap-6">
           {tabs.map((tab) => (
             <button
               key={tab.id}

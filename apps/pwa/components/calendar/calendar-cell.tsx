@@ -49,7 +49,7 @@ export function CalendarCell({
     <button
       onClick={onClick}
       className={cn(
-        "flex flex-col items-center gap-1 rounded-lg p-2 text-sm transition-colors min-h-[60px]",
+        "flex flex-col items-center gap-0.5 rounded-lg p-1 text-xs transition-colors min-h-[48px] sm:gap-1 sm:p-2 sm:text-sm sm:min-h-[60px]",
         inMonth ? "text-foreground" : "text-muted-foreground/50",
         isSelected && "bg-accent ring-1 ring-primary",
         !isSelected && "hover:bg-accent/50",
@@ -58,7 +58,7 @@ export function CalendarCell({
     >
       <span
         className={cn(
-          "flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium",
+          "flex h-5 w-5 items-center justify-center rounded-full text-xs font-medium sm:h-7 sm:w-7 sm:text-sm",
           today && "bg-primary text-primary-foreground",
         )}
       >

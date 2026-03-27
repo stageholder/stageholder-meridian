@@ -9,7 +9,11 @@ import { useWorkspace } from "@/lib/workspace-context";
 import { CreateListDialog } from "./create-list-dialog";
 import type { TodoList } from "@repo/core/types";
 
-export function TodoListSidebar() {
+interface TodoListSidebarProps {
+  onNavigate?: () => void;
+}
+
+export function TodoListSidebar({ onNavigate }: TodoListSidebarProps = {}) {
   const { workspace } = useWorkspace();
   const pathname = usePathname();
   const { data: lists, isLoading } = useTodoLists();
@@ -24,8 +28,8 @@ export function TodoListSidebar() {
     : [];
 
   return (
-    <div className="flex h-full w-64 flex-col border-r border-border bg-card">
-      <div className="border-b border-border px-4 py-3">
+    <div className="flex h-full w-full flex-col bg-card">
+      <div className="sticky top-0 z-10 border-b border-border bg-card px-4 py-3">
         <h2 className="text-sm font-semibold text-foreground">Todos</h2>
       </div>
 
@@ -39,6 +43,7 @@ export function TodoListSidebar() {
         {/* Today */}
         <Link
           href={basePath}
+          onClick={onNavigate}
           className={cn(
             "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
             pathname === basePath
@@ -74,6 +79,7 @@ export function TodoListSidebar() {
         {/* Upcoming */}
         <Link
           href={`${basePath}/upcoming`}
+          onClick={onNavigate}
           className={cn(
             "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
             pathname === `${basePath}/upcoming`
@@ -105,6 +111,7 @@ export function TodoListSidebar() {
         {/* Inbox */}
         <Link
           href={`${basePath}/inbox`}
+          onClick={onNavigate}
           className={cn(
             "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
             pathname === `${basePath}/inbox`
@@ -133,6 +140,7 @@ export function TodoListSidebar() {
         {/* Completed */}
         <Link
           href={`${basePath}/completed`}
+          onClick={onNavigate}
           className={cn(
             "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
             pathname === `${basePath}/completed`
@@ -165,7 +173,10 @@ export function TodoListSidebar() {
             Lists
           </span>
           <button
-            onClick={() => setShowCreateDialog(true)}
+            onClick={() => {
+              setShowCreateDialog(true);
+              onNavigate?.();
+            }}
             className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
             aria-label="Create list"
           >
@@ -192,6 +203,7 @@ export function TodoListSidebar() {
             <Link
               key={list.id}
               href={`${basePath}/${list.id}`}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 pathname === `${basePath}/${list.id}`

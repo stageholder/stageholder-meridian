@@ -122,8 +122,8 @@ export default function JournalEntryPage() {
   const dateLabel = format(parseISO(journal.date), "MMM d, yyyy");
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="shrink-0 p-4 pb-0">
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="shrink-0 overflow-hidden p-4 pb-0">
         {!isDesktop && (
           <div className="mb-6">
             <button

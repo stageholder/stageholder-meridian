@@ -108,7 +108,11 @@ export function CreateTodoDialog({
         className="fixed inset-0 bg-black/50"
         onClick={() => onOpenChange(false)}
       />
-      <div className="relative z-50 w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="relative z-50 mx-4 w-full max-w-md rounded-xl border border-border bg-card p-4 shadow-lg sm:p-6 max-h-[90vh] overflow-y-auto"
+      >
         <h2 className="text-lg font-semibold text-foreground">New Todo</h2>
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           {lists && lists.length > 1 && (
@@ -241,8 +245,8 @@ export function CreateTodoDialog({
 
           <div className="space-y-3">
             <div>
-              <div className="flex items-center gap-3">
-                <label className="block text-sm font-medium text-foreground w-20 shrink-0">
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <label className="block text-sm font-medium text-foreground sm:w-20 sm:shrink-0">
                   Due Date
                 </label>
                 <div className="flex-1">
@@ -253,7 +257,7 @@ export function CreateTodoDialog({
                   />
                 </div>
               </div>
-              <div className="mt-1.5 ml-[calc(5rem+0.75rem)] flex flex-wrap gap-1.5">
+              <div className="mt-1.5 sm:ml-[calc(5rem+0.75rem)] flex flex-wrap gap-1.5">
                 {[
                   { label: "Today", date: new Date() },
                   { label: "Tomorrow", date: addDays(new Date(), 1) },
@@ -281,8 +285,8 @@ export function CreateTodoDialog({
             </div>
 
             <div>
-              <div className="flex items-center gap-3">
-                <label className="block text-sm font-medium text-foreground w-20 shrink-0">
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <label className="block text-sm font-medium text-foreground sm:w-20 sm:shrink-0">
                   Do Date
                 </label>
                 <div className="flex-1">
@@ -293,7 +297,7 @@ export function CreateTodoDialog({
                   />
                 </div>
               </div>
-              <div className="mt-1.5 ml-[calc(5rem+0.75rem)] flex flex-wrap gap-1.5">
+              <div className="mt-1.5 sm:ml-[calc(5rem+0.75rem)] flex flex-wrap gap-1.5">
                 {[
                   { label: "Today", date: new Date() },
                   { label: "Tomorrow", date: addDays(new Date(), 1) },
