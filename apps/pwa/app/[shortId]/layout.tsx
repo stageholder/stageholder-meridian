@@ -366,13 +366,12 @@ export default function WorkspaceLayout({
               </SheetTrigger>
               <SheetContent side="left" className="w-60 p-0">
                 <SheetHeader className="p-3">
-                  <SheetTitle asChild>
-                    <WorkspaceSelector
-                      workspace={workspace}
-                      workspaces={workspaces}
-                      onNavigate={() => setMobileOpen(false)}
-                    />
-                  </SheetTitle>
+                  <SheetTitle className="sr-only">Navigation</SheetTitle>
+                  <WorkspaceSelector
+                    workspace={workspace}
+                    workspaces={workspaces}
+                    onNavigate={() => setMobileOpen(false)}
+                  />
                 </SheetHeader>
                 <SidebarNav
                   shortId={shortId}
@@ -698,7 +697,7 @@ export default function WorkspaceLayout({
           </header>
 
           {/* Page content */}
-          <main className="flex-1 overflow-y-auto pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] md:pb-0">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] md:pb-0">
             {children}
           </main>
 
