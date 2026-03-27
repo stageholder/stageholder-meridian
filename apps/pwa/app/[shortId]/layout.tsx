@@ -388,18 +388,18 @@ export default function WorkspaceLayout({
             <div className="flex items-center gap-2">
               {currentPage && (
                 <>
-                  <currentPage.icon className="size-4 text-muted-foreground" />
-                  <h1 className="text-sm font-medium text-foreground">
+                  <currentPage.icon className="size-4 shrink-0 text-muted-foreground" />
+                  <h1 className="hidden text-sm font-medium text-foreground sm:block">
                     {currentPage.label}
                   </h1>
                 </>
               )}
             </div>
 
-            <div className="flex-1" />
+            <div className="min-w-0 flex-1" />
 
             {/* Right side */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex shrink-0 items-center gap-1.5">
               <Button
                 variant="ghost"
                 size="sm"
