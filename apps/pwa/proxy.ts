@@ -19,7 +19,9 @@ export function proxy(request: NextRequest) {
   if (
     STATIC_FILES.has(fileName) ||
     pathname.startsWith("/_next/") ||
-    pathname.startsWith("/icons/")
+    pathname.startsWith("/icons/") ||
+    pathname.startsWith("/favicon/") ||
+    pathname.startsWith("/logo/")
   ) {
     return NextResponse.next();
   }

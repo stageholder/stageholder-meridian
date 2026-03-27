@@ -49,7 +49,7 @@ export default function InvitePage() {
       <div className="w-full max-w-md">
         {/* Branding */}
         <div className="flex flex-col items-center gap-2 mb-8 auth-animate auth-stagger-1">
-          <MeridianLogo size="md" className="text-primary" />
+          <MeridianLogo size="md" />
           <h1 className="text-xl font-[family-name:var(--font-display)] tracking-tight font-semibold text-foreground">
             Meridian
           </h1>
