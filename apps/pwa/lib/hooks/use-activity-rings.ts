@@ -3,7 +3,7 @@ import type { CalendarDayData } from "@/lib/api/calendar";
 import { useCalendarData } from "@/lib/api/calendar";
 import { useHabits } from "@/lib/api/habits";
 import { useUserLight } from "@/lib/api/light";
-import type { Habit } from "@repo/core/types";
+import { countScheduledHabitsForDate } from "@/lib/habits/entry-resolution";
 import type { ActivityRingsData } from "@/components/activity-rings/activity-rings-visual";
 
 interface Targets {
@@ -12,18 +12,6 @@ interface Targets {
 }
 
 const DEFAULT_TARGETS: Targets = { todoDaily: 3, journalDailyWords: 75 };
-
-function countScheduledHabits(
-  habits: Habit[] | undefined,
-  date: string,
-): number {
-  if (!habits) return 0;
-  const dow = new Date(date + "T00:00:00").getDay();
-  return habits.filter((h) => {
-    if (!h.scheduledDays || h.scheduledDays.length === 0) return true;
-    return h.scheduledDays.includes(dow);
-  }).length;
-}
 
 export function computeActivityRings(
   dayData: CalendarDayData | undefined,
@@ -71,7 +59,7 @@ export function useActivityRings(date: string) {
   const { data: userLight } = useUserLight();
 
   const scheduledHabitCount = useMemo(
-    () => countScheduledHabits(habits, date),
+    () => countScheduledHabitsForDate(habits, date),
     [habits, date],
   );
   const dayData = calendarData?.[date];

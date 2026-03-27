@@ -34,6 +34,10 @@ import {
 import { useWorkspace } from "@/lib/workspace-context";
 import { toast } from "sonner";
 import type { HabitEntry } from "@repo/core/types";
+import {
+  resolveTargetCount,
+  isEntryComplete,
+} from "@/lib/habits/entry-resolution";
 
 export default function HabitDetailPage() {
   const { workspace } = useWorkspace();
@@ -65,15 +69,20 @@ export default function HabitDetailPage() {
     endDate: calMonthEnd,
   });
 
-  // Build entry map for quick lookup (stores value + type for streak/skip logic)
+  // Build entry map for quick lookup (stores value + type + snapshot for streak/skip logic)
   const entryMap = useMemo(() => {
-    const map = new Map<string, { value: number; type?: string }>();
+    const map = new Map<
+      string,
+      { value: number; type?: string; targetCountSnapshot?: number }
+    >();
     for (const e of allEntries || []) {
       const dateStr = e.date.split("T")[0]!;
       const existing = map.get(dateStr);
       map.set(dateStr, {
         value: (existing?.value ?? 0) + e.value,
         type: e.type || existing?.type || "completion",
+        targetCountSnapshot:
+          existing?.targetCountSnapshot ?? e.targetCountSnapshot,
       });
     }
     return map;
@@ -112,7 +121,6 @@ export default function HabitDetailPage() {
         completionRate: 0,
       };
 
-    const target = habit.targetCount;
     const hasSchedule = habit.scheduledDays && habit.scheduledDays.length > 0;
     const now = new Date();
     const todayStr = format(now, "yyyy-MM-dd");
@@ -123,8 +131,14 @@ export default function HabitDetailPage() {
       !hasSchedule || habit.scheduledDays!.includes(todayDow);
     const todayEntry = entryMap.get(todayStr);
     const todayIsSkipped = todayEntry?.type === "skip";
+    const todayTarget = resolveTargetCount(
+      { targetCountSnapshot: todayEntry?.targetCountSnapshot },
+      habit,
+    );
     const todayCompleted =
-      todayIsScheduled && !todayIsSkipped && (todayEntry?.value ?? 0) >= target;
+      todayIsScheduled &&
+      !todayIsSkipped &&
+      (todayEntry?.value ?? 0) >= todayTarget;
     let currentStreak = todayCompleted ? 1 : 0;
     for (let i = 1; i <= 90; i++) {
       const checkDay = subDays(now, i);
@@ -133,7 +147,11 @@ export default function HabitDetailPage() {
       const d = format(checkDay, "yyyy-MM-dd");
       const dayEntry = entryMap.get(d);
       if (dayEntry?.type === "skip") continue; // skip preserves streak
-      if ((dayEntry?.value ?? 0) >= target) currentStreak++;
+      const dayTarget = resolveTargetCount(
+        { targetCountSnapshot: dayEntry?.targetCountSnapshot },
+        habit,
+      );
+      if ((dayEntry?.value ?? 0) >= dayTarget) currentStreak++;
       else break;
     }
 
@@ -148,7 +166,11 @@ export default function HabitDetailPage() {
       const d = format(checkDay, "yyyy-MM-dd");
       const dayEntry = entryMap.get(d);
       if (dayEntry?.type === "skip") continue; // skip preserves streak
-      if ((dayEntry?.value ?? 0) >= target) {
+      const dayTarget = resolveTargetCount(
+        { targetCountSnapshot: dayEntry?.targetCountSnapshot },
+        habit,
+      );
+      if ((dayEntry?.value ?? 0) >= dayTarget) {
         tempStreak++;
         totalCompletions++;
         longestStreak = Math.max(longestStreak, tempStreak);
@@ -206,7 +228,10 @@ export default function HabitDetailPage() {
       return;
     }
 
-    if (currentVal >= habit.targetCount) {
+    const checkTarget = existing
+      ? resolveTargetCount(existing, habit)
+      : habit.targetCount;
+    if (currentVal >= checkTarget) {
       toast.info("Already completed for this date");
       return;
     }
@@ -406,8 +431,11 @@ export default function HabitDetailPage() {
               const monthEntry = monthEntryMap.get(dateStr);
               const value = monthEntry?.value ?? 0;
               const isDaySkipped = monthEntry?.type === "skip";
-              const ratio =
-                habit.targetCount > 0 ? value / habit.targetCount : 0;
+              const entryObj = monthEntryObjMap.get(dateStr);
+              const effectiveTarget = entryObj
+                ? resolveTargetCount(entryObj, habit)
+                : habit.targetCount;
+              const ratio = effectiveTarget > 0 ? value / effectiveTarget : 0;
               const isComplete = !isDaySkipped && ratio >= 1;
               const isPartial = !isDaySkipped && ratio > 0 && ratio < 1;
               const isDayToday = dateStr === today;
@@ -450,7 +478,7 @@ export default function HabitDetailPage() {
                           ? { backgroundColor: habitColor + "25" }
                           : undefined
                     }
-                    title={`${dateStr}: ${isDaySkipped ? "Skipped" : `${value}/${habit.targetCount}`}${!isScheduled ? " (rest day)" : ""}${isFutureDay ? " (future)" : ""}`}
+                    title={`${dateStr}: ${isDaySkipped ? "Skipped" : `${value}/${effectiveTarget}`}${!isScheduled ? " (rest day)" : ""}${isFutureDay ? " (future)" : ""}`}
                   >
                     {isComplete ? (
                       <svg
@@ -483,10 +511,14 @@ export default function HabitDetailPage() {
               const selEntry = monthEntryMap.get(selectedDate);
               const selValue = selEntry?.value ?? 0;
               const selIsSkipped = selEntry?.type === "skip";
+              const selEntryObj = monthEntryObjMap.get(selectedDate);
+              const selEffectiveTarget = selEntryObj
+                ? resolveTargetCount(selEntryObj, habit)
+                : habit.targetCount;
               const selComplete =
                 !selIsSkipped &&
-                habit.targetCount > 0 &&
-                selValue >= habit.targetCount;
+                selEffectiveTarget > 0 &&
+                selValue >= selEffectiveTarget;
               const selDow = getDay(new Date(selectedDate + "T00:00:00"));
               const hasSchedule =
                 habit.scheduledDays && habit.scheduledDays.length > 0;
@@ -507,7 +539,7 @@ export default function HabitDetailPage() {
                     <span className="text-[10px] text-muted-foreground">
                       {selIsSkipped
                         ? "Skipped"
-                        : `${selValue}/${habit.targetCount}`}
+                        : `${selValue}/${selEffectiveTarget}`}
                       {!selScheduled && " · Rest day"}
                     </span>
                   </div>
@@ -599,8 +631,7 @@ export default function HabitDetailPage() {
               {recentEntries.map((entry: HabitEntry) => {
                 const dateStr = entry.date.split("T")[0]!;
                 const entryIsSkip = entry.type === "skip";
-                const isComplete =
-                  !entryIsSkip && entry.value >= habit.targetCount;
+                const isComplete = isEntryComplete(entry, habit);
                 return (
                   <div
                     key={entry.id}
@@ -628,7 +659,7 @@ export default function HabitDetailPage() {
                         </span>
                       ) : (
                         <span className="text-xs text-muted-foreground">
-                          {entry.value}/{habit.targetCount}
+                          {entry.value}/{resolveTargetCount(entry, habit)}
                         </span>
                       )}
                       {entry.skipReason && (

@@ -23,6 +23,10 @@ export interface HabitEntry {
   type?: "completion" | "skip";
   skipReason?: string;
   notes?: string;
+  /** Snapshot of the habit's targetCount at the time this entry was recorded. */
+  targetCountSnapshot?: number;
+  /** Snapshot of the habit's scheduledDays at the time this entry was recorded. */
+  scheduledDaysSnapshot?: number[];
   createdAt: string;
   updatedAt: string;
 }

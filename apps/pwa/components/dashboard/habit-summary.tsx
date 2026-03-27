@@ -9,6 +9,7 @@ import { useCalendarData } from "@/lib/api/calendar";
 import { useWorkspace } from "@/lib/workspace-context";
 import { BentoCard } from "./bento-card";
 import type { Habit } from "@repo/core/types";
+import { resolveTargetCount } from "@/lib/habits/entry-resolution";
 
 export function HabitSummary({
   index = 0,
@@ -27,13 +28,21 @@ export function HabitSummary({
 
   const habitProgress = useMemo(() => {
     if (!habits || !calendarData?.[today])
-      return new Map<string, { value: number; type?: string }>();
-    const valueMap = new Map<string, { value: number; type?: string }>();
+      return new Map<
+        string,
+        { value: number; type?: string; targetCountSnapshot?: number }
+      >();
+    const valueMap = new Map<
+      string,
+      { value: number; type?: string; targetCountSnapshot?: number }
+    >();
     for (const entry of calendarData[today].habitEntries) {
       const existing = valueMap.get(entry.habitId);
       valueMap.set(entry.habitId, {
         value: (existing?.value ?? 0) + entry.value,
         type: entry.type || existing?.type || "completion",
+        targetCountSnapshot:
+          existing?.targetCountSnapshot ?? entry.targetCountSnapshot,
       });
     }
     return valueMap;
@@ -69,7 +78,10 @@ export function HabitSummary({
             const progress = habitProgress.get(habit.id);
             const value = progress?.value ?? 0;
             const isSkipped = progress?.type === "skip";
-            const target = habit.targetCount;
+            const target = resolveTargetCount(
+              { targetCountSnapshot: progress?.targetCountSnapshot },
+              habit,
+            );
             const pct = Math.min(100, target > 0 ? (value / target) * 100 : 0);
             const isComplete = !isSkipped && value >= target;
 

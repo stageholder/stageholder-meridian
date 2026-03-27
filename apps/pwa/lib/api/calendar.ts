@@ -27,6 +27,8 @@ export interface CalendarDayData {
     value: number;
     type?: string;
     date: string;
+    targetCountSnapshot?: number;
+    scheduledDaysSnapshot?: number[];
   }>;
 }
 

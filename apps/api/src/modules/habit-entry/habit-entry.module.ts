@@ -9,6 +9,7 @@ import {
 } from "./habit-entry.controller";
 import { WorkspaceMemberModule } from "../workspace-member/workspace-member.module";
 import { LightModule } from "../light/light.module";
+import { HabitModule } from "../habit/habit.module";
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { LightModule } from "../light/light.module";
     ]),
     WorkspaceMemberModule,
     LightModule,
+    HabitModule,
   ],
   controllers: [HabitEntrySyncController, HabitEntryController],
   providers: [HabitEntryRepository, HabitEntryService],

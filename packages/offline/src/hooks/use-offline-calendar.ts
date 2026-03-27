@@ -23,6 +23,8 @@ interface CalendarDayData {
     value: number;
     type?: string;
     date: string;
+    targetCountSnapshot?: number;
+    scheduledDaysSnapshot?: number[];
   }>;
 }
 
@@ -102,6 +104,8 @@ export async function assembleCalendarDataLocally(
       value: entry.value,
       type: entry.type,
       date: entry.date,
+      targetCountSnapshot: entry.targetCountSnapshot,
+      scheduledDaysSnapshot: entry.scheduledDaysSnapshot,
     });
   }
 

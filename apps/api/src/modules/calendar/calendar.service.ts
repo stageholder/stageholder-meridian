@@ -29,6 +29,8 @@ export interface CalendarDayData {
     value: number;
     type: string;
     date: string;
+    targetCountSnapshot?: number;
+    scheduledDaysSnapshot?: number[];
   }>;
 }
 
@@ -129,6 +131,8 @@ export class CalendarService {
         value: obj.value,
         type: obj.type || "completion",
         date: obj.date,
+        targetCountSnapshot: obj.targetCountSnapshot,
+        scheduledDaysSnapshot: obj.scheduledDaysSnapshot,
       });
     }
 

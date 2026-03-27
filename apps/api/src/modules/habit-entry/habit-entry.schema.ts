@@ -24,6 +24,8 @@ export class HabitEntryModel {
   @Prop({ type: String }) skip_reason: string;
   @Prop({ type: String }) notes: string;
   @Prop({ type: String, required: true, index: true }) workspace_id: string;
+  @Prop({ type: Number }) target_count_snapshot: number;
+  @Prop({ type: [Number] }) scheduled_days_snapshot: number[];
   @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 

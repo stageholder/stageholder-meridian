@@ -7,6 +7,8 @@ export interface HabitEntryProps extends EntityProps {
   type?: "completion" | "skip";
   skipReason?: string;
   notes?: string;
+  targetCountSnapshot?: number;
+  scheduledDaysSnapshot?: number[];
   workspaceId: string;
 }
 
@@ -32,6 +34,12 @@ export class HabitEntry extends Entity<HabitEntryProps> {
   }
   get notes(): string | undefined {
     return this.get("notes");
+  }
+  get targetCountSnapshot(): number | undefined {
+    return this.get("targetCountSnapshot");
+  }
+  get scheduledDaysSnapshot(): number[] | undefined {
+    return this.get("scheduledDaysSnapshot");
   }
   get workspaceId(): string {
     return this.get("workspaceId");

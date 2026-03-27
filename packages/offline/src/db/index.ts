@@ -66,6 +66,9 @@ class MeridianDB extends Dexie {
 
     // Version 3: Add tempId to pendingMutations (no index change needed)
     this.version(3).stores({});
+
+    // Version 4: HabitEntry gains targetCountSnapshot and scheduledDaysSnapshot (no index needed)
+    this.version(4).stores({});
   }
 }
 

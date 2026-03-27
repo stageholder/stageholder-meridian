@@ -9,6 +9,7 @@ import { HabitEntry } from "./habit-entry.entity";
 import { CreateHabitEntryDto, UpdateHabitEntryDto } from "./habit-entry.dto";
 import { WorkspaceMemberService } from "../workspace-member/workspace-member.service";
 import { LightService } from "../light/light.service";
+import { HabitRepository } from "../habit/habit.repository";
 import {
   buildPaginationMeta,
   DEFAULT_PAGE,
@@ -23,6 +24,7 @@ export class HabitEntryService {
     private readonly repository: HabitEntryRepository,
     private readonly memberService: WorkspaceMemberService,
     private readonly lightService: LightService,
+    private readonly habitRepository: HabitRepository,
   ) {}
 
   async create(
@@ -44,6 +46,9 @@ export class HabitEntryService {
       throw new ConflictException(
         "Entry already exists for this habit on this date",
       );
+    const habit = await this.habitRepository.findById(habitId);
+    if (!habit || habit.workspaceId !== workspaceId)
+      throw new NotFoundException("Habit not found");
     const isSkip = dto.type === "skip";
     const result = HabitEntry.create({
       habitId,
@@ -52,6 +57,8 @@ export class HabitEntryService {
       type: dto.type,
       skipReason: dto.skipReason,
       notes: dto.notes,
+      targetCountSnapshot: habit.targetCount,
+      scheduledDaysSnapshot: habit.scheduledDays,
       workspaceId,
     });
     if (!result.ok) throw result.error;

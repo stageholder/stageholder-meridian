@@ -18,6 +18,10 @@ import { useWorkspace } from "@/lib/workspace-context";
 import { toast } from "sonner";
 import type { Habit, HabitEntry } from "@repo/core/types";
 import {
+  resolveTargetCount,
+  entryCompletionRatio,
+} from "@/lib/habits/entry-resolution";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -55,7 +59,10 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
   );
   const activeDateValue = activeDateEntry?.value ?? 0;
   const isSkipped = activeDateEntry?.type === "skip";
-  const isComplete = !isSkipped && activeDateValue >= habit.targetCount;
+  const activeTargetCount = activeDateEntry
+    ? resolveTargetCount(activeDateEntry, habit)
+    : habit.targetCount;
+  const isComplete = !isSkipped && activeDateValue >= activeTargetCount;
   const activeDateObj = selectedDate
     ? new Date(selectedDate + "T00:00:00")
     : new Date();
@@ -64,11 +71,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
     !habit.scheduledDays ||
     habit.scheduledDays.length === 0 ||
     habit.scheduledDays.includes(activeDow);
-  const streak = calculateStreak(
-    entries || [],
-    habit.targetCount,
-    habit.scheduledDays,
-  );
+  const streak = calculateStreak(entries || [], habit);
 
   // Week dots data
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
@@ -83,6 +86,9 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
       !habit.scheduledDays ||
       habit.scheduledDays.length === 0 ||
       habit.scheduledDays.includes(dow);
+    const effectiveTarget = entry
+      ? resolveTargetCount(entry, habit)
+      : habit.targetCount;
     return {
       label: format(date, "EEEEE"),
       dateStr,
@@ -90,6 +96,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
       type: entry?.type as "completion" | "skip" | undefined,
       isToday: dateStr === today,
       isScheduled,
+      effectiveTarget,
     };
   });
 
@@ -226,7 +233,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
         <div className="mt-4">
           <HabitProgress
             value={activeDateValue}
-            targetCount={habit.targetCount}
+            targetCount={activeTargetCount}
             color={habit.color}
             streak={streak}
           />
@@ -236,7 +243,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
         <div className="mt-3 flex justify-between px-1">
           {weekDays.map((day) => {
             const ratio =
-              habit.targetCount > 0 ? day.value / habit.targetCount : 0;
+              day.effectiveTarget > 0 ? day.value / day.effectiveTarget : 0;
             const isDaySkipped = day.type === "skip";
             return (
               <div
@@ -269,7 +276,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
                 ) : ratio >= 1 ? (
                   <span
                     className="text-sm leading-none"
-                    title={`${day.value}/${habit.targetCount}`}
+                    title={`${day.value}/${day.effectiveTarget}`}
                   >
                     🔥
                   </span>
@@ -394,34 +401,43 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
 
 function calculateStreak(
   entries: HabitEntry[],
-  targetCount: number,
-  scheduledDays?: number[],
+  habit: Pick<Habit, "targetCount" | "scheduledDays">,
 ): number {
   if (entries.length === 0) return 0;
 
-  const entryMap = new Map<string, { value: number; type?: string }>();
+  const entryMap = new Map<
+    string,
+    { value: number; type?: string; targetCountSnapshot?: number }
+  >();
   for (const e of entries) {
     const dateStr = e.date.split("T")[0]!;
     const existing = entryMap.get(dateStr);
     entryMap.set(dateStr, {
       value: (existing?.value ?? 0) + e.value,
       type: e.type || existing?.type || "completion",
+      targetCountSnapshot:
+        existing?.targetCountSnapshot ?? e.targetCountSnapshot,
     });
   }
 
-  const hasSchedule = scheduledDays && scheduledDays.length > 0;
+  const hasSchedule = habit.scheduledDays && habit.scheduledDays.length > 0;
   const today = new Date();
   const todayStr = format(today, "yyyy-MM-dd");
 
   // If today is scheduled and completed, count it
   const todayDow = today.getDay();
-  const todayIsScheduled = !hasSchedule || scheduledDays!.includes(todayDow);
+  const todayIsScheduled =
+    !hasSchedule || habit.scheduledDays!.includes(todayDow);
   const todayEntry = entryMap.get(todayStr);
   const todayIsSkipped = todayEntry?.type === "skip";
+  const todayTarget = resolveTargetCount(
+    { targetCountSnapshot: todayEntry?.targetCountSnapshot },
+    habit,
+  );
   const todayCompleted =
     todayIsScheduled &&
     !todayIsSkipped &&
-    (todayEntry?.value ?? 0) >= targetCount;
+    (todayEntry?.value ?? 0) >= todayTarget;
   // Skipped today: don't break streak but don't count it either
   let streak = todayCompleted ? 1 : 0;
 
@@ -430,7 +446,7 @@ function calculateStreak(
     const dow = checkDay.getDay();
 
     // Skip non-scheduled days
-    if (hasSchedule && !scheduledDays!.includes(dow)) continue;
+    if (hasSchedule && !habit.scheduledDays!.includes(dow)) continue;
 
     const checkDate = format(checkDay, "yyyy-MM-dd");
     const dayEntry = entryMap.get(checkDate);
@@ -439,7 +455,11 @@ function calculateStreak(
     if (dayEntry?.type === "skip") continue;
 
     const dayValue = dayEntry?.value ?? 0;
-    if (dayValue >= targetCount) {
+    const dayTarget = resolveTargetCount(
+      { targetCountSnapshot: dayEntry?.targetCountSnapshot },
+      habit,
+    );
+    if (dayValue >= dayTarget) {
       streak++;
     } else {
       // If today wasn't completed and this is the first scheduled day back, don't break yet
