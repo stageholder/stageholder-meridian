@@ -357,7 +357,7 @@ export default function WorkspaceLayout({
         open={createTodoDialogOpen}
         onOpenChange={setCreateTodoDialogOpen}
       />
-      <div className="flex h-screen overflow-hidden bg-background safe-area-top">
+      <div className="flex h-dvh overflow-hidden bg-background safe-area-top">
         {/* Desktop sidebar */}
         <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
           {/* Workspace selector */}
@@ -733,7 +733,7 @@ export default function WorkspaceLayout({
           </header>
 
           {/* Page content */}
-          <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] md:pb-0">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[calc(3.5rem+max(0.5rem,env(safe-area-inset-bottom,0px)))] md:pb-0">
             {children}
           </main>
 
