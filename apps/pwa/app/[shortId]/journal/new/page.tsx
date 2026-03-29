@@ -2,7 +2,8 @@
 
 import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { format, parseISO, addDays, nextMonday } from "date-fns";
+import { format, addDays, nextMonday } from "date-fns";
+import { parseDateLocal } from "@/lib/date";
 import { ArrowLeft, X } from "lucide-react";
 import { JournalEditor } from "@/components/journal/journal-editor";
 import { TagInput } from "@/components/journal/tag-input";
@@ -27,7 +28,7 @@ const moods = [
 ];
 
 function formatDefaultTitle(isoDate: string): string {
-  return format(parseISO(isoDate), "MMMM d, yyyy");
+  return format(parseDateLocal(isoDate), "MMMM d, yyyy");
 }
 
 function getDateInfo(dateStr: string) {
@@ -39,11 +40,11 @@ function getDateInfo(dateStr: string) {
     return { label: "Tomorrow", color: "text-amber-600 dark:text-amber-400" };
   if (dateStr < today)
     return {
-      label: format(parseISO(dateStr), "MMM d"),
+      label: format(parseDateLocal(dateStr), "MMM d"),
       color: "text-red-600 dark:text-red-400",
     };
   return {
-    label: format(parseISO(dateStr), "MMM d"),
+    label: format(parseDateLocal(dateStr), "MMM d"),
     color: "text-blue-600 dark:text-blue-400",
   };
 }
@@ -213,11 +214,11 @@ function NewJournalContent() {
               </div>
               <Calendar
                 mode="single"
-                selected={parseISO(date)}
+                selected={parseDateLocal(date)}
                 onSelect={(d) => {
                   if (d) setDate(format(d, "yyyy-MM-dd"));
                 }}
-                defaultMonth={parseISO(date)}
+                defaultMonth={parseDateLocal(date)}
               />
             </PopoverContent>
           </Popover>

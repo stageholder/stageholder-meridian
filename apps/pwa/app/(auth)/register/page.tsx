@@ -31,6 +31,7 @@ export default function RegisterPage() {
         name,
         email,
         password,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
       setUser(res.data);
       setLoggedInFlag();

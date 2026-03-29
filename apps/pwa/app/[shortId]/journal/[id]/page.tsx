@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
+import { parseDateLocal } from "@/lib/date";
 import { ArrowLeft, Trash2, X } from "lucide-react";
 import { JournalEditor } from "@/components/journal/journal-editor";
 import { TagInput } from "@/components/journal/tag-input";
@@ -119,7 +120,7 @@ export default function JournalEntryPage() {
     );
   }
 
-  const dateLabel = format(parseISO(journal.date), "MMM d, yyyy");
+  const dateLabel = format(parseDateLocal(journal.date), "MMM d, yyyy");
 
   return (
     <div className="flex h-full flex-col overflow-hidden">

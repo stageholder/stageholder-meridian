@@ -622,20 +622,23 @@ export class LightService {
   }
 
   private getToday(timezone?: string): string {
-    if (timezone) {
-      try {
-        const formatter = new Intl.DateTimeFormat("en-CA", {
-          timeZone: timezone,
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-        });
-        return formatter.format(new Date());
-      } catch {
-        // Fall back to UTC if timezone is invalid
-      }
+    const tz = timezone || process.env.DEFAULT_TIMEZONE || "UTC";
+    try {
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone: tz,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date());
+    } catch {
+      // Fall back to UTC if timezone is invalid
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "UTC",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date());
     }
-    return format(new Date(), "yyyy-MM-dd");
   }
 
   private addLightAndDetectTierUp(

@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
-import { format, parseISO, addDays, nextMonday } from "date-fns";
+import { format, addDays, nextMonday } from "date-fns";
+import { parseDateLocal } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 interface QuickAddTodoProps {
@@ -158,7 +159,7 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
         const tomorrow = format(addDays(new Date(), 1), "yyyy-MM-dd");
         if (doDate < today)
           return {
-            label: format(parseISO(doDate), "MMM d"),
+            label: format(parseDateLocal(doDate), "MMM d"),
             color: "text-red-600 dark:text-red-400",
           };
         if (doDate === today)
@@ -172,7 +173,7 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
             color: "text-amber-600 dark:text-amber-400",
           };
         return {
-          label: format(parseISO(doDate), "MMM d"),
+          label: format(parseDateLocal(doDate), "MMM d"),
           color: "text-blue-600 dark:text-blue-400",
         };
       })()
@@ -184,7 +185,7 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
         const tomorrow = format(addDays(new Date(), 1), "yyyy-MM-dd");
         if (dueDate === today) return "Today";
         if (dueDate === tomorrow) return "Tomorrow";
-        return format(parseISO(dueDate), "MMM d");
+        return format(parseDateLocal(dueDate), "MMM d");
       })()
     : null;
 
@@ -391,11 +392,11 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                   </div>
                   <Calendar
                     mode="single"
-                    selected={doDate ? parseISO(doDate) : undefined}
+                    selected={doDate ? parseDateLocal(doDate) : undefined}
                     onSelect={(date) =>
                       setDoDate(date ? format(date, "yyyy-MM-dd") : "")
                     }
-                    defaultMonth={doDate ? parseISO(doDate) : undefined}
+                    defaultMonth={doDate ? parseDateLocal(doDate) : undefined}
                   />
                 </PopoverContent>
               </Popover>
@@ -508,11 +509,11 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                   </div>
                   <Calendar
                     mode="single"
-                    selected={dueDate ? parseISO(dueDate) : undefined}
+                    selected={dueDate ? parseDateLocal(dueDate) : undefined}
                     onSelect={(date) =>
                       setDueDate(date ? format(date, "yyyy-MM-dd") : "")
                     }
-                    defaultMonth={dueDate ? parseISO(dueDate) : undefined}
+                    defaultMonth={dueDate ? parseDateLocal(dueDate) : undefined}
                   />
                 </PopoverContent>
               </Popover>

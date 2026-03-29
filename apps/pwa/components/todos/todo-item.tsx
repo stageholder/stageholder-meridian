@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { parseDateLocal } from "@/lib/date";
 import { useUpdateTodo, useDeleteTodo } from "@/lib/api/todos";
 import { TodoDetailDialog } from "./todo-detail-dialog";
 import type { Todo } from "@repo/core/types";
@@ -59,21 +60,21 @@ export function TodoItem({ todo, listId }: TodoItemProps) {
   }
 
   const formattedDueDate = todo.dueDate
-    ? new Date(todo.dueDate).toLocaleDateString("en-US", {
+    ? parseDateLocal(todo.dueDate).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
       })
     : null;
 
   const formattedDoDate = todo.doDate
-    ? new Date(todo.doDate).toLocaleDateString("en-US", {
+    ? parseDateLocal(todo.doDate).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
       })
     : null;
 
   const isOverdue =
-    todo.dueDate && !isDone && new Date(todo.dueDate) < new Date();
+    todo.dueDate && !isDone && parseDateLocal(todo.dueDate) < new Date();
 
   return (
     <>

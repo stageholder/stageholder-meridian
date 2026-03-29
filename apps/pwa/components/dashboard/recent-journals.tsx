@@ -5,6 +5,7 @@ import { useJournals } from "@/lib/api/journals";
 import { useWorkspace } from "@/lib/workspace-context";
 import { useEncryptionStore } from "@/lib/crypto/encryption-store";
 import { MoodDisplay } from "@/components/journal/mood-picker";
+import { parseDateLocal } from "@/lib/date";
 import { BentoCard } from "./bento-card";
 import type { Journal } from "@repo/core/types";
 
@@ -47,10 +48,13 @@ export function RecentJournals({
       ) : recentJournals.length > 0 ? (
         <div className="flex gap-3 overflow-x-auto pb-1 snap-x">
           {recentJournals.map((journal: Journal) => {
-            const dateStr = new Date(journal.date).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            });
+            const dateStr = parseDateLocal(journal.date).toLocaleDateString(
+              "en-US",
+              {
+                month: "short",
+                day: "numeric",
+              },
+            );
 
             return (
               <Link

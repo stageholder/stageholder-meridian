@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useLightEvents } from "@/lib/api/light";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
+import { parseDateLocal } from "@/lib/date";
 import {
   CheckCircle2,
   Plus,
@@ -68,14 +69,14 @@ export function JourneyFeed() {
   }
 
   const grouped = events.reduce<Record<string, typeof events>>((acc, event) => {
-    const dateKey = format(parseISO(event.createdAt), "yyyy-MM-dd");
+    const dateKey = format(new Date(event.createdAt), "yyyy-MM-dd");
     if (!acc[dateKey]) acc[dateKey] = [];
     acc[dateKey].push(event);
     return acc;
   }, {});
 
-  const sortedDates = Object.keys(grouped).sort(
-    (a, b) => new Date(b).getTime() - new Date(a).getTime(),
+  const sortedDates = Object.keys(grouped).sort((a, b) =>
+    a < b ? 1 : a > b ? -1 : 0,
   );
 
   const hasMore = events.length >= limit;
@@ -90,7 +91,7 @@ export function JourneyFeed() {
           <div key={dateKey}>
             <div className="flex items-center justify-between border-b border-border pb-1.5">
               <span className="text-sm font-medium text-foreground">
-                {format(parseISO(dateKey), "MMM d, yyyy")}
+                {format(parseDateLocal(dateKey), "MMM d, yyyy")}
               </span>
               <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 tabular-nums dark:bg-amber-900/30 dark:text-amber-400">
                 +{dayTotal} Light

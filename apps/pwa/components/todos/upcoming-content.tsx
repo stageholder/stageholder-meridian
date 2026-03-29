@@ -10,7 +10,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format, addDays, parseISO } from "date-fns";
+import { format, addDays } from "date-fns";
+import { parseDateLocal } from "@/lib/date";
 import type { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 import type { Todo, TodoList } from "@repo/core/types";
@@ -126,9 +127,9 @@ export function UpcomingContent() {
 
   const filterLabel = hasCustomRange
     ? customFrom && customTo && customFrom !== customTo
-      ? `${format(parseISO(customFrom), "MMM d")} – ${format(parseISO(customTo), "MMM d")}`
+      ? `${format(parseDateLocal(customFrom), "MMM d")} – ${format(parseDateLocal(customTo), "MMM d")}`
       : customFrom
-        ? format(parseISO(customFrom), "MMM d")
+        ? format(parseDateLocal(customFrom), "MMM d")
         : null
     : null;
 

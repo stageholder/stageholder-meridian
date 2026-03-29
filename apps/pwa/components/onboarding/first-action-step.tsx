@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import apiClient from "@/lib/api-client";
+import { todayLocal } from "@/lib/date";
 import type { Workspace } from "@repo/core/types";
 
 type ActionType = "habit" | "journal";
@@ -78,7 +79,7 @@ export function FirstActionStep({
           targetCount: parseInt(habitTarget, 10) || 1,
         });
       } else {
-        const today = new Date().toISOString().split("T")[0];
+        const today = todayLocal();
         await apiClient.post(`/workspaces/${workspaceId}/journals`, {
           title: journalTitle.trim() || "Day one with Meridian",
           content:

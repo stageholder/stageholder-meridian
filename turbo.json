@@ -9,7 +9,7 @@
     },
     "lint": {
       "dependsOn": ["^lint"],
-      "env": ["NODE_ENV", "FRONTEND_URL", "PORT"]
+      "env": ["NODE_ENV", "FRONTEND_URL", "PORT", "DEFAULT_TIMEZONE"]
     },
     "check": {
       "dependsOn": ["^check"]

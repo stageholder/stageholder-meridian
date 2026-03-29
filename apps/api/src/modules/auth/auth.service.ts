@@ -55,7 +55,12 @@ export class AuthService {
     personalWorkspaceShortId: string;
   }> {
     const hash = await bcrypt.hash(dto.password, 12);
-    const user = await this.userService.createLocal(dto.email, dto.name, hash);
+    const user = await this.userService.createLocal(
+      dto.email,
+      dto.name,
+      hash,
+      dto.timezone,
+    );
     const personalWs = await this.workspaceService.createPersonal(
       user.id,
       user.email,

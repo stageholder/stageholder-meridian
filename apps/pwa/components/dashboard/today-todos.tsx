@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { parseDateLocal } from "@/lib/date";
 import { useAllTodos, useUpdateTodo } from "@/lib/api/todos";
 import { useWorkspace } from "@/lib/workspace-context";
 import { useTodoStats } from "@/lib/hooks/use-todo-stats";
@@ -89,7 +90,7 @@ export function TodayTodos({
         ) : todayTodos.length > 0 ? (
           todayTodos.slice(0, 5).map((todo: Todo) => {
             const isOverdue = todo.dueDate
-              ? new Date(todo.dueDate) < new Date(today)
+              ? parseDateLocal(todo.dueDate) < parseDateLocal(today)
               : false;
             return (
               <div key={todo.id} className="flex items-center gap-3">

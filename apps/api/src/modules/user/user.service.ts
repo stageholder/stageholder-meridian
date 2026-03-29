@@ -10,6 +10,7 @@ export class UserService {
     email: string,
     name: string,
     passwordHash: string,
+    timezone?: string,
   ): Promise<User> {
     const existing = await this.repository.findByEmail(email);
     if (existing) throw new ConflictException("Email already registered");
@@ -19,6 +20,7 @@ export class UserService {
       passwordHash,
       provider: AuthProvider.LOCAL,
       emailVerified: false,
+      ...(timezone ? { timezone } : {}),
     });
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);

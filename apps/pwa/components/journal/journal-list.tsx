@@ -2,16 +2,10 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import {
-  format,
-  parseISO,
-  isToday,
-  isYesterday,
-  isThisWeek,
-  isThisYear,
-} from "date-fns";
+import { format, isToday, isYesterday, isThisWeek, isThisYear } from "date-fns";
 import { useWorkspace } from "@/lib/workspace-context";
 import { cn } from "@/lib/utils";
+import { parseDateLocal } from "@/lib/date";
 import { MoodDisplay } from "./mood-picker";
 import type { Journal } from "@repo/core/types";
 
@@ -22,7 +16,7 @@ interface JournalListProps {
 }
 
 function getDateGroup(dateStr: string): string {
-  const date = parseISO(dateStr);
+  const date = parseDateLocal(dateStr);
   if (isToday(date)) return "Today";
   if (isYesterday(date)) return "Yesterday";
   if (isThisWeek(date, { weekStartsOn: 1 })) return "This Week";
@@ -80,7 +74,10 @@ export function JournalList({
           </h3>
           <div className="space-y-2">
             {group.entries.map((journal) => {
-              const dateLabel = format(parseISO(journal.date), "EEE, MMM d");
+              const dateLabel = format(
+                parseDateLocal(journal.date),
+                "EEE, MMM d",
+              );
               const plainText = journal.content.replace(/<[^>]*>/g, "");
               const preview =
                 plainText.length > 120

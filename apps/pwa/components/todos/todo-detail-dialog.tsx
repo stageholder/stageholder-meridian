@@ -11,6 +11,7 @@ import {
 import { DatePicker } from "@/components/ui/date-picker";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { parseDateLocal } from "@/lib/date";
 import type { Todo } from "@repo/core/types";
 
 const priorityConfig: Record<
@@ -134,7 +135,7 @@ export function TodoDetailDialog({
   }
 
   const isOverdue =
-    todo.dueDate && !isDone && new Date(todo.dueDate) < new Date();
+    todo.dueDate && !isDone && parseDateLocal(todo.dueDate) < new Date();
 
   const formattedCreatedAt = new Date(todo.createdAt).toLocaleDateString(
     "en-US",

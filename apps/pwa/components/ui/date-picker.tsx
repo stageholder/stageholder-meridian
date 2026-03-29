@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import { CalendarIcon, XIcon } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 
 import { cn } from "@/lib/utils";
+import { parseDateLocal } from "@/lib/date";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -38,7 +39,7 @@ function DatePicker({
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
 
-  const selected = value ? parseISO(value) : undefined;
+  const selected = value ? parseDateLocal(value) : undefined;
 
   function handleSelect(date: Date | undefined) {
     if (date) {
@@ -63,7 +64,7 @@ function DatePicker({
           )}
         >
           <CalendarIcon className="size-4 text-muted-foreground" />
-          {value ? format(parseISO(value), "MMM d, yyyy") : placeholder}
+          {value ? format(parseDateLocal(value), "MMM d, yyyy") : placeholder}
           {clearable && value && (
             <XIcon
               className="ml-auto size-3.5 text-muted-foreground hover:text-foreground"

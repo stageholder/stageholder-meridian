@@ -10,6 +10,7 @@ import {
 } from "@repo/offline/hooks";
 import { db } from "@repo/offline/db";
 import { lightKeys } from "./light";
+import { todayLocal } from "@/lib/date";
 import { useCallback } from "react";
 import { useEncryptionStore } from "@/lib/crypto/encryption-store";
 import {
@@ -160,7 +161,7 @@ export function useCreateJournal() {
         content: newData.content,
         mood: newData.mood,
         tags: newData.tags ?? [],
-        date: newData.date ?? new Date().toISOString().slice(0, 10),
+        date: newData.date ?? todayLocal(),
         wordCount: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

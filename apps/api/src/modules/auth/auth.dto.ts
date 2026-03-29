@@ -1,9 +1,25 @@
 import { z } from "zod";
 
+const timezoneSchema = z
+  .string()
+  .max(100)
+  .refine(
+    (tz) => {
+      try {
+        Intl.DateTimeFormat(undefined, { timeZone: tz });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: "Invalid IANA timezone" },
+  );
+
 export const RegisterDto = z.object({
   email: z.string().email("Invalid email address"),
   name: z.string().min(1, "Name is required").max(100),
   password: z.string().min(8, "Password must be at least 8 characters"),
+  timezone: timezoneSchema.optional(),
 });
 export type RegisterDto = z.infer<typeof RegisterDto>;
 
@@ -32,6 +48,6 @@ export type RefreshDto = z.infer<typeof RefreshDto>;
 export const UpdateProfileDto = z.object({
   name: z.string().min(1).max(100).optional(),
   avatar: z.string().url().optional(),
-  timezone: z.string().max(100).optional(),
+  timezone: timezoneSchema.optional(),
 });
 export type UpdateProfileDto = z.infer<typeof UpdateProfileDto>;
