@@ -27,6 +27,13 @@ export class UserLightModel {
   @Prop({ type: Number, default: 0 }) habit_ring_streak: number;
   @Prop({ type: Number, default: 0 }) journal_ring_streak: number;
   @Prop({ type: String, default: null }) last_active_date: string;
+  @Prop({ type: String, default: null }) last_finalized_date: string;
+  @Prop({ type: Object, default: null }) finalized_streaks: {
+    todo: number;
+    habit: number;
+    journal: number;
+    perfect: number;
+  } | null;
   @Prop({ type: Number, default: 0 }) longest_perfect_streak: number;
   @Prop({ type: Number, default: 0 }) perfect_days_total: number;
   @Prop({ type: Number, default: 3 }) todo_target_daily: number;

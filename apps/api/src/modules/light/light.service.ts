@@ -190,42 +190,73 @@ export class LightService {
     );
   }
 
+  /**
+   * Single source of truth for streak calculation.
+   *
+   * @param mode
+   *  - "finalize": day is over — incomplete rings reset streak to 0.
+   *    Saves `lastFinalizedDate` and `finalizedStreaks` as a stable snapshot
+   *    so subsequent recompute calls can derive idempotent target values.
+   *  - "recompute": day still in progress — incomplete rings left unchanged (null).
+   *    Derives streaks from `finalizedStreaks` (stable baseline that never changes
+   *    during the day), making multiple calls per day fully idempotent.
+   */
   private async evaluateDayForEntity(
     userLight: UserLight,
     userId: string,
     workspaceId: string,
     rings: { todo: boolean; habit: boolean; journal: boolean },
-    dateOverride?: string,
+    date: string,
+    mode: "finalize" | "recompute" = "finalize",
   ): Promise<void> {
-    const date = dateOverride ?? this.getToday();
     const previousDay = format(
       subDays(new Date(date + "T00:00:00"), 1),
       "yyyy-MM-dd",
     );
-    const isConsecutive = userLight.lastActiveDate === previousDay;
 
-    const todoRingStreak = rings.todo
-      ? isConsecutive
-        ? userLight.todoRingStreak + 1
-        : 1
-      : 0;
-    const habitRingStreak = rings.habit
-      ? isConsecutive
-        ? userLight.habitRingStreak + 1
-        : 1
-      : 0;
-    const journalRingStreak = rings.journal
-      ? isConsecutive
-        ? userLight.journalRingStreak + 1
-        : 1
-      : 0;
+    // Use the finalized snapshot as a stable baseline in recompute mode.
+    // In finalize mode, use the entity's current values directly.
+    const base =
+      mode === "recompute" && userLight.finalizedStreaks
+        ? {
+            todo: userLight.finalizedStreaks.todo,
+            habit: userLight.finalizedStreaks.habit,
+            journal: userLight.finalizedStreaks.journal,
+            perfect: userLight.finalizedStreaks.perfect,
+            anchorDate: userLight.lastFinalizedDate,
+          }
+        : {
+            todo: userLight.todoRingStreak,
+            habit: userLight.habitRingStreak,
+            journal: userLight.journalRingStreak,
+            perfect: userLight.perfectDayStreak,
+            anchorDate: userLight.lastActiveDate,
+          };
+
+    const isConsecutive = base.anchorDate === previousDay;
+
+    const computeStreak = (
+      ringComplete: boolean,
+      baseStreak: number,
+    ): number | null => {
+      if (ringComplete) {
+        return isConsecutive ? baseStreak + 1 : 1;
+      }
+      return mode === "recompute" ? null : 0;
+    };
+
+    const todoRingStreak = computeStreak(rings.todo, base.todo);
+    const habitRingStreak = computeStreak(rings.habit, base.habit);
+    const journalRingStreak = computeStreak(rings.journal, base.journal);
 
     const isPerfectDay = rings.todo && rings.habit && rings.journal;
-    const perfectDayStreak = isPerfectDay
+    const perfectDayStreak: number | null = isPerfectDay
       ? isConsecutive
-        ? userLight.perfectDayStreak + 1
+        ? base.perfect + 1
         : 1
-      : 0;
+      : mode === "recompute"
+        ? null
+        : 0;
 
     userLight.updateStreaks({
       perfectDayStreak,
@@ -233,36 +264,60 @@ export class LightService {
       habitRingStreak,
       journalRingStreak,
       lastActiveDate: date,
+      // In finalize mode, snapshot the computed streaks as the stable baseline
+      ...(mode === "finalize"
+        ? {
+            lastFinalizedDate: date,
+            finalizedStreaks: {
+              todo: todoRingStreak ?? 0,
+              habit: habitRingStreak ?? 0,
+              journal: journalRingStreak ?? 0,
+              perfect: perfectDayStreak ?? 0,
+            },
+          }
+        : {}),
     });
 
     if (isPerfectDay) {
-      userLight.incrementPerfectDays();
-
-      const multiplier = getMultiplier(perfectDayStreak);
-      const totalLight = Math.round(LIGHT_ACTIONS.PERFECT_DAY * multiplier);
-      const eventResult = LightEvent.create({
+      const perfectDayEntityId = `perfect_day_${date}`;
+      const alreadyAwarded = await this.lightEventRepo.existsForEntityOnDate(
         userId,
-        workspaceId,
-        action: "perfect_day",
-        baseLight: LIGHT_ACTIONS.PERFECT_DAY,
-        multiplier,
-        totalLight,
+        "perfect_day",
         date,
-        metadata: { perfectDayStreak },
-      });
-      if (eventResult.ok) {
-        await this.lightEventRepo.save(eventResult.value);
-        const { tieredUp, newTitle } = this.addLightAndDetectTierUp(
-          userLight,
+        perfectDayEntityId,
+      );
+      if (!alreadyAwarded) {
+        userLight.incrementPerfectDays();
+        const resolvedStreak = userLight.perfectDayStreak;
+        const multiplier = getMultiplier(resolvedStreak);
+        const totalLight = Math.round(LIGHT_ACTIONS.PERFECT_DAY * multiplier);
+        const eventResult = LightEvent.create({
+          userId,
+          workspaceId,
+          action: "perfect_day",
+          baseLight: LIGHT_ACTIONS.PERFECT_DAY,
+          multiplier,
           totalLight,
-        );
-        if (tieredUp) {
-          this.notifyAchievement(
-            userId,
-            workspaceId,
-            "Tier Up!",
-            `You've reached ${newTitle}!`,
+          date,
+          metadata: {
+            perfectDayStreak: resolvedStreak,
+            entityId: perfectDayEntityId,
+          },
+        });
+        if (eventResult.ok) {
+          await this.lightEventRepo.save(eventResult.value);
+          const { tieredUp, newTitle } = this.addLightAndDetectTierUp(
+            userLight,
+            totalLight,
           );
+          if (tieredUp) {
+            this.notifyAchievement(
+              userId,
+              workspaceId,
+              "Tier Up!",
+              `You've reached ${newTitle}!`,
+            );
+          }
         }
       }
     }
@@ -273,7 +328,7 @@ export class LightService {
       workspaceId,
       date,
       "todo",
-      todoRingStreak,
+      userLight.todoRingStreak,
     );
     await this.checkStreakMilestones(
       userLight,
@@ -281,7 +336,7 @@ export class LightService {
       workspaceId,
       date,
       "habit",
-      habitRingStreak,
+      userLight.habitRingStreak,
     );
     await this.checkStreakMilestones(
       userLight,
@@ -289,7 +344,7 @@ export class LightService {
       workspaceId,
       date,
       "journal",
-      journalRingStreak,
+      userLight.journalRingStreak,
     );
 
     await this.userLightRepo.save(userLight);
@@ -305,6 +360,15 @@ export class LightService {
   ): Promise<void> {
     for (const milestone of RING_STREAK_MILESTONES) {
       if (streak === milestone.days) {
+        const milestoneEntityId = `ring_streak_${ring}_${milestone.days}_${date}`;
+        const alreadyAwarded = await this.lightEventRepo.existsForEntityOnDate(
+          userId,
+          "ring_streak_bonus",
+          date,
+          milestoneEntityId,
+        );
+        if (alreadyAwarded) continue;
+
         const eventResult = LightEvent.create({
           userId,
           workspaceId,
@@ -313,7 +377,11 @@ export class LightService {
           multiplier: 1,
           totalLight: milestone.bonus,
           date,
-          metadata: { ring, streak: milestone.days },
+          metadata: {
+            ring,
+            streak: milestone.days,
+            entityId: milestoneEntityId,
+          },
         });
         if (eventResult.ok) {
           await this.lightEventRepo.save(eventResult.value);
@@ -348,9 +416,9 @@ export class LightService {
     date: string,
     metadata?: Record<string, unknown>,
   ): Promise<void> {
-    const userLight = await this.getOrCreateUserLight(userId);
+    let userLight = await this.getOrCreateUserLight(userId);
 
-    // Lazy evaluation: if this is a new day, evaluate the previous day first
+    // Lazy evaluation: if this is a new day, finalize the previous day first
     if (userLight.lastActiveDate && userLight.lastActiveDate !== date) {
       await this.evaluatePreviousDay(
         userLight,
@@ -358,6 +426,9 @@ export class LightService {
         workspaceId,
         userLight.lastActiveDate,
       );
+      // Reload so the recompute pass starts from saved state,
+      // not from the in-memory object mutated by the finalize pass
+      userLight = await this.getOrCreateUserLight(userId);
     }
 
     const multiplier = getMultiplier(userLight.perfectDayStreak);
@@ -389,56 +460,13 @@ export class LightService {
       );
     }
 
-    // Update streaks in real-time based on current day's ring completion
+    // Recompute ring completion and update streaks in real-time
     const currentRings = await this.computeRingCompletion(
       workspaceId,
       userId,
       date,
       userLight.todoTargetDaily,
     );
-    const previousDay = format(
-      subDays(new Date(date + "T00:00:00"), 1),
-      "yyyy-MM-dd",
-    );
-    const wasConsecutive =
-      userLight.lastActiveDate === previousDay ||
-      userLight.lastActiveDate === date;
-    const alreadyActiveToday = userLight.lastActiveDate === date;
-
-    userLight.updateStreaks({
-      todoRingStreak: currentRings.todo
-        ? alreadyActiveToday
-          ? userLight.todoRingStreak
-          : wasConsecutive
-            ? userLight.todoRingStreak + 1
-            : 1
-        : 0,
-      habitRingStreak: currentRings.habit
-        ? alreadyActiveToday
-          ? userLight.habitRingStreak
-          : wasConsecutive
-            ? userLight.habitRingStreak + 1
-            : 1
-        : 0,
-      journalRingStreak: currentRings.journal
-        ? alreadyActiveToday
-          ? userLight.journalRingStreak
-          : wasConsecutive
-            ? userLight.journalRingStreak + 1
-            : 1
-        : 0,
-      perfectDayStreak:
-        currentRings.todo && currentRings.habit && currentRings.journal
-          ? alreadyActiveToday
-            ? userLight.perfectDayStreak
-            : wasConsecutive
-              ? userLight.perfectDayStreak + 1
-              : 1
-          : userLight.perfectDayStreak,
-      lastActiveDate: date,
-    });
-
-    // Check ring completion bonuses
     await this.checkRingCompletionBonus(
       userLight,
       userId,
@@ -446,8 +474,15 @@ export class LightService {
       date,
       currentRings,
     );
-
-    await this.userLightRepo.save(userLight);
+    // evaluateDayForEntity is the single source of truth for streaks — it saves userLight
+    await this.evaluateDayForEntity(
+      userLight,
+      userId,
+      workspaceId,
+      currentRings,
+      date,
+      "recompute",
+    );
   }
 
   private async checkRingCompletionBonus(
@@ -591,7 +626,13 @@ export class LightService {
           "journal_entry",
           date,
         ),
-        this.habitRepo.findIdsByWorkspaceCreator(workspaceId, userId),
+        // Filter to habits that existed on the evaluated date so creating
+        // a new habit today doesn't retroactively inflate yesterday's ring
+        this.habitRepo.findIdsByWorkspaceCreatorBefore(
+          workspaceId,
+          userId,
+          date,
+        ),
       ]);
 
     const totalHabits = userHabitIds.length;

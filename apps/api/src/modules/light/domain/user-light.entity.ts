@@ -11,6 +11,16 @@ export interface UserLightProps extends EntityProps {
   habitRingStreak: number;
   journalRingStreak: number;
   lastActiveDate: string | null;
+  /** The date on which streaks were last finalized (end-of-day evaluation). */
+  lastFinalizedDate: string | null;
+  /** Streak values frozen at the last finalize — used as a stable baseline
+   *  so recompute mode can derive idempotent target values. */
+  finalizedStreaks: {
+    todo: number;
+    habit: number;
+    journal: number;
+    perfect: number;
+  } | null;
   longestPerfectStreak: number;
   perfectDaysTotal: number;
   todoTargetDaily: number;
@@ -49,6 +59,17 @@ export class UserLight extends Entity<UserLightProps> {
   get lastActiveDate(): string | null {
     return this.get("lastActiveDate");
   }
+  get lastFinalizedDate(): string | null {
+    return this.get("lastFinalizedDate");
+  }
+  get finalizedStreaks(): {
+    todo: number;
+    habit: number;
+    journal: number;
+    perfect: number;
+  } | null {
+    return this.get("finalizedStreaks");
+  }
   get longestPerfectStreak(): number {
     return this.get("longestPerfectStreak");
   }
@@ -80,21 +101,36 @@ export class UserLight extends Entity<UserLightProps> {
   }
 
   updateStreaks(streaks: {
-    perfectDayStreak: number;
-    todoRingStreak: number;
-    habitRingStreak: number;
-    journalRingStreak: number;
+    perfectDayStreak: number | null;
+    todoRingStreak: number | null;
+    habitRingStreak: number | null;
+    journalRingStreak: number | null;
     lastActiveDate: string;
+    lastFinalizedDate?: string;
+    finalizedStreaks?: {
+      todo: number;
+      habit: number;
+      journal: number;
+      perfect: number;
+    };
   }): void {
-    this.set("perfectDayStreak", streaks.perfectDayStreak);
-    this.set("todoRingStreak", streaks.todoRingStreak);
-    this.set("habitRingStreak", streaks.habitRingStreak);
-    this.set("journalRingStreak", streaks.journalRingStreak);
-    this.set("lastActiveDate", streaks.lastActiveDate);
-
-    if (streaks.perfectDayStreak > this.longestPerfectStreak) {
-      this.set("longestPerfectStreak", streaks.perfectDayStreak);
+    if (streaks.perfectDayStreak !== null) {
+      this.set("perfectDayStreak", streaks.perfectDayStreak);
+      if (streaks.perfectDayStreak > this.longestPerfectStreak) {
+        this.set("longestPerfectStreak", streaks.perfectDayStreak);
+      }
     }
+    if (streaks.todoRingStreak !== null)
+      this.set("todoRingStreak", streaks.todoRingStreak);
+    if (streaks.habitRingStreak !== null)
+      this.set("habitRingStreak", streaks.habitRingStreak);
+    if (streaks.journalRingStreak !== null)
+      this.set("journalRingStreak", streaks.journalRingStreak);
+    this.set("lastActiveDate", streaks.lastActiveDate);
+    if (streaks.lastFinalizedDate !== undefined)
+      this.set("lastFinalizedDate", streaks.lastFinalizedDate);
+    if (streaks.finalizedStreaks !== undefined)
+      this.set("finalizedStreaks", streaks.finalizedStreaks);
   }
 
   setLastActiveDate(date: string): void {
@@ -116,6 +152,8 @@ export class UserLight extends Entity<UserLightProps> {
       habitRingStreak: 0,
       journalRingStreak: 0,
       lastActiveDate: null,
+      lastFinalizedDate: null,
+      finalizedStreaks: null,
       longestPerfectStreak: 0,
       perfectDaysTotal: 0,
       todoTargetDaily: DEFAULT_TARGETS.todoDaily,
