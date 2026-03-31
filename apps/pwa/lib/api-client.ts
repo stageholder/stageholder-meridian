@@ -11,6 +11,10 @@ const apiClient = createApiClient({
   storage,
   onLogout: async () => {
     if (typeof window !== "undefined") {
+      // Don't redirect if already on login or auth callback pages (prevents loop)
+      const path = window.location.pathname;
+      if (path === "/login" || path.startsWith("/auth/")) return;
+
       const { sessionExpired } = await import("@/lib/logout");
       await sessionExpired();
       const { toast } = await import("sonner");

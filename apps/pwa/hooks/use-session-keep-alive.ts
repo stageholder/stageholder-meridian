@@ -17,8 +17,10 @@ import apiClient from "@/lib/api-client";
 const REFRESH_INTERVAL_MS = 12 * 60 * 1000; // 12 minutes
 const STALE_THRESHOLD_MS = 12 * 60 * 1000; // refresh on focus if hidden this long
 
-// Module-level so re-mounts (e.g. workspace switches) don't redundantly refresh
-let lastGlobalRefresh = 0;
+// Module-level so re-mounts (e.g. workspace switches) don't redundantly refresh.
+// Initialize to now so a fresh login doesn't immediately trigger a redundant refresh —
+// the tokens were JUST issued by the OAuth callback.
+let lastGlobalRefresh = Date.now();
 
 export function useSessionKeepAlive() {
   useEffect(() => {
