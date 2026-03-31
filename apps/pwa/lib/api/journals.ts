@@ -1,7 +1,11 @@
-import { useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
+import {
+  useQueryClient,
+  useInfiniteQuery,
+  useQuery,
+} from "@tanstack/react-query";
 import apiClient from "@/lib/api-client";
 import { useWorkspace } from "@/lib/workspace-context";
-import type { Journal } from "@repo/core/types";
+import type { Journal, JournalStats } from "@repo/core/types";
 import {
   useOfflineQuerySingle,
   useOfflineQueryFiltered,
@@ -22,6 +26,28 @@ import {
 interface PaginatedResponse {
   data: Journal[];
   meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
+export const journalKeys = {
+  all: (workspaceId: string) => ["journals", workspaceId] as const,
+  stats: (workspaceId: string) => ["journals", workspaceId, "stats"] as const,
+};
+
+export function useJournalStats() {
+  const { workspace } = useWorkspace();
+  return useQuery<JournalStats>({
+    queryKey: journalKeys.stats(workspace.id),
+    queryFn: async () => {
+      const today = todayLocal();
+      const res = await apiClient.get(
+        `/workspaces/${workspace.id}/journals/stats`,
+        { params: { today } },
+      );
+      return res.data;
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
 }
 
 export function useJournals(
@@ -142,6 +168,7 @@ export function useCreateJournal() {
       ["journals", workspace.id],
       [...lightKeys.me],
       ["calendar", workspace.id],
+      [...journalKeys.stats(workspace.id)],
     ],
     onMutate: async (newData) => {
       await queryClient.cancelQueries({
@@ -245,6 +272,7 @@ export function useUpdateJournal() {
     invalidateKeys: [
       ["journals", workspace.id],
       ["calendar", workspace.id],
+      [...journalKeys.stats(workspace.id)],
     ],
     onMutate: async ({ id, data }) => {
       await queryClient.cancelQueries({
@@ -332,6 +360,7 @@ export function useDeleteJournal() {
     invalidateKeys: [
       ["journals", workspace.id],
       ["calendar", workspace.id],
+      [...journalKeys.stats(workspace.id)],
     ],
     onMutate: async (id) => {
       await queryClient.cancelQueries({

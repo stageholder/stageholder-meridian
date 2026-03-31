@@ -12,9 +12,8 @@ import { GreetingBar } from "@/components/dashboard/greeting-bar";
 import { BentoCard } from "@/components/dashboard/bento-card";
 import { TodayTodos } from "@/components/dashboard/today-todos";
 import { HabitSummary } from "@/components/dashboard/habit-summary";
-import { RecentJournals } from "@/components/dashboard/recent-journals";
 import { WeeklyActivityChart } from "@/components/dashboard/charts/weekly-activity-chart";
-import { MoodTrendChart } from "@/components/dashboard/charts/mood-trend-chart";
+import { JournalGrowthChart } from "@/components/dashboard/charts/journal-growth-chart";
 import { LightEarnedChart } from "@/components/dashboard/charts/light-earned-chart";
 
 export default function DashboardPage() {
@@ -52,25 +51,14 @@ export default function DashboardPage() {
       <TodayTodos index={3} className="md:col-span-1 lg:col-span-5" />
       <HabitSummary index={4} className="md:col-span-1 lg:col-span-7" />
 
-      {/* Row 4: Mood Trend | Light Earned */}
-      <BentoCard
-        title="Mood Trend"
-        index={5}
-        className="md:col-span-1 lg:col-span-5"
-      >
-        <MoodTrendChart />
+      {/* Row 4: Journal Growth | Light Earned */}
+      <BentoCard title="Journal Growth" index={5} className="col-span-full">
+        <JournalGrowthChart />
       </BentoCard>
 
-      <BentoCard
-        title="Light Earned"
-        index={6}
-        className="md:col-span-1 lg:col-span-7"
-      >
+      <BentoCard title="Light Earned" index={6} className="col-span-full">
         <LightEarnedChart />
       </BentoCard>
-
-      {/* Row 5: Recent Journals */}
-      <RecentJournals index={7} className="col-span-full" />
 
       {levelUpTier && (
         <LevelUpCelebration tier={levelUpTier} onDismiss={dismiss} />

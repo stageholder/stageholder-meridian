@@ -119,6 +119,62 @@ export class JournalRepository {
     return docs.map((doc) => this.toDomain(doc));
   }
 
+  async getGrowthStats(
+    workspaceId: string,
+    windowStart: string,
+    authorId?: string,
+  ): Promise<{
+    window: Array<{ date: string; count: number; words: number }>;
+    baseline: { count: number; words: number };
+  }> {
+    const matchStage: Record<string, any> = {
+      workspace_id: workspaceId,
+      deleted_at: null,
+    };
+    if (authorId) matchStage.author_id = authorId;
+
+    const result = await this.model.aggregate([
+      { $match: matchStage },
+      {
+        $facet: {
+          window: [
+            { $match: { date: { $gte: windowStart } } },
+            {
+              $group: {
+                _id: "$date",
+                count: { $sum: 1 },
+                words: { $sum: "$word_count" },
+              },
+            },
+            { $sort: { _id: 1 } },
+          ],
+          baseline: [
+            { $match: { date: { $lt: windowStart } } },
+            {
+              $group: {
+                _id: null,
+                count: { $sum: 1 },
+                words: { $sum: "$word_count" },
+              },
+            },
+          ],
+        },
+      },
+    ]);
+
+    const facet = result[0] ?? { window: [], baseline: [] };
+    return {
+      window: facet.window.map((d: any) => ({
+        date: d._id,
+        count: d.count,
+        words: d.words,
+      })),
+      baseline: facet.baseline[0]
+        ? { count: facet.baseline[0].count, words: facet.baseline[0].words }
+        : { count: 0, words: 0 },
+    };
+  }
+
   private toDomain(doc: any): Journal {
     return Journal.reconstitute(
       {

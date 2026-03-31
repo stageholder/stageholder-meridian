@@ -62,6 +62,15 @@ export class JournalController {
     );
   }
 
+  @Get("stats")
+  async getStats(
+    @Param("workspaceId") workspaceId: string,
+    @CurrentUserId() userId: string,
+    @Query("today") today?: string,
+  ) {
+    return this.service.getStats(workspaceId, userId, today);
+  }
+
   @Get(":id")
   async get(
     @Param("workspaceId") workspaceId: string,

@@ -172,6 +172,53 @@ export class JournalService {
     return journal;
   }
 
+  async getStats(workspaceId: string, userId: string, clientToday?: string) {
+    const member = await this.memberService.requireRole(workspaceId, userId, [
+      "owner",
+      "admin",
+      "member",
+    ]);
+    const authorId =
+      member.role === "owner" || member.role === "admin" ? undefined : userId;
+
+    const todayStr =
+      clientToday && /^\d{4}-\d{2}-\d{2}$/.test(clientToday)
+        ? clientToday
+        : new Date().toISOString().slice(0, 10);
+    const today = new Date(todayStr + "T00:00:00Z");
+    const windowStartDate = new Date(today);
+    windowStartDate.setUTCDate(windowStartDate.getUTCDate() - 29);
+    const windowStart = windowStartDate.toISOString().slice(0, 10);
+
+    const { window, baseline } = await this.repository.getGrowthStats(
+      workspaceId,
+      windowStart,
+      authorId,
+    );
+
+    const dayMap = new Map(window.map((d) => [d.date, d]));
+    const days: Array<{ date: string; count: number; words: number }> = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(today);
+      d.setUTCDate(d.getUTCDate() - i);
+      const dateStr = d.toISOString().slice(0, 10);
+      const day = dayMap.get(dateStr);
+      days.push({
+        date: dateStr,
+        count: day?.count ?? 0,
+        words: day?.words ?? 0,
+      });
+    }
+
+    return {
+      baseline: {
+        totalCount: baseline.count,
+        totalWords: baseline.words,
+      },
+      days,
+    };
+  }
+
   async delete(id: string, workspaceId: string, userId: string): Promise<void> {
     const member = await this.memberService.requireRole(workspaceId, userId, [
       "owner",
