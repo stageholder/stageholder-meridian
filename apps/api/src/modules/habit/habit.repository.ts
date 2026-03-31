@@ -103,6 +103,29 @@ export class HabitRepository {
     return docs.map((d) => d._id as string);
   }
 
+  /**
+   * Same as findIdsByWorkspaceCreator but only returns habits that existed
+   * on or before the given date. Prevents newly created habits from
+   * retroactively inflating a previous day's ring completion check.
+   */
+  async findIdsByWorkspaceCreatorBefore(
+    workspaceId: string,
+    creatorId: string,
+    beforeDate: string,
+  ): Promise<string[]> {
+    const endOfDay = new Date(beforeDate + "T23:59:59.999");
+    const docs = await this.model
+      .find({
+        workspace_id: workspaceId,
+        creator_id: creatorId,
+        deleted_at: null,
+        created_at: { $lte: endOfDay },
+      })
+      .select("_id")
+      .lean();
+    return docs.map((d) => d._id as string);
+  }
+
   async delete(id: string): Promise<void> {
     await this.model.updateOne(
       { _id: id },

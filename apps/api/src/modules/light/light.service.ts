@@ -214,24 +214,26 @@ export class LightService {
       "yyyy-MM-dd",
     );
 
-    // Use the finalized snapshot as a stable baseline in recompute mode.
-    // In finalize mode, use the entity's current values directly.
-    const base =
-      mode === "recompute" && userLight.finalizedStreaks
-        ? {
-            todo: userLight.finalizedStreaks.todo,
-            habit: userLight.finalizedStreaks.habit,
-            journal: userLight.finalizedStreaks.journal,
-            perfect: userLight.finalizedStreaks.perfect,
-            anchorDate: userLight.lastFinalizedDate,
-          }
-        : {
-            todo: userLight.todoRingStreak,
-            habit: userLight.habitRingStreak,
-            journal: userLight.journalRingStreak,
-            perfect: userLight.perfectDayStreak,
-            anchorDate: userLight.lastActiveDate,
-          };
+    // ALWAYS derive streaks from the finalizedStreaks snapshot — the stable
+    // baseline from the last finalize call. This makes both finalize and
+    // recompute idempotent: they always produce the same target from the
+    // same baseline regardless of how many times they're called.
+    // Fallback for new users or pre-migration data: base everything at 0.
+    const base = userLight.finalizedStreaks
+      ? {
+          todo: userLight.finalizedStreaks.todo,
+          habit: userLight.finalizedStreaks.habit,
+          journal: userLight.finalizedStreaks.journal,
+          perfect: userLight.finalizedStreaks.perfect,
+          anchorDate: userLight.lastFinalizedDate,
+        }
+      : {
+          todo: 0,
+          habit: 0,
+          journal: 0,
+          perfect: 0,
+          anchorDate: null as string | null,
+        };
 
     const isConsecutive = base.anchorDate === previousDay;
 
