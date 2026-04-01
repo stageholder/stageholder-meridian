@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
+import { useAnimatedTodoList } from "@/lib/hooks/use-animated-todo-list";
 import type { Todo, TodoList } from "@repo/core/types";
 
 export function TodayContent() {
@@ -37,9 +38,11 @@ export function TodayContent() {
     return hasDueToday || hasDoToday;
   });
 
+  const { visibleTodos, completingIds } = useAnimatedTodoList(todayTodos);
+
   // Group by list
   const groupedByList = new Map<string, Todo[]>();
-  for (const todo of todayTodos) {
+  for (const todo of visibleTodos) {
     const group = groupedByList.get(todo.listId) || [];
     group.push(todo);
     groupedByList.set(todo.listId, group);
@@ -96,7 +99,12 @@ export function TodayContent() {
                 </div>
                 <div className="space-y-2">
                   {listTodos.map((todo) => (
-                    <TodoItem key={todo.id} todo={todo} listId={listId} />
+                    <TodoItem
+                      key={todo.id}
+                      todo={todo}
+                      listId={listId}
+                      isCompleting={completingIds.has(todo.id)}
+                    />
                   ))}
                 </div>
               </div>

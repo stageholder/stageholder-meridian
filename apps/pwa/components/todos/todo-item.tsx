@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { parseDateLocal } from "@/lib/date";
 import { useUpdateTodo, useDeleteTodo } from "@/lib/api/todos";
 import { TodoDetailDialog } from "./todo-detail-dialog";
+import { EmberBurst } from "./ember-burst";
 import type { Todo } from "@repo/core/types";
 
 const priorityConfig: Record<string, { label: string; className: string }> = {
@@ -33,9 +34,15 @@ const priorityConfig: Record<string, { label: string; className: string }> = {
 interface TodoItemProps {
   todo: Todo;
   listId: string;
+  /** When true, the item plays the check + exit animation (driven by parent) */
+  isCompleting?: boolean;
 }
 
-export function TodoItem({ todo, listId }: TodoItemProps) {
+export function TodoItem({
+  todo,
+  listId,
+  isCompleting = false,
+}: TodoItemProps) {
   const [detailOpen, setDetailOpen] = useState(false);
   const updateTodo = useUpdateTodo();
   const deleteTodo = useDeleteTodo();
@@ -79,38 +86,48 @@ export function TodoItem({ todo, listId }: TodoItemProps) {
   return (
     <>
       <div
-        onClick={() => setDetailOpen(true)}
-        className="group flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:bg-accent/50"
+        onClick={() => !isCompleting && setDetailOpen(true)}
+        className={cn(
+          "group flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:bg-accent/50",
+          isCompleting && "todo-item-completing",
+        )}
         role="button"
         aria-label="Open todo details"
       >
-        <div
-          onClick={handleToggle}
-          className={cn(
-            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-            isDone
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-muted-foreground/40 hover:border-primary",
-          )}
-          role="checkbox"
-          aria-checked={isDone}
-          aria-label={isDone ? "Mark as incomplete" : "Mark as complete"}
-        >
-          {isDone && (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          )}
+        <div className="relative shrink-0">
+          <div
+            onClick={handleToggle}
+            className={cn(
+              "flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors",
+              isCompleting
+                ? "border-[oklch(0.72_0.22_40)] bg-[oklch(0.72_0.22_40)] text-white todo-check-pop"
+                : isDone
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-muted-foreground/40 hover:border-primary",
+            )}
+            role="checkbox"
+            aria-checked={isDone || isCompleting}
+            aria-label={isDone ? "Mark as incomplete" : "Mark as complete"}
+          >
+            {(isDone || isCompleting) && (
+              <svg
+                className={isCompleting ? "todo-check-draw" : ""}
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            )}
+          </div>
+          {isCompleting && <span className="todo-check-ring" />}
+          <EmberBurst active={isCompleting} />
         </div>
 
         <div className="flex-1 min-w-0">

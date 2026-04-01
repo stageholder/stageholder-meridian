@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -8,6 +8,7 @@ import { countWords } from "@repo/core/utils/text";
 import { useUserLight } from "@/lib/api/light";
 import { useJournals } from "@/lib/api/journals";
 import { cn } from "@/lib/utils";
+import { JournalCelebration } from "./journal-celebration";
 import type { SaveStatus } from "@/lib/hooks/use-autosave";
 
 interface JournalEditorProps {
@@ -47,6 +48,23 @@ export function JournalEditor({
 
   const totalWords = wordCount + otherWordsToday;
 
+  // Track target celebration — fire once per crossing
+  const prevMetRef = useRef(false);
+  const [celebrationTrigger, setCelebrationTrigger] = useState(0);
+  const [showGlow, setShowGlow] = useState(false);
+
+  useEffect(() => {
+    const nowMet = totalWords >= target && target > 0;
+    if (nowMet && !prevMetRef.current) {
+      prevMetRef.current = true;
+      setCelebrationTrigger((n) => n + 1);
+      setShowGlow(true);
+      const timer = setTimeout(() => setShowGlow(false), 2500);
+      return () => clearTimeout(timer);
+    }
+    prevMetRef.current = nowMet;
+  }, [totalWords, target]);
+
   const handleUpdate = useCallback(
     (html: string) => {
       setWordCount(countWords(html));
@@ -83,7 +101,10 @@ export function JournalEditor({
   const metTarget = totalWords >= target;
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="relative flex flex-1 flex-col overflow-hidden">
+      {/* Celebration overlay — covers the entire editor */}
+      <JournalCelebration trigger={celebrationTrigger} />
+
       {/* Toolbar */}
       <div className="flex shrink-0 items-center gap-1 border-b border-border/50 pb-2 mb-0 px-4">
         <button
@@ -247,12 +268,17 @@ export function JournalEditor({
       </div>
 
       {/* Fixed word count bar at bottom */}
-      <div className="shrink-0 border-t border-border/50 bg-background px-4 py-2">
-        <div className="flex items-center gap-2">
-          <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+      <div className="relative shrink-0 border-t border-border/50 bg-background px-4 py-2">
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "flex-1 overflow-hidden rounded-full bg-muted transition-all duration-500",
+              showGlow ? "h-2 journal-target-glow" : "h-1",
+            )}
+          >
             <div
               className={cn(
-                "h-full rounded-full transition-all duration-300",
+                "h-full rounded-full transition-all duration-500",
                 metTarget
                   ? "bg-[var(--ring-journal)]"
                   : "bg-[var(--ring-journal)]/60",
@@ -262,10 +288,11 @@ export function JournalEditor({
           </div>
           <span
             className={cn(
-              "shrink-0 text-xs tabular-nums",
+              "shrink-0 text-xs tabular-nums transition-all duration-500",
               metTarget
                 ? "font-medium text-[var(--ring-journal)]"
                 : "text-muted-foreground",
+              showGlow && "scale-125 text-sm font-semibold",
             )}
           >
             {totalWords} / {target} words

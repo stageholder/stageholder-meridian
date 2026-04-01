@@ -3,6 +3,7 @@
 import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
 import { useTodos } from "@/lib/api/todos";
+import { useAnimatedTodoList } from "@/lib/hooks/use-animated-todo-list";
 import type { Todo } from "@repo/core/types";
 
 interface TodoListContentProps {
@@ -21,6 +22,7 @@ export function TodoListContent({
   const { data: todos, isLoading } = useTodos(listId);
 
   const pendingTodos = todos?.filter((t: Todo) => t.status !== "done") || [];
+  const { visibleTodos, completingIds } = useAnimatedTodoList(pendingTodos);
 
   return (
     <>
@@ -49,8 +51,13 @@ export function TodoListContent({
         </div>
       ) : (
         <div className="mt-3 space-y-2">
-          {pendingTodos.map((todo: Todo) => (
-            <TodoItem key={todo.id} todo={todo} listId={listId} />
+          {visibleTodos.map((todo: Todo) => (
+            <TodoItem
+              key={todo.id}
+              todo={todo}
+              listId={listId}
+              isCompleting={completingIds.has(todo.id)}
+            />
           ))}
           {pendingTodos.length === 0 && (
             <div className="py-12 text-center">

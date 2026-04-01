@@ -4,6 +4,7 @@ import { useState } from "react";
 import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
+import { useAnimatedTodoList } from "@/lib/hooks/use-animated-todo-list";
 import {
   Popover,
   PopoverContent,
@@ -81,8 +82,11 @@ export function UpcomingContent() {
     return true;
   });
 
+  const { visibleTodos: animatedUpcoming, completingIds } =
+    useAnimatedTodoList(upcomingTodos);
+
   const groupedByDate = new Map<string, Todo[]>();
-  for (const todo of upcomingTodos) {
+  for (const todo of animatedUpcoming) {
     const date = getEarliestDate(todo, today);
     const group = groupedByDate.get(date) || [];
     group.push(todo);
@@ -271,6 +275,7 @@ export function UpcomingContent() {
                               key={todo.id}
                               todo={todo}
                               listId={listId}
+                              isCompleting={completingIds.has(todo.id)}
                             />
                           ))}
                         </div>
