@@ -56,7 +56,7 @@ export default function DashboardPage() {
         <JournalGrowthChart />
       </BentoCard>
 
-      <BentoCard title="Light Earned" index={6} className="col-span-full">
+      <BentoCard title="Light Growth" index={6} className="col-span-full">
         <LightEarnedChart />
       </BentoCard>
 

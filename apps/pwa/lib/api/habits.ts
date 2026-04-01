@@ -177,6 +177,7 @@ export function useUpdateHabitEntry() {
       ["habits", workspace.id],
       ["calendar"],
       [...lightKeys.me],
+      [...lightKeys.stats],
     ],
   });
 }
@@ -208,6 +209,7 @@ export function useCreateHabitEntry() {
       ["habits", workspace.id],
       ["calendar"],
       [...lightKeys.me],
+      [...lightKeys.stats],
     ],
   });
 }
@@ -244,6 +246,7 @@ export function useSkipHabitEntry() {
       ["habits", workspace.id],
       ["calendar"],
       [...lightKeys.me],
+      [...lightKeys.stats],
     ],
   });
 }

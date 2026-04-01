@@ -38,6 +38,18 @@ export interface LightEvent {
   updatedAt: string;
 }
 
+export interface LightStatDay {
+  date: string;
+  light: number;
+}
+
+export interface LightStats {
+  baseline: {
+    totalLight: number;
+  };
+  days: LightStatDay[];
+}
+
 export interface LightTier {
   tier: number;
   title: string;

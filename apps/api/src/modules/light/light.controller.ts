@@ -25,6 +25,14 @@ export class LightController {
     return userLight.toObject();
   }
 
+  @Get("stats")
+  async getStats(
+    @CurrentUserId() userId: string,
+    @Query("today") today?: string,
+  ) {
+    return this.service.getStats(userId, today);
+  }
+
   @Get("events")
   async getEvents(
     @CurrentUserId() userId: string,

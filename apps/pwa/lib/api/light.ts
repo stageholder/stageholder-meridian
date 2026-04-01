@@ -1,9 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/lib/api-client";
-import type { UserLight, LightEvent } from "@repo/core/types";
+import type { UserLight, LightEvent, LightStats } from "@repo/core/types";
+import { todayLocal } from "@/lib/date";
 
 export const lightKeys = {
   me: ["light", "me"] as const,
+  stats: ["light", "stats"] as const,
   events: (limit?: number, offset?: number) =>
     ["light", "events", { limit, offset }] as const,
 };
@@ -32,6 +34,21 @@ export function useUpdateTargets() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: lightKeys.me });
     },
+  });
+}
+
+export function useLightStats() {
+  return useQuery<LightStats>({
+    queryKey: lightKeys.stats,
+    queryFn: async () => {
+      const today = todayLocal();
+      const res = await apiClient.get("/light/stats", {
+        params: { today },
+      });
+      return res.data;
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 }
 

@@ -79,6 +79,52 @@ export class LightEventRepository {
     });
   }
 
+  async getGrowthStats(
+    userId: string,
+    windowStart: string,
+  ): Promise<{
+    window: Array<{ date: string; light: number }>;
+    baseline: { light: number };
+  }> {
+    const result = await this.model.aggregate([
+      { $match: { user_id: userId, deleted_at: null } },
+      {
+        $facet: {
+          window: [
+            { $match: { date: { $gte: windowStart } } },
+            {
+              $group: {
+                _id: "$date",
+                light: { $sum: "$total_light" },
+              },
+            },
+            { $sort: { _id: 1 } },
+          ],
+          baseline: [
+            { $match: { date: { $lt: windowStart } } },
+            {
+              $group: {
+                _id: null,
+                light: { $sum: "$total_light" },
+              },
+            },
+          ],
+        },
+      },
+    ]);
+
+    const facet = result[0] ?? { window: [], baseline: [] };
+    return {
+      window: facet.window.map((d: any) => ({
+        date: d._id,
+        light: d.light,
+      })),
+      baseline: facet.baseline[0]
+        ? { light: facet.baseline[0].light }
+        : { light: 0 },
+    };
+  }
+
   private toDomain(doc: any): LightEvent {
     return LightEvent.reconstitute(
       {

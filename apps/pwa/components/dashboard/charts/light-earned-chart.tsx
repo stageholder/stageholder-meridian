@@ -10,7 +10,7 @@ import {
 import { useLightTrend } from "@/lib/hooks/use-light-trend";
 
 const chartConfig = {
-  light: { label: "Light Earned", color: "oklch(0.75 0.18 55)" },
+  light: { label: "Total Light", color: "oklch(0.75 0.18 55)" },
 } satisfies ChartConfig;
 
 export function LightEarnedChart() {
@@ -58,8 +58,11 @@ export function LightEarnedChart() {
           tickLine={false}
           axisLine={false}
           fontSize={12}
-          width={30}
+          width={36}
           allowDecimals={false}
+          tickFormatter={(v: number) =>
+            v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v)
+          }
         />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Area
@@ -68,7 +71,7 @@ export function LightEarnedChart() {
           stroke="var(--color-light)"
           fill="url(#lightGradient)"
           strokeWidth={2}
-          dot={{ r: 3, fill: "var(--color-light)" }}
+          dot={false}
         />
       </AreaChart>
     </ChartContainer>

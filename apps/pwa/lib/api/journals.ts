@@ -167,6 +167,7 @@ export function useCreateJournal() {
     invalidateKeys: [
       ["journals", workspace.id],
       [...lightKeys.me],
+      [...lightKeys.stats],
       ["calendar", workspace.id],
       [...journalKeys.stats(workspace.id)],
     ],
@@ -220,6 +221,7 @@ export function useCreateJournal() {
         queryKey: ["journals", workspace.id],
       });
       void queryClient.invalidateQueries({ queryKey: lightKeys.me });
+      void queryClient.invalidateQueries({ queryKey: lightKeys.stats });
       void queryClient.invalidateQueries({
         queryKey: ["calendar", workspace.id],
       });

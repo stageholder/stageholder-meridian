@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { format, subDays } from "date-fns";
-import { useLightEvents } from "@/lib/api/light";
+import { useLightStats } from "@/lib/api/light";
 
 interface LightTrendDay {
   date: string;
@@ -9,29 +9,31 @@ interface LightTrendDay {
 }
 
 export function useLightTrend() {
-  const { data: events, isLoading } = useLightEvents(100, 0);
+  const { data: stats, isLoading } = useLightStats();
 
-  const data = useMemo(() => {
+  const data = useMemo<LightTrendDay[]>(() => {
+    if (!stats) return [];
+
+    const dayMap = new Map(stats.days.map((d) => [d.date, d]));
+    let cumulative = stats.baseline.totalLight;
     const today = new Date();
-    const lightByDate = new Map<string, number>();
-    for (const e of events ?? []) {
-      const dateStr =
-        e.date?.split("T")[0] ?? format(new Date(e.createdAt), "yyyy-MM-dd");
-      lightByDate.set(dateStr, (lightByDate.get(dateStr) ?? 0) + e.totalLight);
-    }
+    const result: LightTrendDay[] = [];
 
-    const days: LightTrendDay[] = [];
     for (let i = 13; i >= 0; i--) {
       const d = subDays(today, i);
       const dateStr = format(d, "yyyy-MM-dd");
-      days.push({
+      const day = dayMap.get(dateStr);
+      cumulative += day?.light ?? 0;
+      result.push({
         date: dateStr,
         label: format(d, "MMM d"),
-        light: lightByDate.get(dateStr) ?? 0,
+        light: cumulative,
       });
     }
-    return days;
-  }, [events]);
+
+    return result;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stats]);
 
   return { data, isLoading };
 }

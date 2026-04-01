@@ -54,6 +54,40 @@ export class LightService {
     return this.lightEventRepo.findByUser(userId, limit, offset);
   }
 
+  async getStats(userId: string, clientToday?: string) {
+    const todayStr =
+      clientToday && /^\d{4}-\d{2}-\d{2}$/.test(clientToday)
+        ? clientToday
+        : new Date().toISOString().slice(0, 10);
+    const today = new Date(todayStr + "T00:00:00Z");
+    const windowStartDate = new Date(today);
+    windowStartDate.setUTCDate(windowStartDate.getUTCDate() - 13);
+    const windowStart = windowStartDate.toISOString().slice(0, 10);
+
+    const { window, baseline } = await this.lightEventRepo.getGrowthStats(
+      userId,
+      windowStart,
+    );
+
+    const dayMap = new Map(window.map((d) => [d.date, d]));
+    const days: Array<{ date: string; light: number }> = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(today);
+      d.setUTCDate(d.getUTCDate() - i);
+      const dateStr = d.toISOString().slice(0, 10);
+      const day = dayMap.get(dateStr);
+      days.push({
+        date: dateStr,
+        light: day?.light ?? 0,
+      });
+    }
+
+    return {
+      baseline: { totalLight: baseline.light },
+      days,
+    };
+  }
+
   async updateTargets(
     userId: string,
     targets: { todoTargetDaily?: number; journalTargetDailyWords?: number },

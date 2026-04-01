@@ -228,6 +228,7 @@ export function useUpdateTodo() {
       ["todos", workspace.id],
       ["allTodos", workspace.id],
       [...lightKeys.me],
+      [...lightKeys.stats],
       ["calendar", workspace.id],
     ],
   });
