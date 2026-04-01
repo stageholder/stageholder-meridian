@@ -7,6 +7,7 @@ import { MoreHorizontal, SkipForward, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HabitProgress } from "./habit-progress";
 import { EditHabitSheet } from "./edit-habit-sheet";
+import { RadianceBurst } from "./radiance-burst";
 import {
   useCreateHabitEntry,
   useUpdateHabitEntry,
@@ -112,7 +113,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
       setTimeout(() => setBouncing(false), 500);
       if (activeDateValue + 1 >= habit.targetCount) {
         setCompleting(true);
-        setTimeout(() => setCompleting(false), 1000);
+        setTimeout(() => setCompleting(false), 1200);
       }
     };
 
@@ -180,11 +181,11 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
     <>
       <div
         className={cn(
-          "rounded-xl border border-border bg-card p-5 transition-all",
-          completing && "ring-2 ring-green-500/20",
+          "relative rounded-xl border border-border bg-card p-5 transition-all",
+          completing && "habit-card-completing",
         )}
-        style={completing ? { backgroundColor: habitColor + "08" } : undefined}
       >
+        <RadianceBurst active={completing} color={habitColor} />
         <div className="flex items-start justify-between">
           <Link
             href={`/${workspace.shortId}/habits/${habit.id}`}
@@ -353,7 +354,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
                   disabled={isComplete || isPending}
                   className={cn(
                     "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
-                    bouncing && "animate-bounce",
+                    bouncing && "scale-110",
                     isComplete
                       ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                       : "bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50",
