@@ -185,21 +185,21 @@ export function JournalCelebration({ trigger }: JournalCelebrationProps) {
         />
       ))}
 
-      {/* Target reached banner */}
+      {/* Target reached banner — anchored to top, no text overlap */}
       {showBanner && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="journal-celebration-banner flex flex-col items-center gap-1">
+        <div className="absolute inset-x-0 top-3 flex justify-center">
+          <div
+            className="journal-celebration-banner rounded-full px-5 py-1.5 backdrop-blur-sm"
+            style={{
+              background: "oklch(0.82 0.22 75 / 0.12)",
+              border: "1px solid oklch(0.82 0.22 75 / 0.2)",
+            }}
+          >
             <span
-              className="text-lg font-bold"
-              style={{ color: "oklch(0.82 0.22 75)" }}
+              className="text-sm font-semibold"
+              style={{ color: "oklch(0.75 0.20 65)" }}
             >
               Target Reached!
-            </span>
-            <span
-              className="text-xs"
-              style={{ color: "oklch(0.70 0.15 75 / 0.8)" }}
-            >
-              Keep the flow going
             </span>
           </div>
         </div>
