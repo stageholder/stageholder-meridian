@@ -8,11 +8,13 @@ import { cn } from "@/lib/utils";
 import { useUpdateTodo, useTodoLists } from "@/lib/api/todos";
 import { useWorkspace } from "@/lib/workspace-context";
 import { CreateTodoDialog } from "@/components/todos/create-todo-dialog";
+import { TodoDetailDialog } from "@/components/todos/todo-detail-dialog";
 import type { CalendarDayData } from "@/lib/api/calendar";
 import { ActivityRingsVisual } from "@/components/activity-rings";
 import { computeActivityRings } from "@/components/activity-rings";
 import Link from "next/link";
-import type { Habit } from "@repo/core/types";
+import type { Habit, Todo } from "@repo/core/types";
+import { useAllTodos } from "@/lib/api/todos";
 
 const priorityConfig: Record<string, { label: string; className: string }> = {
   urgent: {
@@ -58,8 +60,17 @@ export function DayPanel({ date, dayData, habits }: DayPanelProps) {
   const { data: lists } = useTodoLists();
   const defaultList = lists?.find((l) => l.isDefault) || lists?.[0];
   const [showCreateTodo, setShowCreateTodo] = useState(false);
+  const [detailTodoId, setDetailTodoId] = useState<string | null>(null);
+  const { data: allTodos } = useAllTodos();
+  const detailTodo = detailTodoId
+    ? allTodos?.find((t) => t.id === detailTodoId)
+    : undefined;
 
   const dateStr = format(date, "yyyy-MM-dd");
+
+  function handleOpenTodo(todoId: string) {
+    setDetailTodoId(todoId);
+  }
 
   function handleToggleTodo(
     todoId: string,
@@ -112,17 +123,19 @@ export function DayPanel({ date, dayData, habits }: DayPanelProps) {
               return (
                 <div
                   key={todo.id}
-                  onClick={() =>
-                    handleToggleTodo(todo.id, todo.listId, todo.status)
-                  }
+                  onClick={() => handleOpenTodo(todo.id)}
                   className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent/50"
                 >
                   <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleTodo(todo.id, todo.listId, todo.status);
+                    }}
                     className={cn(
                       "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
                       isDone
                         ? "border-primary bg-primary text-primary-foreground"
-                        : "border-muted-foreground/40",
+                        : "border-muted-foreground/40 hover:border-primary",
                     )}
                   >
                     {isDone && (
@@ -250,6 +263,17 @@ export function DayPanel({ date, dayData, habits }: DayPanelProps) {
           onOpenChange={setShowCreateTodo}
           listId={defaultList.id}
           defaultDueDate={dateStr}
+        />
+      )}
+
+      {detailTodo && (
+        <TodoDetailDialog
+          open={!!detailTodo}
+          onOpenChange={(open) => {
+            if (!open) setDetailTodoId(null);
+          }}
+          todo={detailTodo}
+          listId={detailTodo.listId}
         />
       )}
     </div>

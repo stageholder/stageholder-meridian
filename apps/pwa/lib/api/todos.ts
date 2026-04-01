@@ -135,6 +135,8 @@ export function useUpdateTodoList() {
     operation: "update",
     buildPath: ({ listId }) =>
       `/workspaces/${workspace.id}/todo-lists/${listId}`,
+    getEntityId: ({ listId }) => listId,
+    getPatch: ({ data }) => data as Partial<TodoList>,
     invalidateKeys: [["todoLists", workspace.id]],
   });
 }
@@ -204,12 +206,12 @@ export function useUpdateTodo() {
       todoId: string;
       data: {
         title?: string;
-        description?: string;
+        description?: string | null;
         status?: string;
         priority?: string;
-        dueDate?: string;
-        doDate?: string;
-        assigneeId?: string;
+        dueDate?: string | null;
+        doDate?: string | null;
+        assigneeId?: string | null;
       };
     }
   >({
@@ -224,6 +226,14 @@ export function useUpdateTodo() {
     entityType: "todos",
     operation: "update",
     buildPath: (args) => `/workspaces/${workspace.id}/todos/${args.todoId}`,
+    getEntityId: (args) => args.todoId,
+    getPatch: (args) => {
+      const patch: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(args.data)) {
+        patch[key] = value === null ? undefined : value;
+      }
+      return patch as Partial<Todo>;
+    },
     invalidateKeys: [
       ["todos", workspace.id],
       ["allTodos", workspace.id],

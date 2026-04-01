@@ -126,6 +126,8 @@ export function useOfflineMutation<
     buildPath: (variables: TVariables) => string;
     operation: "create" | "update";
     invalidateKeys?: unknown[][];
+    getEntityId?: (variables: TVariables) => string;
+    getPatch?: (variables: TVariables) => Partial<TData>;
   },
 ) {
   const isOnline = useNetworkStatus();
@@ -134,31 +136,97 @@ export function useOfflineMutation<
   return useMutation<TData, Error, TVariables, TContext>({
     mutationFn: async (variables) => {
       if (isOnline) {
-        const result = await options.mutationFn(variables);
-        await options.table.put(result);
-        return result;
+        // Optimistically update Dexie before the server responds so the
+        // live query reflects the change immediately (prevents flicker).
+        let previousRecord: TData | undefined;
+        if (
+          options.operation === "update" &&
+          options.getEntityId &&
+          options.getPatch
+        ) {
+          const entityId = options.getEntityId(variables);
+          previousRecord = await options.table.get(entityId as never);
+          if (previousRecord) {
+            const patch = options.getPatch(variables);
+            const optimistic = {
+              ...previousRecord,
+              ...patch,
+              id: entityId,
+              updatedAt: new Date().toISOString(),
+            } as unknown as TData;
+            await options.table.put(optimistic);
+          }
+        }
+
+        try {
+          const result = await options.mutationFn(variables);
+          await options.table.put(result);
+          return result;
+        } catch (error) {
+          // Revert the optimistic Dexie write on server error
+          if (previousRecord) {
+            await options.table.put(previousRecord);
+          }
+          throw error;
+        }
       }
 
+      // --- Offline path ---
       const path = options.buildPath(variables);
       const tempId = crypto.randomUUID();
 
-      const optimistic = {
-        id: tempId,
-        ...variables,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      } as unknown as TData;
+      let optimistic: TData;
+      let entityId = "";
+      let flushPayload: unknown = variables;
+
+      if (
+        options.operation === "update" &&
+        options.getEntityId &&
+        options.getPatch
+      ) {
+        entityId = options.getEntityId(variables);
+        const existing = await options.table.get(entityId as never);
+        const patch = options.getPatch(variables);
+        flushPayload = patch;
+        if (existing) {
+          optimistic = {
+            ...existing,
+            ...patch,
+            id: entityId,
+            updatedAt: new Date().toISOString(),
+          } as unknown as TData;
+        } else {
+          // No local record — enqueue without writing a skeletal optimistic entry
+          optimistic = {
+            id: entityId,
+            ...patch,
+            updatedAt: new Date().toISOString(),
+          } as unknown as TData;
+          await enqueue({
+            entityType: options.entityType,
+            entityId,
+            operation: options.operation,
+            path,
+            payload: flushPayload,
+          });
+          return optimistic;
+        }
+      } else {
+        optimistic = {
+          id: tempId,
+          ...variables,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as unknown as TData;
+      }
       await options.table.put(optimistic);
 
       await enqueue({
         entityType: options.entityType,
-        entityId:
-          options.operation === "update"
-            ? String((variables as Record<string, unknown>).id ?? "")
-            : "",
+        entityId,
         operation: options.operation,
         path,
-        payload: variables,
+        payload: flushPayload,
         tempId: options.operation === "create" ? tempId : undefined,
       });
 

@@ -150,11 +150,11 @@ export class TodoService {
           "Assignee is not a member of this workspace",
         );
     }
-    if (dto.title) todo.updateTitle(dto.title);
+    if (dto.title !== undefined) todo.updateTitle(dto.title);
     if (dto.description !== undefined)
       todo.updateDescription(dto.description || undefined);
-    if (dto.status) todo.updateStatus(dto.status as TodoStatus);
-    if (dto.priority) todo.updatePriority(dto.priority);
+    if (dto.status !== undefined) todo.updateStatus(dto.status as TodoStatus);
+    if (dto.priority !== undefined) todo.updatePriority(dto.priority);
     if (dto.dueDate !== undefined) todo.updateDueDate(dto.dueDate || undefined);
     if (dto.doDate !== undefined) todo.updateDoDate(dto.doDate || undefined);
     if (dto.assigneeId !== undefined)

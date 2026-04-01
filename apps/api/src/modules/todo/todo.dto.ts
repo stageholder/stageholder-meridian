@@ -17,7 +17,7 @@ export type CreateTodoDto = z.infer<typeof CreateTodoDto>;
 
 export const UpdateTodoDto = z.object({
   title: z.string().min(1).max(500).optional(),
-  description: z.string().max(5000).optional(),
+  description: z.string().max(5000).nullable().optional(),
   status: z.enum(["todo", "done"]).optional(),
   priority: z.enum(["none", "low", "medium", "high", "urgent"]).optional(),
   dueDate: z.string().nullable().optional(),

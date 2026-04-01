@@ -32,14 +32,14 @@ export class TodoRepository {
       {
         $set: {
           title: enc.title,
-          description: enc.description,
+          description: enc.description ?? null,
           status: data.status,
           priority: data.priority,
-          due_date: data.dueDate,
-          do_date: data.doDate,
+          due_date: data.dueDate ?? null,
+          do_date: data.doDate ?? null,
           list_id: data.listId,
           workspace_id: data.workspaceId,
-          assignee_id: data.assigneeId,
+          assignee_id: data.assigneeId ?? null,
           creator_id: data.creatorId,
           order: data.order,
           subtasks: (enc.subtasks || []).map((s: any) => ({
@@ -163,14 +163,14 @@ export class TodoRepository {
     return Todo.reconstitute(
       {
         title: dec.title,
-        description: dec.description,
+        description: dec.description ?? undefined,
         status: doc.status,
         priority: doc.priority,
-        dueDate: doc.due_date,
-        doDate: doc.do_date,
+        dueDate: doc.due_date ?? undefined,
+        doDate: doc.do_date ?? undefined,
         listId: doc.list_id,
         workspaceId: doc.workspace_id,
-        assigneeId: doc.assignee_id,
+        assigneeId: doc.assignee_id ?? undefined,
         creatorId: doc.creator_id,
         order: doc.order,
         subtasks: (dec.subtasks || []).map((s: any) => ({

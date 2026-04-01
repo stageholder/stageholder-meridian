@@ -66,6 +66,10 @@ export function TodoDetailDialog({
   const removeSubtask = useRemoveSubtask();
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [priorityOpen, setPriorityOpen] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(todo.title);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const titleCancelledRef = useRef(false);
   const [editingDesc, setEditingDesc] = useState(false);
   const [descDraft, setDescDraft] = useState(todo.description ?? "");
   const descRef = useRef<HTMLTextAreaElement>(null);
@@ -73,12 +77,23 @@ export function TodoDetailDialog({
   const isDone = todo.status === "done";
   const priority = priorityConfig[todo.priority] ?? priorityConfig.none!;
 
-  // Sync description draft when todo changes externally
+  // Sync drafts when todo changes externally
+  useEffect(() => {
+    if (!editingTitle) setTitleDraft(todo.title);
+  }, [todo.title, editingTitle]);
+
   useEffect(() => {
     if (!editingDesc) setDescDraft(todo.description ?? "");
   }, [todo.description, editingDesc]);
 
-  // Auto-focus textarea when entering edit mode
+  // Auto-focus inputs when entering edit mode
+  useEffect(() => {
+    if (editingTitle && titleRef.current) {
+      titleRef.current.focus();
+      titleRef.current.selectionStart = titleRef.current.value.length;
+    }
+  }, [editingTitle]);
+
   useEffect(() => {
     if (editingDesc && descRef.current) {
       descRef.current.focus();
@@ -102,11 +117,24 @@ export function TodoDetailDialog({
     updateTodo.mutate({ listId, todoId: todo.id, data });
   }
 
+  function handleSaveTitle() {
+    if (titleCancelledRef.current) {
+      titleCancelledRef.current = false;
+      return;
+    }
+    const trimmed = titleDraft.trim();
+    if (trimmed && trimmed !== todo.title) {
+      handleUpdateField({ title: trimmed });
+    }
+    if (!trimmed) setTitleDraft(todo.title);
+    setEditingTitle(false);
+  }
+
   function handleSaveDescription() {
     const trimmed = descDraft.trim();
     const current = todo.description ?? "";
     if (trimmed !== current) {
-      handleUpdateField({ description: trimmed || undefined });
+      handleUpdateField({ description: trimmed || null });
     }
     setEditingDesc(false);
   }
@@ -198,14 +226,37 @@ export function TodoDetailDialog({
             )}
           </button>
           <div className="flex-1 min-w-0">
-            <h2
-              className={cn(
-                "text-base font-semibold text-foreground",
-                isDone && "line-through text-muted-foreground",
-              )}
-            >
-              {todo.title}
-            </h2>
+            {editingTitle ? (
+              <input
+                ref={titleRef}
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    titleRef.current?.blur();
+                  }
+                  if (e.key === "Escape") {
+                    titleCancelledRef.current = true;
+                    setTitleDraft(todo.title);
+                    setEditingTitle(false);
+                  }
+                }}
+                onBlur={handleSaveTitle}
+                className="w-full bg-transparent text-base font-semibold text-foreground outline-none border-b-2 border-primary pb-0.5"
+              />
+            ) : (
+              <h2
+                onClick={() => setEditingTitle(true)}
+                className={cn(
+                  "text-base font-semibold text-foreground cursor-pointer rounded px-1 -mx-1 hover:bg-accent/50 transition-colors",
+                  isDone && "line-through text-muted-foreground",
+                )}
+                title="Click to edit title"
+              >
+                {titleDraft}
+              </h2>
+            )}
             {isDone && (
               <span className="mt-1 inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                 <svg
@@ -542,7 +593,7 @@ export function TodoDetailDialog({
                     handleUpdateField({ dueDate: value || null })
                   }
                   placeholder="Set due date"
-                  clearable={false}
+                  clearable
                   className={cn(
                     "h-8 w-full text-xs",
                     isOverdue &&
@@ -564,7 +615,7 @@ export function TodoDetailDialog({
                     handleUpdateField({ doDate: value || null })
                   }
                   placeholder="Set do date"
-                  clearable={false}
+                  clearable
                   className="h-8 w-full text-xs"
                 />
               </div>
