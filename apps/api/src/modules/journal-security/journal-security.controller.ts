@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post, Put, Req } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import { ApiTags } from "@nestjs/swagger";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe";
+import { Introspect } from "../../common/decorators/introspect.decorator";
 import type { StageholderRequest } from "../../common/types";
 import { JournalSecurityService } from "./journal-security.service";
 import {
@@ -21,6 +22,7 @@ export class JournalSecurityController {
     return this.service.getKeys(req.user.sub);
   }
 
+  @Introspect()
   @Post("setup")
   async setup(
     @Req() req: StageholderRequest,
@@ -31,6 +33,7 @@ export class JournalSecurityController {
     return { success: true };
   }
 
+  @Introspect()
   @Put("passphrase")
   async changePassphrase(
     @Req() req: StageholderRequest,
@@ -44,6 +47,7 @@ export class JournalSecurityController {
   // Recover is rate-limited independently of the global throttler: five
   // attempts per hour per authenticated user is plenty for legit recovery
   // while making online brute-force of 8 codes infeasible.
+  @Introspect()
   @Throttle({ default: { limit: 5, ttl: 60 * 60 * 1000 } })
   @Post("recover")
   async recover(
@@ -53,6 +57,7 @@ export class JournalSecurityController {
     return this.service.recover(req.user.sub, dto.codes);
   }
 
+  @Introspect()
   @Post("recover/finalize")
   async finalizeRecovery(
     @Req() req: StageholderRequest,

@@ -74,6 +74,7 @@ export async function exchangeCode(
       redirect_uri: REDIRECT_URI,
       code_verifier: verifier,
     }),
+    signal: AbortSignal.timeout(5000),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -86,12 +87,6 @@ export interface IdTokenClaims {
   sub: string;
   email?: string;
   name?: string;
-  organizations?: {
-    id: string;
-    slug: string;
-    name: string;
-    role: string;
-  }[];
   [key: string]: unknown;
 }
 
@@ -99,6 +94,47 @@ export function decodeIdToken(idToken: string): IdTokenClaims {
   const [, payload] = idToken.split(".");
   const decoded = Buffer.from(payload, "base64").toString("utf-8");
   return JSON.parse(decoded) as IdTokenClaims;
+}
+
+export interface UserinfoOrganization {
+  id: string;
+  slug: string;
+  name: string;
+  role: string;
+}
+
+export interface UserinfoResponse {
+  sub: string;
+  email?: string;
+  email_verified?: boolean;
+  name?: string;
+  organizations?: UserinfoOrganization[];
+  [key: string]: unknown;
+}
+
+/**
+ * Fetch the Hub's userinfo endpoint with the freshly-issued access token.
+ *
+ * Authorization claims (organizations, product_access, subscriptions) live
+ * in userinfo and in the JWT access token — but NOT in the id_token, which
+ * the Hub deliberately keeps slim so BFF session cookies stay under 4 KB.
+ * We call userinfo once at callback time to resolve the personal org, then
+ * cache the result in the session.
+ */
+export async function fetchUserinfo(
+  accessToken: string,
+): Promise<UserinfoResponse> {
+  const res = await fetch(`${ISSUER}/oidc/me`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    // Bound the login critical path — a slow or hung Hub must not hold the
+    // callback route indefinitely. 5s is generous; userinfo is an in-memory
+    // lookup on Hub.
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!res.ok) {
+    throw new Error(`userinfo request failed: ${res.status}`);
+  }
+  return (await res.json()) as UserinfoResponse;
 }
 
 export async function refreshAccessToken(
@@ -114,6 +150,7 @@ export async function refreshAccessToken(
       grant_type: "refresh_token",
       refresh_token: session.refreshToken,
     }),
+    signal: AbortSignal.timeout(5000),
   });
   if (!res.ok) {
     throw new Error("Refresh failed; user must re-authenticate");
@@ -147,6 +184,9 @@ export async function revokeRefreshToken(refreshToken: string): Promise<void> {
         token: refreshToken,
         token_type_hint: "refresh_token",
       }),
+      // Short timeout: this is best-effort during sign-out. If the Hub is
+      // slow we'd rather the user see /goodbye quickly than stall logout.
+      signal: AbortSignal.timeout(3000),
     });
   } catch {
     /* swallowed intentionally */

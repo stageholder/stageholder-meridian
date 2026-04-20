@@ -1,10 +1,12 @@
 import { AuthShell } from "@/components/shared/auth-shell";
+import { GoodbyeBroadcast } from "./goodbye-broadcast";
 
 export const dynamic = "force-static";
 
 export default function GoodbyePage() {
   return (
     <AuthShell>
+      <GoodbyeBroadcast />
       {/* Icon: wave / farewell */}
       <div className="auth-animate auth-stagger-1 flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-card shadow-lg shadow-black/5 dark:shadow-black/20">
         <svg

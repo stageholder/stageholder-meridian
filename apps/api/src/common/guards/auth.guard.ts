@@ -10,9 +10,11 @@ import { Reflector } from "@nestjs/core";
 import {
   StageholderAuthGuard,
   STAGEHOLDER_AUTH_CONFIG,
+  introspectAccessToken,
   type StageholderAuthConfig,
 } from "@stageholder/auth";
 import { IS_PUBLIC_KEY } from "../decorators/public.decorator";
+import { IS_INTROSPECT_KEY } from "../decorators/introspect.decorator";
 
 /**
  * Wraps the SDK's StageholderAuthGuard so that routes marked with
@@ -43,7 +45,34 @@ export class AuthGuard implements CanActivate {
     if (isPublic) return true;
 
     try {
-      return await this.delegate.canActivate(context);
+      const ok = await this.delegate.canActivate(context);
+      if (!ok) return false;
+
+      const needsIntrospection = this.reflector.getAllAndOverride<boolean>(
+        IS_INTROSPECT_KEY,
+        [context.getHandler(), context.getClass()],
+      );
+      if (needsIntrospection) {
+        const req = context.switchToHttp().getRequest();
+        const auth = req.headers?.authorization as string | undefined;
+        const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
+        if (!token) throw new UnauthorizedException();
+        // Throws "Token is not active" when the Hub reports revoked/expired.
+        // We swallow the specific error so we don't leak details, but the
+        // warn log below records the actual reason for operators.
+        try {
+          await introspectAccessToken(token, this.config);
+        } catch (introspectionErr) {
+          this.logger.warn(
+            `[auth] ${req.method} ${req.url} failed introspection: ${
+              (introspectionErr as Error).message
+            }`,
+          );
+          throw new UnauthorizedException();
+        }
+      }
+
+      return true;
     } catch (err) {
       const req = context.switchToHttp().getRequest();
       const auth = req.headers?.authorization as string | undefined;

@@ -53,6 +53,15 @@ export interface InMemorySession {
 
 let memorySession: InMemorySession | null = null;
 
+// Serializes refresh-token exchange across callers. oidc-provider rotates
+// refresh tokens on every use and rejects a second use of the same token as
+// `invalid_grant`. Without this lock, two concurrent `getAccessTokenTauri`
+// calls on boot would race, one would consume the refresh token, and the
+// other would fail — kicking the user back to the sign-in screen despite
+// having valid credentials. Serializing ensures exactly one refresh is in
+// flight at a time; concurrent callers await the same result.
+let inflightRefresh: Promise<InMemorySession | null> | null = null;
+
 function base64url(bytes: Uint8Array): string {
   let s = "";
   for (const b of bytes) s += String.fromCharCode(b);
@@ -219,6 +228,7 @@ async function exchangeCode(
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
+    signal: AbortSignal.timeout(5000),
   });
   if (!res.ok) {
     throw new Error(`Token exchange failed: ${res.status} ${await res.text()}`);
@@ -227,39 +237,64 @@ async function exchangeCode(
 }
 
 async function refreshTauriTokens(): Promise<InMemorySession | null> {
-  const refreshToken = await readRefreshToken();
-  if (!refreshToken) return null;
+  if (inflightRefresh) return inflightRefresh;
+  inflightRefresh = (async () => {
+    const refreshToken = await readRefreshToken();
+    if (!refreshToken) return null;
 
-  const body = new URLSearchParams({
-    grant_type: "refresh_token",
-    refresh_token: refreshToken,
-    client_id: CLIENT_ID,
-  });
-  const res = await fetch(`${ISSUER}/oidc/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
-  if (!res.ok) {
-    // Refresh token is dead (expired / revoked / rotated-already-used).
-    // Clear it so the next call triggers a fresh sign-in.
-    await deleteRefreshToken();
-    memorySession = null;
-    return null;
+    const body = new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+      client_id: CLIENT_ID,
+    });
+
+    let res: Response;
+    try {
+      res = await fetch(`${ISSUER}/oidc/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+        signal: AbortSignal.timeout(5000),
+      });
+    } catch {
+      // Network error or timeout — Hub is unreachable. The refresh token is
+      // (almost certainly) still valid; don't destroy it. Caller will fall
+      // back to prompting sign-in for this session, and the next app launch
+      // will retry silently.
+      memorySession = null;
+      return null;
+    }
+
+    if (!res.ok) {
+      // 4xx → token is dead (expired / revoked / replay of a rotated token).
+      // Clear the store so the next call triggers fresh sign-in.
+      // 5xx → Hub is unhealthy but the token is probably still valid. Keep
+      // it and let the next attempt retry.
+      if (res.status >= 400 && res.status < 500) {
+        await deleteRefreshToken();
+      }
+      memorySession = null;
+      return null;
+    }
+    const tokens = (await res.json()) as TokenResponse;
+    // Refresh tokens rotate on every use — always persist the new one
+    // before returning so we never expose the stale one again.
+    await writeRefreshToken(tokens.refresh_token);
+    const claims = decodeIdToken(tokens.id_token);
+    memorySession = {
+      accessToken: tokens.access_token,
+      idToken: tokens.id_token,
+      accessTokenExpiresAt: Math.floor(Date.now() / 1000) + tokens.expires_in,
+      sub: claims.sub,
+      email: claims.email,
+    };
+    return memorySession;
+  })();
+  try {
+    return await inflightRefresh;
+  } finally {
+    inflightRefresh = null;
   }
-  const tokens = (await res.json()) as TokenResponse;
-  // Refresh tokens rotate on every use — always persist the new one
-  // atomically before returning.
-  await writeRefreshToken(tokens.refresh_token);
-  const claims = decodeIdToken(tokens.id_token);
-  memorySession = {
-    accessToken: tokens.access_token,
-    idToken: tokens.id_token,
-    accessTokenExpiresAt: Math.floor(Date.now() / 1000) + tokens.expires_in,
-    sub: claims.sub,
-    email: claims.email,
-  };
-  return memorySession;
 }
 
 /**
@@ -299,6 +334,10 @@ export async function signOutTauri(): Promise<void> {
           token_type_hint: "refresh_token",
           client_id: CLIENT_ID,
         }),
+        // Best-effort. If the Hub is down we'd rather sign out locally than
+        // block the UI on a dead revocation call — the refresh token will
+        // still be deleted from the store below.
+        signal: AbortSignal.timeout(3000),
       });
     } catch {
       /* ignore */

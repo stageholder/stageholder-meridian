@@ -23,6 +23,7 @@ import { useNetworkStatusWithHeartbeat } from "@repo/offline/network";
 import { isDesktop } from "@repo/core/platform";
 import { cn } from "@/lib/utils";
 import { syncAll } from "@/lib/offline";
+import { announceLogout, subscribeLogout } from "@/lib/auth-broadcast";
 import { useUserLight } from "@/lib/api/light";
 import { StarVisual } from "@/components/light/star-visual";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
@@ -181,20 +182,35 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, userLoading, router]);
 
+  // Listen for sign-outs from other tabs — hard-navigate so the new page load
+  // runs through the auth proxy and the user lands on /auth/login cleanly.
+  useEffect(() => {
+    return subscribeLogout(() => {
+      window.location.href = isDesktop() ? "/" : "/auth/login";
+    });
+  }, []);
+
   async function handleLogout() {
     if (isDesktop()) {
       // Desktop has no iron-session cookie / BFF logout route. Revoke the
       // refresh token, clear the local store, and bounce to the root so
-      // DesktopAuthBoot re-prompts for sign-in.
+      // DesktopAuthBoot re-prompts for sign-in. Safe to broadcast here —
+      // there's no Hub session negotiation to race against, the Hub session
+      // lives in the external system browser and is orthogonal.
       const { signOutTauri } = await import("@/lib/oidc-tauri");
       await signOutTauri();
+      announceLogout();
       window.location.href = "/";
       return;
     }
     // The BFF `/auth/logout` route revokes the Hub refresh token, clears the
     // iron-session cookie, and redirects through the Hub's end-session
     // endpoint to `/goodbye`. A full navigation is required so the browser
-    // follows the 302 chain.
+    // follows the 302 chain. We deliberately do NOT broadcast here: at this
+    // point the Hub session is still alive, so peer tabs navigating to
+    // /auth/login would silent-SSO straight back in. The /goodbye page is
+    // the only moment we're guaranteed the Hub has ended its session, so it
+    // owns the broadcast.
     const form = document.createElement("form");
     form.method = "POST";
     form.action = "/auth/logout";

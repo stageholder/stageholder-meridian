@@ -5,16 +5,18 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * TEMPORARY diagnostic endpoint. Decodes the JWT currently in the
+ * Development-only diagnostic endpoint. Decodes the JWT in the current
  * iron-session cookie so we can verify issuer / audience / expiry /
  * scope against what Meridian API's AuthGuard is configured to accept.
  *
- * SAFE TO KEEP IN DEV — only exposes claims already in the token the
- * user holds. DELETE before deploying to any non-local environment;
- * leaking token claims over an HTTP endpoint is not something you
- * want in production, even if the session cookie is httpOnly.
+ * Returns 404 outside of development so a production build never exposes
+ * token claims (even behind an httpOnly cookie) to anyone who can reach
+ * this URL with a valid session.
  */
 export async function GET() {
+  if (process.env.NODE_ENV === "production") {
+    return new NextResponse(null, { status: 404 });
+  }
   const session = await getSession();
   if (!session.accessToken) {
     return NextResponse.json({ error: "no session" }, { status: 401 });

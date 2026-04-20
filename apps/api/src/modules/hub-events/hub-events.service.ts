@@ -52,6 +52,7 @@ const POLL_TIMEOUT_MS = 10_000;
 @Injectable()
 export class HubEventsService {
   private readonly logger = new Logger(HubEventsService.name);
+  private lastPollFailure: string | null = null;
 
   constructor(
     @InjectModel(HubEventsCursor.name)
@@ -99,14 +100,17 @@ export class HubEventsService {
         signal: AbortSignal.timeout(POLL_TIMEOUT_MS),
       });
     } catch (err) {
-      this.logger.warn(
-        `Hub events poll failed (network): ${(err as Error).message}`,
-      );
+      this.reportFailure(`network:${(err as Error).message}`);
       return;
     }
     if (!res.ok) {
-      this.logger.warn(`Hub events poll returned ${res.status}`);
+      this.reportFailure(`http:${res.status}`);
       return;
+    }
+
+    if (this.lastPollFailure !== null) {
+      this.logger.log("Hub events poll recovered");
+      this.lastPollFailure = null;
     }
 
     const body = (await res.json()) as PollResponse;
@@ -154,6 +158,15 @@ export class HubEventsService {
         { upsert: true, new: true },
       );
     }
+  }
+
+  // Log each distinct failure mode once; repeated identical failures stay
+  // silent until the next state change (success or a different error). Keeps
+  // the log clean when the Hub is briefly down without hiding new symptoms.
+  private reportFailure(kind: string): void {
+    if (this.lastPollFailure === kind) return;
+    this.logger.warn(`Hub events poll failed: ${kind}`);
+    this.lastPollFailure = kind;
   }
 
   /**

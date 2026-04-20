@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { exchangeCode, decodeIdToken } from "@/lib/oidc";
+import { exchangeCode, decodeIdToken, fetchUserinfo } from "@/lib/oidc";
 import { getSession } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -45,14 +45,29 @@ export async function GET(req: NextRequest) {
     return errorRedirect(req, "invalid_id_token");
   }
 
-  const personalOrg = claims.organizations?.[0];
+  // Authorization claims (organizations) live in userinfo, not the id_token.
+  // Hub keeps id_token slim so BFF session cookies stay under 4 KB — see
+  // lib/session.ts. Failing the userinfo fetch should not block sign-in; we
+  // fall back to null personal org and let the app resolve it lazily.
+  let personalOrgId: string | null = null;
+  let personalOrgSlug: string | null = null;
+  try {
+    const userinfo = await fetchUserinfo(tokens.access_token);
+    const personalOrg = userinfo.organizations?.[0];
+    if (personalOrg) {
+      personalOrgId = personalOrg.id;
+      personalOrgSlug = personalOrg.slug;
+    }
+  } catch {
+    /* non-fatal — leave personal org null */
+  }
 
   const session = await getSession();
   session.sub = claims.sub;
   session.email = claims.email;
   session.name = claims.name;
-  session.personalOrgId = personalOrg?.id ?? null;
-  session.personalOrgSlug = personalOrg?.slug ?? null;
+  session.personalOrgId = personalOrgId;
+  session.personalOrgSlug = personalOrgSlug;
   session.accessToken = tokens.access_token;
   session.refreshToken = tokens.refresh_token;
   // id_token deliberately NOT persisted. It's only used as the optional
