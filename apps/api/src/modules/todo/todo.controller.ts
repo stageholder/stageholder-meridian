@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  Req,
 } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { TodoService } from "./todo.service";
@@ -27,26 +28,24 @@ import {
   ReorderSubtasksDto as ReorderSubtasksSchema,
 } from "./todo.dto";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe";
-import { CurrentUserId } from "../../common/decorators/current-user.decorator";
+import { StageholderRequest } from "../../common/types";
 
 @ApiTags("Todos")
-@Controller("workspaces/:workspaceId/todos")
+@Controller("todos")
 export class TodoController {
   constructor(private readonly service: TodoService) {}
 
   @Post()
   async create(
-    @Param("workspaceId") workspaceId: string,
-    @CurrentUserId() userId: string,
+    @Req() req: StageholderRequest,
     @Body(new ZodValidationPipe(CreateSchema)) dto: CreateTodoDto,
   ) {
-    return (await this.service.create(workspaceId, userId, dto)).toObject();
+    return (await this.service.create(req.user.sub, dto, req.user)).toObject();
   }
 
   @Get()
   async list(
-    @Param("workspaceId") workspaceId: string,
-    @CurrentUserId() userId: string,
+    @Req() req: StageholderRequest,
     @Query("listId") listId?: string,
     @Query("page") page?: string,
     @Query("limit") limit?: string,
@@ -55,111 +54,93 @@ export class TodoController {
   ) {
     if (updatedSince) {
       return this.service.findUpdatedSince(
-        workspaceId,
-        userId,
+        req.user.sub,
         updatedSince,
         includeSoftDeleted === "true",
       );
     }
 
     if (listId) {
-      return (await this.service.listByList(listId, workspaceId, userId)).map(
-        (t) => t.toObject(),
+      return (await this.service.listByList(req.user.sub, listId)).map((t) =>
+        t.toObject(),
       );
     }
-    return this.service.listByWorkspace(
-      workspaceId,
-      userId,
+    return this.service.listByUser(
+      req.user.sub,
       page ? +page : undefined,
       limit ? +limit : undefined,
     );
   }
 
   @Get(":id")
-  async get(
-    @Param("workspaceId") workspaceId: string,
-    @Param("id") id: string,
-    @CurrentUserId() userId: string,
-  ) {
-    return (await this.service.findById(id, workspaceId, userId)).toObject();
+  async get(@Req() req: StageholderRequest, @Param("id") id: string) {
+    return (await this.service.findById(req.user.sub, id)).toObject();
   }
 
   @Patch(":id")
   async update(
-    @Param("workspaceId") workspaceId: string,
+    @Req() req: StageholderRequest,
     @Param("id") id: string,
-    @CurrentUserId() userId: string,
     @Body(new ZodValidationPipe(UpdateSchema)) dto: UpdateTodoDto,
   ) {
-    return (await this.service.update(id, workspaceId, userId, dto)).toObject();
+    return (await this.service.update(req.user.sub, id, dto)).toObject();
   }
 
   @Post("reorder")
   async reorder(
-    @Param("workspaceId") workspaceId: string,
-    @CurrentUserId() userId: string,
+    @Req() req: StageholderRequest,
     @Body(new ZodValidationPipe(ReorderSchema)) dto: ReorderTodosDto,
   ) {
-    await this.service.reorder(workspaceId, userId, dto);
+    await this.service.reorder(req.user.sub, dto);
     return { reordered: true };
   }
 
   @Post(":id/subtasks")
   async addSubtask(
-    @Param("workspaceId") workspaceId: string,
+    @Req() req: StageholderRequest,
     @Param("id") id: string,
-    @CurrentUserId() userId: string,
     @Body(new ZodValidationPipe(CreateSubtaskSchema)) dto: CreateSubtaskDto,
   ) {
-    return (
-      await this.service.addSubtask(id, workspaceId, userId, dto)
-    ).toObject();
+    return (await this.service.addSubtask(req.user.sub, id, dto)).toObject();
   }
 
   @Post(":id/subtasks/reorder")
   async reorderSubtasks(
-    @Param("workspaceId") workspaceId: string,
+    @Req() req: StageholderRequest,
     @Param("id") id: string,
-    @CurrentUserId() userId: string,
     @Body(new ZodValidationPipe(ReorderSubtasksSchema)) dto: ReorderSubtasksDto,
   ) {
     return (
-      await this.service.reorderSubtasks(id, workspaceId, userId, dto)
+      await this.service.reorderSubtasks(req.user.sub, id, dto)
     ).toObject();
   }
 
   @Patch(":id/subtasks/:subtaskId")
   async updateSubtask(
-    @Param("workspaceId") workspaceId: string,
+    @Req() req: StageholderRequest,
     @Param("id") id: string,
     @Param("subtaskId") subtaskId: string,
-    @CurrentUserId() userId: string,
     @Body(new ZodValidationPipe(UpdateSubtaskSchema)) dto: UpdateSubtaskDto,
   ) {
     return (
-      await this.service.updateSubtask(id, subtaskId, workspaceId, userId, dto)
+      await this.service.updateSubtask(req.user.sub, id, subtaskId, dto)
     ).toObject();
   }
 
   @Delete(":id/subtasks/:subtaskId")
   async removeSubtask(
-    @Param("workspaceId") workspaceId: string,
+    @Req() req: StageholderRequest,
     @Param("id") id: string,
     @Param("subtaskId") subtaskId: string,
-    @CurrentUserId() userId: string,
   ) {
     return (
-      await this.service.removeSubtask(id, subtaskId, workspaceId, userId)
+      await this.service.removeSubtask(req.user.sub, id, subtaskId)
     ).toObject();
   }
 
   @Delete(":id")
-  async delete(
-    @Param("workspaceId") workspaceId: string,
-    @Param("id") id: string,
-    @CurrentUserId() userId: string,
-  ) {
-    await this.service.delete(id, workspaceId, userId);
+  async delete(@Req() req: StageholderRequest, @Param("id") id: string) {
+    await this.service.delete(req.user.sub, id);
     return { deleted: true };
   }
 }

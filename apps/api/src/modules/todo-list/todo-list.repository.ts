@@ -27,53 +27,52 @@ export class TodoListRepository {
           name: enc.name,
           color: data.color,
           icon: data.icon,
-          workspace_id: data.workspaceId,
-          is_shared: data.isShared,
+          userSub: data.userSub,
           is_default: data.isDefault,
-          creator_id: data.creatorId,
         },
       },
       { upsert: true },
     );
   }
 
-  async findById(id: string): Promise<TodoList | null> {
+  async findById(userSub: string, id: string): Promise<TodoList | null> {
     const doc = await this.model
-      .findById(id)
-      .where({ deleted_at: null })
+      .findOne({ _id: id, userSub, deleted_at: null })
       .lean();
     return doc ? this.toDomain(doc) : null;
   }
 
-  async findByWorkspace(workspaceId: string): Promise<TodoList[]> {
-    const docs = await this.model
-      .find({ workspace_id: workspaceId, deleted_at: null })
-      .lean();
+  async findByUser(userSub: string): Promise<TodoList[]> {
+    const docs = await this.model.find({ userSub, deleted_at: null }).lean();
     return docs.map((doc) => this.toDomain(doc));
   }
 
-  async findDefaultByWorkspace(workspaceId: string): Promise<TodoList | null> {
+  async findDefaultByUser(userSub: string): Promise<TodoList | null> {
     const doc = await this.model
-      .findOne({
-        workspace_id: workspaceId,
-        is_default: true,
-        deleted_at: null,
-      })
+      .findOne({ userSub, is_default: true, deleted_at: null })
       .lean();
     return doc ? this.toDomain(doc) : null;
   }
 
-  async findByWorkspacePaginated(
-    workspaceId: string,
+  /**
+   * Counts non-soft-deleted todo lists for a user.
+   * Used by entitlement enforcement against the `max_todo_lists` feature limit.
+   */
+  async countForUser(userSub: string): Promise<number> {
+    return this.model.countDocuments({ userSub, deleted_at: null });
+  }
+
+  async findByUserPaginated(
+    userSub: string,
     page: number,
     limit: number,
   ): Promise<{ docs: TodoList[]; total: number }> {
     const total = await this.model.countDocuments({
-      workspace_id: workspaceId,
+      userSub,
       deleted_at: null,
     });
     const docs = await this.model
-      .find({ workspace_id: workspaceId, deleted_at: null })
+      .find({ userSub, deleted_at: null })
       .sort({ is_default: -1, created_at: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -81,20 +80,27 @@ export class TodoListRepository {
     return { docs: docs.map((doc) => this.toDomain(doc)), total };
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(userSub: string, id: string): Promise<void> {
     await this.model.updateOne(
-      { _id: id },
+      { _id: id, userSub },
       { $set: { deleted_at: new Date() } },
     );
   }
 
+  // Hard-delete every todo list for the given userSub. Used by the Hub
+  // user.deleted cascade.
+  async deleteAllForUser(userSub: string): Promise<number> {
+    const { deletedCount } = await this.model.deleteMany({ userSub });
+    return deletedCount ?? 0;
+  }
+
   async findUpdatedSince(
-    workspaceId: string,
+    userSub: string,
     since: string,
     includeSoftDeleted = false,
   ): Promise<TodoList[]> {
     const filter: any = {
-      workspace_id: workspaceId,
+      userSub,
       updated_at: { $gt: new Date(since) },
     };
     if (!includeSoftDeleted) filter.deleted_at = null;
@@ -112,10 +118,8 @@ export class TodoListRepository {
         name: dec.name,
         color: doc.color,
         icon: doc.icon,
-        workspaceId: doc.workspace_id,
-        isShared: doc.is_shared,
+        userSub: doc.userSub,
         isDefault: doc.is_default ?? false,
-        creatorId: doc.creator_id,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at,
       },

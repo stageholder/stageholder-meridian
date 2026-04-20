@@ -10,14 +10,12 @@ import {
 } from "../../shared";
 
 export interface CreateNotificationParams {
-  recipientId: string;
+  userSub: string;
   type: string;
   title: string;
   message: string;
   entityType?: string;
   entityId?: string;
-  actorId?: string;
-  workspaceId: string;
 }
 
 @Injectable()
@@ -32,22 +30,22 @@ export class NotificationService {
   }
 
   async listForUser(
-    userId: string,
+    userSub: string,
     unreadOnly = false,
   ): Promise<Notification[]> {
-    return this.repository.findByRecipient(userId, unreadOnly);
+    return this.repository.findByUser(userSub, unreadOnly);
   }
 
   async listForUserPaginated(
-    userId: string,
+    userSub: string,
     unreadOnly: boolean,
     page?: number,
     limit?: number,
   ): Promise<PaginatedResult<ReturnType<Notification["toObject"]>>> {
     const p = Math.max(page || DEFAULT_PAGE, 1);
     const l = Math.min(Math.max(limit || DEFAULT_LIMIT, 1), MAX_LIMIT);
-    const { docs, total } = await this.repository.findByRecipientPaginated(
-      userId,
+    const { docs, total } = await this.repository.findByUserPaginated(
+      userSub,
       unreadOnly,
       p,
       l,
@@ -59,27 +57,30 @@ export class NotificationService {
   }
 
   async findUpdatedSince(
-    userId: string,
+    userSub: string,
     since: string,
     includeSoftDeleted = false,
   ): Promise<Notification[]> {
-    return this.repository.findUpdatedSince(userId, since, includeSoftDeleted);
+    return this.repository.findUpdatedSince(userSub, since, includeSoftDeleted);
   }
 
-  async markAsRead(userId: string, id: string): Promise<void> {
-    const notification = await this.repository.findById(id);
+  async markAsRead(userSub: string, id: string): Promise<void> {
+    const notification = await this.repository.findById(userSub, id);
     if (!notification) throw new Error("Notification not found");
-    if (notification.recipientId !== userId)
-      throw new Error("Notification not found");
     notification.markAsRead();
     await this.repository.save(notification);
   }
 
-  async getUnreadCount(userId: string): Promise<number> {
-    return this.repository.countUnread(userId);
+  async getUnreadCount(userSub: string): Promise<number> {
+    return this.repository.countUnread(userSub);
   }
 
-  async markAllRead(userId: string): Promise<void> {
-    await this.repository.markAllRead(userId);
+  async markAllRead(userSub: string): Promise<void> {
+    await this.repository.markAllRead(userSub);
+  }
+
+  // Purge every notification for the user. Used by the Hub user.deleted cascade.
+  async deleteAllForUser(userSub: string): Promise<number> {
+    return this.repository.deleteAllForUser(userSub);
   }
 }

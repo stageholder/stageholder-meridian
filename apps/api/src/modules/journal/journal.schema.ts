@@ -21,8 +21,7 @@ export class JournalModel {
   @Prop({ type: String, default: "" }) content: string;
   @Prop({ type: Number }) mood: number;
   @Prop({ type: [String], default: [] }) tags: string[];
-  @Prop({ type: String, required: true, index: true }) workspace_id: string;
-  @Prop({ type: String, required: true, index: true }) author_id: string;
+  @Prop({ type: String, required: true, index: true }) userSub: string;
   @Prop({ type: String, required: true, index: true }) date: string;
   @Prop({ type: Number, default: 0 }) word_count: number;
   @Prop({ type: Boolean, default: false }) encrypted: boolean;
@@ -30,4 +29,5 @@ export class JournalModel {
 }
 
 export const JournalSchema = SchemaFactory.createForClass(JournalModel);
-JournalSchema.index({ workspace_id: 1, date: -1 });
+JournalSchema.index({ userSub: 1, date: -1 });
+JournalSchema.index({ userSub: 1, updated_at: -1 });

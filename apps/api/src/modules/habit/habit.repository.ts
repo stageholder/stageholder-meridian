@@ -32,37 +32,36 @@ export class HabitRepository {
           unit: data.unit,
           color: data.color,
           icon: data.icon,
-          workspace_id: data.workspaceId,
-          creator_id: data.creatorId,
+          userSub: data.userSub,
         },
       },
       { upsert: true },
     );
   }
 
-  async findById(id: string): Promise<Habit | null> {
-    const doc = await this.model.findOne({ _id: id, deleted_at: null }).lean();
+  async findById(userSub: string, id: string): Promise<Habit | null> {
+    const doc = await this.model
+      .findOne({ _id: id, userSub, deleted_at: null })
+      .lean();
     return doc ? this.toDomain(doc) : null;
   }
 
-  async findByWorkspace(workspaceId: string): Promise<Habit[]> {
-    const docs = await this.model
-      .find({ workspace_id: workspaceId, deleted_at: null })
-      .lean();
+  async findByUser(userSub: string): Promise<Habit[]> {
+    const docs = await this.model.find({ userSub, deleted_at: null }).lean();
     return docs.map((doc) => this.toDomain(doc));
   }
 
-  async findByWorkspacePaginated(
-    workspaceId: string,
+  async findByUserPaginated(
+    userSub: string,
     page: number,
     limit: number,
   ): Promise<{ docs: Habit[]; total: number }> {
     const total = await this.model.countDocuments({
-      workspace_id: workspaceId,
+      userSub,
       deleted_at: null,
     });
     const docs = await this.model
-      .find({ workspace_id: workspaceId, deleted_at: null })
+      .find({ userSub, deleted_at: null })
       .sort({ created_at: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -70,54 +69,40 @@ export class HabitRepository {
     return { docs: docs.map((doc) => this.toDomain(doc)), total };
   }
 
-  async countByCreator(creatorId: string): Promise<number> {
-    return this.model.countDocuments({
-      creator_id: creatorId,
-      deleted_at: null,
-    });
+  async countByUser(userSub: string): Promise<number> {
+    return this.model.countDocuments({ userSub, deleted_at: null });
   }
 
-  async countByWorkspaceCreator(
-    workspaceId: string,
-    creatorId: string,
-  ): Promise<number> {
-    return this.model.countDocuments({
-      workspace_id: workspaceId,
-      creator_id: creatorId,
-      deleted_at: null,
-    });
+  /**
+   * Counts active (non-soft-deleted) habits for a user.
+   * Used by entitlement enforcement against the `max_habits` feature limit.
+   * The habit schema has no `archived` field, so "active" == not soft-deleted.
+   */
+  async countActiveForUser(userSub: string): Promise<number> {
+    return this.model.countDocuments({ userSub, deleted_at: null });
   }
 
-  async findIdsByWorkspaceCreator(
-    workspaceId: string,
-    creatorId: string,
-  ): Promise<string[]> {
+  async findIdsByUser(userSub: string): Promise<string[]> {
     const docs = await this.model
-      .find({
-        workspace_id: workspaceId,
-        creator_id: creatorId,
-        deleted_at: null,
-      })
+      .find({ userSub, deleted_at: null })
       .select("_id")
       .lean();
     return docs.map((d) => d._id as string);
   }
 
   /**
-   * Same as findIdsByWorkspaceCreator but only returns habits that existed
-   * on or before the given date. Prevents newly created habits from
-   * retroactively inflating a previous day's ring completion check.
+   * Returns habit IDs for the user that existed on or before the given date.
+   * Prevents newly created habits from retroactively inflating a previous
+   * day's ring completion check.
    */
-  async findIdsByWorkspaceCreatorBefore(
-    workspaceId: string,
-    creatorId: string,
+  async findIdsByUserBefore(
+    userSub: string,
     beforeDate: string,
   ): Promise<string[]> {
     const endOfDay = new Date(beforeDate + "T23:59:59.999");
     const docs = await this.model
       .find({
-        workspace_id: workspaceId,
-        creator_id: creatorId,
+        userSub,
         deleted_at: null,
         created_at: { $lte: endOfDay },
       })
@@ -126,20 +111,27 @@ export class HabitRepository {
     return docs.map((d) => d._id as string);
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(userSub: string, id: string): Promise<void> {
     await this.model.updateOne(
-      { _id: id },
+      { _id: id, userSub },
       { $set: { deleted_at: new Date() } },
     );
   }
 
+  // Hard-delete every habit for the given userSub. Used by the Hub
+  // user.deleted cascade.
+  async deleteAllForUser(userSub: string): Promise<number> {
+    const { deletedCount } = await this.model.deleteMany({ userSub });
+    return deletedCount ?? 0;
+  }
+
   async findUpdatedSince(
-    workspaceId: string,
+    userSub: string,
     since: string,
     includeSoftDeleted = false,
   ): Promise<Habit[]> {
     const filter: any = {
-      workspace_id: workspaceId,
+      userSub,
       updated_at: { $gt: new Date(since) },
     };
     if (!includeSoftDeleted) filter.deleted_at = null;
@@ -162,8 +154,7 @@ export class HabitRepository {
         unit: doc.unit,
         color: doc.color,
         icon: doc.icon,
-        workspaceId: doc.workspace_id,
-        creatorId: doc.creator_id,
+        userSub: doc.userSub,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at,
       },

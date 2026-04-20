@@ -2,7 +2,7 @@ import { Entity, EntityProps, Ok, Result } from "../../../shared";
 import { getTierForLight, DEFAULT_TARGETS } from "./light-config";
 
 export interface UserLightProps extends EntityProps {
-  userId: string;
+  userSub: string;
   totalLight: number;
   currentTier: number;
   currentTitle: string;
@@ -32,8 +32,8 @@ export class UserLight extends Entity<UserLightProps> {
     super(props, id);
   }
 
-  get userId(): string {
-    return this.get("userId");
+  get userSub(): string {
+    return this.get("userSub");
   }
   get totalLight(): number {
     return this.get("totalLight");
@@ -141,9 +141,9 @@ export class UserLight extends Entity<UserLightProps> {
     this.set("perfectDaysTotal", this.perfectDaysTotal + 1);
   }
 
-  static create(userId: string): Result<UserLight> {
+  static create(userSub: string): Result<UserLight> {
     const userLight = new UserLight({
-      userId,
+      userSub,
       totalLight: 0,
       currentTier: 1,
       currentTitle: "Stargazer",

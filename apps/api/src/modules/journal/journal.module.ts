@@ -4,8 +4,6 @@ import { JournalModel, JournalSchema } from "./journal.schema";
 import { JournalRepository } from "./journal.repository";
 import { JournalService } from "./journal.service";
 import { JournalController } from "./journal.controller";
-import { JournalMigrationController } from "./journal-migration.controller";
-import { WorkspaceMemberModule } from "../workspace-member/workspace-member.module";
 import { LightModule } from "../light/light.module";
 import { EncryptionModule } from "../encryption";
 
@@ -14,11 +12,10 @@ import { EncryptionModule } from "../encryption";
     MongooseModule.forFeature([
       { name: JournalModel.name, schema: JournalSchema },
     ]),
-    WorkspaceMemberModule,
     LightModule,
     EncryptionModule,
   ],
-  controllers: [JournalController, JournalMigrationController],
+  controllers: [JournalController],
   providers: [JournalRepository, JournalService],
   exports: [JournalService, JournalRepository],
 })

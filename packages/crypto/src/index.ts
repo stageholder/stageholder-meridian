@@ -1,6 +1,7 @@
 export {
   generateSalt,
   deriveMasterKey,
+  deriveRecoveryMasterKey,
   generateDEK,
   wrapDEK,
   unwrapDEK,

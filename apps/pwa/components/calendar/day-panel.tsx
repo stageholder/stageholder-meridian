@@ -6,7 +6,6 @@ import { Plus, BookOpen } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { useUpdateTodo, useTodoLists } from "@/lib/api/todos";
-import { useWorkspace } from "@/lib/workspace-context";
 import { CreateTodoDialog } from "@/components/todos/create-todo-dialog";
 import { TodoDetailDialog } from "@/components/todos/todo-detail-dialog";
 import type { CalendarDayData } from "@/lib/api/calendar";
@@ -54,7 +53,6 @@ interface DayPanelProps {
 }
 
 export function DayPanel({ date, dayData, habits }: DayPanelProps) {
-  const { workspace } = useWorkspace();
   const queryClient = useQueryClient();
   const updateTodo = useUpdateTodo();
   const { data: lists } = useTodoLists();
@@ -192,7 +190,7 @@ export function DayPanel({ date, dayData, habits }: DayPanelProps) {
             {dayData.journals.map((journal) => (
               <Link
                 key={journal.id}
-                href={`/${workspace.shortId}/journal/${journal.id}`}
+                href={`/app/journal/${journal.id}`}
                 className="block rounded-md px-2 py-1.5 text-sm text-foreground hover:bg-accent/50"
               >
                 {journal.title}
@@ -249,7 +247,7 @@ export function DayPanel({ date, dayData, habits }: DayPanelProps) {
           Add Todo
         </button>
         <Link
-          href={`/${workspace.shortId}/journal/new?date=${dateStr}`}
+          href={`/app/journal/new?date=${dateStr}`}
           className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent"
         >
           <BookOpen className="h-3.5 w-3.5" />

@@ -1,6 +1,6 @@
 export interface Journal {
   id: string;
-  workspaceId: string;
+  userSub: string;
   title: string;
   content: string;
   mood?: number;

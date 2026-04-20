@@ -9,6 +9,7 @@ import {
   flush,
 } from "@repo/offline/sync/mutation-queue";
 import apiClient from "@/lib/api-client";
+import { tryGetCurrentUserSub } from "@/lib/current-user-sub";
 
 export function OfflineIndicator() {
   const isOnline = useNetworkStatus();
@@ -24,7 +25,7 @@ export function OfflineIndicator() {
 
   const handleRetry = async () => {
     try {
-      await flush(apiClient);
+      await flush(apiClient, tryGetCurrentUserSub() ?? undefined);
     } catch {
       // Errors handled by the queue itself
     }

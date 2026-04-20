@@ -1,48 +1,106 @@
 import { createApiClient } from "@repo/core/api/client";
 import { LocalStorageAdapter, detectPlatform } from "@repo/core/platform";
-import { setLoggedInFlag } from "@/lib/auth-helpers";
 
 const storage = new LocalStorageAdapter();
 export const isDesktop = detectPlatform() === "desktop";
 
+/**
+ * Web: calls go to the same-origin BFF proxy at `/api/v1/*`, which injects
+ * the OIDC access token from the iron-session cookie. No Authorization
+ * header is needed client-side; the session cookie travels via
+ * `credentials: include` and the BFF refreshes tokens transparently.
+ *
+ * Desktop: calls go directly to the Meridian API with a Bearer token
+ * sourced from `lib/oidc-tauri.ts` (which performs OIDC-spec refresh-token
+ * rotation against the Hub via tauri-plugin-store-backed storage). The
+ * interceptors below override the base client's bearer behavior to use
+ * the Tauri helper instead of LocalStorage, and on 401 they drop the
+ * local session so DesktopAuthBoot re-prompts.
+ */
 const apiClient = createApiClient({
-  apiBaseUrl: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1",
+  apiBaseUrl: isDesktop
+    ? process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1"
+    : "/api/v1",
   authStrategy: isDesktop ? "bearer" : "cookie",
   storage,
   onLogout: async () => {
-    if (typeof window !== "undefined") {
-      // Don't redirect if already on login or auth callback pages (prevents loop)
-      const path = window.location.pathname;
-      if (path === "/login" || path.startsWith("/auth/")) return;
-
-      const { sessionExpired } = await import("@/lib/logout");
-      await sessionExpired();
-      const { toast } = await import("sonner");
+    if (typeof window === "undefined") return;
+    const path = window.location.pathname;
+    if (path === "/auth/login" || path.startsWith("/auth/")) return;
+    if (isDesktop) {
+      try {
+        const { signOutTauri } = await import("@/lib/oidc-tauri");
+        await signOutTauri();
+      } catch {
+        /* ignore */
+      }
+      window.location.href = "/";
+      return;
+    }
+    try {
+      await fetch("/auth/logout", { method: "POST", credentials: "include" });
+    } catch {
+      /* non-blocking; we're redirecting anyway */
+    }
+    const { toast } = await import("sonner").catch(() => ({
+      toast: null as any,
+    }));
+    if (toast) {
       toast.error("Session expired", {
         description: "Please sign in again.",
       });
-      window.location.href = "/login";
     }
-  },
-  onRefreshSuccess: () => {
-    // Renew the logged_in cookie on every successful token refresh
-    // so the middleware never kicks the user out while the session is valid
-    setLoggedInFlag();
+    window.location.href = `/auth/login?returnTo=${encodeURIComponent(path)}`;
   },
 });
 
-/** Read workspace ID from localStorage — used only by offline sync */
-export function getWorkspaceId(): string {
-  if (typeof window !== "undefined") {
-    const stored = localStorage.getItem("workspace-storage");
-    if (stored) {
-      const parsed = JSON.parse(stored) as {
-        state?: { activeWorkspaceId?: string };
-      };
-      return parsed?.state?.activeWorkspaceId || "";
-    }
-  }
-  return "";
+if (isDesktop && typeof window !== "undefined") {
+  // Dynamic import keeps Tauri-only modules out of the web SSR bundle.
+  void import("@/lib/oidc-tauri").then(
+    ({ getAccessTokenTauri, signOutTauri }) => {
+      // Attach Bearer on every request from the Tauri-backed token helper,
+      // overriding the LocalStorage-backed token the base client would use.
+      apiClient.interceptors.request.use(async (reqConfig) => {
+        try {
+          const token = await getAccessTokenTauri();
+          if (token) {
+            reqConfig.headers.set?.("Authorization", `Bearer ${token}`);
+            // Axios v1 normally gives us an AxiosHeaders instance with .set,
+            // but fall through to a plain mutation for defensive safety.
+            if (typeof (reqConfig.headers as any)?.set !== "function") {
+              (reqConfig.headers as any) = {
+                ...((reqConfig.headers as any) ?? {}),
+                Authorization: `Bearer ${token}`,
+              };
+            }
+          }
+        } catch {
+          /* fall through; request proceeds unauthenticated, server will 401 */
+        }
+        return reqConfig;
+      });
+
+      // On 401 from the upstream API, drop the local session and let
+      // DesktopAuthBoot render the sign-in screen on reload. Runs before
+      // the base client's onLogout to keep desktop sign-out Tauri-native.
+      apiClient.interceptors.response.use(
+        (r) => r,
+        async (error) => {
+          if (error?.response?.status === 401) {
+            try {
+              await signOutTauri();
+            } catch {
+              /* ignore */
+            }
+            if (typeof window !== "undefined") {
+              window.location.reload();
+            }
+          }
+          return Promise.reject(error);
+        },
+      );
+    },
+  );
 }
 
 export default apiClient;

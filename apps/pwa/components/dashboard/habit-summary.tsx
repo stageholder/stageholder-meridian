@@ -6,7 +6,6 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useHabits } from "@/lib/api/habits";
 import { useCalendarData } from "@/lib/api/calendar";
-import { useWorkspace } from "@/lib/workspace-context";
 import { BentoCard } from "./bento-card";
 import type { Habit } from "@repo/core/types";
 import { resolveTargetCount } from "@/lib/habits/entry-resolution";
@@ -18,7 +17,6 @@ export function HabitSummary({
   index?: number;
   className?: string;
 }) {
-  const { workspace } = useWorkspace();
   const { data: habits, isLoading: habitsLoading } = useHabits();
   const currentMonth = format(new Date(), "yyyy-MM");
   const { data: calendarData, isLoading: calendarLoading } =
@@ -53,12 +51,12 @@ export function HabitSummary({
   return (
     <BentoCard
       title="Habits Today"
-      href={`/${workspace.shortId}/habits`}
+      href="/app/habits"
       index={index}
       className={className}
       action={
         <Link
-          href={`/${workspace.shortId}/habits`}
+          href="/app/habits"
           className="text-xs text-primary hover:underline"
         >
           View all

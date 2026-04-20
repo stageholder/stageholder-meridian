@@ -1,13 +1,11 @@
 import type { AxiosInstance } from "axios";
 import type { Activity } from "@repo/core/types";
-import { workspacePath } from "./client";
 
-export function createActivitiesApi(
-  client: AxiosInstance,
-  getWorkspaceId: () => string,
-) {
-  const wp = (path: string) => workspacePath(getWorkspaceId(), path);
-
+/**
+ * Activities API client. Routes are rooted at `/activities` — scoping
+ * is per authenticated user server-side.
+ */
+export function createActivitiesApi(client: AxiosInstance) {
   return {
     list: async (params?: {
       page?: number;
@@ -18,7 +16,7 @@ export function createActivitiesApi(
       page: number;
       limit: number;
     }> => {
-      const res = await client.get(wp("/activities"), { params });
+      const res = await client.get(`/activities`, { params });
       return res.data;
     },
   };

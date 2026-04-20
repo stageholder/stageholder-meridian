@@ -16,7 +16,7 @@ export class UserLightRepository {
       { _id: data.id },
       {
         $set: {
-          user_id: data.userId,
+          userSub: data.userSub,
           total_light: data.totalLight,
           current_tier: data.currentTier,
           current_title: data.currentTitle,
@@ -37,17 +37,22 @@ export class UserLightRepository {
     );
   }
 
-  async findByUserId(userId: string): Promise<UserLight | null> {
-    const doc = await this.model
-      .findOne({ user_id: userId, deleted_at: null })
-      .lean();
+  async findByUserSub(userSub: string): Promise<UserLight | null> {
+    const doc = await this.model.findOne({ userSub, deleted_at: null }).lean();
     return doc ? this.toDomain(doc) : null;
+  }
+
+  // Hard-delete the user light record for the given userSub. Used by the Hub
+  // user.deleted cascade.
+  async deleteAllForUser(userSub: string): Promise<number> {
+    const { deletedCount } = await this.model.deleteMany({ userSub });
+    return deletedCount ?? 0;
   }
 
   private toDomain(doc: any): UserLight {
     return UserLight.reconstitute(
       {
-        userId: doc.user_id,
+        userSub: doc.userSub,
         totalLight: doc.total_light,
         currentTier: doc.current_tier,
         currentTitle: doc.current_title,

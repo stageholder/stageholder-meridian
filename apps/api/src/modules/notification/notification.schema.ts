@@ -17,19 +17,17 @@ export type NotificationDocument = NotificationModel & Document<string>;
 })
 export class NotificationModel {
   @Prop({ type: String, default: () => randomUUID() }) _id: string;
-  @Prop({ type: String, required: true, index: true }) recipient_id: string;
+  @Prop({ type: String, required: true, index: true }) userSub: string;
   @Prop({ type: String, required: true }) type: string;
   @Prop({ type: String, required: true }) title: string;
   @Prop({ type: String, required: true }) message: string;
   @Prop({ type: String }) entity_type: string;
   @Prop({ type: String }) entity_id: string;
-  @Prop({ type: String }) actor_id: string;
   @Prop({ type: Boolean, default: false, index: true }) read: boolean;
   @Prop({ type: Date }) read_at: Date;
-  @Prop({ type: String, required: true, index: true }) workspace_id: string;
   @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 
 export const NotificationSchema =
   SchemaFactory.createForClass(NotificationModel);
-NotificationSchema.index({ recipient_id: 1, read: 1, created_at: -1 });
+NotificationSchema.index({ userSub: 1, read: 1, created_at: -1 });

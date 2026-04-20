@@ -1,23 +1,22 @@
 import {
   Controller,
   Get,
-  Param,
   Query,
+  Req,
   BadRequestException,
 } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { CalendarService } from "./calendar.service";
-import { CurrentUserId } from "../../common/decorators/current-user.decorator";
+import { StageholderRequest } from "../../common/types";
 
 @ApiTags("Calendar")
-@Controller("workspaces/:workspaceId/calendar")
+@Controller("calendar")
 export class CalendarController {
   constructor(private readonly service: CalendarService) {}
 
   @Get()
   async getMonthData(
-    @Param("workspaceId") workspaceId: string,
-    @CurrentUserId() userId: string,
+    @Req() req: StageholderRequest,
     @Query("month") month?: string,
   ) {
     if (!month || !/^\d{4}-\d{2}$/.test(month)) {
@@ -51,6 +50,6 @@ export class CalendarController {
     const startDate = gridStart.toISOString().split("T")[0]!;
     const endDate = gridEnd.toISOString().split("T")[0]!;
 
-    return this.service.getMonthData(workspaceId, userId, startDate, endDate);
+    return this.service.getMonthData(req.user.sub, startDate, endDate);
   }
 }

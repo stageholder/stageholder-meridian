@@ -29,7 +29,6 @@ import {
 interface CommandPaletteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  shortId: string;
   onOpenShortcuts: () => void;
   onCreateTodo: () => void;
 }
@@ -37,7 +36,6 @@ interface CommandPaletteProps {
 export function CommandPalette({
   open,
   onOpenChange,
-  shortId,
   onOpenShortcuts,
   onCreateTodo,
 }: CommandPaletteProps) {
@@ -58,9 +56,7 @@ export function CommandPalette({
         <CommandGroup heading="Navigation">
           <CommandItem
             keywords={["home", "overview"]}
-            onSelect={() =>
-              runAction(() => router.push(`/${shortId}/dashboard`))
-            }
+            onSelect={() => runAction(() => router.push("/app"))}
           >
             <Home className="size-4" />
             Dashboard
@@ -68,9 +64,7 @@ export function CommandPalette({
           </CommandItem>
           <CommandItem
             keywords={["schedule", "events"]}
-            onSelect={() =>
-              runAction(() => router.push(`/${shortId}/calendar`))
-            }
+            onSelect={() => runAction(() => router.push("/app/calendar"))}
           >
             <CalendarDays className="size-4" />
             Calendar
@@ -78,7 +72,7 @@ export function CommandPalette({
           </CommandItem>
           <CommandItem
             keywords={["tasks", "checklist"]}
-            onSelect={() => runAction(() => router.push(`/${shortId}/todos`))}
+            onSelect={() => runAction(() => router.push("/app/todos"))}
           >
             <CheckSquare className="size-4" />
             Todos
@@ -86,7 +80,7 @@ export function CommandPalette({
           </CommandItem>
           <CommandItem
             keywords={["routines", "tracker"]}
-            onSelect={() => runAction(() => router.push(`/${shortId}/habits`))}
+            onSelect={() => runAction(() => router.push("/app/habits"))}
           >
             <Target className="size-4" />
             Habits
@@ -94,7 +88,7 @@ export function CommandPalette({
           </CommandItem>
           <CommandItem
             keywords={["diary", "notes"]}
-            onSelect={() => runAction(() => router.push(`/${shortId}/journal`))}
+            onSelect={() => runAction(() => router.push("/app/journal"))}
           >
             <BookOpen className="size-4" />
             Journal
@@ -102,9 +96,7 @@ export function CommandPalette({
           </CommandItem>
           <CommandItem
             keywords={["preferences", "config"]}
-            onSelect={() =>
-              runAction(() => router.push(`/${shortId}/settings`))
-            }
+            onSelect={() => runAction(() => router.push("/app/settings"))}
           >
             <Settings className="size-4" />
             Settings
@@ -119,15 +111,14 @@ export function CommandPalette({
             keywords={["add task", "create task", "new task"]}
             onSelect={() =>
               runAction(() => {
-                const onTodosPage = window.location.pathname.includes(
-                  `/${shortId}/todos`,
-                );
+                const onTodosPage =
+                  window.location.pathname.includes("/app/todos");
                 if (onTodosPage) {
                   window.dispatchEvent(
                     new CustomEvent("meridian:quick-add-todo"),
                   );
                 } else {
-                  router.push(`/${shortId}/todos`);
+                  router.push("/app/todos");
                   setTimeout(() => {
                     window.dispatchEvent(
                       new CustomEvent("meridian:quick-add-todo"),
@@ -151,7 +142,7 @@ export function CommandPalette({
           </CommandItem>
           <CommandItem
             keywords={["diary entry", "write"]}
-            onSelect={() => runAction(() => router.push(`/${shortId}/journal`))}
+            onSelect={() => runAction(() => router.push("/app/journal"))}
           >
             <BookOpen className="size-4" />
             New Journal Entry

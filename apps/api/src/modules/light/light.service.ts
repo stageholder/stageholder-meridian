@@ -9,7 +9,6 @@ import {
   HabitEntryModel,
   HabitEntryDocument,
 } from "../habit-entry/habit-entry.schema";
-import { UserService } from "../user/user.service";
 import { NotificationService } from "../notification/notification.service";
 import { UserLight } from "./domain/user-light.entity";
 import { LightEvent, LightAction } from "./domain/light-event.entity";
@@ -32,29 +31,28 @@ export class LightService {
     private readonly habitRepo: HabitRepository,
     @InjectModel(HabitEntryModel.name)
     private readonly habitEntryModel: Model<HabitEntryDocument>,
-    private readonly userService: UserService,
     private readonly notificationService: NotificationService,
   ) {}
 
-  async getOrCreateUserLight(userId: string): Promise<UserLight> {
-    const existing = await this.userLightRepo.findByUserId(userId);
+  async getOrCreateUserLight(userSub: string): Promise<UserLight> {
+    const existing = await this.userLightRepo.findByUserSub(userSub);
     if (existing) return existing;
 
-    const result = UserLight.create(userId);
+    const result = UserLight.create(userSub);
     if (!result.ok) throw result.error;
     await this.userLightRepo.save(result.value);
     return result.value;
   }
 
-  async getUserLight(userId: string): Promise<UserLight> {
-    return this.getOrCreateUserLight(userId);
+  async getUserLight(userSub: string): Promise<UserLight> {
+    return this.getOrCreateUserLight(userSub);
   }
 
-  async getEvents(userId: string, limit: number, offset: number) {
-    return this.lightEventRepo.findByUser(userId, limit, offset);
+  async getEvents(userSub: string, limit: number, offset: number) {
+    return this.lightEventRepo.findByUser(userSub, limit, offset);
   }
 
-  async getStats(userId: string, clientToday?: string) {
+  async getStats(userSub: string, clientToday?: string) {
     const todayStr =
       clientToday && /^\d{4}-\d{2}-\d{2}$/.test(clientToday)
         ? clientToday
@@ -65,7 +63,7 @@ export class LightService {
     const windowStart = windowStartDate.toISOString().slice(0, 10);
 
     const { window, baseline } = await this.lightEventRepo.getGrowthStats(
-      userId,
+      userSub,
       windowStart,
     );
 
@@ -89,23 +87,19 @@ export class LightService {
   }
 
   async updateTargets(
-    userId: string,
+    userSub: string,
     targets: { todoTargetDaily?: number; journalTargetDailyWords?: number },
   ): Promise<UserLight> {
-    const userLight = await this.getOrCreateUserLight(userId);
+    const userLight = await this.getOrCreateUserLight(userSub);
     userLight.updateTargets(targets);
     await this.userLightRepo.save(userLight);
     return userLight;
   }
 
-  async awardTodoCreate(
-    userId: string,
-    workspaceId: string,
-    todoId: string,
-  ): Promise<void> {
-    const date = await this.getTodayForUser(userId);
+  async awardTodoCreate(userSub: string, todoId: string): Promise<void> {
+    const date = await this.getTodayForUser(userSub);
     const exists = await this.lightEventRepo.existsForEntityOnDate(
-      userId,
+      userSub,
       "todo_create",
       date,
       todoId,
@@ -113,8 +107,7 @@ export class LightService {
     if (exists) return;
 
     await this.awardLight(
-      userId,
-      workspaceId,
+      userSub,
       "todo_create",
       LIGHT_ACTIONS.TODO_CREATE,
       date,
@@ -125,14 +118,13 @@ export class LightService {
   }
 
   async awardTodoComplete(
-    userId: string,
-    workspaceId: string,
+    userSub: string,
     todoId: string,
     priority: string,
   ): Promise<void> {
-    const date = await this.getTodayForUser(userId);
+    const date = await this.getTodayForUser(userSub);
     const exists = await this.lightEventRepo.existsForEntityOnDate(
-      userId,
+      userSub,
       "todo_complete",
       date,
       todoId,
@@ -140,28 +132,20 @@ export class LightService {
     if (exists) return;
 
     const baseLight = getTodoLight(priority);
-    await this.awardLight(
-      userId,
-      workspaceId,
-      "todo_complete",
-      baseLight,
-      date,
-      {
-        entityId: todoId,
-        priority,
-      },
-    );
+    await this.awardLight(userSub, "todo_complete", baseLight, date, {
+      entityId: todoId,
+      priority,
+    });
   }
 
   async awardHabitCheckin(
-    userId: string,
-    workspaceId: string,
+    userSub: string,
     habitId: string,
     entryId: string,
   ): Promise<void> {
-    const date = await this.getTodayForUser(userId);
+    const date = await this.getTodayForUser(userSub);
     const exists = await this.lightEventRepo.existsForEntityOnDate(
-      userId,
+      userSub,
       "habit_checkin",
       date,
       entryId,
@@ -169,8 +153,7 @@ export class LightService {
     if (exists) return;
 
     await this.awardLight(
-      userId,
-      workspaceId,
+      userSub,
       "habit_checkin",
       LIGHT_ACTIONS.HABIT_CHECKIN,
       date,
@@ -181,14 +164,10 @@ export class LightService {
     );
   }
 
-  async awardJournalEntry(
-    userId: string,
-    workspaceId: string,
-    journalId: string,
-  ): Promise<void> {
-    const date = await this.getTodayForUser(userId);
+  async awardJournalEntry(userSub: string, journalId: string): Promise<void> {
+    const date = await this.getTodayForUser(userSub);
     const exists = await this.lightEventRepo.existsForEntityOnDate(
-      userId,
+      userSub,
       "journal_entry",
       date,
       journalId,
@@ -196,8 +175,7 @@ export class LightService {
     if (exists) return;
 
     await this.awardLight(
-      userId,
-      workspaceId,
+      userSub,
       "journal_entry",
       LIGHT_ACTIONS.JOURNAL_ENTRY,
       date,
@@ -208,20 +186,23 @@ export class LightService {
   }
 
   async evaluateDay(
-    userId: string,
-    workspaceId: string,
+    userSub: string,
     rings: { todo: boolean; habit: boolean; journal: boolean },
     dateOverride?: string,
   ): Promise<void> {
-    const userLight = await this.getOrCreateUserLight(userId);
-    const date = dateOverride ?? (await this.getTodayForUser(userId));
-    await this.evaluateDayForEntity(
-      userLight,
-      userId,
-      workspaceId,
-      rings,
-      date,
-    );
+    const userLight = await this.getOrCreateUserLight(userSub);
+    const date = dateOverride ?? (await this.getTodayForUser(userSub));
+    await this.evaluateDayForEntity(userLight, userSub, rings, date);
+  }
+
+  // Purge every light record (user_lights + light_events) for the user. Used
+  // by the Hub user.deleted cascade.
+  async deleteAllForUser(userSub: string): Promise<number> {
+    const [events, user] = await Promise.all([
+      this.lightEventRepo.deleteAllForUser(userSub),
+      this.userLightRepo.deleteAllForUser(userSub),
+    ]);
+    return events + user;
   }
 
   /**
@@ -237,8 +218,7 @@ export class LightService {
    */
   private async evaluateDayForEntity(
     userLight: UserLight,
-    userId: string,
-    workspaceId: string,
+    userSub: string,
     rings: { todo: boolean; habit: boolean; journal: boolean },
     date: string,
     mode: "finalize" | "recompute" = "finalize",
@@ -317,7 +297,7 @@ export class LightService {
     if (isPerfectDay) {
       const perfectDayEntityId = `perfect_day_${date}`;
       const alreadyAwarded = await this.lightEventRepo.existsForEntityOnDate(
-        userId,
+        userSub,
         "perfect_day",
         date,
         perfectDayEntityId,
@@ -328,8 +308,7 @@ export class LightService {
         const multiplier = getMultiplier(resolvedStreak);
         const totalLight = Math.round(LIGHT_ACTIONS.PERFECT_DAY * multiplier);
         const eventResult = LightEvent.create({
-          userId,
-          workspaceId,
+          userSub,
           action: "perfect_day",
           baseLight: LIGHT_ACTIONS.PERFECT_DAY,
           multiplier,
@@ -348,8 +327,7 @@ export class LightService {
           );
           if (tieredUp) {
             this.notifyAchievement(
-              userId,
-              workspaceId,
+              userSub,
               "Tier Up!",
               `You've reached ${newTitle}!`,
             );
@@ -360,24 +338,21 @@ export class LightService {
 
     await this.checkStreakMilestones(
       userLight,
-      userId,
-      workspaceId,
+      userSub,
       date,
       "todo",
       userLight.todoRingStreak,
     );
     await this.checkStreakMilestones(
       userLight,
-      userId,
-      workspaceId,
+      userSub,
       date,
       "habit",
       userLight.habitRingStreak,
     );
     await this.checkStreakMilestones(
       userLight,
-      userId,
-      workspaceId,
+      userSub,
       date,
       "journal",
       userLight.journalRingStreak,
@@ -388,8 +363,7 @@ export class LightService {
 
   private async checkStreakMilestones(
     userLight: UserLight,
-    userId: string,
-    workspaceId: string,
+    userSub: string,
     date: string,
     ring: string,
     streak: number,
@@ -398,7 +372,7 @@ export class LightService {
       if (streak === milestone.days) {
         const milestoneEntityId = `ring_streak_${ring}_${milestone.days}_${date}`;
         const alreadyAwarded = await this.lightEventRepo.existsForEntityOnDate(
-          userId,
+          userSub,
           "ring_streak_bonus",
           date,
           milestoneEntityId,
@@ -406,8 +380,7 @@ export class LightService {
         if (alreadyAwarded) continue;
 
         const eventResult = LightEvent.create({
-          userId,
-          workspaceId,
+          userSub,
           action: "ring_streak_bonus",
           baseLight: milestone.bonus,
           multiplier: 1,
@@ -426,15 +399,13 @@ export class LightService {
             milestone.bonus,
           );
           this.notifyAchievement(
-            userId,
-            workspaceId,
+            userSub,
             "Streak Milestone!",
             `Your ${ring} ring hit a ${milestone.days}-day streak! +${milestone.bonus} light`,
           );
           if (tieredUp) {
             this.notifyAchievement(
-              userId,
-              workspaceId,
+              userSub,
               "Tier Up!",
               `You've reached ${newTitle}!`,
             );
@@ -445,34 +416,31 @@ export class LightService {
   }
 
   private async awardLight(
-    userId: string,
-    workspaceId: string,
+    userSub: string,
     action: LightAction,
     baseLight: number,
     date: string,
     metadata?: Record<string, unknown>,
   ): Promise<void> {
-    let userLight = await this.getOrCreateUserLight(userId);
+    let userLight = await this.getOrCreateUserLight(userSub);
 
     // Lazy evaluation: if this is a new day, finalize the previous day first
     if (userLight.lastActiveDate && userLight.lastActiveDate !== date) {
       await this.evaluatePreviousDay(
         userLight,
-        userId,
-        workspaceId,
+        userSub,
         userLight.lastActiveDate,
       );
       // Reload so the recompute pass starts from saved state,
       // not from the in-memory object mutated by the finalize pass
-      userLight = await this.getOrCreateUserLight(userId);
+      userLight = await this.getOrCreateUserLight(userSub);
     }
 
     const multiplier = getMultiplier(userLight.perfectDayStreak);
     const totalLight = Math.round(baseLight * multiplier);
 
     const eventResult = LightEvent.create({
-      userId,
-      workspaceId,
+      userSub,
       action,
       baseLight,
       multiplier,
@@ -489,8 +457,7 @@ export class LightService {
     );
     if (tieredUp) {
       this.notifyAchievement(
-        userId,
-        workspaceId,
+        userSub,
         "Tier Up!",
         `You've reached ${newTitle}!`,
       );
@@ -498,23 +465,15 @@ export class LightService {
 
     // Recompute ring completion and update streaks in real-time
     const currentRings = await this.computeRingCompletion(
-      workspaceId,
-      userId,
+      userSub,
       date,
       userLight.todoTargetDaily,
     );
-    await this.checkRingCompletionBonus(
-      userLight,
-      userId,
-      workspaceId,
-      date,
-      currentRings,
-    );
+    await this.checkRingCompletionBonus(userLight, userSub, date, currentRings);
     // evaluateDayForEntity is the single source of truth for streaks — it saves userLight
     await this.evaluateDayForEntity(
       userLight,
-      userId,
-      workspaceId,
+      userSub,
       currentRings,
       date,
       "recompute",
@@ -523,8 +482,7 @@ export class LightService {
 
   private async checkRingCompletionBonus(
     userLight: UserLight,
-    userId: string,
-    workspaceId: string,
+    userSub: string,
     date: string,
     currentRings: { todo: boolean; habit: boolean; journal: boolean },
   ): Promise<void> {
@@ -539,7 +497,7 @@ export class LightService {
 
       const entityId = `ring_${ring}_${date}`;
       const exists = await this.lightEventRepo.existsForEntityOnDate(
-        userId,
+        userSub,
         "ring_completion_bonus",
         date,
         entityId,
@@ -547,8 +505,7 @@ export class LightService {
       if (exists) continue;
 
       const eventResult = LightEvent.create({
-        userId,
-        workspaceId,
+        userSub,
         action: "ring_completion_bonus",
         baseLight: RING_COMPLETION_BONUS.SINGLE_RING,
         multiplier: 1,
@@ -564,8 +521,7 @@ export class LightService {
         );
         if (tieredUp) {
           this.notifyAchievement(
-            userId,
-            workspaceId,
+            userSub,
             "Tier Up!",
             `You've reached ${newTitle}!`,
           );
@@ -577,15 +533,14 @@ export class LightService {
     if (currentRings.todo && currentRings.habit && currentRings.journal) {
       const allRingsEntityId = `ring_all_${date}`;
       const allRingsExists = await this.lightEventRepo.existsForEntityOnDate(
-        userId,
+        userSub,
         "ring_completion_bonus",
         date,
         allRingsEntityId,
       );
       if (!allRingsExists) {
         const eventResult = LightEvent.create({
-          userId,
-          workspaceId,
+          userSub,
           action: "ring_completion_bonus",
           baseLight: RING_COMPLETION_BONUS.ALL_RINGS,
           multiplier: 1,
@@ -600,15 +555,13 @@ export class LightService {
             RING_COMPLETION_BONUS.ALL_RINGS,
           );
           this.notifyAchievement(
-            userId,
-            workspaceId,
+            userSub,
             "All Rings Complete!",
             `You completed all daily rings! +${RING_COMPLETION_BONUS.ALL_RINGS} bonus light`,
           );
           if (tieredUp) {
             this.notifyAchievement(
-              userId,
-              workspaceId,
+              userSub,
               "Tier Up!",
               `You've reached ${newTitle}!`,
             );
@@ -620,55 +573,42 @@ export class LightService {
 
   private async evaluatePreviousDay(
     userLight: UserLight,
-    userId: string,
-    workspaceId: string,
+    userSub: string,
     previousDate: string,
   ): Promise<void> {
     const rings = await this.computeRingCompletion(
-      workspaceId,
-      userId,
+      userSub,
       previousDate,
       userLight.todoTargetDaily,
     );
-    await this.evaluateDayForEntity(
-      userLight,
-      userId,
-      workspaceId,
-      rings,
-      previousDate,
-    );
+    await this.evaluateDayForEntity(userLight, userSub, rings, previousDate);
   }
 
   private async computeRingCompletion(
-    workspaceId: string,
-    userId: string,
+    userSub: string,
     date: string,
     todoTarget?: number,
   ): Promise<{ todo: boolean; habit: boolean; journal: boolean }> {
     const [todoEvents, habitEvents, journalEvents, userHabitIds] =
       await Promise.all([
         this.lightEventRepo.countByUserActionDate(
-          userId,
+          userSub,
           "todo_complete",
           date,
         ),
         this.lightEventRepo.countByUserActionDate(
-          userId,
+          userSub,
           "habit_checkin",
           date,
         ),
         this.lightEventRepo.countByUserActionDate(
-          userId,
+          userSub,
           "journal_entry",
           date,
         ),
         // Filter to habits that existed on the evaluated date so creating
         // a new habit today doesn't retroactively inflate yesterday's ring
-        this.habitRepo.findIdsByWorkspaceCreatorBefore(
-          workspaceId,
-          userId,
-          date,
-        ),
+        this.habitRepo.findIdsByUserBefore(userSub, date),
       ]);
 
     const totalHabits = userHabitIds.length;
@@ -693,9 +633,10 @@ export class LightService {
     };
   }
 
-  private async getTodayForUser(userId: string): Promise<string> {
-    const user = await this.userService.findById(userId);
-    return this.getToday(user?.timezone);
+  // TODO(Group 7): source the user's timezone from the Stageholder Hub profile
+  // once it exposes one. For now we rely on DEFAULT_TIMEZONE / UTC.
+  private async getTodayForUser(_userSub: string): Promise<string> {
+    return this.getToday();
   }
 
   private getToday(timezone?: string): string {
@@ -731,13 +672,17 @@ export class LightService {
   }
 
   private notifyAchievement(
-    recipientId: string,
-    workspaceId: string,
+    recipientSub: string,
     title: string,
     message: string,
   ): void {
     this.notificationService
-      .create({ recipientId, workspaceId, type: "achievement", title, message })
+      .create({
+        userSub: recipientSub,
+        type: "achievement",
+        title,
+        message,
+      })
       .catch((err) =>
         this.logger.warn(`Failed to create notification: ${err.message}`),
       );

@@ -7,7 +7,6 @@ import {
   HabitEntryController,
   HabitEntrySyncController,
 } from "./habit-entry.controller";
-import { WorkspaceMemberModule } from "../workspace-member/workspace-member.module";
 import { LightModule } from "../light/light.module";
 import { HabitModule } from "../habit/habit.module";
 
@@ -16,7 +15,6 @@ import { HabitModule } from "../habit/habit.module";
     MongooseModule.forFeature([
       { name: HabitEntryModel.name, schema: HabitEntrySchema },
     ]),
-    WorkspaceMemberModule,
     LightModule,
     HabitModule,
   ],

@@ -1,8 +1,8 @@
-import { Controller, Get, Post, Body, Query } from "@nestjs/common";
+import { Controller, Get, Post, Body, Query, Req } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { z } from "zod";
 import { FeedbackService } from "./feedback.service";
-import { CurrentUserId } from "../../common/decorators/current-user.decorator";
+import { StageholderRequest } from "../../common/types";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe";
 
 const CreateFeedbackDto = z.object({
@@ -26,10 +26,10 @@ export class FeedbackController {
 
   @Post()
   async create(
-    @CurrentUserId() userId: string,
+    @Req() req: StageholderRequest,
     @Body(new ZodValidationPipe(CreateFeedbackDto)) body: CreateFeedbackDto,
   ) {
-    await this.service.create(userId, body.type, body.message);
+    await this.service.create(req.user.sub, body.type, body.message);
     return { success: true };
   }
 }

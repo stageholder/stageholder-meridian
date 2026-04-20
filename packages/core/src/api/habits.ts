@@ -1,13 +1,11 @@
 import type { AxiosInstance } from "axios";
 import type { Habit, HabitEntry } from "@repo/core/types";
-import { workspacePath } from "./client";
 
-export function createHabitsApi(
-  client: AxiosInstance,
-  getWorkspaceId: () => string,
-) {
-  const wp = (path: string) => workspacePath(getWorkspaceId(), path);
-
+/**
+ * Habits API client. Routes are rooted at `/habits` — scoping is per
+ * authenticated user server-side, so no workspace prefix is needed.
+ */
+export function createHabitsApi(client: AxiosInstance) {
   return {
     // Habits
     create: async (data: {
@@ -19,15 +17,15 @@ export function createHabitsApi(
       color?: string;
       icon?: string;
     }): Promise<Habit> => {
-      const res = await client.post(wp("/habits"), data);
+      const res = await client.post(`/habits`, data);
       return res.data;
     },
     list: async (params?: Record<string, string>): Promise<Habit[]> => {
-      const res = await client.get(wp("/habits"), { params });
+      const res = await client.get(`/habits`, { params });
       return res.data?.data ?? res.data;
     },
     get: async (id: string): Promise<Habit> => {
-      const res = await client.get(wp(`/habits/${id}`));
+      const res = await client.get(`/habits/${id}`);
       return res.data;
     },
     update: async (
@@ -42,11 +40,11 @@ export function createHabitsApi(
         icon?: string;
       },
     ): Promise<Habit> => {
-      const res = await client.patch(wp(`/habits/${id}`), data);
+      const res = await client.patch(`/habits/${id}`, data);
       return res.data;
     },
     delete: async (id: string): Promise<void> => {
-      await client.delete(wp(`/habits/${id}`));
+      await client.delete(`/habits/${id}`);
     },
 
     // Habit Entries
@@ -58,14 +56,14 @@ export function createHabitsApi(
         notes?: string;
       },
     ): Promise<HabitEntry> => {
-      const res = await client.post(wp(`/habits/${habitId}/entries`), data);
+      const res = await client.post(`/habits/${habitId}/entries`, data);
       return res.data;
     },
     listEntries: async (
       habitId: string,
       params?: { startDate?: string; endDate?: string },
     ): Promise<HabitEntry[]> => {
-      const res = await client.get(wp(`/habits/${habitId}/entries`), {
+      const res = await client.get(`/habits/${habitId}/entries`, {
         params,
       });
       return res.data?.data ?? res.data;
@@ -79,19 +77,19 @@ export function createHabitsApi(
       },
     ): Promise<HabitEntry> => {
       const res = await client.patch(
-        wp(`/habits/${habitId}/entries/${entryId}`),
+        `/habits/${habitId}/entries/${entryId}`,
         data,
       );
       return res.data;
     },
     deleteEntry: async (habitId: string, entryId: string): Promise<void> => {
-      await client.delete(wp(`/habits/${habitId}/entries/${entryId}`));
+      await client.delete(`/habits/${habitId}/entries/${entryId}`);
     },
 
     listAllEntries: async (
       params?: Record<string, unknown>,
     ): Promise<HabitEntry[]> => {
-      const res = await client.get(wp("/habit-entries"), { params });
+      const res = await client.get(`/habit-entries`, { params });
       return res.data?.data ?? res.data;
     },
   };

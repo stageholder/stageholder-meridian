@@ -2,7 +2,7 @@
 
 import { format } from "date-fns";
 import { Flame } from "lucide-react";
-import { useAuthStore } from "@/stores/auth-store";
+import { useUser } from "@/hooks/use-user";
 import { useUserLight } from "@/lib/api/light";
 
 function getGreeting(hour: number): string {
@@ -14,7 +14,7 @@ function getGreeting(hour: number): string {
 }
 
 export function GreetingBar() {
-  const user = useAuthStore((s) => s.user);
+  const { data: user } = useUser();
   const { data: userLight } = useUserLight();
   const now = new Date();
   const greeting = getGreeting(now.getHours());

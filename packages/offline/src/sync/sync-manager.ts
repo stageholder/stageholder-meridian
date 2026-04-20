@@ -18,14 +18,14 @@ let syncing = false;
 
 export async function syncEntity<T extends SyncableEntity>(
   entityType: string,
-  workspaceId: string,
+  userSub: string,
   table: EntityTable<T, "id">,
   fetchFn: (since?: string) => Promise<T[]>,
 ): Promise<SyncConflict[]> {
   const conflicts: SyncConflict[] = [];
 
   // Read last sync timestamp for delta sync
-  const meta = await db.syncMeta.get([entityType, workspaceId]);
+  const meta = await db.syncMeta.get([entityType, userSub]);
   const since = meta?.lastSyncedAt;
 
   const serverData = await fetchFn(since);
@@ -72,7 +72,7 @@ export async function syncEntity<T extends SyncableEntity>(
 
       await db.syncMeta.put({
         entityType,
-        workspaceId,
+        userSub,
         lastSyncedAt: new Date().toISOString(),
       });
     },
@@ -82,7 +82,7 @@ export async function syncEntity<T extends SyncableEntity>(
 }
 
 export async function fullSync(
-  workspaceId: string,
+  userSub: string,
   client: AxiosInstance,
   fetchers: Record<string, (since?: string) => Promise<SyncableEntity[]>>,
   tables: Record<string, EntityTable<SyncableEntity, "id">>,
@@ -93,17 +93,12 @@ export async function fullSync(
   const allConflicts: SyncConflict[] = [];
 
   try {
-    await flush(client);
+    await flush(client, userSub);
 
     for (const [entityType, fetchFn] of Object.entries(fetchers)) {
       const table = tables[entityType];
       if (table) {
-        const conflicts = await syncEntity(
-          entityType,
-          workspaceId,
-          table,
-          fetchFn,
-        );
+        const conflicts = await syncEntity(entityType, userSub, table, fetchFn);
         allConflicts.push(...conflicts);
       }
     }

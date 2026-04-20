@@ -1,58 +1,46 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import apiClient from "@/lib/api-client";
-import { useAuthStore } from "@/stores/auth-store";
-import type { AuthUser } from "@repo/core/types";
+import { useUser } from "@/hooks/use-user";
 import { TimezoneSelect } from "@/components/ui/timezone-select";
 
 export function ProfileStep({ onContinue }: { onContinue: () => void }) {
-  const user = useAuthStore((s) => s.user);
-  const setUser = useAuthStore((s) => s.setUser);
+  const { data: user } = useUser();
   const [name, setName] = useState(user?.name || "");
   const [timezone, setTimezone] = useState(
-    user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
   );
-  const [saving, setSaving] = useState(false);
+
+  // TODO(group-?): user profile (name, timezone) is now owned by the Hub.
+  // Previously this step PATCHed `/auth/me` and updated the local auth store;
+  // both are gone. We keep the form visible so the onboarding flow still
+  // reads naturally, but "Continue" just advances — to edit the profile the
+  // user is directed to the Hub. Wire a real local-profile PATCH when the
+  // API exposes one (e.g. journal_security, timezone override).
+  const HUB_URL = process.env.NEXT_PUBLIC_HUB_URL;
 
   useEffect(() => {
-    if (user) {
-      setName(user.name);
-      setTimezone(
-        user.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-      );
-    }
+    if (user?.name) setName(user.name);
   }, [user]);
 
-  async function handleContinue() {
-    if (!name.trim()) return;
-    setSaving(true);
-    try {
-      const res = await apiClient.patch<AuthUser>("/auth/me", {
-        name: name.trim(),
-        timezone,
-      });
-      // Merge with existing store data to preserve personalWorkspaceShortId
-      setUser({
-        ...res.data,
-        personalWorkspaceShortId: user?.personalWorkspaceShortId,
-      });
-    } catch {
-      // continue anyway
-    } finally {
-      setSaving(false);
-      onContinue();
-    }
+  function handleContinue() {
+    onContinue();
+  }
+
+  function openHubProfile() {
+    if (!HUB_URL) return;
+    window.open(`${HUB_URL}/account/profile`, "_blank", "noopener,noreferrer");
   }
 
   return (
     <div className="space-y-6">
       <div className="space-y-2">
         <h2 className="text-xl font-bold text-foreground">
-          Set up your profile
+          Confirm your profile
         </h2>
         <p className="text-sm text-muted-foreground">
-          Confirm your name and timezone so everything stays in sync.
+          Your name and email live in your Stageholder account. Edit them in the
+          Hub at any time.
         </p>
       </div>
 
@@ -69,7 +57,8 @@ export function ProfileStep({ onContinue }: { onContinue: () => void }) {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+            disabled
+            className="mt-1 block w-full rounded-lg border border-input bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
           />
         </div>
 
@@ -86,14 +75,24 @@ export function ProfileStep({ onContinue }: { onContinue: () => void }) {
             className="mt-1"
           />
         </div>
+
+        {HUB_URL && (
+          <button
+            type="button"
+            onClick={openHubProfile}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+          >
+            Edit profile in Hub →
+          </button>
+        )}
       </div>
 
       <button
         onClick={handleContinue}
-        disabled={saving || !name.trim()}
+        disabled={!name.trim()}
         className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
       >
-        {saving ? "Saving..." : "Continue"}
+        Continue
       </button>
     </div>
   );

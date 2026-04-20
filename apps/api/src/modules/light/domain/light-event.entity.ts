@@ -10,8 +10,7 @@ export type LightAction =
   | "ring_completion_bonus";
 
 export interface LightEventProps extends EntityProps {
-  userId: string;
-  workspaceId: string;
+  userSub: string;
   action: LightAction;
   baseLight: number;
   multiplier: number;
@@ -25,11 +24,8 @@ export class LightEvent extends Entity<LightEventProps> {
     super(props, id);
   }
 
-  get userId(): string {
-    return this.get("userId");
-  }
-  get workspaceId(): string {
-    return this.get("workspaceId");
+  get userSub(): string {
+    return this.get("userSub");
   }
   get action(): LightAction {
     return this.get("action");

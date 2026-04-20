@@ -1,6 +1,6 @@
 export interface AppNotification {
   id: string;
-  workspaceId: string;
+  userSub: string;
   recipientId: string;
   type: string;
   title: string;

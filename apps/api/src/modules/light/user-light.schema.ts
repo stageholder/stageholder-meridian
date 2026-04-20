@@ -18,7 +18,7 @@ export type UserLightDocument = UserLightModel & Document<string>;
 export class UserLightModel {
   @Prop({ type: String, default: () => randomUUID() }) _id: string;
   @Prop({ type: String, required: true, unique: true, index: true })
-  user_id: string;
+  userSub: string;
   @Prop({ type: Number, default: 0 }) total_light: number;
   @Prop({ type: Number, default: 1 }) current_tier: number;
   @Prop({ type: String, default: "Stargazer" }) current_title: string;

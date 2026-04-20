@@ -16,8 +16,7 @@ export class LightEventRepository {
       { _id: data.id },
       {
         $set: {
-          user_id: data.userId,
-          workspace_id: data.workspaceId,
+          userSub: data.userSub,
           action: data.action,
           base_light: data.baseLight,
           multiplier: data.multiplier,
@@ -31,16 +30,16 @@ export class LightEventRepository {
   }
 
   async findByUser(
-    userId: string,
+    userSub: string,
     limit: number,
     offset: number,
   ): Promise<{ docs: LightEvent[]; total: number }> {
     const total = await this.model.countDocuments({
-      user_id: userId,
+      userSub,
       deleted_at: null,
     });
     const docs = await this.model
-      .find({ user_id: userId, deleted_at: null })
+      .find({ userSub, deleted_at: null })
       .sort({ created_at: -1 })
       .skip(offset)
       .limit(limit)
@@ -49,14 +48,14 @@ export class LightEventRepository {
   }
 
   async existsForEntityOnDate(
-    userId: string,
+    userSub: string,
     action: string,
     date: string,
     entityId: string,
   ): Promise<boolean> {
     const doc = await this.model
       .findOne({
-        user_id: userId,
+        userSub,
         action,
         date,
         "metadata.entityId": entityId,
@@ -67,12 +66,12 @@ export class LightEventRepository {
   }
 
   async countByUserActionDate(
-    userId: string,
+    userSub: string,
     action: string,
     date: string,
   ): Promise<number> {
     return this.model.countDocuments({
-      user_id: userId,
+      userSub,
       action,
       date,
       deleted_at: null,
@@ -80,14 +79,14 @@ export class LightEventRepository {
   }
 
   async getGrowthStats(
-    userId: string,
+    userSub: string,
     windowStart: string,
   ): Promise<{
     window: Array<{ date: string; light: number }>;
     baseline: { light: number };
   }> {
     const result = await this.model.aggregate([
-      { $match: { user_id: userId, deleted_at: null } },
+      { $match: { userSub, deleted_at: null } },
       {
         $facet: {
           window: [
@@ -125,11 +124,17 @@ export class LightEventRepository {
     };
   }
 
+  // Hard-delete every light event for the given userSub. Used by the Hub
+  // user.deleted cascade.
+  async deleteAllForUser(userSub: string): Promise<number> {
+    const { deletedCount } = await this.model.deleteMany({ userSub });
+    return deletedCount ?? 0;
+  }
+
   private toDomain(doc: any): LightEvent {
     return LightEvent.reconstitute(
       {
-        userId: doc.user_id,
-        workspaceId: doc.workspace_id,
+        userSub: doc.userSub,
         action: doc.action,
         baseLight: doc.base_light,
         multiplier: doc.multiplier,

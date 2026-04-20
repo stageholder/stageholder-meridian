@@ -3,7 +3,6 @@ import { TodoRepository } from "../todo/todo.repository";
 import { JournalRepository } from "../journal/journal.repository";
 import { HabitEntryRepository } from "../habit-entry/habit-entry.repository";
 import { HabitRepository } from "../habit/habit.repository";
-import { WorkspaceMemberService } from "../workspace-member/workspace-member.service";
 
 export interface CalendarDayData {
   todos: Array<{
@@ -41,34 +40,22 @@ export class CalendarService {
     private readonly journalRepository: JournalRepository,
     private readonly habitEntryRepository: HabitEntryRepository,
     private readonly habitRepository: HabitRepository,
-    private readonly memberService: WorkspaceMemberService,
   ) {}
 
   async getMonthData(
-    workspaceId: string,
-    userId: string,
+    userSub: string,
     startDate: string,
     endDate: string,
   ): Promise<Record<string, CalendarDayData>> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
-
     const [todos, journals, habitEntries, habits] = await Promise.all([
-      this.todoRepository.findByWorkspaceAndDateRange(
-        workspaceId,
+      this.todoRepository.findByUserAndDateRange(userSub, startDate, endDate),
+      this.journalRepository.findByDateRange(userSub, startDate, endDate),
+      this.habitEntryRepository.findByUserAndDateRange(
+        userSub,
         startDate,
         endDate,
       ),
-      this.journalRepository.findByDateRange(workspaceId, startDate, endDate),
-      this.habitEntryRepository.findByWorkspaceAndDateRange(
-        workspaceId,
-        startDate,
-        endDate,
-      ),
-      this.habitRepository.findByWorkspace(workspaceId),
+      this.habitRepository.findByUser(userSub),
     ]);
 
     const habitMap = new Map(habits.map((h) => [h.id, h.name]));

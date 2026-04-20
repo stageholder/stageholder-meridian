@@ -1,16 +1,14 @@
 import { Entity, EntityProps, Ok, Err, Result } from "../../shared";
 
 export interface NotificationProps extends EntityProps {
-  recipientId: string;
+  userSub: string;
   type: string;
   title: string;
   message: string;
   entityType?: string;
   entityId?: string;
-  actorId?: string;
   read: boolean;
   readAt?: Date;
-  workspaceId: string;
 }
 
 export class Notification extends Entity<NotificationProps> {
@@ -18,8 +16,8 @@ export class Notification extends Entity<NotificationProps> {
     super(props, id);
   }
 
-  get recipientId(): string {
-    return this.get("recipientId");
+  get userSub(): string {
+    return this.get("userSub");
   }
   get type(): string {
     return this.get("type");
@@ -36,17 +34,11 @@ export class Notification extends Entity<NotificationProps> {
   get entityId(): string | undefined {
     return this.get("entityId");
   }
-  get actorId(): string | undefined {
-    return this.get("actorId");
-  }
   get read(): boolean {
     return this.get("read");
   }
   get readAt(): Date | undefined {
     return this.get("readAt");
-  }
-  get workspaceId(): string {
-    return this.get("workspaceId");
   }
 
   markAsRead(): void {
@@ -57,11 +49,10 @@ export class Notification extends Entity<NotificationProps> {
   static create(
     props: Omit<NotificationProps, "id" | "createdAt" | "updatedAt">,
   ): Result<Notification> {
-    if (!props.recipientId) return Err(new Error("Recipient is required"));
+    if (!props.userSub) return Err(new Error("User is required"));
     if (!props.type) return Err(new Error("Type is required"));
     if (!props.title) return Err(new Error("Title is required"));
     if (!props.message) return Err(new Error("Message is required"));
-    if (!props.workspaceId) return Err(new Error("Workspace is required"));
     return Ok(
       new Notification({
         ...props,

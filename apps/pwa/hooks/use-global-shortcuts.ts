@@ -23,10 +23,7 @@ function isInputFocused() {
   return false;
 }
 
-export function useGlobalShortcuts(
-  shortId: string,
-  callbacks: ShortcutCallbacks,
-) {
+export function useGlobalShortcuts(callbacks: ShortcutCallbacks) {
   const router = useRouter();
   const pendingKeyRef = useRef<string | null>(null);
   const pendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -61,17 +58,17 @@ export function useGlobalShortcuts(
       if (pendingKeyRef.current === "g") {
         clearPending();
         const navMap: Record<string, string> = {
-          d: "dashboard",
-          c: "calendar",
-          t: "todos",
-          h: "habits",
-          j: "journal",
-          s: "settings",
+          d: "/app",
+          c: "/app/calendar",
+          t: "/app/todos",
+          h: "/app/habits",
+          j: "/app/journal",
+          s: "/app/settings",
         };
         const dest = navMap[key];
         if (dest) {
           e.preventDefault();
-          router.push(`/${shortId}/${dest}`);
+          router.push(dest);
           return;
         }
       }
@@ -104,13 +101,11 @@ export function useGlobalShortcuts(
         if (key === "n" && !e.shiftKey) {
           e.preventDefault();
           // Navigate to todos, then dispatch event after navigation settles
-          const onTodosPage = window.location.pathname.includes(
-            `/${shortId}/todos`,
-          );
+          const onTodosPage = window.location.pathname.includes("/app/todos");
           if (onTodosPage) {
             window.dispatchEvent(new CustomEvent("meridian:quick-add-todo"));
           } else {
-            router.push(`/${shortId}/todos`);
+            router.push("/app/todos");
             // Dispatch after a short delay to let the page mount
             setTimeout(() => {
               window.dispatchEvent(new CustomEvent("meridian:quick-add-todo"));
@@ -126,5 +121,5 @@ export function useGlobalShortcuts(
       document.removeEventListener("keydown", handleKeyDown);
       clearPending();
     };
-  }, [shortId, router, clearPending]);
+  }, [router, clearPending]);
 }

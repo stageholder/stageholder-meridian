@@ -30,12 +30,21 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+      args:
+        # Required for private @stageholder/auth package. Export in your
+        # shell before `docker compose build`, or set in a .env file next
+        # to this compose file (docker compose auto-loads it).
+        GITHUB_PACKAGES_TOKEN: ${GITHUB_PACKAGES_TOKEN:?GITHUB_PACKAGES_TOKEN is required to install @stageholder/auth}
     ports:
       - "4000:4000"
     environment:
       MONGODB_URI: mongodb://meridian:${MONGO_PASSWORD:-changeme-dev}@mongodb:27017/meridian?authSource=admin
-      JWT_SECRET: change-me-in-production-must-be-32-chars
-      FRONTEND_URL: http://localhost:3000
+      # OIDC integration with the Stageholder Hub. Point IDENTITY_ISSUER_URL
+      # at your local Hub (host.docker.internal:4828) or the deployed Hub.
+      IDENTITY_ISSUER_URL: ${IDENTITY_ISSUER_URL:-http://host.docker.internal:4828}
+      IDENTITY_CLIENT_ID: ${IDENTITY_CLIENT_ID:-meridian-web}
+      IDENTITY_CLIENT_SECRET: ${IDENTITY_CLIENT_SECRET:?IDENTITY_CLIENT_SECRET is required}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:4001}
       PORT: "4000"
       NODE_ENV: production
     depends_on:
@@ -45,7 +54,7 @@ services:
       test:
         [
           "CMD",
-          "node",
+          "bun",
           "-e",
           "fetch('http://localhost:4000/health').then(r=>{if(!r.ok)throw 1})",
         ]
@@ -57,10 +66,26 @@ services:
     build:
       context: .
       dockerfile: apps/pwa/Dockerfile
+      args:
+        GITHUB_PACKAGES_TOKEN: ${GITHUB_PACKAGES_TOKEN:?GITHUB_PACKAGES_TOKEN is required to install @stageholder/auth}
+        # NEXT_PUBLIC_* values are baked into the JS bundle at build time.
+        # Changing them requires rebuilding this image.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api/v1}
+        NEXT_PUBLIC_HUB_URL: ${NEXT_PUBLIC_HUB_URL:-http://localhost:4829}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:4001}
+        NEXT_PUBLIC_IDENTITY_ISSUER_URL: ${NEXT_PUBLIC_IDENTITY_ISSUER_URL:-http://localhost:4828}
     ports:
-      - "3000:3000"
+      # Local PWA runs on 4001 to avoid colliding with the Hub web (3001).
+      # Dockerfile still EXPOSES 3000 internally — we remap on the host.
+      - "4001:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+      # Server-side env vars — read by Next.js BFF routes and API proxy.
+      IDENTITY_ISSUER_URL: ${IDENTITY_ISSUER_URL:-http://host.docker.internal:4828}
+      IDENTITY_CLIENT_ID: ${IDENTITY_CLIENT_ID:-meridian-web}
+      IDENTITY_CLIENT_SECRET: ${IDENTITY_CLIENT_SECRET:?IDENTITY_CLIENT_SECRET is required}
+      IDENTITY_REDIRECT_URI: ${IDENTITY_REDIRECT_URI:-http://localhost:4001/auth/callback}
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required (>=32 chars, e.g. openssl rand -hex 32)}
+      MERIDIAN_API_URL: ${MERIDIAN_API_URL:-http://api:4000}
     depends_on:
       api:
         condition: service_healthy

@@ -1,7 +1,7 @@
-import { Controller, Get, Param, Patch, Query } from "@nestjs/common";
+import { Controller, Get, Param, Patch, Query, Req } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { NotificationService } from "./notification.service";
-import { CurrentUserId } from "../../common/decorators/current-user.decorator";
+import { StageholderRequest } from "../../common/types";
 
 @ApiTags("Notifications")
 @Controller("notifications")
@@ -10,7 +10,7 @@ export class NotificationController {
 
   @Get()
   async list(
-    @CurrentUserId() userId: string,
+    @Req() req: StageholderRequest,
     @Query("unread") unread?: string,
     @Query("page") page?: string,
     @Query("limit") limit?: string,
@@ -20,7 +20,7 @@ export class NotificationController {
     if (updatedSince) {
       return (
         await this.service.findUpdatedSince(
-          userId,
+          req.user.sub,
           updatedSince,
           includeSoftDeleted === "true",
         )
@@ -28,7 +28,7 @@ export class NotificationController {
     }
     const unreadOnly = unread === "true";
     return this.service.listForUserPaginated(
-      userId,
+      req.user.sub,
       unreadOnly,
       page ? +page : undefined,
       limit ? +limit : undefined,
@@ -36,20 +36,20 @@ export class NotificationController {
   }
 
   @Get("unread-count")
-  async unreadCount(@CurrentUserId() userId: string) {
-    const count = await this.service.getUnreadCount(userId);
+  async unreadCount(@Req() req: StageholderRequest) {
+    const count = await this.service.getUnreadCount(req.user.sub);
     return { count };
   }
 
   @Patch(":id/read")
-  async markAsRead(@CurrentUserId() userId: string, @Param("id") id: string) {
-    await this.service.markAsRead(userId, id);
+  async markAsRead(@Req() req: StageholderRequest, @Param("id") id: string) {
+    await this.service.markAsRead(req.user.sub, id);
     return { success: true };
   }
 
   @Patch("read-all")
-  async readAll(@CurrentUserId() userId: string) {
-    await this.service.markAllRead(userId);
+  async readAll(@Req() req: StageholderRequest) {
+    await this.service.markAllRead(req.user.sub);
     return { success: true };
   }
 }

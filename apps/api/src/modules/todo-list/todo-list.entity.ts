@@ -4,10 +4,8 @@ export interface TodoListProps extends EntityProps {
   name: string;
   color?: string;
   icon?: string;
-  workspaceId: string;
-  isShared: boolean;
+  userSub: string;
   isDefault: boolean;
-  creatorId: string;
 }
 
 export class TodoList extends Entity<TodoListProps> {
@@ -24,17 +22,11 @@ export class TodoList extends Entity<TodoListProps> {
   get icon(): string | undefined {
     return this.get("icon");
   }
-  get workspaceId(): string {
-    return this.get("workspaceId");
-  }
-  get isShared(): boolean {
-    return this.get("isShared");
+  get userSub(): string {
+    return this.get("userSub");
   }
   get isDefault(): boolean {
     return this.get("isDefault");
-  }
-  get creatorId(): string {
-    return this.get("creatorId");
   }
 
   updateName(name: string): void {
@@ -46,24 +38,21 @@ export class TodoList extends Entity<TodoListProps> {
   updateIcon(icon: string | undefined): void {
     this.set("icon", icon);
   }
-  updateIsShared(isShared: boolean): void {
-    this.set("isShared", isShared);
-  }
 
   static create(
     props: Omit<
       TodoListProps,
       "id" | "createdAt" | "updatedAt" | "isDefault"
-    > & { isDefault?: boolean },
+    > & {
+      isDefault?: boolean;
+    },
   ): Result<TodoList> {
     if (!props.name || props.name.trim().length === 0)
       return Err(new Error("Todo list name is required"));
-    if (!props.workspaceId) return Err(new Error("Workspace is required"));
-    if (!props.creatorId) return Err(new Error("Creator is required"));
+    if (!props.userSub) return Err(new Error("User is required"));
     return Ok(
       new TodoList({
         ...props,
-        isShared: props.isShared ?? false,
         isDefault: props.isDefault ?? false,
       } as TodoListProps),
     );

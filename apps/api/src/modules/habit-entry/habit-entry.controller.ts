@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  Req,
 } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { HabitEntryService } from "./habit-entry.service";
@@ -16,17 +17,16 @@ import {
   UpdateHabitEntryDto as UpdateSchema,
 } from "./habit-entry.dto";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe";
-import { CurrentUserId } from "../../common/decorators/current-user.decorator";
+import { StageholderRequest } from "../../common/types";
 
 @ApiTags("Habit Entries")
-@Controller("workspaces/:workspaceId/habit-entries")
+@Controller("habit-entries")
 export class HabitEntrySyncController {
   constructor(private readonly service: HabitEntryService) {}
 
   @Get()
   async listAll(
-    @Param("workspaceId") workspaceId: string,
-    @CurrentUserId() userId: string,
+    @Req() req: StageholderRequest,
     @Query("updatedSince") updatedSince?: string,
     @Query("includeSoftDeleted") includeSoftDeleted?: string,
     @Query("limit") _limit?: string,
@@ -36,8 +36,7 @@ export class HabitEntrySyncController {
     }
     return (
       await this.service.findUpdatedSince(
-        workspaceId,
-        userId,
+        req.user.sub,
         updatedSince,
         includeSoftDeleted === "true",
       )
@@ -46,27 +45,23 @@ export class HabitEntrySyncController {
 }
 
 @ApiTags("Habit Entries")
-@Controller("workspaces/:workspaceId/habits/:habitId/entries")
+@Controller("habits/:habitId/entries")
 export class HabitEntryController {
   constructor(private readonly service: HabitEntryService) {}
 
   @Post()
   async create(
-    @Param("workspaceId") workspaceId: string,
+    @Req() req: StageholderRequest,
     @Param("habitId") habitId: string,
-    @CurrentUserId() userId: string,
     @Body(new ZodValidationPipe(CreateSchema)) dto: CreateHabitEntryDto,
   ) {
-    return (
-      await this.service.create(habitId, workspaceId, userId, dto)
-    ).toObject();
+    return (await this.service.create(req.user.sub, habitId, dto)).toObject();
   }
 
   @Get()
   async list(
-    @Param("workspaceId") workspaceId: string,
+    @Req() req: StageholderRequest,
     @Param("habitId") habitId: string,
-    @CurrentUserId() userId: string,
     @Query("startDate") startDate?: string,
     @Query("endDate") endDate?: string,
     @Query("page") page?: string,
@@ -77,8 +72,7 @@ export class HabitEntryController {
     if (updatedSince) {
       return (
         await this.service.findUpdatedSince(
-          workspaceId,
-          userId,
+          req.user.sub,
           updatedSince,
           includeSoftDeleted === "true",
         )
@@ -86,50 +80,34 @@ export class HabitEntryController {
     }
     if (page || limit) {
       return this.service.listByHabitPaginated(
+        req.user.sub,
         habitId,
-        workspaceId,
-        userId,
         page ? +page : undefined,
         limit ? +limit : undefined,
       );
     }
     return (
-      await this.service.listByHabit(
-        habitId,
-        workspaceId,
-        userId,
-        startDate,
-        endDate,
-      )
+      await this.service.listByHabit(req.user.sub, habitId, startDate, endDate)
     ).map((e) => e.toObject());
   }
 
   @Get(":id")
-  async get(
-    @Param("workspaceId") workspaceId: string,
-    @Param("id") id: string,
-    @CurrentUserId() userId: string,
-  ) {
-    return (await this.service.findById(id, workspaceId, userId)).toObject();
+  async get(@Req() req: StageholderRequest, @Param("id") id: string) {
+    return (await this.service.findById(req.user.sub, id)).toObject();
   }
 
   @Patch(":id")
   async update(
-    @Param("workspaceId") workspaceId: string,
+    @Req() req: StageholderRequest,
     @Param("id") id: string,
-    @CurrentUserId() userId: string,
     @Body(new ZodValidationPipe(UpdateSchema)) dto: UpdateHabitEntryDto,
   ) {
-    return (await this.service.update(id, workspaceId, userId, dto)).toObject();
+    return (await this.service.update(req.user.sub, id, dto)).toObject();
   }
 
   @Delete(":id")
-  async delete(
-    @Param("workspaceId") workspaceId: string,
-    @Param("id") id: string,
-    @CurrentUserId() userId: string,
-  ) {
-    await this.service.delete(id, workspaceId, userId);
+  async delete(@Req() req: StageholderRequest, @Param("id") id: string) {
+    await this.service.delete(req.user.sub, id);
     return { deleted: true };
   }
 }

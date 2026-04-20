@@ -6,7 +6,6 @@ import { Loader2 } from "lucide-react";
 import { useJournals, useJournalsPaginated } from "@/lib/api/journals";
 import { JournalList } from "@/components/journal/journal-list";
 import { DatePicker } from "@/components/ui/date-picker";
-import { useWorkspace } from "@/lib/workspace-context";
 import type { Journal } from "@repo/core/types";
 import {
   Select,
@@ -30,7 +29,6 @@ interface JournalSidebarProps {
 }
 
 export function JournalSidebar({ activeId }: JournalSidebarProps) {
-  const { workspace } = useWorkspace();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [moodFilter, setMoodFilter] = useState(0);
@@ -78,7 +76,7 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
             </p>
           </div>
           <Link
-            href={`/${workspace.shortId}/journal/new`}
+            href="/app/journal/new"
             className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
             New Journal

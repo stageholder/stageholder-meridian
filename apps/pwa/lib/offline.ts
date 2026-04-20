@@ -7,21 +7,21 @@ import { createJournalsApi } from "@repo/core/api/journals";
 import { createHabitsApi } from "@repo/core/api/habits";
 import { createTagsApi } from "@repo/core/api/tags";
 import { createNotificationsApi } from "@repo/core/api/notifications";
-import { createWorkspacesApi } from "@repo/core/api/workspaces";
-import apiClient, { getWorkspaceId } from "@/lib/api-client";
+import apiClient from "@/lib/api-client";
 import { useEncryptionStore } from "@/lib/crypto/encryption-store";
 import { decryptJournalList } from "@/lib/crypto/journal-crypto";
 import { registerJournalEncryptionTransform } from "@/lib/crypto/register-transforms";
+import { tryGetCurrentUserSub } from "@/lib/current-user-sub";
+import { refreshEntitlement } from "@/lib/entitlement";
 
 // Register encryption transform for offline journal mutations
 registerJournalEncryptionTransform();
 
-const todosApi = createTodosApi(apiClient, getWorkspaceId);
-const journalsApi = createJournalsApi(apiClient, getWorkspaceId);
-const habitsApi = createHabitsApi(apiClient, getWorkspaceId);
-const tagsApi = createTagsApi(apiClient, getWorkspaceId);
+const todosApi = createTodosApi(apiClient);
+const journalsApi = createJournalsApi(apiClient);
+const habitsApi = createHabitsApi(apiClient);
+const tagsApi = createTagsApi(apiClient);
 const notificationsApi = createNotificationsApi(apiClient);
-const workspacesApi = createWorkspacesApi(apiClient);
 
 let onConflicts: ((conflicts: SyncConflict[]) => void) | null = null;
 
@@ -37,13 +37,11 @@ function buildParams(since?: string): Record<string, string> | undefined {
 }
 
 export async function syncAll(): Promise<void> {
-  const workspaceId = getWorkspaceId();
-  if (!workspaceId) return;
+  // Sync is user-scoped now — bail out if the session hasn't resolved yet.
+  const userSub = tryGetCurrentUserSub();
+  if (!userSub) return;
 
   const fetchers = {
-    workspaces: (since?: string) => workspacesApi.list(buildParams(since)),
-    members: (since?: string) =>
-      workspacesApi.listMembers(workspaceId, buildParams(since)),
     todoLists: (since?: string) => todosApi.listLists(buildParams(since)),
     todos: async (since?: string) => {
       if (since) {
@@ -86,8 +84,6 @@ export async function syncAll(): Promise<void> {
   };
 
   const tables = {
-    workspaces: db.workspaces,
-    members: db.members,
     todoLists: db.todoLists,
     todos: db.todos,
     journals: db.journals,
@@ -99,7 +95,7 @@ export async function syncAll(): Promise<void> {
 
   try {
     const conflicts = await fullSync(
-      workspaceId,
+      userSub,
       apiClient,
       fetchers as Record<string, (since?: string) => Promise<{ id: string }[]>>,
       tables as Record<string, (typeof tables)[keyof typeof tables]>,
@@ -108,6 +104,11 @@ export async function syncAll(): Promise<void> {
     if (conflicts.length > 0 && onConflicts) {
       onConflicts(conflicts);
     }
+
+    // Refresh the entitlement cache after a successful sync. This runs
+    // outside packages/offline because that package can't import from
+    // apps/pwa. Failures here shouldn't abort the sync.
+    await refreshEntitlement(userSub);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     const stack = error instanceof Error ? error.stack : "";

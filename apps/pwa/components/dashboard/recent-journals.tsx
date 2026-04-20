@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useJournals } from "@/lib/api/journals";
-import { useWorkspace } from "@/lib/workspace-context";
 import { useEncryptionStore } from "@/lib/crypto/encryption-store";
 import { MoodDisplay } from "@/components/journal/mood-picker";
 import { parseDateLocal } from "@/lib/date";
@@ -16,7 +15,6 @@ export function RecentJournals({
   index?: number;
   className?: string;
 }) {
-  const { workspace } = useWorkspace();
   const { isSetup, isUnlocked } = useEncryptionStore();
   const isLocked = isSetup && !isUnlocked;
   const { data: journals, isLoading } = useJournals(undefined, {
@@ -27,12 +25,12 @@ export function RecentJournals({
   return (
     <BentoCard
       title="Recent Journal Entries"
-      href={`/${workspace.shortId}/journal`}
+      href="/app/journal"
       index={index}
       className={className}
       action={
         <Link
-          href={`/${workspace.shortId}/journal`}
+          href="/app/journal"
           className="text-xs text-primary hover:underline"
         >
           View all
@@ -59,7 +57,7 @@ export function RecentJournals({
             return (
               <Link
                 key={journal.id}
-                href={`/${workspace.shortId}/journal/${journal.id}`}
+                href={`/app/journal/${journal.id}`}
                 className="flex min-w-[160px] shrink-0 snap-start flex-col gap-1.5 rounded-lg border border-border bg-muted/50 p-3 transition-colors hover:bg-accent/50"
               >
                 <div className="flex items-center gap-1.5">

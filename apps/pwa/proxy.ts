@@ -1,61 +1,33 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-const STATIC_ROUTES = new Set([
-  "login",
-  "register",
-  "workspaces",
-  "auth",
-  "_next",
-  "api",
-]);
-const STATIC_FILES = new Set(["favicon.ico", "manifest.json", "sw.js"]);
+const PROTECTED_PREFIXES = ["/app", "/onboarding"];
 
+/**
+ * Next.js 16 proxy (the successor to middleware). Guards authenticated
+ * surfaces: if a request targets `/app` or `/onboarding` without a
+ * `meridian_session` cookie, bounce to `/auth/login?returnTo=...`.
+ * Everything else passes through unchanged — the BFF routes under
+ * `/auth/*` and `/api/*` are intentionally public at the proxy layer.
+ */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isLoggedIn = request.cookies.get("logged_in")?.value === "1";
+  const hasSession = request.cookies.has("meridian_session");
 
-  const fileName = pathname.split("/").pop() || "";
-  if (
-    STATIC_FILES.has(fileName) ||
-    pathname.startsWith("/_next/") ||
-    pathname.startsWith("/icons/") ||
-    pathname.startsWith("/favicon/") ||
-    pathname.startsWith("/logo/")
-  ) {
-    return NextResponse.next();
-  }
+  const isProtected = PROTECTED_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
 
-  const firstSegment = pathname.split("/")[1] || "";
-
-  if (pathname === "/") {
-    return isLoggedIn
-      ? NextResponse.redirect(new URL("/workspaces", request.url))
-      : NextResponse.redirect(new URL("/login", request.url));
-  }
-
-  if (firstSegment === "login" || firstSegment === "register") {
-    if (isLoggedIn)
-      return NextResponse.redirect(new URL("/workspaces", request.url));
-    return NextResponse.next();
-  }
-
-  if (STATIC_ROUTES.has(firstSegment)) {
-    if (!isLoggedIn && firstSegment === "workspaces") {
-      return NextResponse.redirect(new URL("/login", request.url));
+  if (isProtected && !hasSession) {
+    const loginUrl = new URL("/auth/login", request.url);
+    if (pathname !== "/") {
+      loginUrl.searchParams.set("returnTo", pathname + request.nextUrl.search);
     }
-    return NextResponse.next();
-  }
-
-  if (!isLoggedIn) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icons|manifest.json|sw.js).*)",
-  ],
+  matcher: ["/app/:path*", "/onboarding/:path*"],
 };

@@ -1,23 +1,35 @@
 import { NestFactory } from "@nestjs/core";
 import helmet from "helmet";
-import cookieParser from "cookie-parser";
 import express from "express";
 import { Logger } from "nestjs-pino";
 import { AppModule } from "./app.module";
 import { validateEnv } from "./config/env.validation";
 import { GlobalExceptionFilter } from "./common/filters/http-exception.filter";
 
-function parseOrigins(raw: string | undefined): string | string[] {
-  if (!raw) {
-    if (process.env.NODE_ENV === "production")
+// Tauri webview origins vary by OS:
+//   macOS/Linux → tauri://localhost
+//   Windows     → http://tauri.localhost
+// Both need allow-listing so the desktop app can call the API directly with
+// its Bearer token (web goes through the BFF proxy on the same origin and
+// doesn't trigger CORS preflight).
+const TAURI_ORIGINS = ["tauri://localhost", "http://tauri.localhost"];
+
+function parseOrigins(raw: string | undefined): string[] {
+  const parsed =
+    raw
+      ?.split(",")
+      .map((o) => o.trim())
+      .filter(Boolean) ?? [];
+
+  if (parsed.length === 0) {
+    if (process.env.NODE_ENV === "production") {
       throw new Error("FRONTEND_URL required in production");
-    return "http://localhost:3000";
+    }
+    // Dev default: PWA on 4001 after the Hub integration port shuffle.
+    parsed.push("http://localhost:4001");
   }
-  const origins = raw
-    .split(",")
-    .map((o) => o.trim())
-    .filter(Boolean);
-  return origins.length === 1 ? origins[0] : origins;
+
+  return [...parsed, ...TAURI_ORIGINS];
 }
 
 async function bootstrap() {
@@ -28,7 +40,6 @@ async function bootstrap() {
   app.enableShutdownHooks();
   app.useGlobalFilters(new GlobalExceptionFilter());
   app.use(helmet());
-  app.use(cookieParser());
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: true, limit: "1mb" }));
   app.setGlobalPrefix("api/v1");
@@ -53,7 +64,6 @@ async function bootstrap() {
         .setTitle("Meridian API")
         .setVersion("0.1.0")
         .addBearerAuth()
-        .addCookieAuth("access_token")
         .build();
       const document = SwaggerModule.createDocument(app, config, {
         operationIdFactory: (_controllerKey, methodKey) => methodKey,

@@ -38,14 +38,13 @@ export class TodoModel {
   @Prop({ type: String, index: true }) due_date: string;
   @Prop({ type: String, index: true }) do_date: string;
   @Prop({ type: String, required: true, index: true }) list_id: string;
-  @Prop({ type: String, required: true, index: true }) workspace_id: string;
-  @Prop({ type: String, index: true }) assignee_id: string;
-  @Prop({ type: String, required: true }) creator_id: string;
+  @Prop({ type: String, required: true, index: true }) userSub: string;
   @Prop({ type: Number, default: 0 }) order: number;
   @Prop({ type: [SubtaskSchema], default: [] }) subtasks: any[];
   @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 
 export const TodoSchema = SchemaFactory.createForClass(TodoModel);
-TodoSchema.index({ workspace_id: 1, list_id: 1, order: 1 });
-TodoSchema.index({ workspace_id: 1, status: 1 });
+TodoSchema.index({ userSub: 1, list_id: 1, status: 1 });
+TodoSchema.index({ userSub: 1, due_date: 1 });
+TodoSchema.index({ userSub: 1, do_date: 1 });

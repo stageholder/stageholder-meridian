@@ -1,6 +1,6 @@
 export interface UserLight {
   id: string;
-  userId: string;
+  userSub: string;
   totalLight: number;
   currentTier: number;
   currentTitle: string;
@@ -19,8 +19,7 @@ export interface UserLight {
 
 export interface LightEvent {
   id: string;
-  userId: string;
-  workspaceId: string;
+  userSub: string;
   action:
     | "todo_complete"
     | "todo_create"

@@ -17,7 +17,7 @@ export type FeedbackDocument = FeedbackModel & Document<string>;
 })
 export class FeedbackModel {
   @Prop({ type: String, default: () => randomUUID() }) _id: string;
-  @Prop({ type: String, required: true, index: true }) user_id: string;
+  @Prop({ type: String, required: true, index: true }) userSub: string;
   @Prop({ type: String, required: true, enum: ["general", "bug", "feature"] })
   type: string;
   @Prop({ type: String, required: true }) message: string;

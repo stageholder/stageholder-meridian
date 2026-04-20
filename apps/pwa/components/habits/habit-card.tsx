@@ -15,7 +15,6 @@ import {
   useHabitEntries,
   useDeleteHabit,
 } from "@/lib/api/habits";
-import { useWorkspace } from "@/lib/workspace-context";
 import { toast } from "sonner";
 import type { Habit, HabitEntry } from "@repo/core/types";
 import {
@@ -36,7 +35,6 @@ interface HabitCardProps {
 }
 
 export function HabitCard({ habit, selectedDate }: HabitCardProps) {
-  const { workspace } = useWorkspace();
   const today = format(new Date(), "yyyy-MM-dd");
   const activeDate = selectedDate || today;
   const isViewingToday = !selectedDate || selectedDate === today;
@@ -188,7 +186,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
         <RadianceBurst active={completing} color={habitColor} />
         <div className="flex items-start justify-between">
           <Link
-            href={`/${workspace.shortId}/habits/${habit.id}`}
+            href={`/app/habits/${habit.id}`}
             className="flex items-center gap-3 hover:opacity-80"
           >
             <div

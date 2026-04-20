@@ -11,7 +11,6 @@ import {
   HabitEntryModel,
   HabitEntrySchema,
 } from "../habit-entry/habit-entry.schema";
-import { UserModule } from "../user/user.module";
 import { NotificationModule } from "../notification/notification.module";
 
 @Module({
@@ -22,7 +21,6 @@ import { NotificationModule } from "../notification/notification.module";
       { name: HabitEntryModel.name, schema: HabitEntrySchema },
     ]),
     HabitModule,
-    UserModule,
     NotificationModule,
   ],
   controllers: [LightController],

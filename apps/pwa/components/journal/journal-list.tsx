@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { format, isToday, isYesterday, isThisWeek, isThisYear } from "date-fns";
-import { useWorkspace } from "@/lib/workspace-context";
 import { cn } from "@/lib/utils";
 import { parseDateLocal } from "@/lib/date";
 import { MoodDisplay } from "./mood-picker";
@@ -29,8 +28,6 @@ export function JournalList({
   isLoading,
   activeId,
 }: JournalListProps) {
-  const { workspace } = useWorkspace();
-
   const grouped = useMemo(() => {
     const groups: { label: string; entries: Journal[] }[] = [];
     let currentLabel = "";
@@ -87,7 +84,7 @@ export function JournalList({
               return (
                 <Link
                   key={journal.id}
-                  href={`/${workspace.shortId}/journal/${journal.id}`}
+                  href={`/app/journal/${journal.id}`}
                   className={cn(
                     "block rounded-lg border p-3 transition-colors",
                     journal.id === activeId

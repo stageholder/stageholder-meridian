@@ -2,7 +2,6 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { TagRepository } from "./tag.repository";
 import { Tag } from "./tag.entity";
 import { CreateTagDto, UpdateTagDto } from "./tag.dto";
-import { WorkspaceMemberService } from "../workspace-member/workspace-member.service";
 import {
   buildPaginationMeta,
   DEFAULT_PAGE,
@@ -12,55 +11,28 @@ import {
 
 @Injectable()
 export class TagService {
-  constructor(
-    private readonly repository: TagRepository,
-    private readonly memberService: WorkspaceMemberService,
-  ) {}
+  constructor(private readonly repository: TagRepository) {}
 
-  async create(
-    workspaceId: string,
-    userId: string,
-    dto: CreateTagDto,
-  ): Promise<Tag> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
+  async create(userSub: string, dto: CreateTagDto): Promise<Tag> {
     const result = Tag.create({
       name: dto.name,
       color: dto.color,
-      workspaceId,
+      userSub,
     });
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);
     return result.value;
   }
 
-  async findByWorkspace(workspaceId: string, userId: string): Promise<Tag[]> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
-    return this.repository.findByWorkspace(workspaceId);
+  async findByUser(userSub: string): Promise<Tag[]> {
+    return this.repository.findByUser(userSub);
   }
 
-  async listByWorkspace(
-    workspaceId: string,
-    userId: string,
-    page?: number,
-    limit?: number,
-  ) {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
+  async listByUser(userSub: string, page?: number, limit?: number) {
     const p = Math.max(page || DEFAULT_PAGE, 1);
     const l = Math.min(Math.max(limit || DEFAULT_LIMIT, 1), MAX_LIMIT);
-    const { docs, total } = await this.repository.findByWorkspacePaginated(
-      workspaceId,
+    const { docs, total } = await this.repository.findByUserPaginated(
+      userSub,
       p,
       l,
     );
@@ -71,54 +43,34 @@ export class TagService {
   }
 
   async findUpdatedSince(
-    workspaceId: string,
-    userId: string,
+    userSub: string,
     since: string,
     includeSoftDeleted = false,
   ): Promise<Tag[]> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
-    return this.repository.findUpdatedSince(
-      workspaceId,
-      since,
-      includeSoftDeleted,
-    );
+    return this.repository.findUpdatedSince(userSub, since, includeSoftDeleted);
   }
 
-  async findById(
-    id: string,
-    workspaceId: string,
-    userId: string,
-  ): Promise<Tag> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
-    const tag = await this.repository.findById(id);
-    if (!tag || tag.workspaceId !== workspaceId)
-      throw new NotFoundException("Tag not found");
+  async findById(userSub: string, id: string): Promise<Tag> {
+    const tag = await this.repository.findById(userSub, id);
+    if (!tag) throw new NotFoundException("Tag not found");
     return tag;
   }
 
-  async update(
-    id: string,
-    workspaceId: string,
-    userId: string,
-    dto: UpdateTagDto,
-  ): Promise<Tag> {
-    const tag = await this.findById(id, workspaceId, userId);
+  async update(userSub: string, id: string, dto: UpdateTagDto): Promise<Tag> {
+    const tag = await this.findById(userSub, id);
     if (dto.name) tag.updateName(dto.name);
     if (dto.color) tag.updateColor(dto.color);
     await this.repository.save(tag);
     return tag;
   }
 
-  async delete(id: string, workspaceId: string, userId: string): Promise<void> {
-    await this.findById(id, workspaceId, userId);
-    await this.repository.delete(id);
+  async delete(userSub: string, id: string): Promise<void> {
+    await this.findById(userSub, id);
+    await this.repository.delete(userSub, id);
+  }
+
+  // Purge every tag for the user. Used by the Hub user.deleted cascade.
+  async deleteAllForUser(userSub: string): Promise<number> {
+    return this.repository.deleteAllForUser(userSub);
   }
 }

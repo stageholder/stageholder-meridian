@@ -17,8 +17,7 @@ export type LightEventDocument = LightEventModel & Document<string>;
 })
 export class LightEventModel {
   @Prop({ type: String, default: () => randomUUID() }) _id: string;
-  @Prop({ type: String, required: true, index: true }) user_id: string;
-  @Prop({ type: String, required: true }) workspace_id: string;
+  @Prop({ type: String, required: true, index: true }) userSub: string;
   @Prop({ type: String, required: true }) action: string;
   @Prop({ type: Number, required: true }) base_light: number;
   @Prop({ type: Number, required: true }) multiplier: number;
@@ -29,5 +28,5 @@ export class LightEventModel {
 }
 
 export const LightEventSchema = SchemaFactory.createForClass(LightEventModel);
-LightEventSchema.index({ user_id: 1, date: -1 });
-LightEventSchema.index({ user_id: 1, action: 1, date: 1 });
+LightEventSchema.index({ userSub: 1, date: -1 });
+LightEventSchema.index({ userSub: 1, action: 1, date: 1 });

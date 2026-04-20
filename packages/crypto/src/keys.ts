@@ -90,3 +90,36 @@ export function saltToBase64(salt: Uint8Array): string {
 export function saltFromBase64(str: string): Uint8Array {
   return new Uint8Array(fromBase64(str));
 }
+
+/**
+ * Derive the recovery-path AES-KW key from the 8 recovery codes. Codes are
+ * sorted-then-concatenated so any order yields the same key. Salt is the
+ * user's OIDC sub (stable unique identifier). Parameters MUST match the
+ * server-side verification recipe exactly; both sides agree byte-for-byte.
+ */
+export async function deriveRecoveryMasterKey(
+  codes: string[],
+  userSub: string,
+): Promise<CryptoKey> {
+  const sorted = [...codes].sort().join("");
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(sorted),
+    "PBKDF2",
+    false,
+    ["deriveKey"],
+  );
+  return crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: encoder.encode(userSub) as unknown as BufferSource,
+      iterations: 600_000,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    { name: "AES-KW", length: 256 },
+    false,
+    ["wrapKey", "unwrapKey"],
+  );
+}

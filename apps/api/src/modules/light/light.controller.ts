@@ -1,9 +1,9 @@
-import { Controller, Get, Patch, Body, Query } from "@nestjs/common";
+import { Controller, Get, Patch, Body, Query, Req } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { LightService } from "./light.service";
 import { GetLightEventsQuery, UpdateTargetsDto } from "./light.dto";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe";
-import { CurrentUserId } from "../../common/decorators/current-user.decorator";
+import { StageholderRequest } from "../../common/types";
 
 @ApiTags("Light")
 @Controller("light")
@@ -11,36 +11,36 @@ export class LightController {
   constructor(private readonly service: LightService) {}
 
   @Get("me")
-  async getMyLight(@CurrentUserId() userId: string) {
-    const userLight = await this.service.getUserLight(userId);
+  async getMyLight(@Req() req: StageholderRequest) {
+    const userLight = await this.service.getUserLight(req.user.sub);
     return userLight.toObject();
   }
 
   @Patch("targets")
   async updateTargets(
-    @CurrentUserId() userId: string,
+    @Req() req: StageholderRequest,
     @Body(new ZodValidationPipe(UpdateTargetsDto)) dto: UpdateTargetsDto,
   ) {
-    const userLight = await this.service.updateTargets(userId, dto);
+    const userLight = await this.service.updateTargets(req.user.sub, dto);
     return userLight.toObject();
   }
 
   @Get("stats")
   async getStats(
-    @CurrentUserId() userId: string,
+    @Req() req: StageholderRequest,
     @Query("today") today?: string,
   ) {
-    return this.service.getStats(userId, today);
+    return this.service.getStats(req.user.sub, today);
   }
 
   @Get("events")
   async getEvents(
-    @CurrentUserId() userId: string,
+    @Req() req: StageholderRequest,
     @Query(new ZodValidationPipe(GetLightEventsQuery))
     query: GetLightEventsQuery,
   ) {
     const { docs, total } = await this.service.getEvents(
-      userId,
+      req.user.sub,
       query.limit,
       query.offset,
     );

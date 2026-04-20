@@ -2,13 +2,11 @@ import { Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { MongooseModule } from "@nestjs/mongoose";
+import { ScheduleModule } from "@nestjs/schedule";
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { LoggerModule } from "nestjs-pino";
 import { randomUUID } from "crypto";
-import { UserModule } from "./modules/user/user.module";
-import { AuthModule } from "./modules/auth/auth.module";
-import { WorkspaceModule } from "./modules/workspace/workspace.module";
-import { WorkspaceMemberModule } from "./modules/workspace-member/workspace-member.module";
+import { StageholderAuthModule } from "@stageholder/auth";
 import { TagModule } from "./modules/tag/tag.module";
 import { TodoListModule } from "./modules/todo-list/todo-list.module";
 import { TodoModule } from "./modules/todo/todo.module";
@@ -22,12 +20,15 @@ import { LightModule } from "./modules/light/light.module";
 import { FeedbackModule } from "./modules/feedback/feedback.module";
 import { HealthModule } from "./modules/health/health.module";
 import { EncryptionModule } from "./modules/encryption";
-import { EncryptionKeysModule } from "./modules/encryption-keys/encryption-keys.module";
-import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
+import { JournalSecurityModule } from "./modules/journal-security/journal-security.module";
+import { MeModule } from "./modules/me/me.module";
+import { HubEventsModule } from "./modules/hub-events/hub-events.module";
+import { AuthGuard } from "./common/guards/auth.guard";
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     EncryptionModule,
     LoggerModule.forRoot({
       pinoHttp: {
@@ -59,10 +60,18 @@ import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
         uri: config.get<string>("MONGODB_URI"),
       }),
     }),
-    UserModule,
-    AuthModule,
-    WorkspaceModule,
-    WorkspaceMemberModule,
+    StageholderAuthModule.forRoot({
+      issuerUrl: process.env.IDENTITY_ISSUER_URL!,
+      clientId: process.env.IDENTITY_CLIENT_ID!,
+      clientSecret: process.env.IDENTITY_CLIENT_SECRET!,
+      // Must match whatever `aud` claim the Hub puts on access tokens.
+      // Hub's oidc-provider resourceIndicators config decides this. If
+      // that config sets `defaultResource: () => "urn:stageholder:api"`,
+      // this must be the exact same string. Override via env so the Hub
+      // can change its resource identifier without requiring a redeploy
+      // of every product.
+      audience: process.env.IDENTITY_TOKEN_AUDIENCE ?? "urn:stageholder:api",
+    }),
     TagModule,
     TodoListModule,
     TodoModule,
@@ -75,10 +84,12 @@ import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
     LightModule,
     FeedbackModule,
     HealthModule,
-    EncryptionKeysModule,
+    JournalSecurityModule,
+    MeModule,
+    HubEventsModule,
   ],
   providers: [
-    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })

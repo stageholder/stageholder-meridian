@@ -33,7 +33,7 @@ export class HabitEntryRepository {
           type: data.type || "completion",
           skip_reason: enc.skipReason,
           notes: enc.notes,
-          workspace_id: data.workspaceId,
+          userSub: data.userSub,
           target_count_snapshot: data.targetCountSnapshot,
           scheduled_days_snapshot: data.scheduledDaysSnapshot,
         },
@@ -42,40 +42,45 @@ export class HabitEntryRepository {
     );
   }
 
-  async findById(id: string): Promise<HabitEntry | null> {
-    const doc = await this.model.findOne({ _id: id, deleted_at: null }).lean();
-    return doc ? this.toDomain(doc) : null;
-  }
-
-  async findByHabitAndDate(
-    habitId: string,
-    date: string,
-  ): Promise<HabitEntry | null> {
+  async findById(userSub: string, id: string): Promise<HabitEntry | null> {
     const doc = await this.model
-      .findOne({ habit_id: habitId, date, deleted_at: null })
+      .findOne({ _id: id, userSub, deleted_at: null })
       .lean();
     return doc ? this.toDomain(doc) : null;
   }
 
-  async findByHabit(habitId: string): Promise<HabitEntry[]> {
+  async findByHabitAndDate(
+    userSub: string,
+    habitId: string,
+    date: string,
+  ): Promise<HabitEntry | null> {
+    const doc = await this.model
+      .findOne({ userSub, habit_id: habitId, date, deleted_at: null })
+      .lean();
+    return doc ? this.toDomain(doc) : null;
+  }
+
+  async findByHabit(userSub: string, habitId: string): Promise<HabitEntry[]> {
     const docs = await this.model
-      .find({ habit_id: habitId, deleted_at: null })
+      .find({ userSub, habit_id: habitId, deleted_at: null })
       .sort({ date: -1 })
       .lean();
     return docs.map((doc) => this.toDomain(doc));
   }
 
   async findByHabitPaginated(
+    userSub: string,
     habitId: string,
     page: number,
     limit: number,
   ): Promise<{ docs: HabitEntry[]; total: number }> {
     const total = await this.model.countDocuments({
+      userSub,
       habit_id: habitId,
       deleted_at: null,
     });
     const docs = await this.model
-      .find({ habit_id: habitId, deleted_at: null })
+      .find({ userSub, habit_id: habitId, deleted_at: null })
       .sort({ date: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -84,12 +89,14 @@ export class HabitEntryRepository {
   }
 
   async findByHabitAndDateRange(
+    userSub: string,
     habitId: string,
     startDate: string,
     endDate: string,
   ): Promise<HabitEntry[]> {
     const docs = await this.model
       .find({
+        userSub,
         habit_id: habitId,
         date: { $gte: startDate, $lte: endDate },
         deleted_at: null,
@@ -99,14 +106,14 @@ export class HabitEntryRepository {
     return docs.map((doc) => this.toDomain(doc));
   }
 
-  async findByWorkspaceAndDateRange(
-    workspaceId: string,
+  async findByUserAndDateRange(
+    userSub: string,
     startDate: string,
     endDate: string,
   ): Promise<HabitEntry[]> {
     const docs = await this.model
       .find({
-        workspace_id: workspaceId,
+        userSub,
         deleted_at: null,
         date: { $gte: startDate, $lte: endDate },
       })
@@ -115,19 +122,27 @@ export class HabitEntryRepository {
     return docs.map((doc) => this.toDomain(doc));
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(userSub: string, id: string): Promise<void> {
     await this.model.updateOne(
-      { _id: id },
+      { _id: id, userSub },
       { $set: { deleted_at: new Date() } },
     );
   }
 
-  async countSkipsByWorkspaceCreatorAndDate(
-    workspaceId: string,
+  // Hard-delete every habit entry for the given userSub. Used by the Hub
+  // user.deleted cascade. Filtering on userSub is sufficient — each entry
+  // doc carries userSub directly, so we don't need to look up habits first.
+  async deleteAllForUser(userSub: string): Promise<number> {
+    const { deletedCount } = await this.model.deleteMany({ userSub });
+    return deletedCount ?? 0;
+  }
+
+  async countSkipsByUserAndDate(
+    userSub: string,
     date: string,
   ): Promise<number> {
     return this.model.countDocuments({
-      workspace_id: workspaceId,
+      userSub,
       date,
       type: "skip",
       deleted_at: null,
@@ -135,12 +150,12 @@ export class HabitEntryRepository {
   }
 
   async findUpdatedSince(
-    workspaceId: string,
+    userSub: string,
     since: string,
     includeSoftDeleted = false,
   ): Promise<HabitEntry[]> {
     const filter: any = {
-      workspace_id: workspaceId,
+      userSub,
       updated_at: { $gt: new Date(since) },
     };
     if (!includeSoftDeleted) filter.deleted_at = null;
@@ -163,7 +178,7 @@ export class HabitEntryRepository {
         notes: dec.notes,
         targetCountSnapshot: doc.target_count_snapshot,
         scheduledDaysSnapshot: doc.scheduled_days_snapshot,
-        workspaceId: doc.workspace_id,
+        userSub: doc.userSub,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at,
       },

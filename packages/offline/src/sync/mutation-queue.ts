@@ -19,24 +19,53 @@ export function registerPayloadTransform(
   payloadTransforms[entityType] = transform;
 }
 
+/**
+ * Queue a mutation for the given user. Every mutation is scoped by
+ * `userSub` so a sign-out + sign-in as a different account never replays
+ * the previous user's writes.
+ */
 export async function enqueue(
-  mutation: Omit<PendingMutation, "id" | "retryCount" | "status" | "timestamp">,
-): Promise<void> {
-  await db.pendingMutations.add({
+  userSub: string,
+  mutation: Omit<
+    PendingMutation,
+    "id" | "userSub" | "retryCount" | "status" | "timestamp"
+  >,
+): Promise<number> {
+  return db.pendingMutations.add({
     ...mutation,
+    userSub,
     timestamp: Date.now(),
     retryCount: 0,
     status: "pending",
-  });
+  } as PendingMutation);
+}
+
+/**
+ * Return the pending-status mutations for the current user. Used by the
+ * sync manager to know what to replay against the API.
+ */
+export async function listPending(userSub: string): Promise<PendingMutation[]> {
+  return db.pendingMutations.where({ userSub, status: "pending" }).toArray();
+}
+
+/**
+ * Delete mutations that belong to any user other than `currentSub`.
+ * Called on login when the active user changes so stale writes from a
+ * previously signed-in account don't accidentally get flushed.
+ */
+export async function clearForOtherSubs(currentSub: string): Promise<number> {
+  return db.pendingMutations.where("userSub").notEqual(currentSub).delete();
 }
 
 export async function flush(
   client: AxiosInstance,
+  userSub?: string,
 ): Promise<{ success: number; failed: number }> {
-  const pending = await db.pendingMutations
-    .where("status")
-    .anyOf("pending", "failed")
-    .sortBy("timestamp");
+  const query = db.pendingMutations.where("status").anyOf("pending", "failed");
+  const pendingAll = await query.sortBy("timestamp");
+  const pending = userSub
+    ? pendingAll.filter((m) => m.userSub === userSub)
+    : pendingAll;
 
   let success = 0;
   let failed = 0;

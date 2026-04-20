@@ -5,14 +5,13 @@ export interface ActivityChanges {
 }
 
 export interface ActivityProps extends EntityProps {
-  actorId: string;
+  userSub: string;
   action: string;
   entityType: string;
   entityId: string;
   entityTitle: string;
   changes?: ActivityChanges;
   metadata?: Record<string, unknown>;
-  workspaceId: string;
 }
 
 export class Activity extends Entity<ActivityProps> {
@@ -20,8 +19,8 @@ export class Activity extends Entity<ActivityProps> {
     super(props, id);
   }
 
-  get actorId(): string {
-    return this.get("actorId");
+  get userSub(): string {
+    return this.get("userSub");
   }
   get action(): string {
     return this.get("action");
@@ -41,19 +40,15 @@ export class Activity extends Entity<ActivityProps> {
   get metadata(): Record<string, unknown> | undefined {
     return this.get("metadata");
   }
-  get workspaceId(): string {
-    return this.get("workspaceId");
-  }
 
   static create(
     props: Omit<ActivityProps, "id" | "createdAt" | "updatedAt">,
   ): Result<Activity> {
-    if (!props.actorId) return Err(new Error("Actor is required"));
+    if (!props.userSub) return Err(new Error("User is required"));
     if (!props.action) return Err(new Error("Action is required"));
     if (!props.entityType) return Err(new Error("Entity type is required"));
     if (!props.entityId) return Err(new Error("Entity ID is required"));
     if (!props.entityTitle) return Err(new Error("Entity title is required"));
-    if (!props.workspaceId) return Err(new Error("Workspace is required"));
     return Ok(new Activity(props as ActivityProps));
   }
 

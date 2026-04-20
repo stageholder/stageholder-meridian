@@ -14,14 +14,18 @@ export class FeedbackService {
   constructor(private readonly repository: FeedbackRepository) {}
 
   async create(
-    userId: string,
+    userSub: string,
     type: "general" | "bug" | "feature",
     message: string,
   ): Promise<Feedback> {
-    const result = Feedback.create({ userId, type, message });
+    const result = Feedback.create({ userSub, type, message });
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);
     return result.value;
+  }
+
+  async deleteAllForUser(userSub: string): Promise<number> {
+    return this.repository.deleteAllForUser(userSub);
   }
 
   async list(

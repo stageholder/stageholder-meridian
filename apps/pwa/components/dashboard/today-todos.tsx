@@ -5,7 +5,6 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { parseDateLocal } from "@/lib/date";
 import { useAllTodos, useUpdateTodo } from "@/lib/api/todos";
-import { useWorkspace } from "@/lib/workspace-context";
 import { useTodoStats } from "@/lib/hooks/use-todo-stats";
 import { BentoCard } from "./bento-card";
 import type { Todo } from "@repo/core/types";
@@ -24,7 +23,6 @@ export function TodayTodos({
   index?: number;
   className?: string;
 }) {
-  const { workspace } = useWorkspace();
   const { data: todos, isLoading } = useAllTodos();
   const { total, percentage } = useTodoStats();
   const updateTodo = useUpdateTodo();
@@ -51,7 +49,7 @@ export function TodayTodos({
   return (
     <BentoCard
       title="Today's Todos"
-      href={`/${workspace.shortId}/todos`}
+      href="/app/todos"
       index={index}
       className={className}
       action={
@@ -62,7 +60,7 @@ export function TodayTodos({
             </span>
           )}
           <Link
-            href={`/${workspace.shortId}/todos`}
+            href="/app/todos"
             className="text-xs text-primary hover:underline"
           >
             View all

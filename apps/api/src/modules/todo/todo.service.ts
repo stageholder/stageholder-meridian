@@ -4,6 +4,7 @@ import {
   BadRequestException,
   Logger,
 } from "@nestjs/common";
+import type { StageholderUser } from "@stageholder/auth";
 import { TodoRepository } from "./todo.repository";
 import { Todo, TodoStatus } from "./todo.entity";
 import {
@@ -14,8 +15,8 @@ import {
   UpdateSubtaskDto,
   ReorderSubtasksDto,
 } from "./todo.dto";
-import { WorkspaceMemberService } from "../workspace-member/workspace-member.service";
 import { LightService } from "../light/light.service";
+import { enforceLimit } from "../../common/helpers/entitlement";
 import {
   PaginatedResult,
   buildPaginationMeta,
@@ -29,31 +30,18 @@ export class TodoService {
   private readonly logger = new Logger(TodoService.name);
   constructor(
     private readonly repository: TodoRepository,
-    private readonly memberService: WorkspaceMemberService,
     private readonly lightService: LightService,
   ) {}
 
   async create(
-    workspaceId: string,
-    userId: string,
+    userSub: string,
     dto: CreateTodoDto,
+    user: StageholderUser,
   ): Promise<Todo> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
-    if (dto.assigneeId) {
-      const assigneeIsMember = await this.memberService.isMember(
-        workspaceId,
-        dto.assigneeId,
-      );
-      if (!assigneeIsMember)
-        throw new BadRequestException(
-          "Assignee is not a member of this workspace",
-        );
-    }
-    const order = await this.repository.countByList(dto.listId);
+    await enforceLimit(user, "max_active_todos", () =>
+      this.repository.countActiveForUser(userSub),
+    );
+    const order = await this.repository.countByList(userSub, dto.listId);
     const result = Todo.create({
       title: dto.title,
       description: dto.description,
@@ -62,15 +50,13 @@ export class TodoService {
       dueDate: dto.dueDate,
       doDate: dto.doDate,
       listId: dto.listId,
-      workspaceId,
-      assigneeId: dto.assigneeId,
-      creatorId: userId,
+      userSub,
       order,
     });
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);
     this.lightService
-      .awardTodoCreate(userId, workspaceId, result.value.id)
+      .awardTodoCreate(userSub, result.value.id)
       .catch((err) =>
         this.logger.warn(
           "Failed to award light for todo creation",
@@ -80,50 +66,25 @@ export class TodoService {
     return result.value;
   }
 
-  async findById(
-    id: string,
-    workspaceId: string,
-    userId: string,
-  ): Promise<Todo> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
-    const todo = await this.repository.findById(id);
-    if (!todo || todo.workspaceId !== workspaceId)
-      throw new NotFoundException("Todo not found");
+  async findById(userSub: string, id: string): Promise<Todo> {
+    const todo = await this.repository.findById(userSub, id);
+    if (!todo) throw new NotFoundException("Todo not found");
     return todo;
   }
 
-  async listByList(
-    listId: string,
-    workspaceId: string,
-    userId: string,
-  ): Promise<Todo[]> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
-    return this.repository.findByList(listId);
+  async listByList(userSub: string, listId: string): Promise<Todo[]> {
+    return this.repository.findByList(userSub, listId);
   }
 
-  async listByWorkspace(
-    workspaceId: string,
-    userId: string,
+  async listByUser(
+    userSub: string,
     page?: number,
     limit?: number,
   ): Promise<PaginatedResult<ReturnType<Todo["toObject"]>>> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
     const p = Math.max(page || DEFAULT_PAGE, 1);
     const l = Math.min(Math.max(limit || DEFAULT_LIMIT, 1), MAX_LIMIT);
-    const { docs, total } = await this.repository.findByWorkspacePaginated(
-      workspaceId,
+    const { docs, total } = await this.repository.findByUserPaginated(
+      userSub,
       p,
       l,
     );
@@ -133,23 +94,8 @@ export class TodoService {
     };
   }
 
-  async update(
-    id: string,
-    workspaceId: string,
-    userId: string,
-    dto: UpdateTodoDto,
-  ): Promise<Todo> {
-    const todo = await this.findById(id, workspaceId, userId);
-    if (dto.assigneeId) {
-      const assigneeIsMember = await this.memberService.isMember(
-        workspaceId,
-        dto.assigneeId,
-      );
-      if (!assigneeIsMember)
-        throw new BadRequestException(
-          "Assignee is not a member of this workspace",
-        );
-    }
+  async update(userSub: string, id: string, dto: UpdateTodoDto): Promise<Todo> {
+    const todo = await this.findById(userSub, id);
     if (dto.title !== undefined) todo.updateTitle(dto.title);
     if (dto.description !== undefined)
       todo.updateDescription(dto.description || undefined);
@@ -157,47 +103,35 @@ export class TodoService {
     if (dto.priority !== undefined) todo.updatePriority(dto.priority);
     if (dto.dueDate !== undefined) todo.updateDueDate(dto.dueDate || undefined);
     if (dto.doDate !== undefined) todo.updateDoDate(dto.doDate || undefined);
-    if (dto.assigneeId !== undefined)
-      todo.updateAssigneeId(dto.assigneeId || undefined);
     await this.repository.save(todo);
     if (dto.status === "done") {
       this.lightService
-        .awardTodoComplete(userId, workspaceId, id, todo.priority)
+        .awardTodoComplete(userSub, id, todo.priority)
         .catch((err) => this.logger.warn("Failed to award light", err.message));
     }
     return todo;
   }
 
   async updateStatus(
+    userSub: string,
     id: string,
-    workspaceId: string,
-    userId: string,
     status: TodoStatus,
   ): Promise<Todo> {
-    const todo = await this.findById(id, workspaceId, userId);
+    const todo = await this.findById(userSub, id);
     todo.updateStatus(status);
     await this.repository.save(todo);
     if (status === "done") {
       this.lightService
-        .awardTodoComplete(userId, workspaceId, id, todo.priority)
+        .awardTodoComplete(userSub, id, todo.priority)
         .catch((err) => this.logger.warn("Failed to award light", err.message));
     }
     return todo;
   }
 
-  async reorder(
-    workspaceId: string,
-    userId: string,
-    dto: ReorderTodosDto,
-  ): Promise<void> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
+  async reorder(userSub: string, dto: ReorderTodosDto): Promise<void> {
     for (const item of dto.items) {
-      const todo = await this.repository.findById(item.id);
-      if (todo && todo.workspaceId === workspaceId) {
+      const todo = await this.repository.findById(userSub, item.id);
+      if (todo) {
         todo.updateOrder(item.order);
         await this.repository.save(todo);
       }
@@ -205,36 +139,34 @@ export class TodoService {
   }
 
   async findUpdatedSince(
-    workspaceId: string,
-    userId: string,
+    userSub: string,
     since: string,
     includeSoftDeleted = false,
   ): Promise<ReturnType<Todo["toObject"]>[]> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
     const todos = await this.repository.findUpdatedSince(
-      workspaceId,
+      userSub,
       since,
       includeSoftDeleted,
     );
     return todos.map((t) => t.toObject());
   }
 
-  async delete(id: string, workspaceId: string, userId: string): Promise<void> {
-    await this.findById(id, workspaceId, userId);
-    await this.repository.delete(id);
+  async delete(userSub: string, id: string): Promise<void> {
+    await this.findById(userSub, id);
+    await this.repository.delete(userSub, id);
+  }
+
+  // Purge every todo for the user. Used by the Hub user.deleted cascade.
+  async deleteAllForUser(userSub: string): Promise<number> {
+    return this.repository.deleteAllForUser(userSub);
   }
 
   async addSubtask(
+    userSub: string,
     todoId: string,
-    workspaceId: string,
-    userId: string,
     dto: CreateSubtaskDto,
   ): Promise<Todo> {
-    const todo = await this.findById(todoId, workspaceId, userId);
+    const todo = await this.findById(userSub, todoId);
     const result = todo.addSubtask(dto.title, dto.priority);
     if (!result.ok) throw new BadRequestException(result.error.message);
     await this.repository.save(todo);
@@ -242,13 +174,12 @@ export class TodoService {
   }
 
   async updateSubtask(
+    userSub: string,
     todoId: string,
     subtaskId: string,
-    workspaceId: string,
-    userId: string,
     dto: UpdateSubtaskDto,
   ): Promise<Todo> {
-    const todo = await this.findById(todoId, workspaceId, userId);
+    const todo = await this.findById(userSub, todoId);
     const result = todo.updateSubtask(subtaskId, dto);
     if (!result.ok) throw new NotFoundException("Subtask not found");
     await this.repository.save(todo);
@@ -256,12 +187,11 @@ export class TodoService {
   }
 
   async removeSubtask(
+    userSub: string,
     todoId: string,
     subtaskId: string,
-    workspaceId: string,
-    userId: string,
   ): Promise<Todo> {
-    const todo = await this.findById(todoId, workspaceId, userId);
+    const todo = await this.findById(userSub, todoId);
     const result = todo.removeSubtask(subtaskId);
     if (!result.ok) throw new NotFoundException("Subtask not found");
     await this.repository.save(todo);
@@ -269,12 +199,11 @@ export class TodoService {
   }
 
   async reorderSubtasks(
+    userSub: string,
     todoId: string,
-    workspaceId: string,
-    userId: string,
     dto: ReorderSubtasksDto,
   ): Promise<Todo> {
-    const todo = await this.findById(todoId, workspaceId, userId);
+    const todo = await this.findById(userSub, todoId);
     todo.reorderSubtasks(dto.items);
     await this.repository.save(todo);
     return todo;

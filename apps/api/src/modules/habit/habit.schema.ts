@@ -25,11 +25,9 @@ export class HabitModel {
   @Prop({ type: String }) unit: string;
   @Prop({ type: String }) color: string;
   @Prop({ type: String }) icon: string;
-  @Prop({ type: String, required: true, index: true }) workspace_id: string;
-  @Prop({ type: String, required: true }) creator_id: string;
+  @Prop({ type: String, required: true, index: true }) userSub: string;
   @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 
 export const HabitSchema = SchemaFactory.createForClass(HabitModel);
-HabitSchema.index({ workspace_id: 1, created_at: -1 });
-HabitSchema.index({ workspace_id: 1, deleted_at: 1 });
+HabitSchema.index({ userSub: 1, created_at: -1 });

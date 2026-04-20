@@ -11,7 +11,6 @@ export const CreateTodoDto = z.object({
   dueDate: z.string().optional(),
   doDate: z.string().optional(),
   listId: z.string().min(1, "List is required"),
-  assigneeId: z.string().optional(),
 });
 export type CreateTodoDto = z.infer<typeof CreateTodoDto>;
 
@@ -22,7 +21,6 @@ export const UpdateTodoDto = z.object({
   priority: z.enum(["none", "low", "medium", "high", "urgent"]).optional(),
   dueDate: z.string().nullable().optional(),
   doDate: z.string().nullable().optional(),
-  assigneeId: z.string().nullable().optional(),
 });
 export type UpdateTodoDto = z.infer<typeof UpdateTodoDto>;
 

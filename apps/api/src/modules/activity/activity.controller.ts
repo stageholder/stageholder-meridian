@@ -1,23 +1,21 @@
-import { Controller, Get, Param, Query } from "@nestjs/common";
+import { Controller, Get, Query, Req } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { ActivityService } from "./activity.service";
-import { CurrentUserId } from "../../common/decorators/current-user.decorator";
+import { StageholderRequest } from "../../common/types";
 
 @ApiTags("Activity")
-@Controller("workspaces/:workspaceId/activities")
+@Controller("activities")
 export class ActivityController {
   constructor(private readonly service: ActivityService) {}
 
   @Get()
   async list(
-    @Param("workspaceId") workspaceId: string,
-    @CurrentUserId() userId: string,
+    @Req() req: StageholderRequest,
     @Query("page") page?: string,
     @Query("limit") limit?: string,
   ) {
-    return this.service.listByWorkspace(
-      workspaceId,
-      userId,
+    return this.service.listByUser(
+      req.user.sub,
       page ? parseInt(page, 10) : undefined,
       limit ? parseInt(limit, 10) : undefined,
     );

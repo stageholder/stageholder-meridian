@@ -4,7 +4,6 @@ import {
   useQuery,
 } from "@tanstack/react-query";
 import apiClient from "@/lib/api-client";
-import { useWorkspace } from "@/lib/workspace-context";
 import type { Journal, JournalStats } from "@repo/core/types";
 import {
   useOfflineQuerySingle,
@@ -13,6 +12,10 @@ import {
   useOfflineDeleteMutation,
 } from "@repo/offline/hooks";
 import { db } from "@repo/offline/db";
+import {
+  getCurrentUserSub,
+  tryGetCurrentUserSub,
+} from "@/lib/current-user-sub";
 import { lightKeys } from "./light";
 import { todayLocal } from "@/lib/date";
 import { useCallback } from "react";
@@ -29,20 +32,16 @@ interface PaginatedResponse {
 }
 
 export const journalKeys = {
-  all: (workspaceId: string) => ["journals", workspaceId] as const,
-  stats: (workspaceId: string) => ["journals", workspaceId, "stats"] as const,
+  all: ["journals"] as const,
+  stats: ["journals", "stats"] as const,
 };
 
 export function useJournalStats() {
-  const { workspace } = useWorkspace();
   return useQuery<JournalStats>({
-    queryKey: journalKeys.stats(workspace.id),
+    queryKey: journalKeys.stats,
     queryFn: async () => {
       const today = todayLocal();
-      const res = await apiClient.get(
-        `/workspaces/${workspace.id}/journals/stats`,
-        { params: { today } },
-      );
+      const res = await apiClient.get(`/journals/stats`, { params: { today } });
       return res.data;
     },
     staleTime: 5 * 60 * 1000,
@@ -54,8 +53,6 @@ export function useJournals(
   params?: { startDate?: string; endDate?: string },
   options?: { enabled?: boolean },
 ) {
-  const { workspace } = useWorkspace();
-
   const localQueryFn = useCallback(() => {
     if (params?.startDate && params?.endDate) {
       return db.journals
@@ -63,20 +60,18 @@ export function useJournals(
         .between(params.startDate, params.endDate, true, true)
         .toArray();
     }
-    return db.journals.where("workspaceId").equals(workspace.id).toArray();
-  }, [workspace.id, params?.startDate, params?.endDate]);
+    return db.journals.toArray();
+  }, [params?.startDate, params?.endDate]);
 
   const dek = useEncryptionStore((s) => s.dek);
   const isSetup = useEncryptionStore((s) => s.isSetup);
   const isLocked = isSetup && !dek;
 
   return useOfflineQueryFiltered<Journal>(
-    ["journals", workspace.id, params],
+    ["journals", params],
     localQueryFn,
     async () => {
-      const res = await apiClient.get(`/workspaces/${workspace.id}/journals`, {
-        params,
-      });
+      const res = await apiClient.get(`/journals`, { params });
       const journals: Journal[] = res.data?.data ?? res.data;
       if (dek) return decryptJournalList(journals, dek);
       return journals;
@@ -87,13 +82,12 @@ export function useJournals(
 }
 
 export function useJournalsPaginated(limit = 20) {
-  const { workspace } = useWorkspace();
   const dek = useEncryptionStore((s) => s.dek);
 
   return useInfiniteQuery<PaginatedResponse>({
-    queryKey: ["journals", workspace.id, "paginated"],
+    queryKey: ["journals", "paginated"],
     queryFn: async ({ pageParam }) => {
-      const res = await apiClient.get(`/workspaces/${workspace.id}/journals`, {
+      const res = await apiClient.get(`/journals`, {
         params: { page: pageParam, limit },
       });
       const page = res.data as PaginatedResponse;
@@ -113,19 +107,16 @@ export function useJournalsPaginated(limit = 20) {
 }
 
 export function useJournal(id: string) {
-  const { workspace } = useWorkspace();
   const dek = useEncryptionStore((s) => s.dek);
   const isSetup = useEncryptionStore((s) => s.isSetup);
   const isLocked = isSetup && !dek;
 
   return useOfflineQuerySingle<Journal>(
-    ["journal", workspace.id, id],
+    ["journal", id],
     db.journals,
     id,
     async () => {
-      const res = await apiClient.get(
-        `/workspaces/${workspace.id}/journals/${id}`,
-      );
+      const res = await apiClient.get(`/journals/${id}`);
       const journal: Journal = res.data;
       if (dek) return decryptJournalResponse(journal, dek);
       return journal;
@@ -136,7 +127,6 @@ export function useJournal(id: string) {
 
 export function useCreateJournal() {
   const queryClient = useQueryClient();
-  const { workspace } = useWorkspace();
   const dek = useEncryptionStore((s) => s.dek);
 
   return useOfflineMutation<
@@ -151,10 +141,7 @@ export function useCreateJournal() {
   >({
     mutationFn: async (data) => {
       const payload = dek ? await encryptJournalPayload(data, dek) : data;
-      const res = await apiClient.post(
-        `/workspaces/${workspace.id}/journals`,
-        payload,
-      );
+      const res = await apiClient.post(`/journals`, payload);
       const journal: Journal = res.data;
       // Decrypt response before it's stored in Dexie
       if (dek) return decryptJournalResponse(journal, dek);
@@ -163,27 +150,26 @@ export function useCreateJournal() {
     table: db.journals,
     entityType: "journals",
     operation: "create",
-    buildPath: () => `/workspaces/${workspace.id}/journals`,
+    buildPath: () => `/journals`,
+    getUserSub: getCurrentUserSub,
     invalidateKeys: [
-      ["journals", workspace.id],
+      ["journals"],
       [...lightKeys.me],
       [...lightKeys.stats],
-      ["calendar", workspace.id],
-      [...journalKeys.stats(workspace.id)],
+      ["calendar"],
+      [...journalKeys.stats],
     ],
     onMutate: async (newData) => {
-      await queryClient.cancelQueries({
-        queryKey: ["journals", workspace.id],
-      });
+      await queryClient.cancelQueries({ queryKey: ["journals"] });
 
       const previousQueries = queryClient.getQueriesData<Journal[]>({
-        queryKey: ["journals", workspace.id],
+        queryKey: ["journals"],
         exact: false,
       });
 
       const optimisticJournal: Journal = {
         id: `temp-${Date.now()}`,
-        workspaceId: workspace.id,
+        userSub: tryGetCurrentUserSub() ?? "",
         authorId: "",
         title: newData.title,
         content: newData.content,
@@ -217,21 +203,16 @@ export function useCreateJournal() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any,
     onSettled: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ["journals", workspace.id],
-      });
+      void queryClient.invalidateQueries({ queryKey: ["journals"] });
       void queryClient.invalidateQueries({ queryKey: lightKeys.me });
       void queryClient.invalidateQueries({ queryKey: lightKeys.stats });
-      void queryClient.invalidateQueries({
-        queryKey: ["calendar", workspace.id],
-      });
+      void queryClient.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
 }
 
 export function useUpdateJournal() {
   const queryClient = useQueryClient();
-  const { workspace } = useWorkspace();
   const dek = useEncryptionStore((s) => s.dek);
 
   return useOfflineMutation<
@@ -258,10 +239,7 @@ export function useUpdateJournal() {
             dek,
           )
         : data;
-      const res = await apiClient.patch(
-        `/workspaces/${workspace.id}/journals/${id}`,
-        payload,
-      );
+      const res = await apiClient.patch(`/journals/${id}`, payload);
       const journal: Journal = res.data;
       // Decrypt response before it's stored in Dexie
       if (dek) return decryptJournalResponse(journal, dek);
@@ -270,30 +248,19 @@ export function useUpdateJournal() {
     table: db.journals,
     entityType: "journals",
     operation: "update",
-    buildPath: ({ id }) => `/workspaces/${workspace.id}/journals/${id}`,
-    invalidateKeys: [
-      ["journals", workspace.id],
-      ["calendar", workspace.id],
-      [...journalKeys.stats(workspace.id)],
-    ],
+    buildPath: ({ id }) => `/journals/${id}`,
+    getUserSub: getCurrentUserSub,
+    invalidateKeys: [["journals"], ["calendar"], [...journalKeys.stats]],
     onMutate: async ({ id, data }) => {
-      await queryClient.cancelQueries({
-        queryKey: ["journals", workspace.id],
-      });
-      await queryClient.cancelQueries({
-        queryKey: ["journal", workspace.id, id],
-      });
+      await queryClient.cancelQueries({ queryKey: ["journals"] });
+      await queryClient.cancelQueries({ queryKey: ["journal", id] });
 
       const previousQueries = queryClient.getQueriesData<Journal[]>({
-        queryKey: ["journals", workspace.id],
+        queryKey: ["journals"],
         exact: false,
       });
 
-      const previousDetail = queryClient.getQueryData<Journal>([
-        "journal",
-        workspace.id,
-        id,
-      ]);
+      const previousDetail = queryClient.getQueryData<Journal>(["journal", id]);
 
       for (const [queryKey, old] of previousQueries) {
         if (Array.isArray(old)) {
@@ -308,7 +275,7 @@ export function useUpdateJournal() {
         }
       }
 
-      queryClient.setQueryData<Journal>(["journal", workspace.id, id], (old) =>
+      queryClient.setQueryData<Journal>(["journal", id], (old) =>
         old ? { ...old, ...data, updatedAt: new Date().toISOString() } : old,
       );
 
@@ -324,7 +291,7 @@ export function useUpdateJournal() {
       }
       if (context?.previousDetail) {
         queryClient.setQueryData(
-          ["journal", workspace.id, variables.id],
+          ["journal", variables.id],
           context.previousDetail,
         );
       }
@@ -332,15 +299,11 @@ export function useUpdateJournal() {
     }) as any,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onSettled: ((_data: any, _err: any, variables: any) => {
+      void queryClient.invalidateQueries({ queryKey: ["journals"] });
       void queryClient.invalidateQueries({
-        queryKey: ["journals", workspace.id],
+        queryKey: ["journal", variables.id],
       });
-      void queryClient.invalidateQueries({
-        queryKey: ["journal", workspace.id, variables.id],
-      });
-      void queryClient.invalidateQueries({
-        queryKey: ["calendar", workspace.id],
-      });
+      void queryClient.invalidateQueries({ queryKey: ["calendar"] });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any,
   });
@@ -348,29 +311,23 @@ export function useUpdateJournal() {
 
 export function useDeleteJournal() {
   const queryClient = useQueryClient();
-  const { workspace } = useWorkspace();
 
   return useOfflineDeleteMutation<string>({
     mutationFn: async (id) => {
-      await apiClient.delete(`/workspaces/${workspace.id}/journals/${id}`);
+      await apiClient.delete(`/journals/${id}`);
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     table: db.journals as any,
     entityType: "journals",
-    buildPath: (id) => `/workspaces/${workspace.id}/journals/${id}`,
+    buildPath: (id) => `/journals/${id}`,
     getEntityId: (id) => id,
-    invalidateKeys: [
-      ["journals", workspace.id],
-      ["calendar", workspace.id],
-      [...journalKeys.stats(workspace.id)],
-    ],
+    getUserSub: getCurrentUserSub,
+    invalidateKeys: [["journals"], ["calendar"], [...journalKeys.stats]],
     onMutate: async (id) => {
-      await queryClient.cancelQueries({
-        queryKey: ["journals", workspace.id],
-      });
+      await queryClient.cancelQueries({ queryKey: ["journals"] });
 
       const previousQueries = queryClient.getQueriesData<Journal[]>({
-        queryKey: ["journals", workspace.id],
+        queryKey: ["journals"],
         exact: false,
       });
 
@@ -396,12 +353,8 @@ export function useDeleteJournal() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any,
     onSettled: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ["journals", workspace.id],
-      });
-      void queryClient.invalidateQueries({
-        queryKey: ["calendar", workspace.id],
-      });
+      void queryClient.invalidateQueries({ queryKey: ["journals"] });
+      void queryClient.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
 }

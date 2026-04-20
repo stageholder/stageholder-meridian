@@ -21,9 +21,7 @@ export interface TodoProps extends EntityProps {
   dueDate?: string;
   doDate?: string;
   listId: string;
-  workspaceId: string;
-  assigneeId?: string;
-  creatorId: string;
+  userSub: string;
   order: number;
   subtasks: SubtaskData[];
 }
@@ -54,14 +52,8 @@ export class Todo extends Entity<TodoProps> {
   get listId(): string {
     return this.get("listId");
   }
-  get workspaceId(): string {
-    return this.get("workspaceId");
-  }
-  get assigneeId(): string | undefined {
-    return this.get("assigneeId");
-  }
-  get creatorId(): string {
-    return this.get("creatorId");
+  get userSub(): string {
+    return this.get("userSub");
   }
   get order(): number {
     return this.get("order");
@@ -87,9 +79,6 @@ export class Todo extends Entity<TodoProps> {
   }
   updateDoDate(doDate: string | undefined): void {
     this.set("doDate", doDate);
-  }
-  updateAssigneeId(assigneeId: string | undefined): void {
-    this.set("assigneeId", assigneeId);
   }
   updateOrder(order: number): void {
     this.set("order", order);
@@ -159,8 +148,7 @@ export class Todo extends Entity<TodoProps> {
     if (!props.title || props.title.trim().length === 0)
       return Err(new Error("Todo title is required"));
     if (!props.listId) return Err(new Error("List is required"));
-    if (!props.workspaceId) return Err(new Error("Workspace is required"));
-    if (!props.creatorId) return Err(new Error("Creator is required"));
+    if (!props.userSub) return Err(new Error("User is required"));
     return Ok(
       new Todo({
         ...props,

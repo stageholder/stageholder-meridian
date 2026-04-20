@@ -17,47 +17,44 @@ export class NotificationRepository {
       { _id: data.id },
       {
         $set: {
-          recipient_id: data.recipientId,
+          userSub: data.userSub,
           type: data.type,
           title: data.title,
           message: data.message,
           entity_type: data.entityType,
           entity_id: data.entityId,
-          actor_id: data.actorId,
           read: data.read,
           read_at: data.readAt,
-          workspace_id: data.workspaceId,
         },
       },
       { upsert: true },
     );
   }
 
-  async findById(id: string): Promise<Notification | null> {
+  async findById(userSub: string, id: string): Promise<Notification | null> {
     const doc = await this.model
-      .findById(id)
-      .where({ deleted_at: null })
+      .findOne({ _id: id, userSub, deleted_at: null })
       .lean();
     return doc ? this.toDomain(doc) : null;
   }
 
-  async findByRecipient(
-    recipientId: string,
+  async findByUser(
+    userSub: string,
     unreadOnly: boolean,
   ): Promise<Notification[]> {
-    const filter: any = { recipient_id: recipientId, deleted_at: null };
+    const filter: any = { userSub, deleted_at: null };
     if (unreadOnly) filter.read = false;
     const docs = await this.model.find(filter).sort({ created_at: -1 }).lean();
     return docs.map((doc) => this.toDomain(doc));
   }
 
-  async findByRecipientPaginated(
-    recipientId: string,
+  async findByUserPaginated(
+    userSub: string,
     unreadOnly: boolean,
     page: number,
     limit: number,
   ): Promise<{ docs: Notification[]; total: number }> {
-    const filter: any = { recipient_id: recipientId, deleted_at: null };
+    const filter: any = { userSub, deleted_at: null };
     if (unreadOnly) filter.read = false;
     const total = await this.model.countDocuments(filter);
     const docs = await this.model
@@ -69,35 +66,42 @@ export class NotificationRepository {
     return { docs: docs.map((doc) => this.toDomain(doc)), total };
   }
 
-  async countUnread(recipientId: string): Promise<number> {
+  async countUnread(userSub: string): Promise<number> {
     return this.model.countDocuments({
-      recipient_id: recipientId,
+      userSub,
       read: false,
       deleted_at: null,
     });
   }
 
-  async markAllRead(recipientId: string): Promise<void> {
+  async markAllRead(userSub: string): Promise<void> {
     await this.model.updateMany(
-      { recipient_id: recipientId, read: false, deleted_at: null },
+      { userSub, read: false, deleted_at: null },
       { $set: { read: true, read_at: new Date() } },
     );
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(userSub: string, id: string): Promise<void> {
     await this.model.updateOne(
-      { _id: id },
+      { _id: id, userSub },
       { $set: { deleted_at: new Date() } },
     );
   }
 
+  // Hard-delete every notification for the given userSub. Used by the Hub
+  // user.deleted cascade.
+  async deleteAllForUser(userSub: string): Promise<number> {
+    const { deletedCount } = await this.model.deleteMany({ userSub });
+    return deletedCount ?? 0;
+  }
+
   async findUpdatedSince(
-    recipientId: string,
+    userSub: string,
     since: string,
     includeSoftDeleted = false,
   ): Promise<Notification[]> {
     const filter: any = {
-      recipient_id: recipientId,
+      userSub,
       updated_at: { $gt: new Date(since) },
     };
     if (!includeSoftDeleted) filter.deleted_at = null;
@@ -108,16 +112,14 @@ export class NotificationRepository {
   private toDomain(doc: any): Notification {
     return Notification.reconstitute(
       {
-        recipientId: doc.recipient_id,
+        userSub: doc.userSub,
         type: doc.type,
         title: doc.title,
         message: doc.message,
         entityType: doc.entity_type,
         entityId: doc.entity_id,
-        actorId: doc.actor_id,
         read: doc.read,
         readAt: doc.read_at,
-        workspaceId: doc.workspace_id,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at,
       },

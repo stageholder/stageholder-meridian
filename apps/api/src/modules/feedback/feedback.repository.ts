@@ -15,10 +15,19 @@ export class FeedbackRepository {
     await this.model.updateOne(
       { _id: data.id },
       {
-        $set: { user_id: data.userId, type: data.type, message: data.message },
+        $set: {
+          userSub: data.userSub,
+          type: data.type,
+          message: data.message,
+        },
       },
       { upsert: true },
     );
+  }
+
+  async deleteAllForUser(userSub: string): Promise<number> {
+    const { deletedCount } = await this.model.deleteMany({ userSub });
+    return deletedCount ?? 0;
   }
 
   async findAllPaginated(
@@ -39,7 +48,7 @@ export class FeedbackRepository {
   private toDomain(doc: any): Feedback {
     return Feedback.reconstitute(
       {
-        userId: doc.user_id,
+        userSub: doc.userSub,
         type: doc.type,
         message: doc.message,
         createdAt: doc.created_at,

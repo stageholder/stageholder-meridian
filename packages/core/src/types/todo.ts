@@ -1,6 +1,6 @@
 export interface TodoList {
   id: string;
-  workspaceId: string;
+  userSub: string;
   name: string;
   color?: string;
   icon?: string;
@@ -23,7 +23,7 @@ export interface Subtask {
 
 export interface Todo {
   id: string;
-  workspaceId: string;
+  userSub: string;
   listId: string;
   title: string;
   description?: string;
@@ -31,7 +31,6 @@ export interface Todo {
   priority: "none" | "low" | "medium" | "high" | "urgent";
   dueDate?: string;
   doDate?: string;
-  assigneeId?: string;
   creatorId: string;
   order: number;
   subtasks?: Subtask[];

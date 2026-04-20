@@ -1,7 +1,7 @@
 import { Entity, EntityProps, Ok, Err, Result } from "../../shared";
 
 export interface FeedbackProps extends EntityProps {
-  userId: string;
+  userSub: string;
   type: "general" | "bug" | "feature";
   message: string;
 }
@@ -11,8 +11,8 @@ export class Feedback extends Entity<FeedbackProps> {
     super(props, id);
   }
 
-  get userId(): string {
-    return this.get("userId");
+  get userSub(): string {
+    return this.get("userSub");
   }
   get type(): string {
     return this.get("type");
@@ -24,7 +24,7 @@ export class Feedback extends Entity<FeedbackProps> {
   static create(
     props: Omit<FeedbackProps, "id" | "createdAt" | "updatedAt">,
   ): Result<Feedback> {
-    if (!props.userId) return Err(new Error("User is required"));
+    if (!props.userSub) return Err(new Error("User is required"));
     if (!props.message?.trim()) return Err(new Error("Message is required"));
     if (!["general", "bug", "feature"].includes(props.type))
       return Err(new Error("Invalid feedback type"));

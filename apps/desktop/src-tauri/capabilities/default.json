@@ -10,6 +10,8 @@
     "updater:default",
     "oauth:allow-start",
     "oauth:allow-cancel",
+    "oauth:default",
+    "store:default",
     "process:default",
     "log:default"
   ]

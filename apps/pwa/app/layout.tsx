@@ -6,6 +6,9 @@ import { QueryProvider } from "@/lib/query-provider";
 import { Toaster } from "sonner";
 import { ServiceWorkerRegister } from "@/components/shared/sw-register";
 import { LogProvider } from "@/components/shared/log-provider";
+import { EncryptionStoreInitializer } from "@/components/providers/encryption-store-initializer";
+import { DesktopAuthBoot } from "@/components/providers/desktop-auth-boot";
+import { PaywallListener } from "@/components/paywall-listener";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -62,7 +65,12 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <QueryProvider>
-            <LogProvider>{children}</LogProvider>
+            <PaywallListener />
+            <DesktopAuthBoot>
+              <EncryptionStoreInitializer>
+                <LogProvider>{children}</LogProvider>
+              </EncryptionStoreInitializer>
+            </DesktopAuthBoot>
             <Toaster />
             <ServiceWorkerRegister />
           </QueryProvider>

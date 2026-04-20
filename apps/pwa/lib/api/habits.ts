@@ -1,5 +1,4 @@
 import apiClient from "@/lib/api-client";
-import { useWorkspace } from "@/lib/workspace-context";
 import type { Habit, HabitEntry } from "@repo/core/types";
 import {
   useOfflineQuery,
@@ -9,33 +8,24 @@ import {
   useOfflineDeleteMutation,
 } from "@repo/offline/hooks";
 import { db } from "@repo/offline/db";
+import { getCurrentUserSub } from "@/lib/current-user-sub";
 import { lightKeys } from "./light";
 import { useCallback } from "react";
 
 export function useHabits() {
-  const { workspace } = useWorkspace();
-
-  return useOfflineQuery<Habit>(
-    ["habits", workspace.id],
-    db.habits,
-    async () => {
-      const res = await apiClient.get(`/workspaces/${workspace.id}/habits`);
-      return res.data?.data ?? res.data;
-    },
-  );
+  return useOfflineQuery<Habit>(["habits"], db.habits, async () => {
+    const res = await apiClient.get(`/habits`);
+    return res.data?.data ?? res.data;
+  });
 }
 
 export function useHabit(id: string) {
-  const { workspace } = useWorkspace();
-
   return useOfflineQuerySingle<Habit>(
-    ["habit", workspace.id, id],
+    ["habit", id],
     db.habits,
     id,
     async () => {
-      const res = await apiClient.get(
-        `/workspaces/${workspace.id}/habits/${id}`,
-      );
+      const res = await apiClient.get(`/habits/${id}`);
       return res.data;
     },
     { enabled: !!id },
@@ -46,21 +36,16 @@ export function useHabitEntries(
   habitId: string,
   params?: { startDate?: string; endDate?: string },
 ) {
-  const { workspace } = useWorkspace();
-
   const localQueryFn = useCallback(
     () => db.habitEntries.where("habitId").equals(habitId).toArray(),
     [habitId],
   );
 
   return useOfflineQueryFiltered<HabitEntry>(
-    ["habitEntries", workspace.id, habitId, params],
+    ["habitEntries", habitId, params],
     localQueryFn,
     async () => {
-      const res = await apiClient.get(
-        `/workspaces/${workspace.id}/habits/${habitId}/entries`,
-        { params },
-      );
+      const res = await apiClient.get(`/habits/${habitId}/entries`, { params });
       return res.data;
     },
     db.habitEntries,
@@ -69,8 +54,6 @@ export function useHabitEntries(
 }
 
 export function useCreateHabit() {
-  const { workspace } = useWorkspace();
-
   return useOfflineMutation<
     Habit,
     {
@@ -85,23 +68,19 @@ export function useCreateHabit() {
     }
   >({
     mutationFn: async (data) => {
-      const res = await apiClient.post(
-        `/workspaces/${workspace.id}/habits`,
-        data,
-      );
+      const res = await apiClient.post(`/habits`, data);
       return res.data as Habit;
     },
     table: db.habits,
     entityType: "habits",
     operation: "create",
-    buildPath: () => `/workspaces/${workspace.id}/habits`,
-    invalidateKeys: [["habits", workspace.id]],
+    buildPath: () => `/habits`,
+    getUserSub: getCurrentUserSub,
+    invalidateKeys: [["habits"]],
   });
 }
 
 export function useUpdateHabit() {
-  const { workspace } = useWorkspace();
-
   return useOfflineMutation<
     Habit,
     {
@@ -119,39 +98,34 @@ export function useUpdateHabit() {
     }
   >({
     mutationFn: async ({ id, data }) => {
-      const res = await apiClient.patch(
-        `/workspaces/${workspace.id}/habits/${id}`,
-        data,
-      );
+      const res = await apiClient.patch(`/habits/${id}`, data);
       return res.data as Habit;
     },
     table: db.habits,
     entityType: "habits",
     operation: "update",
-    buildPath: ({ id }) => `/workspaces/${workspace.id}/habits/${id}`,
-    invalidateKeys: [["habits", workspace.id]],
+    buildPath: ({ id }) => `/habits/${id}`,
+    getUserSub: getCurrentUserSub,
+    invalidateKeys: [["habits"]],
   });
 }
 
 export function useDeleteHabit() {
-  const { workspace } = useWorkspace();
-
   return useOfflineDeleteMutation<string>({
     mutationFn: async (id) => {
-      await apiClient.delete(`/workspaces/${workspace.id}/habits/${id}`);
+      await apiClient.delete(`/habits/${id}`);
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     table: db.habits as any,
     entityType: "habits",
-    buildPath: (id) => `/workspaces/${workspace.id}/habits/${id}`,
+    buildPath: (id) => `/habits/${id}`,
     getEntityId: (id) => id,
-    invalidateKeys: [["habits", workspace.id]],
+    getUserSub: getCurrentUserSub,
+    invalidateKeys: [["habits"]],
   });
 }
 
 export function useUpdateHabitEntry() {
-  const { workspace } = useWorkspace();
-
   return useOfflineMutation<
     HabitEntry,
     {
@@ -162,7 +136,7 @@ export function useUpdateHabitEntry() {
   >({
     mutationFn: async ({ habitId, entryId, data }) => {
       const res = await apiClient.patch(
-        `/workspaces/${workspace.id}/habits/${habitId}/entries/${entryId}`,
+        `/habits/${habitId}/entries/${entryId}`,
         data,
       );
       return res.data as HabitEntry;
@@ -171,10 +145,11 @@ export function useUpdateHabitEntry() {
     entityType: "habitEntries",
     operation: "update",
     buildPath: ({ habitId, entryId }) =>
-      `/workspaces/${workspace.id}/habits/${habitId}/entries/${entryId}`,
+      `/habits/${habitId}/entries/${entryId}`,
+    getUserSub: getCurrentUserSub,
     invalidateKeys: [
-      ["habitEntries", workspace.id],
-      ["habits", workspace.id],
+      ["habitEntries"],
+      ["habits"],
       ["calendar"],
       [...lightKeys.me],
       [...lightKeys.stats],
@@ -183,8 +158,6 @@ export function useUpdateHabitEntry() {
 }
 
 export function useCreateHabitEntry() {
-  const { workspace } = useWorkspace();
-
   return useOfflineMutation<
     HabitEntry,
     {
@@ -193,20 +166,17 @@ export function useCreateHabitEntry() {
     }
   >({
     mutationFn: async ({ habitId, data }) => {
-      const res = await apiClient.post(
-        `/workspaces/${workspace.id}/habits/${habitId}/entries`,
-        data,
-      );
+      const res = await apiClient.post(`/habits/${habitId}/entries`, data);
       return res.data as HabitEntry;
     },
     table: db.habitEntries,
     entityType: "habitEntries",
     operation: "create",
-    buildPath: ({ habitId }) =>
-      `/workspaces/${workspace.id}/habits/${habitId}/entries`,
+    buildPath: ({ habitId }) => `/habits/${habitId}/entries`,
+    getUserSub: getCurrentUserSub,
     invalidateKeys: [
-      ["habitEntries", workspace.id],
-      ["habits", workspace.id],
+      ["habitEntries"],
+      ["habits"],
       ["calendar"],
       [...lightKeys.me],
       [...lightKeys.stats],
@@ -215,8 +185,6 @@ export function useCreateHabitEntry() {
 }
 
 export function useSkipHabitEntry() {
-  const { workspace } = useWorkspace();
-
   return useOfflineMutation<
     HabitEntry,
     {
@@ -225,25 +193,22 @@ export function useSkipHabitEntry() {
     }
   >({
     mutationFn: async ({ habitId, data }) => {
-      const res = await apiClient.post(
-        `/workspaces/${workspace.id}/habits/${habitId}/entries`,
-        {
-          date: data.date,
-          value: 0,
-          type: "skip",
-          skipReason: data.skipReason,
-        },
-      );
+      const res = await apiClient.post(`/habits/${habitId}/entries`, {
+        date: data.date,
+        value: 0,
+        type: "skip",
+        skipReason: data.skipReason,
+      });
       return res.data as HabitEntry;
     },
     table: db.habitEntries,
     entityType: "habitEntries",
     operation: "create",
-    buildPath: ({ habitId }) =>
-      `/workspaces/${workspace.id}/habits/${habitId}/entries`,
+    buildPath: ({ habitId }) => `/habits/${habitId}/entries`,
+    getUserSub: getCurrentUserSub,
     invalidateKeys: [
-      ["habitEntries", workspace.id],
-      ["habits", workspace.id],
+      ["habitEntries"],
+      ["habits"],
       ["calendar"],
       [...lightKeys.me],
       [...lightKeys.stats],

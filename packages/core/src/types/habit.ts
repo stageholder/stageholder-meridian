@@ -1,6 +1,6 @@
 export interface Habit {
   id: string;
-  workspaceId: string;
+  userSub: string;
   name: string;
   description?: string;
   frequency: "daily" | "weekly" | "custom";
@@ -17,7 +17,7 @@ export interface Habit {
 export interface HabitEntry {
   id: string;
   habitId: string;
-  workspaceId: string;
+  userSub: string;
   date: string;
   value: number;
   type?: "completion" | "skip";

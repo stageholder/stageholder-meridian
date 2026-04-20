@@ -3,7 +3,7 @@ import { Entity, EntityProps, Ok, Err, Result } from "../../shared";
 export interface TagProps extends EntityProps {
   name: string;
   color: string;
-  workspaceId: string;
+  userSub: string;
 }
 
 export class Tag extends Entity<TagProps> {
@@ -17,8 +17,8 @@ export class Tag extends Entity<TagProps> {
   get color(): string {
     return this.get("color");
   }
-  get workspaceId(): string {
-    return this.get("workspaceId");
+  get userSub(): string {
+    return this.get("userSub");
   }
 
   updateName(name: string): void {
@@ -33,7 +33,7 @@ export class Tag extends Entity<TagProps> {
   ): Result<Tag> {
     if (!props.name || props.name.trim().length === 0)
       return Err(new Error("Tag name is required"));
-    if (!props.workspaceId) return Err(new Error("Workspace is required"));
+    if (!props.userSub) return Err(new Error("User is required"));
     return Ok(
       new Tag({ ...props, color: props.color || "#6B7280" } as TagProps),
     );

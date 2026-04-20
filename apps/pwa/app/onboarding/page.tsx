@@ -2,57 +2,45 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import apiClient from "@/lib/api-client";
-import { useAuthStore } from "@/stores/auth-store";
+import { useUser } from "@/hooks/use-user";
 import { cn } from "@/lib/utils";
 import { WelcomeStep } from "@/components/onboarding/welcome-step";
 import { ProfileStep } from "@/components/onboarding/profile-step";
 import { GoalsStep } from "@/components/onboarding/goals-step";
 import { TourStep } from "@/components/onboarding/tour-step";
-import { FirstActionStep } from "@/components/onboarding/first-action-step";
 import { CompleteStep } from "@/components/onboarding/complete-step";
-import type { AuthUser } from "@repo/core/types";
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 5;
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const user = useAuthStore((s) => s.user);
-  const setUser = useAuthStore((s) => s.setUser);
+  const { data: user, isLoading } = useUser();
   const [step, setStep] = useState(0);
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
 
   useEffect(() => {
+    if (isLoading) return;
     if (!user) {
-      router.replace("/login");
-    } else if (user.onboardingCompleted) {
-      router.replace(`/${user.personalWorkspaceShortId}/dashboard`);
+      router.replace("/auth/login");
     }
-  }, [user, router]);
+  }, [user, isLoading, router]);
 
-  const finishOnboarding = useCallback(async () => {
-    try {
-      const res = await apiClient.post<AuthUser>("/auth/onboarding/complete");
-      setUser(res.data);
-      router.push(`/${res.data.personalWorkspaceShortId}/dashboard`);
-    } catch {
-      // fallback: just redirect
-      if (user?.personalWorkspaceShortId) {
-        router.push(`/${user.personalWorkspaceShortId}/dashboard`);
-      }
-    }
-  }, [setUser, router, user]);
+  const finishOnboarding = useCallback(() => {
+    router.push("/app");
+  }, [router]);
 
   const handleSkip = useCallback(() => {
-    void finishOnboarding();
+    finishOnboarding();
   }, [finishOnboarding]);
 
-  if (!user || user.onboardingCompleted) return null;
+  if (!user) return null;
 
   const stepComponent = (() => {
     switch (step) {
       case 0:
-        return <WelcomeStep name={user.name} onContinue={() => setStep(1)} />;
+        return (
+          <WelcomeStep name={user.name ?? ""} onContinue={() => setStep(1)} />
+        );
       case 1:
         return <ProfileStep onContinue={() => setStep(2)} />;
       case 2:
@@ -71,20 +59,13 @@ export default function OnboardingPage() {
           />
         );
       case 4:
-        return (
-          <FirstActionStep
-            selectedGoals={selectedGoals}
-            personalWorkspaceShortId={user.personalWorkspaceShortId}
-            onContinue={() => setStep(5)}
-            onSkip={() => setStep(5)}
-          />
-        );
-      case 5:
         return <CompleteStep onFinish={finishOnboarding} />;
       default:
         return null;
     }
   })();
+
+  const lastStep = TOTAL_STEPS - 1;
 
   return (
     <div className="space-y-8">
@@ -113,7 +94,7 @@ export default function OnboardingPage() {
       {/* Navigation */}
       <div className="flex items-center justify-between">
         <div>
-          {step > 0 && step < 5 && (
+          {step > 0 && step < lastStep && (
             <button
               onClick={() => setStep(step - 1)}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -122,7 +103,7 @@ export default function OnboardingPage() {
             </button>
           )}
         </div>
-        {step < 5 && (
+        {step < lastStep && (
           <button
             onClick={handleSkip}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"

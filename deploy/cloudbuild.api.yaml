@@ -1,14 +1,16 @@
 steps:
   - name: gcr.io/cloud-builders/docker
+    entrypoint: bash
     args:
-      - build
-      - -t
-      - $_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/api:$COMMIT_SHA
-      - -t
-      - $_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/api:latest
-      - -f
-      - apps/api/Dockerfile
-      - .
+      - -c
+      - |
+        docker build \
+          -t $_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/api:$COMMIT_SHA \
+          -t $_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/api:latest \
+          --build-arg GITHUB_PACKAGES_TOKEN=$$GITHUB_PACKAGES_TOKEN \
+          -f apps/api/Dockerfile \
+          .
+    secretEnv: ["GITHUB_PACKAGES_TOKEN"]
   - name: gcr.io/cloud-builders/docker
     args:
       - push
@@ -33,6 +35,14 @@ substitutions:
   _GCR_HOSTNAME: gcr.io
   _SERVICE_NAME: stageholder-meridian-api
   _DEPLOY_REGION: asia-southeast1
+  # _GITHUB_PACKAGES_SECRET points at the Secret Manager secret name that
+  # holds a PAT with read:packages scope on the stageholder-identity repo.
+  _GITHUB_PACKAGES_SECRET: github-packages-token
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/$_GITHUB_PACKAGES_SECRET/versions/latest
+      env: GITHUB_PACKAGES_TOKEN
 
 options:
   logging: CLOUD_LOGGING_ONLY

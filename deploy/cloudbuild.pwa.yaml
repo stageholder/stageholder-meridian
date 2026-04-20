@@ -1,16 +1,20 @@
 steps:
   - name: gcr.io/cloud-builders/docker
+    entrypoint: bash
     args:
-      - build
-      - -t
-      - $_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/pwa:$COMMIT_SHA
-      - -t
-      - $_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/pwa:latest
-      - --build-arg
-      - NEXT_PUBLIC_API_URL=$_NEXT_PUBLIC_API_URL
-      - -f
-      - apps/pwa/Dockerfile
-      - .
+      - -c
+      - |
+        docker build \
+          -t $_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/pwa:$COMMIT_SHA \
+          -t $_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/pwa:latest \
+          --build-arg NEXT_PUBLIC_API_URL=$_NEXT_PUBLIC_API_URL \
+          --build-arg NEXT_PUBLIC_HUB_URL=$_NEXT_PUBLIC_HUB_URL \
+          --build-arg NEXT_PUBLIC_APP_URL=$_NEXT_PUBLIC_APP_URL \
+          --build-arg NEXT_PUBLIC_IDENTITY_ISSUER_URL=$_NEXT_PUBLIC_IDENTITY_ISSUER_URL \
+          --build-arg GITHUB_PACKAGES_TOKEN=$$GITHUB_PACKAGES_TOKEN \
+          -f apps/pwa/Dockerfile \
+          .
+    secretEnv: ["GITHUB_PACKAGES_TOKEN"]
   - name: gcr.io/cloud-builders/docker
     args:
       - push
@@ -36,6 +40,18 @@ substitutions:
   _SERVICE_NAME: stageholder-meridian-pwa
   _DEPLOY_REGION: asia-southeast1
   _NEXT_PUBLIC_API_URL: https://api.meridian.stageholder.com/api/v1
+  _NEXT_PUBLIC_HUB_URL: https://id.stageholder.com
+  _NEXT_PUBLIC_APP_URL: https://meridian.stageholder.com
+  _NEXT_PUBLIC_IDENTITY_ISSUER_URL: https://id.stageholder.com
+  # _GITHUB_PACKAGES_SECRET points at the Secret Manager secret name that
+  # holds a PAT with read:packages scope on the stageholder-identity repo.
+  # Create via: gcloud secrets create github-packages-token --data-file=-
+  _GITHUB_PACKAGES_SECRET: github-packages-token
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/$_GITHUB_PACKAGES_SECRET/versions/latest
+      env: GITHUB_PACKAGES_TOKEN
 
 options:
   logging: CLOUD_LOGGING_ONLY

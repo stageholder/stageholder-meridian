@@ -3,11 +3,12 @@ import {
   NotFoundException,
   ForbiddenException,
 } from "@nestjs/common";
+import type { StageholderUser } from "@stageholder/auth";
 import { TodoListRepository } from "./todo-list.repository";
 import { TodoList } from "./todo-list.entity";
 import { CreateTodoListDto, UpdateTodoListDto } from "./todo-list.dto";
-import { WorkspaceMemberService } from "../workspace-member/workspace-member.service";
 import { TodoRepository } from "../todo/todo.repository";
+import { enforceLimit } from "../../common/helpers/entitlement";
 import {
   PaginatedResult,
   buildPaginationMeta,
@@ -20,23 +21,17 @@ import {
 export class TodoListService {
   constructor(
     private readonly repository: TodoListRepository,
-    private readonly memberService: WorkspaceMemberService,
     private readonly todoRepository: TodoRepository,
   ) {}
 
-  private async ensureDefaultList(
-    workspaceId: string,
-    userId: string,
-  ): Promise<void> {
-    const existing = await this.repository.findDefaultByWorkspace(workspaceId);
+  private async ensureDefaultList(userSub: string): Promise<void> {
+    const existing = await this.repository.findDefaultByUser(userSub);
     if (existing) return;
     const result = TodoList.create({
       name: "Inbox",
       color: "#3b82f6",
-      workspaceId,
+      userSub,
       isDefault: true,
-      isShared: false,
-      creatorId: userId,
     });
     if (!result.ok) return;
     try {
@@ -48,44 +43,34 @@ export class TodoListService {
   }
 
   async create(
-    workspaceId: string,
-    userId: string,
+    userSub: string,
     dto: CreateTodoListDto,
+    user: StageholderUser,
   ): Promise<TodoList> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
+    await enforceLimit(user, "max_todo_lists", () =>
+      this.repository.countForUser(userSub),
+    );
     const result = TodoList.create({
       name: dto.name,
       color: dto.color,
       icon: dto.icon,
-      workspaceId,
-      isShared: dto.isShared ?? false,
-      creatorId: userId,
+      userSub,
     });
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);
     return result.value;
   }
 
-  async findByWorkspace(
-    workspaceId: string,
-    userId: string,
+  async findByUser(
+    userSub: string,
     page?: number,
     limit?: number,
   ): Promise<PaginatedResult<ReturnType<TodoList["toObject"]>>> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
-    await this.ensureDefaultList(workspaceId, userId);
+    await this.ensureDefaultList(userSub);
     const p = Math.max(page || DEFAULT_PAGE, 1);
     const l = Math.min(Math.max(limit || DEFAULT_LIMIT, 1), MAX_LIMIT);
-    const { docs, total } = await this.repository.findByWorkspacePaginated(
-      workspaceId,
+    const { docs, total } = await this.repository.findByUserPaginated(
+      userSub,
       p,
       l,
     );
@@ -96,60 +81,49 @@ export class TodoListService {
   }
 
   async findUpdatedSince(
-    workspaceId: string,
-    userId: string,
+    userSub: string,
     since: string,
     includeSoftDeleted = false,
   ): Promise<ReturnType<TodoList["toObject"]>[]> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
     const lists = await this.repository.findUpdatedSince(
-      workspaceId,
+      userSub,
       since,
       includeSoftDeleted,
     );
     return lists.map((l) => l.toObject());
   }
 
-  async findById(
-    id: string,
-    workspaceId: string,
-    userId: string,
-  ): Promise<TodoList> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
-    const list = await this.repository.findById(id);
-    if (!list || list.workspaceId !== workspaceId)
-      throw new NotFoundException("Todo list not found");
+  async findById(userSub: string, id: string): Promise<TodoList> {
+    const list = await this.repository.findById(userSub, id);
+    if (!list) throw new NotFoundException("Todo list not found");
     return list;
   }
 
   async update(
+    userSub: string,
     id: string,
-    workspaceId: string,
-    userId: string,
     dto: UpdateTodoListDto,
   ): Promise<TodoList> {
-    const list = await this.findById(id, workspaceId, userId);
+    const list = await this.findById(userSub, id);
     if (dto.name) list.updateName(dto.name);
     if (dto.color !== undefined) list.updateColor(dto.color);
     if (dto.icon !== undefined) list.updateIcon(dto.icon);
-    if (dto.isShared !== undefined) list.updateIsShared(dto.isShared);
     await this.repository.save(list);
     return list;
   }
 
-  async delete(id: string, workspaceId: string, userId: string): Promise<void> {
-    const list = await this.findById(id, workspaceId, userId);
+  async delete(userSub: string, id: string): Promise<void> {
+    const list = await this.findById(userSub, id);
     if (list.isDefault)
       throw new ForbiddenException("Cannot delete the default Inbox list");
-    await this.todoRepository.deleteByList(id);
-    await this.repository.delete(id);
+    await this.todoRepository.deleteByList(userSub, id);
+    await this.repository.delete(userSub, id);
+  }
+
+  // Purge every todo list for the user. Used by the Hub user.deleted cascade.
+  // Todos themselves are purged independently by TodoService.deleteAllForUser,
+  // so we only need to drop the list rows here.
+  async deleteAllForUser(userSub: string): Promise<number> {
+    return this.repository.deleteAllForUser(userSub);
   }
 }

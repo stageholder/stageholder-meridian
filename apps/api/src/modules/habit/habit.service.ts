@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
+import type { StageholderUser } from "@stageholder/auth";
 import { HabitRepository } from "./habit.repository";
 import { Habit, HabitFrequency } from "./habit.entity";
 import { CreateHabitDto, UpdateHabitDto } from "./habit.dto";
-import { WorkspaceMemberService } from "../workspace-member/workspace-member.service";
+import { enforceLimit } from "../../common/helpers/entitlement";
 import {
   buildPaginationMeta,
   DEFAULT_PAGE,
@@ -12,21 +13,16 @@ import {
 
 @Injectable()
 export class HabitService {
-  constructor(
-    private readonly repository: HabitRepository,
-    private readonly memberService: WorkspaceMemberService,
-  ) {}
+  constructor(private readonly repository: HabitRepository) {}
 
   async create(
-    workspaceId: string,
-    userId: string,
+    userSub: string,
     dto: CreateHabitDto,
+    user: StageholderUser,
   ): Promise<Habit> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
+    await enforceLimit(user, "max_habits", () =>
+      this.repository.countActiveForUser(userSub),
+    );
     const result = Habit.create({
       name: dto.name,
       description: dto.description,
@@ -36,38 +32,22 @@ export class HabitService {
       unit: dto.unit,
       color: dto.color,
       icon: dto.icon,
-      workspaceId,
-      creatorId: userId,
+      userSub,
     });
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);
     return result.value;
   }
 
-  async findByWorkspace(workspaceId: string, userId: string): Promise<Habit[]> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
-    return this.repository.findByWorkspace(workspaceId);
+  async findByUser(userSub: string): Promise<Habit[]> {
+    return this.repository.findByUser(userSub);
   }
 
-  async listByWorkspace(
-    workspaceId: string,
-    userId: string,
-    page?: number,
-    limit?: number,
-  ) {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
+  async listByUser(userSub: string, page?: number, limit?: number) {
     const p = Math.max(page || DEFAULT_PAGE, 1);
     const l = Math.min(Math.max(limit || DEFAULT_LIMIT, 1), MAX_LIMIT);
-    const { docs, total } = await this.repository.findByWorkspacePaginated(
-      workspaceId,
+    const { docs, total } = await this.repository.findByUserPaginated(
+      userSub,
       p,
       l,
     );
@@ -78,47 +58,30 @@ export class HabitService {
   }
 
   async findUpdatedSince(
-    workspaceId: string,
-    userId: string,
+    userSub: string,
     since: string,
     includeSoftDeleted = false,
   ) {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
     const habits = await this.repository.findUpdatedSince(
-      workspaceId,
+      userSub,
       since,
       includeSoftDeleted,
     );
     return habits.map((h) => h.toObject());
   }
 
-  async findById(
-    id: string,
-    workspaceId: string,
-    userId: string,
-  ): Promise<Habit> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
-    const habit = await this.repository.findById(id);
-    if (!habit || habit.workspaceId !== workspaceId)
-      throw new NotFoundException("Habit not found");
+  async findById(userSub: string, id: string): Promise<Habit> {
+    const habit = await this.repository.findById(userSub, id);
+    if (!habit) throw new NotFoundException("Habit not found");
     return habit;
   }
 
   async update(
+    userSub: string,
     id: string,
-    workspaceId: string,
-    userId: string,
     dto: UpdateHabitDto,
   ): Promise<Habit> {
-    const habit = await this.findById(id, workspaceId, userId);
+    const habit = await this.findById(userSub, id);
     if (dto.name) habit.updateName(dto.name);
     if (dto.description !== undefined) habit.updateDescription(dto.description);
     if (dto.frequency) habit.updateFrequency(dto.frequency as HabitFrequency);
@@ -132,8 +95,13 @@ export class HabitService {
     return habit;
   }
 
-  async delete(id: string, workspaceId: string, userId: string): Promise<void> {
-    await this.findById(id, workspaceId, userId);
-    await this.repository.delete(id);
+  async delete(userSub: string, id: string): Promise<void> {
+    await this.findById(userSub, id);
+    await this.repository.delete(userSub, id);
+  }
+
+  // Purge every habit for the user. Used by the Hub user.deleted cascade.
+  async deleteAllForUser(userSub: string): Promise<number> {
+    return this.repository.deleteAllForUser(userSub);
   }
 }

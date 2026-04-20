@@ -11,8 +11,7 @@ export interface HabitProps extends EntityProps {
   unit?: string;
   color?: string;
   icon?: string;
-  workspaceId: string;
-  creatorId: string;
+  userSub: string;
 }
 
 export class Habit extends Entity<HabitProps> {
@@ -44,11 +43,8 @@ export class Habit extends Entity<HabitProps> {
   get icon(): string | undefined {
     return this.get("icon");
   }
-  get workspaceId(): string {
-    return this.get("workspaceId");
-  }
-  get creatorId(): string {
-    return this.get("creatorId");
+  get userSub(): string {
+    return this.get("userSub");
   }
 
   updateName(name: string): void {
@@ -81,8 +77,7 @@ export class Habit extends Entity<HabitProps> {
   ): Result<Habit> {
     if (!props.name || props.name.trim().length === 0)
       return Err(new Error("Habit name is required"));
-    if (!props.workspaceId) return Err(new Error("Workspace is required"));
-    if (!props.creatorId) return Err(new Error("Creator is required"));
+    if (!props.userSub) return Err(new Error("User is required"));
     if (!props.targetCount || props.targetCount < 1)
       return Err(new Error("Target count must be at least 1"));
     return Ok(

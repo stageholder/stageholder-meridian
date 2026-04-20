@@ -16,36 +16,36 @@ export class TagRepository {
         $set: {
           name: data.name,
           color: data.color,
-          workspace_id: data.workspaceId,
+          userSub: data.userSub,
         },
       },
       { upsert: true },
     );
   }
 
-  async findById(id: string): Promise<Tag | null> {
-    const doc = await this.model.findOne({ _id: id, deleted_at: null }).lean();
+  async findById(userSub: string, id: string): Promise<Tag | null> {
+    const doc = await this.model
+      .findOne({ _id: id, userSub, deleted_at: null })
+      .lean();
     return doc ? this.toDomain(doc) : null;
   }
 
-  async findByWorkspace(workspaceId: string): Promise<Tag[]> {
-    const docs = await this.model
-      .find({ workspace_id: workspaceId, deleted_at: null })
-      .lean();
+  async findByUser(userSub: string): Promise<Tag[]> {
+    const docs = await this.model.find({ userSub, deleted_at: null }).lean();
     return docs.map((doc) => this.toDomain(doc));
   }
 
-  async findByWorkspacePaginated(
-    workspaceId: string,
+  async findByUserPaginated(
+    userSub: string,
     page: number,
     limit: number,
   ): Promise<{ docs: Tag[]; total: number }> {
     const total = await this.model.countDocuments({
-      workspace_id: workspaceId,
+      userSub,
       deleted_at: null,
     });
     const docs = await this.model
-      .find({ workspace_id: workspaceId, deleted_at: null })
+      .find({ userSub, deleted_at: null })
       .sort({ created_at: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -53,20 +53,27 @@ export class TagRepository {
     return { docs: docs.map((doc) => this.toDomain(doc)), total };
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(userSub: string, id: string): Promise<void> {
     await this.model.updateOne(
-      { _id: id },
+      { _id: id, userSub },
       { $set: { deleted_at: new Date() } },
     );
   }
 
+  // Hard-delete every tag for the given userSub. Used by the Hub
+  // user.deleted cascade.
+  async deleteAllForUser(userSub: string): Promise<number> {
+    const { deletedCount } = await this.model.deleteMany({ userSub });
+    return deletedCount ?? 0;
+  }
+
   async findUpdatedSince(
-    workspaceId: string,
+    userSub: string,
     since: string,
     includeSoftDeleted = false,
   ): Promise<Tag[]> {
     const filter: any = {
-      workspace_id: workspaceId,
+      userSub,
       updated_at: { $gt: new Date(since) },
     };
     if (!includeSoftDeleted) filter.deleted_at = null;
@@ -79,7 +86,7 @@ export class TagRepository {
       {
         name: doc.name,
         color: doc.color,
-        workspaceId: doc.workspace_id,
+        userSub: doc.userSub,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at,
       },

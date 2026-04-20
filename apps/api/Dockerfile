@@ -6,9 +6,19 @@ RUN turbo prune api --docker
 
 FROM oven/bun:1.3.6 AS installer
 WORKDIR /app
+# Private @stageholder/* packages resolve via npm.pkg.github.com — the PAT
+# travels in as a build-arg secret, wired to the committed .npmrc's
+# ${GITHUB_PACKAGES_TOKEN} reference. The ARG is scoped to this stage so
+# the token never leaks into the final runtime image layer.
+ARG GITHUB_PACKAGES_TOKEN
+ENV GITHUB_PACKAGES_TOKEN=$GITHUB_PACKAGES_TOKEN
 COPY --from=pruner /app/out/json/ .
 COPY --from=pruner /app/out/bun.lock ./bun.lock
+COPY .npmrc ./.npmrc
 RUN bun install --ignore-scripts
+# Scrub the token reference after install so the installer stage itself
+# can't be used to exfiltrate it. The runner stage doesn't inherit ARG.
+RUN rm -f ./.npmrc
 
 FROM oven/bun:1.3.6 AS builder
 WORKDIR /app

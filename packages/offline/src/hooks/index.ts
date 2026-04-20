@@ -111,6 +111,13 @@ export function useOfflineQueryFiltered<T extends SyncableEntity>(
 
 // --- Mutation Hooks ---
 
+/**
+ * Returns the current user's OIDC sub for scoping offline mutations.
+ * Throws if no user is resolved yet — callers should only reach offline
+ * mutation paths after the session is hydrated.
+ */
+type GetUserSub = () => string;
+
 export function useOfflineMutation<
   TData extends SyncableEntity,
   TVariables,
@@ -125,6 +132,7 @@ export function useOfflineMutation<
     entityType: string;
     buildPath: (variables: TVariables) => string;
     operation: "create" | "update";
+    getUserSub: GetUserSub;
     invalidateKeys?: unknown[][];
     getEntityId?: (variables: TVariables) => string;
     getPatch?: (variables: TVariables) => Partial<TData>;
@@ -172,6 +180,7 @@ export function useOfflineMutation<
       }
 
       // --- Offline path ---
+      const userSub = options.getUserSub();
       const path = options.buildPath(variables);
       const tempId = crypto.randomUUID();
 
@@ -202,7 +211,7 @@ export function useOfflineMutation<
             ...patch,
             updatedAt: new Date().toISOString(),
           } as unknown as TData;
-          await enqueue({
+          await enqueue(userSub, {
             entityType: options.entityType,
             entityId,
             operation: options.operation,
@@ -221,7 +230,7 @@ export function useOfflineMutation<
       }
       await options.table.put(optimistic);
 
-      await enqueue({
+      await enqueue(userSub, {
         entityType: options.entityType,
         entityId,
         operation: options.operation,
@@ -251,6 +260,7 @@ export function useOfflineDeleteMutation<TVariables>(
     entityType: string;
     buildPath: (variables: TVariables) => string;
     getEntityId: (variables: TVariables) => string;
+    getUserSub: GetUserSub;
     invalidateKeys?: unknown[][];
   },
 ) {
@@ -267,9 +277,10 @@ export function useOfflineDeleteMutation<TVariables>(
         return;
       }
 
+      const userSub = options.getUserSub();
       await options.table.delete(entityId as never);
 
-      await enqueue({
+      await enqueue(userSub, {
         entityType: options.entityType,
         entityId,
         operation: "delete",

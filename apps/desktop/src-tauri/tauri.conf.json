@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "identifier": "com.stageholder.meridian",
   "build": {
-    "devUrl": "http://localhost:3000",
-    "frontendDist": "http://localhost:3000"
+    "devUrl": "http://localhost:4001",
+    "frontendDist": "http://localhost:4001"
   },
   "app": {
     "windows": [
@@ -18,7 +18,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: asset: https://asset.localhost; font-src 'self' data:"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: asset: https://asset.localhost; font-src 'self' data:; connect-src 'self' http://localhost:4000 http://localhost:4828 http://127.0.0.1:* https://api.meridian.stageholder.com https://id.stageholder.com ipc: http://ipc.localhost"
     }
   },
   "plugins": {

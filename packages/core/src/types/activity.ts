@@ -1,6 +1,6 @@
 export interface Activity {
   id: string;
-  workspaceId: string;
+  userSub: string;
   actorId: string;
   action: string;
   entityType: string;

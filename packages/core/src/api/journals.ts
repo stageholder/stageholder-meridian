@@ -1,13 +1,12 @@
 import type { AxiosInstance } from "axios";
 import type { Journal } from "@repo/core/types";
-import { workspacePath } from "./client";
 
-export function createJournalsApi(
-  client: AxiosInstance,
-  getWorkspaceId: () => string,
-) {
-  const wp = (path: string) => workspacePath(getWorkspaceId(), path);
-
+/**
+ * Journals API client. Routes are rooted at `/journals` — the Hub-integrated
+ * API scopes everything off the authenticated `sub` server-side, so there is
+ * no longer a workspace prefix.
+ */
+export function createJournalsApi(client: AxiosInstance) {
   return {
     create: async (data: {
       title: string;
@@ -16,17 +15,17 @@ export function createJournalsApi(
       tags?: string[];
       date?: string;
     }): Promise<Journal> => {
-      const res = await client.post(wp("/journals"), data);
+      const res = await client.post(`/journals`, data);
       return res.data;
     },
     list: async (
       params?: Record<string, string | undefined>,
     ): Promise<Journal[]> => {
-      const res = await client.get(wp("/journals"), { params });
+      const res = await client.get(`/journals`, { params });
       return res.data?.data ?? res.data;
     },
     get: async (id: string): Promise<Journal> => {
-      const res = await client.get(wp(`/journals/${id}`));
+      const res = await client.get(`/journals/${id}`);
       return res.data;
     },
     update: async (
@@ -38,11 +37,11 @@ export function createJournalsApi(
         tags?: string[];
       },
     ): Promise<Journal> => {
-      const res = await client.patch(wp(`/journals/${id}`), data);
+      const res = await client.patch(`/journals/${id}`, data);
       return res.data;
     },
     delete: async (id: string): Promise<void> => {
-      await client.delete(wp(`/journals/${id}`));
+      await client.delete(`/journals/${id}`);
     },
   };
 }

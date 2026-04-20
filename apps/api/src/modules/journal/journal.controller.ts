@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  Req,
 } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { JournalService } from "./journal.service";
@@ -16,26 +17,24 @@ import {
   UpdateJournalDto as UpdateSchema,
 } from "./journal.dto";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe";
-import { CurrentUserId } from "../../common/decorators/current-user.decorator";
+import { StageholderRequest } from "../../common/types";
 
 @ApiTags("Journals")
-@Controller("workspaces/:workspaceId/journals")
+@Controller("journals")
 export class JournalController {
   constructor(private readonly service: JournalService) {}
 
   @Post()
   async create(
-    @Param("workspaceId") workspaceId: string,
-    @CurrentUserId() userId: string,
+    @Req() req: StageholderRequest,
     @Body(new ZodValidationPipe(CreateSchema)) dto: CreateJournalDto,
   ) {
-    return (await this.service.create(workspaceId, userId, dto)).toObject();
+    return (await this.service.create(req.user.sub, dto)).toObject();
   }
 
   @Get()
   async list(
-    @Param("workspaceId") workspaceId: string,
-    @CurrentUserId() userId: string,
+    @Req() req: StageholderRequest,
     @Query("startDate") startDate?: string,
     @Query("endDate") endDate?: string,
     @Query("page") page?: string,
@@ -45,16 +44,14 @@ export class JournalController {
   ) {
     if (updatedSince) {
       return this.service.findUpdatedSince(
-        workspaceId,
-        userId,
+        req.user.sub,
         updatedSince,
         includeSoftDeleted === "true",
       );
     }
 
-    return this.service.listByWorkspace(
-      workspaceId,
-      userId,
+    return this.service.listByUser(
+      req.user.sub,
       startDate,
       endDate,
       page ? +page : undefined,
@@ -64,39 +61,29 @@ export class JournalController {
 
   @Get("stats")
   async getStats(
-    @Param("workspaceId") workspaceId: string,
-    @CurrentUserId() userId: string,
+    @Req() req: StageholderRequest,
     @Query("today") today?: string,
   ) {
-    return this.service.getStats(workspaceId, userId, today);
+    return this.service.getStats(req.user.sub, today);
   }
 
   @Get(":id")
-  async get(
-    @Param("workspaceId") workspaceId: string,
-    @Param("id") id: string,
-    @CurrentUserId() userId: string,
-  ) {
-    return (await this.service.findById(id, workspaceId, userId)).toObject();
+  async get(@Req() req: StageholderRequest, @Param("id") id: string) {
+    return (await this.service.findById(req.user.sub, id)).toObject();
   }
 
   @Patch(":id")
   async update(
-    @Param("workspaceId") workspaceId: string,
+    @Req() req: StageholderRequest,
     @Param("id") id: string,
-    @CurrentUserId() userId: string,
     @Body(new ZodValidationPipe(UpdateSchema)) dto: UpdateJournalDto,
   ) {
-    return (await this.service.update(id, workspaceId, userId, dto)).toObject();
+    return (await this.service.update(req.user.sub, id, dto)).toObject();
   }
 
   @Delete(":id")
-  async delete(
-    @Param("workspaceId") workspaceId: string,
-    @Param("id") id: string,
-    @CurrentUserId() userId: string,
-  ) {
-    await this.service.delete(id, workspaceId, userId);
+  async delete(@Req() req: StageholderRequest, @Param("id") id: string) {
+    await this.service.delete(req.user.sub, id);
     return { deleted: true };
   }
 }

@@ -21,8 +21,7 @@ export class JournalRepository {
           content: data.content,
           mood: data.mood,
           tags: data.tags,
-          workspace_id: data.workspaceId,
-          author_id: data.authorId,
+          userSub: data.userSub,
           date: data.date,
           word_count: data.wordCount,
           encrypted: data.encrypted ?? false,
@@ -34,41 +33,27 @@ export class JournalRepository {
     );
   }
 
-  async findById(id: string): Promise<Journal | null> {
+  async findById(userSub: string, id: string): Promise<Journal | null> {
     const doc = await this.model
-      .findById(id)
-      .where({ deleted_at: null })
+      .findOne({ _id: id, userSub, deleted_at: null })
       .lean();
     return doc ? this.toDomain(doc) : null;
   }
 
-  async findByWorkspace(
-    workspaceId: string,
-    authorId?: string,
-  ): Promise<Journal[]> {
-    const filter: Record<string, any> = {
-      workspace_id: workspaceId,
-      deleted_at: null,
-    };
-    if (authorId) filter.author_id = authorId;
+  async findByUser(userSub: string): Promise<Journal[]> {
     const docs = await this.model
-      .find(filter)
+      .find({ userSub, deleted_at: null })
       .sort({ date: -1, created_at: -1 })
       .lean();
     return docs.map((doc) => this.toDomain(doc));
   }
 
-  async findByWorkspacePaginated(
-    workspaceId: string,
+  async findByUserPaginated(
+    userSub: string,
     page: number,
     limit: number,
-    authorId?: string,
   ): Promise<{ docs: Journal[]; total: number }> {
-    const filter: Record<string, any> = {
-      workspace_id: workspaceId,
-      deleted_at: null,
-    };
-    if (authorId) filter.author_id = authorId;
+    const filter: Record<string, any> = { userSub, deleted_at: null };
     const total = await this.model.countDocuments(filter);
     const docs = await this.model
       .find(filter)
@@ -80,17 +65,15 @@ export class JournalRepository {
   }
 
   async findByDateRange(
-    workspaceId: string,
+    userSub: string,
     startDate: string,
     endDate: string,
-    authorId?: string,
   ): Promise<Journal[]> {
     const filter: Record<string, any> = {
-      workspace_id: workspaceId,
+      userSub,
       deleted_at: null,
       date: { $gte: startDate, $lte: endDate },
     };
-    if (authorId) filter.author_id = authorId;
     const docs = await this.model
       .find(filter)
       .sort({ date: -1, created_at: -1 })
@@ -98,20 +81,28 @@ export class JournalRepository {
     return docs.map((doc) => this.toDomain(doc));
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(userSub: string, id: string): Promise<void> {
     await this.model.updateOne(
-      { _id: id },
+      { _id: id, userSub },
       { $set: { deleted_at: new Date() } },
     );
   }
 
+  // Hard-delete every journal for the given userSub. Used by the Hub
+  // user.deleted cascade — soft-delete is insufficient here because the
+  // user no longer exists and the row must be fully purged.
+  async deleteAllForUser(userSub: string): Promise<number> {
+    const { deletedCount } = await this.model.deleteMany({ userSub });
+    return deletedCount ?? 0;
+  }
+
   async findUpdatedSince(
-    workspaceId: string,
+    userSub: string,
     since: string,
     includeSoftDeleted = false,
   ): Promise<Journal[]> {
     const filter: any = {
-      workspace_id: workspaceId,
+      userSub,
       updated_at: { $gt: new Date(since) },
     };
     if (!includeSoftDeleted) filter.deleted_at = null;
@@ -120,18 +111,13 @@ export class JournalRepository {
   }
 
   async getGrowthStats(
-    workspaceId: string,
+    userSub: string,
     windowStart: string,
-    authorId?: string,
   ): Promise<{
     window: Array<{ date: string; count: number; words: number }>;
     baseline: { count: number; words: number };
   }> {
-    const matchStage: Record<string, any> = {
-      workspace_id: workspaceId,
-      deleted_at: null,
-    };
-    if (authorId) matchStage.author_id = authorId;
+    const matchStage: Record<string, any> = { userSub, deleted_at: null };
 
     const result = await this.model.aggregate([
       { $match: matchStage },
@@ -182,8 +168,7 @@ export class JournalRepository {
         content: doc.content,
         mood: doc.mood,
         tags: doc.tags || [],
-        workspaceId: doc.workspace_id,
-        authorId: doc.author_id,
+        userSub: doc.userSub,
         date: doc.date,
         wordCount: doc.word_count ?? 0,
         encrypted: doc.encrypted ?? false,

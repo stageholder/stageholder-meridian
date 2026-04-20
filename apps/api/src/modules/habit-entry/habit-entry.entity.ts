@@ -9,7 +9,7 @@ export interface HabitEntryProps extends EntityProps {
   notes?: string;
   targetCountSnapshot?: number;
   scheduledDaysSnapshot?: number[];
-  workspaceId: string;
+  userSub: string;
 }
 
 export class HabitEntry extends Entity<HabitEntryProps> {
@@ -41,8 +41,8 @@ export class HabitEntry extends Entity<HabitEntryProps> {
   get scheduledDaysSnapshot(): number[] | undefined {
     return this.get("scheduledDaysSnapshot");
   }
-  get workspaceId(): string {
-    return this.get("workspaceId");
+  get userSub(): string {
+    return this.get("userSub");
   }
 
   updateValue(value: number): void {
@@ -59,7 +59,7 @@ export class HabitEntry extends Entity<HabitEntryProps> {
     if (!props.date) return Err(new Error("Date is required"));
     if (props.value === undefined || props.value === null)
       return Err(new Error("Value is required"));
-    if (!props.workspaceId) return Err(new Error("Workspace is required"));
+    if (!props.userSub) return Err(new Error("User is required"));
     if (props.type === "skip") props.value = 0;
     return Ok(new HabitEntry(props as HabitEntryProps));
   }

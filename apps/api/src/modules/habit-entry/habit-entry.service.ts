@@ -7,7 +7,6 @@ import {
 import { HabitEntryRepository } from "./habit-entry.repository";
 import { HabitEntry } from "./habit-entry.entity";
 import { CreateHabitEntryDto, UpdateHabitEntryDto } from "./habit-entry.dto";
-import { WorkspaceMemberService } from "../workspace-member/workspace-member.service";
 import { LightService } from "../light/light.service";
 import { HabitRepository } from "../habit/habit.repository";
 import {
@@ -22,23 +21,17 @@ export class HabitEntryService {
   private readonly logger = new Logger(HabitEntryService.name);
   constructor(
     private readonly repository: HabitEntryRepository,
-    private readonly memberService: WorkspaceMemberService,
     private readonly lightService: LightService,
     private readonly habitRepository: HabitRepository,
   ) {}
 
   async create(
+    userSub: string,
     habitId: string,
-    workspaceId: string,
-    userId: string,
     dto: CreateHabitEntryDto,
   ): Promise<HabitEntry> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
     const existing = await this.repository.findByHabitAndDate(
+      userSub,
       habitId,
       dto.date,
     );
@@ -46,9 +39,8 @@ export class HabitEntryService {
       throw new ConflictException(
         "Entry already exists for this habit on this date",
       );
-    const habit = await this.habitRepository.findById(habitId);
-    if (!habit || habit.workspaceId !== workspaceId)
-      throw new NotFoundException("Habit not found");
+    const habit = await this.habitRepository.findById(userSub, habitId);
+    if (!habit) throw new NotFoundException("Habit not found");
     const isSkip = dto.type === "skip";
     const result = HabitEntry.create({
       habitId,
@@ -59,71 +51,51 @@ export class HabitEntryService {
       notes: dto.notes,
       targetCountSnapshot: habit.targetCount,
       scheduledDaysSnapshot: habit.scheduledDays,
-      workspaceId,
+      userSub,
     });
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);
     if (!isSkip) {
       await this.lightService
-        .awardHabitCheckin(userId, workspaceId, habitId, result.value.id)
+        .awardHabitCheckin(userSub, habitId, result.value.id)
         .catch((err) => this.logger.warn("Failed to award light", err.message));
     }
     return result.value;
   }
 
-  async findById(
-    id: string,
-    workspaceId: string,
-    userId: string,
-  ): Promise<HabitEntry> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
-    const entry = await this.repository.findById(id);
-    if (!entry || entry.workspaceId !== workspaceId)
-      throw new NotFoundException("Habit entry not found");
+  async findById(userSub: string, id: string): Promise<HabitEntry> {
+    const entry = await this.repository.findById(userSub, id);
+    if (!entry) throw new NotFoundException("Habit entry not found");
     return entry;
   }
 
   async listByHabit(
+    userSub: string,
     habitId: string,
-    workspaceId: string,
-    userId: string,
     startDate?: string,
     endDate?: string,
   ): Promise<HabitEntry[]> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
     if (startDate && endDate) {
       return this.repository.findByHabitAndDateRange(
+        userSub,
         habitId,
         startDate,
         endDate,
       );
     }
-    return this.repository.findByHabit(habitId);
+    return this.repository.findByHabit(userSub, habitId);
   }
 
   async listByHabitPaginated(
+    userSub: string,
     habitId: string,
-    workspaceId: string,
-    userId: string,
     page?: number,
     limit?: number,
   ) {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
     const p = Math.max(page || DEFAULT_PAGE, 1);
     const l = Math.min(Math.max(limit || DEFAULT_LIMIT, 1), MAX_LIMIT);
     const { docs, total } = await this.repository.findByHabitPaginated(
+      userSub,
       habitId,
       p,
       l,
@@ -135,38 +107,32 @@ export class HabitEntryService {
   }
 
   async findUpdatedSince(
-    workspaceId: string,
-    userId: string,
+    userSub: string,
     since: string,
     includeSoftDeleted = false,
   ): Promise<HabitEntry[]> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
-    return this.repository.findUpdatedSince(
-      workspaceId,
-      since,
-      includeSoftDeleted,
-    );
+    return this.repository.findUpdatedSince(userSub, since, includeSoftDeleted);
   }
 
   async update(
+    userSub: string,
     id: string,
-    workspaceId: string,
-    userId: string,
     dto: UpdateHabitEntryDto,
   ): Promise<HabitEntry> {
-    const entry = await this.findById(id, workspaceId, userId);
+    const entry = await this.findById(userSub, id);
     if (dto.value !== undefined) entry.updateValue(dto.value);
     if (dto.notes !== undefined) entry.updateNotes(dto.notes);
     await this.repository.save(entry);
     return entry;
   }
 
-  async delete(id: string, workspaceId: string, userId: string): Promise<void> {
-    await this.findById(id, workspaceId, userId);
-    await this.repository.delete(id);
+  async delete(userSub: string, id: string): Promise<void> {
+    await this.findById(userSub, id);
+    await this.repository.delete(userSub, id);
+  }
+
+  // Purge every habit entry for the user. Used by the Hub user.deleted cascade.
+  async deleteAllForUser(userSub: string): Promise<number> {
+    return this.repository.deleteAllForUser(userSub);
   }
 }

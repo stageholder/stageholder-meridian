@@ -1,13 +1,7 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-  Logger,
-} from "@nestjs/common";
+import { Injectable, NotFoundException, Logger } from "@nestjs/common";
 import { JournalRepository } from "./journal.repository";
 import { Journal } from "./journal.entity";
 import { CreateJournalDto, UpdateJournalDto } from "./journal.dto";
-import { WorkspaceMemberService } from "../workspace-member/workspace-member.service";
 import { LightService } from "../light/light.service";
 import {
   PaginatedResult,
@@ -23,27 +17,16 @@ export class JournalService {
 
   constructor(
     private readonly repository: JournalRepository,
-    private readonly memberService: WorkspaceMemberService,
     private readonly lightService: LightService,
   ) {}
 
-  async create(
-    workspaceId: string,
-    userId: string,
-    dto: CreateJournalDto,
-  ): Promise<Journal> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
+  async create(userSub: string, dto: CreateJournalDto): Promise<Journal> {
     const result = Journal.create({
       title: dto.title,
       content: dto.content,
       mood: dto.mood,
       tags: dto.tags || [],
-      workspaceId,
-      authorId: userId,
+      userSub,
       date: dto.date,
       encrypted: dto.encrypted,
       wordCount: dto.wordCount,
@@ -51,57 +34,31 @@ export class JournalService {
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);
     this.lightService
-      .awardJournalEntry(userId, workspaceId, result.value.id)
+      .awardJournalEntry(userSub, result.value.id)
       .catch((err) =>
         this.logger.warn("Failed to award light for journal entry", err),
       );
     return result.value;
   }
 
-  async findById(
-    id: string,
-    workspaceId: string,
-    userId: string,
-  ): Promise<Journal> {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
-    return this.findByIdInternal(id, workspaceId);
-  }
-
-  private async findByIdInternal(
-    id: string,
-    workspaceId: string,
-  ): Promise<Journal> {
-    const journal = await this.repository.findById(id);
-    if (!journal || journal.workspaceId !== workspaceId)
-      throw new NotFoundException("Journal not found");
+  async findById(userSub: string, id: string): Promise<Journal> {
+    const journal = await this.repository.findById(userSub, id);
+    if (!journal) throw new NotFoundException("Journal not found");
     return journal;
   }
 
-  async listByWorkspace(
-    workspaceId: string,
-    userId: string,
+  async listByUser(
+    userSub: string,
     startDate?: string,
     endDate?: string,
     page?: number,
     limit?: number,
   ): Promise<PaginatedResult<ReturnType<Journal["toObject"]>>> {
-    const member = await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
-    const authorId =
-      member.role === "owner" || member.role === "admin" ? undefined : userId;
     if (startDate && endDate) {
       const journals = await this.repository.findByDateRange(
-        workspaceId,
+        userSub,
         startDate,
         endDate,
-        authorId,
       );
       return {
         data: journals.map((j) => j.toObject()),
@@ -110,11 +67,10 @@ export class JournalService {
     }
     const p = Math.max(page || DEFAULT_PAGE, 1);
     const l = Math.min(Math.max(limit || DEFAULT_LIMIT, 1), MAX_LIMIT);
-    const { docs, total } = await this.repository.findByWorkspacePaginated(
-      workspaceId,
+    const { docs, total } = await this.repository.findByUserPaginated(
+      userSub,
       p,
       l,
-      authorId,
     );
     return {
       data: docs.map((d) => d.toObject()),
@@ -123,18 +79,12 @@ export class JournalService {
   }
 
   async findUpdatedSince(
-    workspaceId: string,
-    userId: string,
+    userSub: string,
     since: string,
     includeSoftDeleted: boolean,
   ) {
-    await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
     const journals = await this.repository.findUpdatedSince(
-      workspaceId,
+      userSub,
       since,
       includeSoftDeleted,
     );
@@ -142,26 +92,11 @@ export class JournalService {
   }
 
   async update(
+    userSub: string,
     id: string,
-    workspaceId: string,
-    userId: string,
     dto: UpdateJournalDto,
   ): Promise<Journal> {
-    const member = await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
-    const journal = await this.findByIdInternal(id, workspaceId);
-    if (
-      journal.authorId !== userId &&
-      member.role !== "owner" &&
-      member.role !== "admin"
-    ) {
-      throw new ForbiddenException(
-        "You can only edit your own journal entries",
-      );
-    }
+    const journal = await this.findById(userSub, id);
     if (dto.title) journal.updateTitle(dto.title);
     if (dto.content !== undefined) journal.updateContent(dto.content);
     if (dto.mood !== undefined) journal.updateMood(dto.mood ?? undefined);
@@ -172,15 +107,7 @@ export class JournalService {
     return journal;
   }
 
-  async getStats(workspaceId: string, userId: string, clientToday?: string) {
-    const member = await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
-    const authorId =
-      member.role === "owner" || member.role === "admin" ? undefined : userId;
-
+  async getStats(userSub: string, clientToday?: string) {
     const todayStr =
       clientToday && /^\d{4}-\d{2}-\d{2}$/.test(clientToday)
         ? clientToday
@@ -191,9 +118,8 @@ export class JournalService {
     const windowStart = windowStartDate.toISOString().slice(0, 10);
 
     const { window, baseline } = await this.repository.getGrowthStats(
-      workspaceId,
+      userSub,
       windowStart,
-      authorId,
     );
 
     const dayMap = new Map(window.map((d) => [d.date, d]));
@@ -219,22 +145,13 @@ export class JournalService {
     };
   }
 
-  async delete(id: string, workspaceId: string, userId: string): Promise<void> {
-    const member = await this.memberService.requireRole(workspaceId, userId, [
-      "owner",
-      "admin",
-      "member",
-    ]);
-    const journal = await this.findByIdInternal(id, workspaceId);
-    if (
-      journal.authorId !== userId &&
-      member.role !== "owner" &&
-      member.role !== "admin"
-    ) {
-      throw new ForbiddenException(
-        "You can only delete your own journal entries",
-      );
-    }
-    await this.repository.delete(id);
+  async delete(userSub: string, id: string): Promise<void> {
+    await this.findById(userSub, id);
+    await this.repository.delete(userSub, id);
+  }
+
+  // Purge every journal for the user. Used by the Hub user.deleted cascade.
+  async deleteAllForUser(userSub: string): Promise<number> {
+    return this.repository.deleteAllForUser(userSub);
   }
 }

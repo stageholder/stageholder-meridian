@@ -1,30 +1,21 @@
 import axios, { type AxiosInstance } from "axios";
 import type { PlatformConfig } from "@repo/core/platform";
-import { logger } from "@repo/core/platform/logger";
 
-export interface ApiClient extends AxiosInstance {
-  /** Proactive silent refresh that respects the isRefreshing guard. */
-  silentRefresh: () => Promise<void>;
-}
+export type ApiClient = AxiosInstance;
 
-let refreshPromise: Promise<void> | null = null;
-
+// Session refresh is handled server-side now:
+// - Web:     the Next.js BFF proxy at /api/v1/[...path] inspects the
+//            iron-session cookie and refreshes the OIDC access token
+//            transparently before every upstream call.
+// - Desktop: apps/pwa/lib/api-client.ts installs a request interceptor
+//            that calls getAccessTokenTauri(), which refreshes against
+//            the Hub using the refresh token stored in Tauri's plugin-store.
+// The client-side `silentRefresh()` loop that used to live here is
+// obsolete — kept a no-op export only for any straggler callers. The
+// previous `/auth/refresh` path was deleted with the rest of the local
+// auth module in Group 2.
 export function waitForRefresh(): Promise<void> {
-  return refreshPromise ?? Promise.resolve();
-}
-
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (value?: unknown) => void;
-  reject: (reason?: unknown) => void;
-}> = [];
-
-function processQueue(error: unknown) {
-  failedQueue.forEach((promise) => {
-    if (error) promise.reject(error);
-    else promise.resolve();
-  });
-  failedQueue = [];
+  return Promise.resolve();
 }
 
 export function createApiClient(config: PlatformConfig): ApiClient {
@@ -34,92 +25,39 @@ export function createApiClient(config: PlatformConfig): ApiClient {
     withCredentials: config.authStrategy === "cookie",
   });
 
-  if (config.authStrategy === "bearer") {
-    client.interceptors.request.use(async (reqConfig) => {
-      const token = await config.storage.getItem("access_token");
-      if (token) {
-        reqConfig.headers.Authorization = `Bearer ${token}`;
-      }
-      reqConfig.headers["X-Auth-Strategy"] = "bearer";
-      return reqConfig;
-    });
-
-    // Store tokens from auth responses (login, register, social)
-    client.interceptors.response.use(async (response) => {
-      const url = response.config.url || "";
-      const isAuthEndpoint = /\/auth\/(login|register|social)$/.test(url);
-      if (isAuthEndpoint && response.data?.accessToken) {
-        await config.storage.setItem("access_token", response.data.accessToken);
-        await config.storage.setItem(
-          "refresh_token",
-          response.data.refreshToken,
-        );
-      }
-      return response;
-    });
-  }
-
+  // Response interceptor:
+  //   402 → fire the paywall event so the UI can render the upgrade modal
+  //         (then re-throw so the triggering mutation still rejects and
+  //          no optimistic UI commit leaks through)
+  //   401 → give up and tell the caller to log the user out. The BFF
+  //         (or the desktop auth shim) would have already tried to
+  //          refresh before we ever got a 401; retrying from here would
+  //          just 404 against endpoints that no longer exist.
   client.interceptors.response.use(
     (response) => response,
-    async (error) => {
-      const originalRequest = error.config;
+    (error) => {
+      const status = error.response?.status;
 
-      if (
-        error.response?.status === 401 &&
-        !originalRequest._retry &&
-        !originalRequest.url?.includes("/auth/")
-      ) {
-        // Don't attempt refresh when offline — let mutation queue retry later
-        if (typeof navigator !== "undefined" && !navigator.onLine) {
-          return Promise.reject(error);
+      if (status === 402 && typeof window !== "undefined") {
+        const body = error.response.data;
+        if (
+          body?.code === "limit_reached" &&
+          body.feature &&
+          typeof body.limit === "number"
+        ) {
+          window.dispatchEvent(
+            new CustomEvent("meridian:paywall", {
+              detail: { feature: body.feature, limit: body.limit },
+            }),
+          );
         }
+      }
 
-        if (isRefreshing) {
-          return new Promise((resolve, reject) => {
-            failedQueue.push({ resolve, reject });
-          }).then(() => client(originalRequest));
-        }
-
-        originalRequest._retry = true;
-        isRefreshing = true;
-
-        try {
-          if (config.authStrategy === "bearer") {
-            const refreshToken = await config.storage.getItem("refresh_token");
-            if (refreshToken) {
-              const res = await client.post("/auth/refresh", { refreshToken });
-              await config.storage.setItem(
-                "access_token",
-                res.data.accessToken,
-              );
-              if (res.data.refreshToken) {
-                await config.storage.setItem(
-                  "refresh_token",
-                  res.data.refreshToken,
-                );
-              }
-            }
-          } else {
-            await client.post("/auth/refresh", {});
-          }
-
-          processQueue(null);
-          config.onRefreshSuccess?.();
-          return client(originalRequest);
-        } catch (refreshError) {
-          const msg =
-            refreshError instanceof Error
-              ? refreshError.message
-              : String(refreshError);
-          logger.error(`[API] Token refresh failed: ${msg}`);
-          processQueue(refreshError);
-          // Only logout if online — offline users keep their session
-          if (typeof navigator !== "undefined" && navigator.onLine) {
-            config.onLogout?.();
-          }
-          return Promise.reject(refreshError);
-        } finally {
-          isRefreshing = false;
+      if (status === 401) {
+        // Offline-safe: don't log out if the browser says we're offline;
+        // the mutation queue will retry once we're back online.
+        if (typeof navigator === "undefined" || navigator.onLine) {
+          config.onLogout?.();
         }
       }
 
@@ -127,47 +65,5 @@ export function createApiClient(config: PlatformConfig): ApiClient {
     },
   );
 
-  /**
-   * Proactive silent refresh that respects the isRefreshing guard.
-   * Safe to call from timers/visibility handlers — will no-op if a
-   * reactive refresh (from a 401 interceptor) is already in flight.
-   */
-  function silentRefresh(): Promise<void> {
-    if (isRefreshing) return refreshPromise ?? Promise.resolve();
-    isRefreshing = true;
-
-    refreshPromise = (async () => {
-      if (config.authStrategy === "bearer") {
-        const refreshToken = await config.storage.getItem("refresh_token");
-        if (!refreshToken) return;
-        const res = await client.post("/auth/refresh", { refreshToken });
-        await config.storage.setItem("access_token", res.data.accessToken);
-        if (res.data.refreshToken) {
-          await config.storage.setItem("refresh_token", res.data.refreshToken);
-        }
-      } else {
-        await client.post("/auth/refresh", {});
-      }
-      processQueue(null);
-      config.onRefreshSuccess?.();
-    })()
-      .catch((err) => {
-        processQueue(err);
-        throw err;
-      })
-      .finally(() => {
-        isRefreshing = false;
-        refreshPromise = null;
-      });
-
-    return refreshPromise;
-  }
-
-  (client as ApiClient).silentRefresh = silentRefresh;
-
-  return client as ApiClient;
-}
-
-export function workspacePath(workspaceId: string, path: string): string {
-  return `/workspaces/${workspaceId}${path}`;
+  return client;
 }

@@ -1,6 +1,6 @@
 export interface Tag {
   id: string;
-  workspaceId: string;
+  userSub: string;
   name: string;
   color: string;
   createdAt: string;

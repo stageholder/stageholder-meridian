@@ -38,9 +38,7 @@ export class TodoRepository {
           due_date: data.dueDate ?? null,
           do_date: data.doDate ?? null,
           list_id: data.listId,
-          workspace_id: data.workspaceId,
-          assignee_id: data.assigneeId ?? null,
-          creator_id: data.creatorId,
+          userSub: data.userSub,
           order: data.order,
           subtasks: (enc.subtasks || []).map((s: any) => ({
             _id: s.id,
@@ -57,32 +55,31 @@ export class TodoRepository {
     );
   }
 
-  async findById(id: string): Promise<Todo | null> {
+  async findById(userSub: string, id: string): Promise<Todo | null> {
     const doc = await this.model
-      .findById(id)
-      .where({ deleted_at: null })
+      .findOne({ _id: id, userSub, deleted_at: null })
       .lean();
     return doc ? this.toDomain(doc) : null;
   }
 
-  async findByList(listId: string): Promise<Todo[]> {
+  async findByList(userSub: string, listId: string): Promise<Todo[]> {
     const docs = await this.model
-      .find({ list_id: listId, deleted_at: null })
+      .find({ userSub, list_id: listId, deleted_at: null })
       .sort({ order: 1 })
       .lean();
     return docs.map((doc) => this.toDomain(doc));
   }
 
-  async findByWorkspace(workspaceId: string): Promise<Todo[]> {
+  async findByUser(userSub: string): Promise<Todo[]> {
     const docs = await this.model
-      .find({ workspace_id: workspaceId, deleted_at: null })
+      .find({ userSub, deleted_at: null })
       .sort({ order: 1 })
       .lean();
     return docs.map((doc) => this.toDomain(doc));
   }
 
-  async findByWorkspaceAndDateRange(
-    workspaceId: string,
+  async findByUserAndDateRange(
+    userSub: string,
     startDate: string,
     endDate: string,
   ): Promise<Todo[]> {
@@ -92,7 +89,7 @@ export class TodoRepository {
     const dateRange = { $gte: startDate, $lt: endExclusive };
     const docs = await this.model
       .find({
-        workspace_id: workspaceId,
+        userSub,
         deleted_at: null,
         $or: [{ due_date: dateRange }, { do_date: dateRange }],
       })
@@ -101,17 +98,17 @@ export class TodoRepository {
     return docs.map((doc) => this.toDomain(doc));
   }
 
-  async findByWorkspacePaginated(
-    workspaceId: string,
+  async findByUserPaginated(
+    userSub: string,
     page: number,
     limit: number,
   ): Promise<{ docs: Todo[]; total: number }> {
     const total = await this.model.countDocuments({
-      workspace_id: workspaceId,
+      userSub,
       deleted_at: null,
     });
     const docs = await this.model
-      .find({ workspace_id: workspaceId, deleted_at: null })
+      .find({ userSub, deleted_at: null })
       .sort({ created_at: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -119,31 +116,54 @@ export class TodoRepository {
     return { docs: docs.map((doc) => this.toDomain(doc)), total };
   }
 
-  async countByList(listId: string): Promise<number> {
-    return this.model.countDocuments({ list_id: listId, deleted_at: null });
+  async countByList(userSub: string, listId: string): Promise<number> {
+    return this.model.countDocuments({
+      userSub,
+      list_id: listId,
+      deleted_at: null,
+    });
   }
 
-  async delete(id: string): Promise<void> {
+  /**
+   * Counts active (non-done, non-soft-deleted) todos for a user.
+   * Used by entitlement enforcement against the `max_active_todos` feature limit.
+   */
+  async countActiveForUser(userSub: string): Promise<number> {
+    return this.model.countDocuments({
+      userSub,
+      deleted_at: null,
+      status: { $ne: "done" },
+    });
+  }
+
+  async delete(userSub: string, id: string): Promise<void> {
     await this.model.updateOne(
-      { _id: id },
+      { _id: id, userSub },
       { $set: { deleted_at: new Date() } },
     );
   }
 
-  async deleteByList(listId: string): Promise<void> {
+  async deleteByList(userSub: string, listId: string): Promise<void> {
     await this.model.updateMany(
-      { list_id: listId, deleted_at: null },
+      { userSub, list_id: listId, deleted_at: null },
       { $set: { deleted_at: new Date() } },
     );
+  }
+
+  // Hard-delete every todo for the given userSub. Used by the Hub
+  // user.deleted cascade.
+  async deleteAllForUser(userSub: string): Promise<number> {
+    const { deletedCount } = await this.model.deleteMany({ userSub });
+    return deletedCount ?? 0;
   }
 
   async findUpdatedSince(
-    workspaceId: string,
+    userSub: string,
     since: string,
     includeSoftDeleted = false,
   ): Promise<Todo[]> {
     const filter: any = {
-      workspace_id: workspaceId,
+      userSub,
       updated_at: { $gt: new Date(since) },
     };
     if (!includeSoftDeleted) filter.deleted_at = null;
@@ -169,9 +189,7 @@ export class TodoRepository {
         dueDate: doc.due_date ?? undefined,
         doDate: doc.do_date ?? undefined,
         listId: doc.list_id,
-        workspaceId: doc.workspace_id,
-        assigneeId: doc.assignee_id ?? undefined,
-        creatorId: doc.creator_id,
+        userSub: doc.userSub,
         order: doc.order,
         subtasks: (dec.subtasks || []).map((s: any) => ({
           id: s._id,

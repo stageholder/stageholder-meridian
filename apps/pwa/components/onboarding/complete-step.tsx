@@ -21,7 +21,7 @@ export function CompleteStep({ onFinish }: { onFinish: () => void }) {
           You&apos;re all set!
         </h2>
         <p className="text-muted-foreground">
-          Your workspace is ready. Start building habits, tracking tasks, and
+          You&apos;re ready to go. Start building habits, tracking tasks, and
           journaling your journey.
         </p>
       </div>

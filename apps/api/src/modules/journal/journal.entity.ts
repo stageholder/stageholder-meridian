@@ -15,8 +15,7 @@ export interface JournalProps extends EntityProps {
   content: string;
   mood?: number;
   tags: string[] | string;
-  workspaceId: string;
-  authorId: string;
+  userSub: string;
   date: string;
   wordCount: number;
   encrypted?: boolean;
@@ -39,11 +38,8 @@ export class Journal extends Entity<JournalProps> {
   get tags(): string[] | string {
     return this.get("tags");
   }
-  get workspaceId(): string {
-    return this.get("workspaceId");
-  }
-  get authorId(): string {
-    return this.get("authorId");
+  get userSub(): string {
+    return this.get("userSub");
   }
   get date(): string {
     return this.get("date");
@@ -92,8 +88,7 @@ export class Journal extends Entity<JournalProps> {
     } else {
       if (!props.title) return Err(new Error("Journal title is required"));
     }
-    if (!props.workspaceId) return Err(new Error("Workspace is required"));
-    if (!props.authorId) return Err(new Error("Author is required"));
+    if (!props.userSub) return Err(new Error("User is required"));
     if (!props.date) return Err(new Error("Date is required"));
     if (props.mood !== undefined && (props.mood < 1 || props.mood > 5))
       return Err(new Error("Mood must be between 1 and 5"));

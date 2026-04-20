@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useTodoLists } from "@/lib/api/todos";
-import { useWorkspace } from "@/lib/workspace-context";
 import { CreateListDialog } from "./create-list-dialog";
 import type { TodoList } from "@repo/core/types";
 
@@ -14,12 +13,11 @@ interface TodoListSidebarProps {
 }
 
 export function TodoListSidebar({ onNavigate }: TodoListSidebarProps = {}) {
-  const { workspace } = useWorkspace();
   const pathname = usePathname();
   const { data: lists, isLoading } = useTodoLists();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
-  const basePath = `/${workspace.shortId}/todos`;
+  const basePath = "/app/todos";
 
   const sortedLists = lists
     ? [...lists].sort((a, b) =>

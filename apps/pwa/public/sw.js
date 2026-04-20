@@ -33,6 +33,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Don't intercept auth routes — they redirect cross-origin to the Hub,
+  // and wrapping those redirects in a service-worker fetch triggers CORS
+  // on the SW's cors-mode fetch. Let the browser handle them natively:
+  // top-level navigations follow cross-origin redirects without CORS.
+  if (
+    url.pathname.startsWith('/auth/') ||
+    url.pathname === '/goodbye'
+  ) {
+    return;
+  }
+
   // Cache-first for static assets
   if (request.destination === 'style' || request.destination === 'script' || request.destination === 'image' || request.destination === 'font') {
     event.respondWith(
