@@ -30,7 +30,7 @@
         "@nestjs/swagger": "^11.2.6",
         "@nestjs/terminus": "^11.1.1",
         "@nestjs/throttler": "^6.5.0",
-        "@stageholder/auth": "^0.1.2",
+        "@stageholder/auth": "^0.1.3",
         "date-fns": "^4.1.0",
         "express": "^5.2.1",
         "helmet": "^8.1.0",
@@ -113,7 +113,7 @@
         "@repo/crypto": "*",
         "@repo/offline": "*",
         "@repo/ui": "*",
-        "@stageholder/auth": "^0.1.2",
+        "@stageholder/auth": "^0.1.3",
         "@tanstack/react-query": "^5.62.0",
         "@tauri-apps/plugin-opener": "^2.5.3",
         "@tauri-apps/plugin-process": "^2",
@@ -777,7 +777,7 @@
 
     "@sindresorhus/is": ["@sindresorhus/is@5.6.0", "", {}, "sha512-TV7t8GKYaJWsn00tFDqBw8+Uqmr8A0fRU1tvTQhyZzGv0sJCGRQL3JGMI3ucuKo3XIZdUP+Lx7/gh2t3lewy7g=="],
 
-    "@stageholder/auth": ["@stageholder/auth@0.1.2", "https://npm.pkg.github.com/download/@stageholder/auth/0.1.2/c15adefa209226bc30746035683cded1fad06ac1", { "dependencies": { "jose": "^6.0.0" }, "peerDependencies": { "@nestjs/common": "^11.0.0", "@nestjs/core": "^11.0.0" } }, "sha512-7K+0/hxOykKqBr50Psry/AfmeUZRnq6w8R7aP4dN36x6tLiXAIXXYIYtF9G4BYFP0Ndc143ttfjQWnXoM8rHqw=="],
+    "@stageholder/auth": ["@stageholder/auth@0.1.3", "https://npm.pkg.github.com/download/@stageholder/auth/0.1.3/73a46881fa02f5f9306e12e717b06ebff89f0d77", { "dependencies": { "jose": "^6.0.0" }, "peerDependencies": { "@nestjs/common": "^11.0.0", "@nestjs/core": "^11.0.0" } }, "sha512-sM3UM9C7BLmT3vwB9OkDNWfZHuRkg3mV06ADtMhhrnS3rhwFQqOVoQ/WVxNDRF5x1yN4u4m7BzMp9FTnTN41tg=="],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useUser } from "@/hooks/use-user";
 import { cn } from "@/lib/utils";
 import { WelcomeStep } from "@/components/onboarding/welcome-step";
@@ -12,26 +13,59 @@ import { CompleteStep } from "@/components/onboarding/complete-step";
 
 const TOTAL_STEPS = 5;
 
+async function postCompletion(timezone: string): Promise<void> {
+  const res = await fetch("/api/me/onboarding/complete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ timezone }),
+  });
+  if (!res.ok) {
+    throw new Error(`completion failed: ${res.status}`);
+  }
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: user, isLoading } = useUser();
   const [step, setStep] = useState(0);
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
+  const [timezone, setTimezone] = useState<string>(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone,
+  );
 
   useEffect(() => {
     if (isLoading) return;
     if (!user) {
       router.replace("/auth/login");
+      return;
+    }
+    // Already onboarded — don't let the user re-enter the flow by typing
+    // the URL. The layout gate handles the inverse (not-onboarded hitting
+    // /app) so /onboarding and /app are now fully separated lanes.
+    if (user.hasCompletedOnboarding) {
+      router.replace("/app");
     }
   }, [user, isLoading, router]);
 
-  const finishOnboarding = useCallback(() => {
+  // Throws on failure — CompleteStep catches and surfaces the inline error.
+  const finishOnboarding = useCallback(async () => {
+    await postCompletion(timezone);
+    await queryClient.invalidateQueries({ queryKey: ["me"] });
     router.push("/app");
-  }, [router]);
+  }, [timezone, queryClient, router]);
 
-  const handleSkip = useCallback(() => {
-    finishOnboarding();
-  }, [finishOnboarding]);
+  const handleSkip = useCallback(async () => {
+    try {
+      await postCompletion(timezone);
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
+      router.push("/app");
+    } catch {
+      // Skip failed. Intentionally silent — CompleteStep is the primary
+      // error surface; the user can finish the flow normally or retry skip.
+    }
+  }, [timezone, queryClient, router]);
 
   if (!user) return null;
 
@@ -42,7 +76,13 @@ export default function OnboardingPage() {
           <WelcomeStep name={user.name ?? ""} onContinue={() => setStep(1)} />
         );
       case 1:
-        return <ProfileStep onContinue={() => setStep(2)} />;
+        return (
+          <ProfileStep
+            timezone={timezone}
+            onTimezoneChange={setTimezone}
+            onContinue={() => setStep(2)}
+          />
+        );
       case 2:
         return (
           <GoalsStep

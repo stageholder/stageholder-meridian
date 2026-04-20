@@ -22,6 +22,7 @@ import { HealthModule } from "./modules/health/health.module";
 import { EncryptionModule } from "./modules/encryption";
 import { JournalSecurityModule } from "./modules/journal-security/journal-security.module";
 import { MeModule } from "./modules/me/me.module";
+import { UserModule } from "./modules/user/user.module";
 import { HubEventsModule } from "./modules/hub-events/hub-events.module";
 import { AuthGuard } from "./common/guards/auth.guard";
 
@@ -86,6 +87,7 @@ import { AuthGuard } from "./common/guards/auth.guard";
     HealthModule,
     JournalSecurityModule,
     MeModule,
+    UserModule,
     HubEventsModule,
   ],
   providers: [

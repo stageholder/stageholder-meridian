@@ -8,6 +8,12 @@ const envSchema = z.object({
     .string()
     .url("IDENTITY_ISSUER_URL must be a valid URL")
     .min(1, "IDENTITY_ISSUER_URL is required"),
+  // Hub origin (no path) — used for non-OIDC API calls like /api/events.
+  // Optional: falls back to stripping the path from IDENTITY_ISSUER_URL.
+  IDENTITY_HUB_URL: z
+    .string()
+    .url("IDENTITY_HUB_URL must be a valid URL")
+    .optional(),
   IDENTITY_CLIENT_ID: z.string().min(1, "IDENTITY_CLIENT_ID is required"),
   IDENTITY_CLIENT_SECRET: isProd()
     ? z.string().min(1, "IDENTITY_CLIENT_SECRET is required in production")

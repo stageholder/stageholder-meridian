@@ -19,6 +19,11 @@ export interface ProductSession {
   name?: string;
   personalOrgId?: string | null;
   personalOrgSlug?: string | null;
+  // Optional so legacy cookies minted before the onboarding feature
+  // decrypt cleanly. The callback fills both on the next sign-in; the
+  // /api/me and client gates treat undefined as "not onboarded".
+  hasCompletedOnboarding?: boolean;
+  timezone?: string | null;
   accessToken: string;
   refreshToken: string;
   accessTokenExpiresAt: number; // epoch seconds

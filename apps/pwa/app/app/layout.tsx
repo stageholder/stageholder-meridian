@@ -170,7 +170,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useGlobalShortcuts(shortcutCallbacks);
 
   useEffect(() => {
-    if (!userLoading && !user) {
+    if (userLoading) return;
+    if (!user) {
       if (isDesktop()) {
         // On desktop, unauthenticated state is handled by DesktopAuthBoot at
         // the root layout. Bounce to `/` which will unmount this subtree and
@@ -179,6 +180,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       } else {
         router.replace("/auth/login");
       }
+      return;
+    }
+    // Client-side onboarding gate: catches desktop (no BFF callback), direct
+    // URL hits, and cache drift after a cross-tab completion. Server-side
+    // gate in /auth/callback still handles the happy path on web without
+    // UI flash.
+    if (user.hasCompletedOnboarding === false) {
+      router.replace("/onboarding");
     }
   }, [user, userLoading, router]);
 

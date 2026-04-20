@@ -3,12 +3,20 @@
 import { useState } from "react";
 import { Check } from "lucide-react";
 
-export function CompleteStep({ onFinish }: { onFinish: () => void }) {
+export function CompleteStep({ onFinish }: { onFinish: () => Promise<void> }) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function handleFinish() {
+  async function handleFinish() {
+    setError(null);
     setLoading(true);
-    onFinish();
+    try {
+      await onFinish();
+    } catch {
+      setError("We couldn't save that. Try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -25,12 +33,17 @@ export function CompleteStep({ onFinish }: { onFinish: () => void }) {
           journaling your journey.
         </p>
       </div>
+      {error && (
+        <p className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      )}
       <button
         onClick={handleFinish}
         disabled={loading}
         className="rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
       >
-        {loading ? "Loading..." : "Go to Dashboard"}
+        {loading ? "Saving..." : "Go to Dashboard"}
       </button>
     </div>
   );

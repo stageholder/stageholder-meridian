@@ -18,6 +18,7 @@ import { JournalSecurityModule } from "../journal-security/journal-security.modu
 import { LightModule } from "../light/light.module";
 import { ActivityModule } from "../activity/activity.module";
 import { FeedbackModule } from "../feedback/feedback.module";
+import { UserModule } from "../user/user.module";
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { FeedbackModule } from "../feedback/feedback.module";
     LightModule,
     ActivityModule,
     FeedbackModule,
+    UserModule,
   ],
   providers: [HubEventsService],
 })

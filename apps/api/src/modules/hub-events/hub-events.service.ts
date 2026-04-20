@@ -20,6 +20,7 @@ import { JournalSecurityService } from "../journal-security/journal-security.ser
 import { LightService } from "../light/light.service";
 import { ActivityService } from "../activity/activity.service";
 import { FeedbackService } from "../feedback/feedback.service";
+import { UserService } from "../user/user.service";
 
 interface HubEvent {
   id: string;
@@ -71,14 +72,21 @@ export class HubEventsService {
     private readonly lightService: LightService,
     private readonly activityService: ActivityService,
     private readonly feedbackService: FeedbackService,
+    private readonly userService: UserService,
   ) {}
 
   @Cron(CronExpression.EVERY_5_MINUTES, { name: "pollHubEvents" })
   async poll(): Promise<void> {
+    // Hub's /api/events endpoint lives at the hub origin, NOT under the
+    // OIDC subpath. Prefer IDENTITY_HUB_URL; fall back to stripping the
+    // path off IDENTITY_ISSUER_URL so older env files still work.
     const issuer = this.config.get<string>("IDENTITY_ISSUER_URL");
+    const hubUrl =
+      this.config.get<string>("IDENTITY_HUB_URL") ??
+      (issuer ? new URL(issuer).origin : undefined);
     const clientId = this.config.get<string>("IDENTITY_CLIENT_ID");
     const clientSecret = this.config.get<string>("IDENTITY_CLIENT_SECRET");
-    if (!issuer || !clientId || !clientSecret) {
+    if (!hubUrl || !clientId || !clientSecret) {
       this.logger.warn("Hub credentials missing; skipping event poll");
       return;
     }
@@ -86,7 +94,7 @@ export class HubEventsService {
     const row = await this.cursorModel.findById(CURSOR_KEY).lean();
     const since = row?.cursor ?? undefined;
 
-    const url = new URL(`${issuer}/api/events`);
+    const url = new URL(`${hubUrl}/api/events`);
     url.searchParams.set("product", "meridian");
     if (since) url.searchParams.set("since", since);
     url.searchParams.set("limit", String(POLL_BATCH));
@@ -220,6 +228,7 @@ export class HubEventsService {
       this.lightService.deleteAllForUser(userSub),
       this.activityService.deleteAllForUser(userSub),
       this.feedbackService.deleteAllForUser(userSub),
+      this.userService.deleteAllForUser(userSub),
     ]);
     this.logger.log(`Cascade delete complete for sub=${userSub}`);
   }

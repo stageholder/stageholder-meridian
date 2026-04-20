@@ -4,28 +4,26 @@ import { useState, useEffect } from "react";
 import { useUser } from "@/hooks/use-user";
 import { TimezoneSelect } from "@/components/ui/timezone-select";
 
-export function ProfileStep({ onContinue }: { onContinue: () => void }) {
+export function ProfileStep({
+  timezone,
+  onTimezoneChange,
+  onContinue,
+}: {
+  timezone: string;
+  onTimezoneChange: (value: string) => void;
+  onContinue: () => void;
+}) {
   const { data: user } = useUser();
   const [name, setName] = useState(user?.name || "");
-  const [timezone, setTimezone] = useState(
-    Intl.DateTimeFormat().resolvedOptions().timeZone,
-  );
 
-  // TODO(group-?): user profile (name, timezone) is now owned by the Hub.
-  // Previously this step PATCHed `/auth/me` and updated the local auth store;
-  // both are gone. We keep the form visible so the onboarding flow still
-  // reads naturally, but "Continue" just advances — to edit the profile the
-  // user is directed to the Hub. Wire a real local-profile PATCH when the
-  // API exposes one (e.g. journal_security, timezone override).
+  // Profile (name, email) is owned by the Hub — Meridian shows it as a
+  // read-only confirmation here. Timezone is Meridian-local state,
+  // persisted on onboarding completion; the parent page owns the value.
   const HUB_URL = process.env.NEXT_PUBLIC_HUB_URL;
 
   useEffect(() => {
     if (user?.name) setName(user.name);
   }, [user]);
-
-  function handleContinue() {
-    onContinue();
-  }
 
   function openHubProfile() {
     if (!HUB_URL) return;
@@ -71,7 +69,7 @@ export function ProfileStep({ onContinue }: { onContinue: () => void }) {
           </label>
           <TimezoneSelect
             value={timezone}
-            onValueChange={setTimezone}
+            onValueChange={onTimezoneChange}
             className="mt-1"
           />
         </div>
@@ -88,7 +86,7 @@ export function ProfileStep({ onContinue }: { onContinue: () => void }) {
       </div>
 
       <button
-        onClick={handleContinue}
+        onClick={onContinue}
         disabled={!name.trim()}
         className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
       >

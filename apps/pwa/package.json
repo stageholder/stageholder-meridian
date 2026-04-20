@@ -29,7 +29,7 @@
     "@repo/crypto": "*",
     "@repo/offline": "*",
     "@repo/ui": "*",
-    "@stageholder/auth": "^0.1.2",
+    "@stageholder/auth": "^0.1.3",
     "@tanstack/react-query": "^5.62.0",
     "@tauri-apps/plugin-opener": "^2.5.3",
     "@tauri-apps/plugin-process": "^2",

@@ -10,6 +10,8 @@ export interface MeResponse {
   name?: string;
   personalOrgId: string | null;
   personalOrgSlug: string | null;
+  hasCompletedOnboarding: boolean;
+  timezone: string | null;
 }
 
 export async function GET() {
@@ -23,6 +25,11 @@ export async function GET() {
     name: session.name,
     personalOrgId: session.personalOrgId ?? null,
     personalOrgSlug: session.personalOrgSlug ?? null,
+    // Legacy sessions minted before the onboarding feature have these
+    // undefined. Treat undefined as "not onboarded" so the user walks the
+    // flow once on their next active request.
+    hasCompletedOnboarding: session.hasCompletedOnboarding ?? false,
+    timezone: session.timezone ?? null,
   };
   return NextResponse.json(body);
 }

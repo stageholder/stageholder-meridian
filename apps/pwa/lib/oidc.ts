@@ -43,7 +43,7 @@ export function buildAuthorizeUrl(opts: {
     code_challenge: opts.challenge,
     code_challenge_method: "S256",
   });
-  return `${ISSUER}/oidc/auth?${params.toString()}`;
+  return `${ISSUER}/auth?${params.toString()}`;
 }
 
 interface TokenResponse {
@@ -62,7 +62,7 @@ export async function exchangeCode(
   code: string,
   verifier: string,
 ): Promise<TokenResponse> {
-  const res = await fetch(`${ISSUER}/oidc/token`, {
+  const res = await fetch(`${ISSUER}/token`, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -83,64 +83,10 @@ export async function exchangeCode(
   return (await res.json()) as TokenResponse;
 }
 
-export interface IdTokenClaims {
-  sub: string;
-  email?: string;
-  name?: string;
-  [key: string]: unknown;
-}
-
-export function decodeIdToken(idToken: string): IdTokenClaims {
-  const [, payload] = idToken.split(".");
-  const decoded = Buffer.from(payload, "base64").toString("utf-8");
-  return JSON.parse(decoded) as IdTokenClaims;
-}
-
-export interface UserinfoOrganization {
-  id: string;
-  slug: string;
-  name: string;
-  role: string;
-}
-
-export interface UserinfoResponse {
-  sub: string;
-  email?: string;
-  email_verified?: boolean;
-  name?: string;
-  organizations?: UserinfoOrganization[];
-  [key: string]: unknown;
-}
-
-/**
- * Fetch the Hub's userinfo endpoint with the freshly-issued access token.
- *
- * Authorization claims (organizations, product_access, subscriptions) live
- * in userinfo and in the JWT access token — but NOT in the id_token, which
- * the Hub deliberately keeps slim so BFF session cookies stay under 4 KB.
- * We call userinfo once at callback time to resolve the personal org, then
- * cache the result in the session.
- */
-export async function fetchUserinfo(
-  accessToken: string,
-): Promise<UserinfoResponse> {
-  const res = await fetch(`${ISSUER}/oidc/me`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-    // Bound the login critical path — a slow or hung Hub must not hold the
-    // callback route indefinitely. 5s is generous; userinfo is an in-memory
-    // lookup on Hub.
-    signal: AbortSignal.timeout(5000),
-  });
-  if (!res.ok) {
-    throw new Error(`userinfo request failed: ${res.status}`);
-  }
-  return (await res.json()) as UserinfoResponse;
-}
-
 export async function refreshAccessToken(
   session: ProductSession,
 ): Promise<ProductSession> {
-  const res = await fetch(`${ISSUER}/oidc/token`, {
+  const res = await fetch(`${ISSUER}/token`, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -174,7 +120,7 @@ export async function refreshAccessToken(
  */
 export async function revokeRefreshToken(refreshToken: string): Promise<void> {
   try {
-    await fetch(`${ISSUER}/oidc/token/revocation`, {
+    await fetch(`${ISSUER}/token/revocation`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -191,4 +137,39 @@ export async function revokeRefreshToken(refreshToken: string): Promise<void> {
   } catch {
     /* swallowed intentionally */
   }
+}
+
+export interface MeridianMeResponse {
+  sub: string;
+  email: string | null;
+  name: string | null;
+  personalOrgId: string | null;
+  personalOrgSlug: string | null;
+  hasCompletedOnboarding: boolean;
+  timezone: string | null;
+}
+
+const MERIDIAN_API_URL =
+  process.env.MERIDIAN_API_URL ?? "http://localhost:4000";
+
+/**
+ * Server-to-server call to the Meridian API's `GET /me`. Returns identity,
+ * authz (personal org), and Meridian-side state (onboarding flag, timezone)
+ * in a single hop — all of it already verified by the backend's Stageholder
+ * auth guard, so the BFF doesn't need to re-verify or call userinfo separately.
+ * The API upserts the User document on first access, so this doubles as JIT
+ * provisioning.
+ */
+export async function fetchMeridianMe(
+  accessToken: string,
+): Promise<MeridianMeResponse> {
+  const res = await fetch(`${MERIDIAN_API_URL}/api/v1/me`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    // Bound the login critical path — must not hang on a slow API.
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!res.ok) {
+    throw new Error(`meridian /me request failed: ${res.status}`);
+  }
+  return (await res.json()) as MeridianMeResponse;
 }

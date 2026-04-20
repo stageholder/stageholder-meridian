@@ -28,7 +28,7 @@ import { load as loadStore, type Store } from "@tauri-apps/plugin-store";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
 const ISSUER = (process.env.NEXT_PUBLIC_IDENTITY_ISSUER_URL ??
-  "http://localhost:4828") as string;
+  "http://localhost:4828/oidc") as string;
 const CLIENT_ID = "meridian-desktop";
 const SCOPES =
   "openid offline_access profile email organizations subscriptions";
@@ -47,8 +47,6 @@ export interface InMemorySession {
   accessToken: string;
   idToken: string;
   accessTokenExpiresAt: number;
-  sub: string;
-  email?: string;
 }
 
 let memorySession: InMemorySession | null = null;
@@ -76,13 +74,6 @@ async function sha256(input: string): Promise<Uint8Array> {
 
 function randomBytes(n: number): Uint8Array {
   return crypto.getRandomValues(new Uint8Array(n));
-}
-
-function decodeIdToken(idToken: string): { sub: string; email?: string } {
-  const [, payload] = idToken.split(".");
-  if (!payload) throw new Error("Malformed id_token");
-  const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
-  return JSON.parse(json);
 }
 
 async function getStore(): Promise<Store> {
@@ -179,7 +170,7 @@ export async function signInTauri(): Promise<InMemorySession> {
       code_challenge: challenge,
       code_challenge_method: "S256",
     });
-    await openUrl(`${ISSUER}/oidc/auth?${authParams.toString()}`);
+    await openUrl(`${ISSUER}/auth?${authParams.toString()}`);
 
     const callbackUrl = await received;
     const parsed = new URL(callbackUrl);
@@ -197,14 +188,13 @@ export async function signInTauri(): Promise<InMemorySession> {
     }
 
     const tokens = await exchangeCode(code, verifier, redirectUri);
-    const claims = decodeIdToken(tokens.id_token);
     await writeRefreshToken(tokens.refresh_token);
+    // Identity claims are no longer extracted here — consumers verify the
+    // id_token via @stageholder/auth/client where they read it.
     memorySession = {
       accessToken: tokens.access_token,
       idToken: tokens.id_token,
       accessTokenExpiresAt: Math.floor(Date.now() / 1000) + tokens.expires_in,
-      sub: claims.sub,
-      email: claims.email,
     };
     return memorySession;
   } finally {
@@ -224,7 +214,7 @@ async function exchangeCode(
     code_verifier: verifier,
     client_id: CLIENT_ID,
   });
-  const res = await fetch(`${ISSUER}/oidc/token`, {
+  const res = await fetch(`${ISSUER}/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
@@ -250,7 +240,7 @@ async function refreshTauriTokens(): Promise<InMemorySession | null> {
 
     let res: Response;
     try {
-      res = await fetch(`${ISSUER}/oidc/token`, {
+      res = await fetch(`${ISSUER}/token`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body,
@@ -280,13 +270,10 @@ async function refreshTauriTokens(): Promise<InMemorySession | null> {
     // Refresh tokens rotate on every use — always persist the new one
     // before returning so we never expose the stale one again.
     await writeRefreshToken(tokens.refresh_token);
-    const claims = decodeIdToken(tokens.id_token);
     memorySession = {
       accessToken: tokens.access_token,
       idToken: tokens.id_token,
       accessTokenExpiresAt: Math.floor(Date.now() / 1000) + tokens.expires_in,
-      sub: claims.sub,
-      email: claims.email,
     };
     return memorySession;
   })();
@@ -326,7 +313,7 @@ export async function signOutTauri(): Promise<void> {
   const refreshToken = await readRefreshToken();
   if (refreshToken) {
     try {
-      await fetch(`${ISSUER}/oidc/token/revocation`, {
+      await fetch(`${ISSUER}/token/revocation`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({

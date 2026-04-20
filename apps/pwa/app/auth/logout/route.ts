@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     post_logout_redirect_uri: postLogoutUri(req),
   });
   return NextResponse.redirect(
-    `${ISSUER}/oidc/session/end?${params.toString()}`,
+    `${ISSUER}/session/end?${params.toString()}`,
     303,
   );
 }
