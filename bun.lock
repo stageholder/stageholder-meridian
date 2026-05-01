@@ -5,7 +5,7 @@
     "": {
       "name": "stageholder-meridian",
       "dependencies": {
-        "@stageholder/sdk": "^1.0.0-alpha.11",
+        "@stageholder/sdk": "^1.0.0-alpha.12",
         "react-day-picker": "^9.14.0",
       },
       "devDependencies": {
@@ -782,7 +782,7 @@
 
     "@stablelib/base64": ["@stablelib/base64@1.0.1", "", {}, "sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ=="],
 
-    "@stageholder/sdk": ["@stageholder/sdk@1.0.0-alpha.11", "https://npm.pkg.github.com/download/@stageholder/sdk/1.0.0-alpha.11/20726c4a3eece6e1ccc558a16cca91abb3cd183d", { "dependencies": { "@radix-ui/react-dialog": "^1.1.0", "@radix-ui/react-progress": "^1.1.0", "@radix-ui/react-slot": "^1.1.0", "class-variance-authority": "^0.7.0", "clsx": "^2.1.0", "iron-session": "^8.0.0", "jose": "^6.0.0", "svix": "^1.45.0", "tailwind-merge": "^2.5.0", "zod": "^3.24.0" }, "peerDependencies": { "@nestjs/common": "^11.0.0", "@nestjs/core": "^11.0.0", "@tauri-apps/api": "^2.0.0", "next": "^16.0.0", "react": "^19.2.0", "react-dom": "^19.2.0" } }, "sha512-cv8+debAdHflgbQaV+7cgIbjBU3RoyejxP4nlD9/s3xZcPjfrfQmJxEjli4ww8XZ73vfe0Q9NLvVmU8rAxz/Gw=="],
+    "@stageholder/sdk": ["@stageholder/sdk@1.0.0-alpha.12", "https://npm.pkg.github.com/download/@stageholder/sdk/1.0.0-alpha.12/532837ba86943414a521fbc4f0b13402ebbcd131", { "dependencies": { "@radix-ui/react-dialog": "^1.1.0", "@radix-ui/react-progress": "^1.1.0", "@radix-ui/react-slot": "^1.1.0", "class-variance-authority": "^0.7.0", "clsx": "^2.1.0", "iron-session": "^8.0.0", "jose": "^6.0.0", "svix": "^1.45.0", "tailwind-merge": "^2.5.0", "zod": "^3.24.0" }, "peerDependencies": { "@nestjs/common": "^11.0.0", "@nestjs/core": "^11.0.0", "@tauri-apps/api": "^2.0.0", "next": "^16.0.0", "react": "^19.2.0", "react-dom": "^19.2.0" } }, "sha512-5GM4+ec9f8EzqqDJpIInJXj2XkfVR30KtrlwwCZg3MFuW5+Eq5DvLUqdG9FMSX2fEUz+kcITYxOGRIDjwn+TXg=="],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 

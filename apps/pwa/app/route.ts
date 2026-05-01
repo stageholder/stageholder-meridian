@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { stageholder } from "@/lib/stageholder";
 
 /**
  * Root entry point. Plain HTTP 307 redirect based on session presence.
@@ -12,11 +13,14 @@ import { NextResponse } from "next/server";
  * does fall back to browser navigation, but only after a noisy error
  * cascade and a visible delay. A pure route handler skips all that —
  * it's a top-level 307 the browser follows natively, no CORS.
+ *
+ * Cookie name comes from the same `stageholder` bundle the SDK uses to
+ * write the cookie — reading it here makes drift impossible.
  */
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const hasSession = (await cookies()).has("meridian_session");
+  const hasSession = (await cookies()).has(stageholder.config.cookieName);
   const target = hasSession ? "/app" : "/auth/login";
   return NextResponse.redirect(new URL(target, request.url));
 }

@@ -43,6 +43,7 @@ import { ShortcutsDialog } from "@/components/shared/shortcuts-dialog";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 import { CreateTodoDialog } from "@/components/todos/create-todo-dialog";
 import { useUser } from "@/hooks/use-user";
+import { useStageholder } from "@stageholder/sdk/react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -138,6 +139,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isLoading: userLoading } = useUser();
+  const { signOut } = useStageholder();
   const stableSyncAll = useCallback(() => syncAll(), []);
   // Heartbeat against the same-origin BFF proxy on web; on desktop the proxy
   // isn't reachable so fall back to NEXT_PUBLIC_API_URL.
@@ -212,19 +214,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       window.location.href = "/";
       return;
     }
-    // The BFF `/auth/logout` route revokes the Hub refresh token, clears the
-    // iron-session cookie, and redirects through the Hub's end-session
-    // endpoint to `/goodbye`. A full navigation is required so the browser
-    // follows the 302 chain. We deliberately do NOT broadcast here: at this
-    // point the Hub session is still alive, so peer tabs navigating to
-    // /auth/login would silent-SSO straight back in. The /goodbye page is
-    // the only moment we're guaranteed the Hub has ended its session, so it
-    // owns the broadcast.
-    const form = document.createElement("form");
-    form.method = "POST";
-    form.action = "/auth/logout";
-    document.body.appendChild(form);
-    form.submit();
+    // SDK signOut sends the X-Stageholder-CSRF header (required by the BFF's
+    // /auth/logout route) and follows the 302 to the Hub's end-session
+    // endpoint, which lands on /goodbye. We deliberately do NOT broadcast
+    // here: at this point the Hub session is still alive, so peer tabs
+    // navigating to /auth/login would silent-SSO straight back in. /goodbye
+    // owns the broadcast — that's the only moment the Hub has ended.
+    await signOut();
   }
 
   const currentPage = navItems.find((item) => isNavActive(pathname, item.href));

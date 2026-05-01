@@ -52,14 +52,14 @@ export default function OnboardingPage() {
   // Throws on failure — CompleteStep catches and surfaces the inline error.
   const finishOnboarding = useCallback(async () => {
     await postCompletion(timezone);
-    await queryClient.invalidateQueries({ queryKey: ["me"] });
+    await queryClient.invalidateQueries({ queryKey: ["me-meridian-extras"] });
     router.push("/app");
   }, [timezone, queryClient, router]);
 
   const handleSkip = useCallback(async () => {
     try {
       await postCompletion(timezone);
-      await queryClient.invalidateQueries({ queryKey: ["me"] });
+      await queryClient.invalidateQueries({ queryKey: ["me-meridian-extras"] });
       router.push("/app");
     } catch {
       // Skip failed. Intentionally silent — CompleteStep is the primary

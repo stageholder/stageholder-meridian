@@ -1,7 +1,7 @@
 import { AuthShell } from "@/components/shared/auth-shell";
 
 interface PageProps {
-  searchParams: Promise<{ reason?: string }>;
+  searchParams: Promise<{ reason?: string; from?: string }>;
 }
 
 export const dynamic = "force-dynamic";
@@ -13,11 +13,14 @@ const REASONS: Record<string, string> = {
     "Could not complete sign-in with the identity service.",
   invalid_id_token: "Received an invalid ID token.",
   access_denied: "You did not grant access to Meridian.",
+  redirect_loop:
+    "The sign-in flow kept bouncing between this app and the identity service. Usually a session-cookie name mismatch between proxy.ts, app/route.ts, and the SDK config. Clear cookies for this site and try again — if it repeats, the three need to be re-aligned.",
 };
 
 export default async function AuthErrorPage({ searchParams }: PageProps) {
-  const { reason } = await searchParams;
-  const message = (reason && REASONS[reason]) || "Sign-in failed.";
+  const { reason, from } = await searchParams;
+  const baseMessage = (reason && REASONS[reason]) || "Sign-in failed.";
+  const message = from ? `${baseMessage} (last attempt: ${from})` : baseMessage;
 
   return (
     <AuthShell>

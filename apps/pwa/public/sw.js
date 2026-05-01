@@ -61,11 +61,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-first for navigation, fall back to cached shell
+  // Network-first for navigation, fall back to cached shell.
+  //
+  // `redirect: 'manual'` is required: a navigation request's redirect mode is
+  // `manual`, and the spec forbids returning a response that already followed
+  // a redirect (`response.redirected === true`) to one of those. With
+  // `manual` the SW gets back an `opaqueredirect` response that the browser
+  // unpacks at the navigation layer — the user sees the redirect normally
+  // and you don't get "a redirected response was used for a request whose
+  // redirect mode is not 'follow'" warnings spamming the console.
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(() =>
-        caches.match('/').then((cached) => cached || fetch(request))
+      fetch(request, { redirect: 'manual' }).catch(() =>
+        caches.match('/').then((cached) => cached || Response.error())
       )
     );
     return;

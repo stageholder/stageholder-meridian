@@ -11,9 +11,9 @@
  *   POST /auth/switch-org     — update active org in session
  *   GET  /auth/events         — SSE stream for invalidation signals
  *
- * Config is resolved from env vars via the singleton `stageholder` bundle.
- * A `ConfigError` is thrown synchronously at module-init time when any
- * required var is absent — misconfiguration surfaces at cold-start.
+ * Config lives entirely on the `stageholder` bundle in `lib/stageholder.ts`
+ * (single source of truth — see SDK README "One config, two consumers").
+ * Only the per-route hooks (which are functions, not config) are wired here.
  *
  * `enrichSession` wires in the JIT provisioning call: at every session
  * create or refresh, `GET /api/v1/me` is called on the Meridian API to
@@ -27,17 +27,9 @@
  */
 import { stageholderAuth } from "@stageholder/sdk/nextjs";
 import type { ProductSession } from "@stageholder/sdk/nextjs";
-import { sessionBackend, type MeridianCustom } from "@/lib/stageholder";
+import { stageholder, type MeridianCustom } from "@/lib/stageholder";
 
-export const { GET, POST } = stageholderAuth<MeridianCustom>({
-  productSlug: "meridian",
-  loginRedirectPath: "/",
-  silentSso: false,
-  // Server-side session storage: cookie holds an opaque session id (~120
-  // bytes sealed); the actual payload — including the hub's fat access
-  // token with embedded org/subscription claims — lives in `sessionBackend`.
-  // Keeps the cookie under the browser's 4096-byte per-cookie limit.
-  storageBackend: sessionBackend,
+export const { GET, POST } = stageholderAuth<MeridianCustom>(stageholder, {
   enrichSession: async (
     session: Omit<ProductSession<MeridianCustom>, "custom">,
   ): Promise<MeridianCustom> => {
@@ -49,7 +41,7 @@ export const { GET, POST } = stageholderAuth<MeridianCustom>({
     if (session.custom && !session.custom.hasCompletedOnboarding) {
       return { redirectTo: "/onboarding" };
     }
-    // Falls through to the default loginRedirectPath ("/").
+    // Falls through to the default loginRedirectPath ("/" — set on the bundle).
   },
 });
 

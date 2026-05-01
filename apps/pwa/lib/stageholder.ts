@@ -45,4 +45,11 @@ export const stageholder = defineStageholderConfig<MeridianCustom>({
   productSlug: "meridian",
   silentSso: false,
   storageBackend: sessionBackend,
+  loginRedirectPath: "/",
+  // Where the Hub sends the browser after RP-initiated logout completes.
+  // Must match a `post_logout_redirect_uris` entry on this client's row in
+  // the Hub's `oidc_clients` table — landing on /goodbye also runs the
+  // cross-tab BroadcastChannel that wakes other tabs into the signed-out UI.
+  logoutRedirectUri:
+    process.env.LOGOUT_REDIRECT_URI ?? "http://localhost:4001/goodbye",
 });

@@ -37,11 +37,11 @@ const apiClient = createApiClient({
       window.location.href = "/";
       return;
     }
-    try {
-      await fetch("/auth/logout", { method: "POST", credentials: "include" });
-    } catch {
-      /* non-blocking; we're redirecting anyway */
-    }
+    // Don't POST /auth/logout from here — the SDK route requires the
+    // X-Stageholder-CSRF header which we can't read outside React. The
+    // redirect to /auth/login is enough: if the Hub session is still alive,
+    // silent SSO mints new tokens (overwriting the stale session cookie); if
+    // it isn't, the user re-authenticates normally.
     const { toast } = await import("sonner").catch(() => ({
       toast: null as any,
     }));

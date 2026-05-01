@@ -26,7 +26,6 @@ const fakeFatSession: ProductSession<MeridianCustom> = {
   emailVerified: true,
   accessToken: "header." + "a".repeat(1500) + ".sig", // ~1.5 KB JWT with claims
   refreshToken: "rt_" + "b".repeat(64),
-  idToken: "header." + "c".repeat(800) + ".sig", // ~800 B id_token
   accessTokenExpiresAt: Math.floor(Date.now() / 1000) + 900,
   activeOrgId: "00000000-0000-0000-0000-000000000000",
   csrfToken: "d".repeat(43),
