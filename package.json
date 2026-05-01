@@ -37,7 +37,7 @@
     "packages/*"
   ],
   "dependencies": {
-    "@stageholder/sdk": "^1.0.0-alpha.12",
+    "@stageholder/sdk": "^1.0.0-alpha.15",
     "react-day-picker": "^9.14.0"
   }
 }

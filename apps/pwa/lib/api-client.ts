@@ -1,8 +1,23 @@
 import { createApiClient } from "@repo/core/api/client";
 import { LocalStorageAdapter, detectPlatform } from "@repo/core/platform";
+import { MERIDIAN_PAYWALL_EVENT } from "@/components/paywall-listener";
 
 const storage = new LocalStorageAdapter();
 export const isDesktop = detectPlatform() === "desktop";
+
+/**
+ * Shape the Meridian API returns inside a 402 Payment Required body.
+ * Mirrored on the listener side in `components/paywall-listener.tsx`.
+ */
+interface Api402Body {
+  code: string;
+  feature: string;
+  featureLabel?: string;
+  limit: number;
+  current: number;
+  suggestedPlan?: string;
+  suggestedPlanName?: string;
+}
 
 /**
  * Web: calls go to the same-origin BFF proxy at `/api/v1/*`, which injects
@@ -53,6 +68,58 @@ const apiClient = createApiClient({
     window.location.href = `/auth/login?returnTo=${encodeURIComponent(path)}`;
   },
 });
+
+// Paywall interceptor — runs on BOTH web and desktop. When the Meridian API
+// returns 402 Payment Required (over a feature limit), parse the structured
+// body and dispatch a window event. `<PaywallListener>` picks it up and opens
+// the SDK's `<PaywallModal>`. The Promise.reject is preserved so calling code
+// (mutations, queries) still goes down its error path — but the user sees the
+// upgrade modal first instead of just a generic "failed" toast.
+if (typeof window !== "undefined") {
+  apiClient.interceptors.response.use(
+    (r) => r,
+    (error) => {
+      if (error?.response?.status === 402) {
+        // axios may give us the body as parsed JSON OR as a raw string
+        // depending on content-type and any responseType overrides on the
+        // request. Handle both so we never lose the feature/limit info.
+        let parsed: Partial<Api402Body> | undefined;
+        const raw = error.response.data;
+        if (raw && typeof raw === "object") {
+          parsed = raw as Partial<Api402Body>;
+        } else if (typeof raw === "string" && raw.length > 0) {
+          try {
+            parsed = JSON.parse(raw) as Partial<Api402Body>;
+          } catch {
+            console.warn(
+              "[paywall] 402 body was a string but not JSON:",
+              raw.slice(0, 200),
+            );
+          }
+        }
+        if (!parsed) {
+          console.warn(
+            "[paywall] 402 with no parseable body — falling back to generic paywall.",
+            error.response,
+          );
+        }
+        const detail: Api402Body = {
+          code: parsed?.code ?? "feature_limit",
+          feature: parsed?.feature ?? "unknown",
+          featureLabel: parsed?.featureLabel,
+          limit: parsed?.limit ?? 0,
+          current: parsed?.current ?? 0,
+          suggestedPlan: parsed?.suggestedPlan,
+          suggestedPlanName: parsed?.suggestedPlanName,
+        };
+        window.dispatchEvent(
+          new CustomEvent(MERIDIAN_PAYWALL_EVENT, { detail }),
+        );
+      }
+      return Promise.reject(error);
+    },
+  );
+}
 
 if (isDesktop && typeof window !== "undefined") {
   // Dynamic import keeps Tauri-only modules out of the web SSR bundle.

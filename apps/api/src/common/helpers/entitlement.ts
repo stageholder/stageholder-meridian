@@ -53,6 +53,38 @@ export function getMeridianLimit(
 }
 
 /**
+ * Plan slug to suggest in 402 responses. The PaywallModal uses this both as
+ * UI copy ("Upgrade to {plan}") and as the `planSlug` posted to the billing
+ * checkout endpoint — so it MUST match a plan slug registered in the Hub
+ * for the meridian product. Set via env so deployments can point at
+ * `meridian-unlimited`, `meridian-pro`, etc. without code changes.
+ *
+ * Default `"meridian-unlimited"` matches the canonical paid tier; override
+ * if your Hub uses a different slug.
+ */
+const SUGGESTED_PLAN_SLUG =
+  process.env.MERIDIAN_UPGRADE_PLAN_SLUG ?? "meridian-unlimited";
+
+/**
+ * Display name for the suggested plan. Surfaced in the 402 body as
+ * `suggestedPlanName` so the SDK paywall modal can show "Upgrade to
+ * Unlimited" instead of "Upgrade to meridian-unlimited". Configure via env.
+ */
+const SUGGESTED_PLAN_NAME =
+  process.env.MERIDIAN_UPGRADE_PLAN_NAME ?? "Unlimited";
+
+/**
+ * Map of feature slugs to human-readable labels. Surfaced in the 402 body
+ * as `featureLabel`. The SDK paywall modal prefers this over the raw slug
+ * for display copy. Add a new entry whenever you add a new gated feature.
+ */
+const FEATURE_LABELS: Record<MeridianFeatureSlug, string> = {
+  max_habits: "habits",
+  max_todo_lists: "todo lists",
+  max_active_todos: "active todos",
+};
+
+/**
  * Enforces a numeric limit for the current user's Meridian plan. Throws
  * 402 Payment Required with a structured body the client uses to render
  * the paywall modal. Unlimited plans (feature === -1) short-circuit.
@@ -72,9 +104,12 @@ export async function enforceLimit(
     {
       code: "limit_reached",
       feature,
+      featureLabel: FEATURE_LABELS[feature],
       limit,
       current,
-      message: `You've reached your limit of ${limit}. Upgrade for unlimited.`,
+      suggestedPlan: SUGGESTED_PLAN_SLUG,
+      suggestedPlanName: SUGGESTED_PLAN_NAME,
+      message: `You've reached your limit of ${limit} ${FEATURE_LABELS[feature]}. Upgrade to ${SUGGESTED_PLAN_NAME} for unlimited.`,
     },
     HttpStatus.PAYMENT_REQUIRED,
   );

@@ -14,7 +14,6 @@ import {
   Menu,
   Search,
   Keyboard,
-  ExternalLink,
   CreditCard,
   UserCog,
 } from "lucide-react";
@@ -43,17 +42,12 @@ import { ShortcutsDialog } from "@/components/shared/shortcuts-dialog";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 import { CreateTodoDialog } from "@/components/todos/create-todo-dialog";
 import { useUser } from "@/hooks/use-user";
-import { useStageholder } from "@stageholder/sdk/react";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  useStageholder,
+  UserButton,
+  PricingDialog,
+} from "@stageholder/sdk/react";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -160,6 +154,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
   const [createTodoDialogOpen, setCreateTodoDialogOpen] = useState(false);
+  const [pricingOpen, setPricingOpen] = useState(false);
 
   const shortcutCallbacks = useMemo(
     () => ({
@@ -234,8 +229,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) return null;
-
-  const personalOrgSlug = user.personalOrgSlug;
 
   return (
     <>
@@ -594,80 +587,46 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
               <ThemeToggle />
 
-              {/* User menu */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon-sm">
-                    <Avatar className="size-6">
-                      {user?.avatar && (
-                        <AvatarImage
-                          src={user.avatar}
-                          alt={user?.name || "User"}
-                        />
-                      )}
-                      <AvatarFallback className="bg-primary text-[10px] font-medium text-primary-foreground">
-                        {user?.name?.charAt(0).toUpperCase() || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col gap-0.5">
-                      <p className="text-sm font-medium">
-                        {user?.name || "User"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {user?.email || ""}
-                      </p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <a
-                      href={`${HUB_URL}/account/profile`}
-                      target="_blank"
-                      rel="noopener"
-                    >
-                      <UserCog className="size-4" />
-                      Account settings
-                      <ExternalLink className="ml-auto size-3 opacity-50" />
-                    </a>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <a
-                      href={`${HUB_URL}/pricing/meridian`}
-                      target="_blank"
-                      rel="noopener"
-                    >
-                      <CreditCard className="size-4" />
-                      Upgrade to Unlimited
-                      <ExternalLink className="ml-auto size-3 opacity-50" />
-                    </a>
-                  </DropdownMenuItem>
-                  {personalOrgSlug && (
-                    <DropdownMenuItem asChild>
-                      <a
-                        href={`${HUB_URL}/account/${personalOrgSlug}/billing`}
-                        target="_blank"
-                        rel="noopener"
-                      >
-                        <CreditCard className="size-4" />
-                        Manage subscription
-                        <ExternalLink className="ml-auto size-3 opacity-50" />
-                      </a>
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="size-4" />
-                    Sign out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {/* User menu — SDK primitive. The built-in sign-out only runs
+                  the SDK web logout flow; we hide it and pass a custom
+                  "Sign out" item so the desktop branch (signOutTauri + Hub
+                  revoke) still fires correctly via handleLogout. */}
+              <UserButton
+                hideSignOut
+                menuItems={[
+                  {
+                    label: "Account settings",
+                    href: `${HUB_URL}/account/profile`,
+                    icon: <UserCog className="size-4" />,
+                  },
+                  {
+                    label: "Billing",
+                    href: "/app/settings/billing",
+                    icon: <CreditCard className="size-4" />,
+                  },
+                  {
+                    label: "Upgrade plan",
+                    onSelect: () => setPricingOpen(true),
+                    icon: <CreditCard className="size-4" />,
+                  },
+                  {
+                    label: "Sign out",
+                    onSelect: () => void handleLogout(),
+                    icon: <LogOut className="size-4" />,
+                  },
+                ]}
+              />
+
+              {/* Pricing dialog — controlled by the menu item. Renders the
+                  same SDK <PricingTable /> in a centered modal so users can
+                  upgrade in-context without leaving the app. */}
+              <PricingDialog
+                product="meridian"
+                open={pricingOpen}
+                onOpenChange={setPricingOpen}
+                title="Choose a plan"
+                description="Upgrade or change your plan anytime. Cancel from the billing page."
+              />
             </div>
           </header>
 

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { ExternalLink } from "lucide-react";
+import Link from "next/link";
+import { ExternalLink, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { TargetsSettings } from "@/components/settings/targets-settings";
-import { useUser } from "@/hooks/use-user";
 
 const HUB_URL = process.env.NEXT_PUBLIC_HUB_URL ?? "https://id.stageholder.com";
 
@@ -19,8 +19,6 @@ type TabId = (typeof tabs)[number]["id"];
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabId>("profile");
-  const { user } = useUser();
-  const personalOrgSlug = user?.personalOrgSlug;
 
   return (
     <div className="space-y-6 p-4">
@@ -58,39 +56,33 @@ export default function SettingsPage() {
         {activeTab === "account" && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Your account, billing, and subscription are managed on
-              Stageholder.
+              Your billing and subscription live in-app. Identity (password,
+              email, MFA) is managed on Stageholder.
             </p>
             <div className="flex flex-col gap-2">
+              <Link
+                href="/app/settings/billing"
+                className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
+              >
+                Billing &amp; subscription
+                <ArrowRight className="ml-auto size-3.5 opacity-70" />
+              </Link>
+              <Link
+                href="/app/settings/billing/upgrade"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                Upgrade plan
+                <ArrowRight className="ml-auto size-3.5 opacity-70" />
+              </Link>
               <a
                 href={`${HUB_URL}/account/profile`}
                 target="_blank"
                 rel="noopener"
                 className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
               >
-                Manage account on Stageholder
-                <ExternalLink className="size-3.5 opacity-70" />
+                Manage identity on Stageholder
+                <ExternalLink className="ml-auto size-3.5 opacity-70" />
               </a>
-              <a
-                href={`${HUB_URL}/pricing/meridian`}
-                target="_blank"
-                rel="noopener"
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                Upgrade to Unlimited
-                <ExternalLink className="size-3.5 opacity-70" />
-              </a>
-              {personalOrgSlug && (
-                <a
-                  href={`${HUB_URL}/account/${personalOrgSlug}/billing`}
-                  target="_blank"
-                  rel="noopener"
-                  className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
-                >
-                  Manage subscription
-                  <ExternalLink className="size-3.5 opacity-70" />
-                </a>
-              )}
             </div>
           </div>
         )}

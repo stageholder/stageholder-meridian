@@ -12,8 +12,17 @@ import type { UsePaywallResult } from "@stageholder/sdk/react";
 interface Api402Body {
   code: string;
   feature: string;
+  /** Human label for `feature` (e.g. "habits"). API source of truth. */
+  featureLabel?: string;
   limit: number;
   current: number;
+  /**
+   * Plan slug to upgrade to. Set by `enforceLimit` on the API side via the
+   * `MERIDIAN_UPGRADE_PLAN_SLUG` env var. Falls back below if absent.
+   */
+  suggestedPlan?: string;
+  /** Human label for `suggestedPlan` (e.g. "Unlimited"). API source of truth. */
+  suggestedPlanName?: string;
 }
 
 /**
@@ -75,13 +84,14 @@ export function PaywallListener({ children }: PaywallListenerProps) {
       const detail = (e as CustomEvent<Api402Body>).detail;
       paywall.open({
         feature: detail.feature,
+        featureLabel: detail.featureLabel,
         currentLimit: detail.limit,
         product: "meridian",
-        // suggestedPlan is not part of the 402 body; the hub determines the
-        // correct next tier. Default to "team" as the canonical upgrade target
-        // for Meridian's free-tier users. This can be made dynamic once the
-        // subscription claim is wired through useSubscription().
-        suggestedPlan: "team",
+        // Plan slug from the API's 402 body (server is source of truth for the
+        // upgrade path). Falls back to `meridian-unlimited` only if the API
+        // didn't include one — that's our canonical paid tier slug.
+        suggestedPlan: detail.suggestedPlan ?? "meridian-unlimited",
+        suggestedPlanName: detail.suggestedPlanName,
       });
     }
 
