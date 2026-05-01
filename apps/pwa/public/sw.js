@@ -61,24 +61,20 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-first for navigation, fall back to cached shell.
-  //
-  // `redirect: 'manual'` is required: a navigation request's redirect mode is
-  // `manual`, and the spec forbids returning a response that already followed
-  // a redirect (`response.redirected === true`) to one of those. With
-  // `manual` the SW gets back an `opaqueredirect` response that the browser
-  // unpacks at the navigation layer — the user sees the redirect normally
-  // and you don't get "a redirected response was used for a request whose
-  // redirect mode is not 'follow'" warnings spamming the console.
+  // Don't intercept top-level navigations. The SW's only value here would
+  // be an offline shell fallback, but `/` is a route handler that 307s based
+  // on session — the cached HTML is a redirect document, not an actual shell.
+  // Letting the browser handle navigation natively avoids two whole classes
+  // of SW bugs:
+  //   - "redirected response used for request whose redirect mode is not
+  //     'follow'" (when the proxy 307s an unauthenticated /app)
+  //   - "Failed to fetch" with `{ redirect: 'manual' }` on Chrome
+  // If a real offline shell is needed later, build one explicitly: precache
+  // a static `/offline` route at install time and serve it from a `catch`.
   if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request, { redirect: 'manual' }).catch(() =>
-        caches.match('/').then((cached) => cached || Response.error())
-      )
-    );
     return;
   }
 
-  // All other requests — network only
+  // All other requests — network only.
   event.respondWith(fetch(request));
 });
