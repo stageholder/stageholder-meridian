@@ -45,7 +45,8 @@ import { useUser } from "@/hooks/use-user";
 import {
   useStageholder,
   UserButton,
-  PricingDialog,
+  OrganizationSwitcher,
+  useOrg,
 } from "@stageholder/sdk/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -134,6 +135,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, isLoading: userLoading } = useUser();
   const { signOut } = useStageholder();
+  const { organizations } = useOrg();
   const stableSyncAll = useCallback(() => syncAll(), []);
   // Heartbeat against the same-origin BFF proxy on web; on desktop the proxy
   // isn't reachable so fall back to NEXT_PUBLIC_API_URL.
@@ -154,7 +156,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
   const [createTodoDialogOpen, setCreateTodoDialogOpen] = useState(false);
-  const [pricingOpen, setPricingOpen] = useState(false);
 
   const shortcutCallbacks = useMemo(
     () => ({
@@ -587,6 +588,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
               <ThemeToggle />
 
+              {/* Org switcher — only when the user has multiple orgs.
+                  Single-org users (the common Meridian case) don't need a
+                  dropdown showing only their personal org. The SDK
+                  component handles the dropdown UX, async setActive, and
+                  re-fetching /auth/me on switch. */}
+              {organizations.length > 1 && (
+                <OrganizationSwitcher className="hidden sm:inline-flex" />
+              )}
+
               {/* User menu — SDK primitive. The built-in sign-out only runs
                   the SDK web logout flow; we hide it and pass a custom
                   "Sign out" item so the desktop branch (signOutTauri + Hub
@@ -600,13 +610,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     icon: <UserCog className="size-4" />,
                   },
                   {
-                    label: "Billing",
+                    // Single billing entry — matches every major SaaS
+                    // (Notion, Linear, Stripe, Vercel, GitHub, Slack: one
+                    // item that navigates to the billing page). The dialog
+                    // stays in the codebase but only fires CONTEXTUALLY
+                    // when a user hits a feature limit — not from menu nav.
+                    label: "Plans & billing",
                     href: "/app/settings/billing",
-                    icon: <CreditCard className="size-4" />,
-                  },
-                  {
-                    label: "Upgrade plan",
-                    onSelect: () => setPricingOpen(true),
                     icon: <CreditCard className="size-4" />,
                   },
                   {
@@ -615,17 +625,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     icon: <LogOut className="size-4" />,
                   },
                 ]}
-              />
-
-              {/* Pricing dialog — controlled by the menu item. Renders the
-                  same SDK <PricingTable /> in a centered modal so users can
-                  upgrade in-context without leaving the app. */}
-              <PricingDialog
-                product="meridian"
-                open={pricingOpen}
-                onOpenChange={setPricingOpen}
-                title="Choose a plan"
-                description="Upgrade or change your plan anytime. Cancel from the billing page."
               />
             </div>
           </header>

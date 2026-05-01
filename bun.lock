@@ -5,7 +5,7 @@
     "": {
       "name": "stageholder-meridian",
       "dependencies": {
-        "@stageholder/sdk": "^1.0.0-alpha.15",
+        "@stageholder/sdk": "^1.0.0-alpha.18",
         "react-day-picker": "^9.14.0",
       },
       "devDependencies": {
@@ -782,7 +782,7 @@
 
     "@stablelib/base64": ["@stablelib/base64@1.0.1", "", {}, "sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ=="],
 
-    "@stageholder/sdk": ["@stageholder/sdk@1.0.0-alpha.15", "https://npm.pkg.github.com/download/@stageholder/sdk/1.0.0-alpha.15/e0002e869c83d219a52f0b9d4cbaa10c14ebd09d", { "dependencies": { "@radix-ui/react-avatar": "^1.1.0", "@radix-ui/react-dialog": "^1.1.0", "@radix-ui/react-dropdown-menu": "^2.1.0", "@radix-ui/react-progress": "^1.1.0", "@radix-ui/react-slot": "^1.1.0", "class-variance-authority": "^0.7.0", "clsx": "^2.1.0", "iron-session": "^8.0.0", "jose": "^6.0.0", "svix": "^1.45.0", "tailwind-merge": "^2.5.0", "zod": "^3.24.0" }, "peerDependencies": { "@nestjs/common": "^11.0.0", "@nestjs/core": "^11.0.0", "@tauri-apps/api": "^2.0.0", "next": "^16.0.0", "react": "^19.2.0", "react-dom": "^19.2.0" } }, "sha512-ZvPs1Jmkl7+YfK/57zt+prMOBWJ3VxcGurTCYa7Hmw9aJcJRNAUbJYPT1YBXRLWtk4akBVHIiDMhyR7P+UDB5Q=="],
+    "@stageholder/sdk": ["@stageholder/sdk@1.0.0-alpha.18", "https://npm.pkg.github.com/download/@stageholder/sdk/1.0.0-alpha.18/574a47d7990aaf764f1848ddec7945c3f72929ca", { "dependencies": { "@radix-ui/react-avatar": "^1.1.0", "@radix-ui/react-dialog": "^1.1.0", "@radix-ui/react-dropdown-menu": "^2.1.0", "@radix-ui/react-progress": "^1.1.0", "@radix-ui/react-slot": "^1.1.0", "class-variance-authority": "^0.7.0", "clsx": "^2.1.0", "iron-session": "^8.0.0", "jose": "^6.0.0", "svix": "^1.45.0", "tailwind-merge": "^2.5.0", "zod": "^3.24.0" }, "peerDependencies": { "@nestjs/common": "^11.0.0", "@nestjs/core": "^11.0.0", "@tauri-apps/api": "^2.0.0", "next": "^16.0.0", "react": "^19.2.0", "react-dom": "^19.2.0" } }, "sha512-B37RgXgh0qiGRx836xiiLRUFlOE5s1u2gdfg01LX0pAFGQTMC0Hk+0hNhj6TEOXQ+eQ01QfJwXFm5GuU25c2pg=="],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 

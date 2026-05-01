@@ -1,5 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+/* The SDK declares its own @source paths scoped to its dist bundle, so
+   Tailwind picks up the class strings (grid-cols-3, bg-card, etc.) that
+   its pre-built components ship with. No path-counting on this side. */
+@import "@stageholder/sdk/styles.css";
 
 @custom-variant dark (&:is(.dark *));
 
