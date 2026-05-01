@@ -19,7 +19,7 @@ type TabId = (typeof tabs)[number]["id"];
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabId>("profile");
-  const { data: user } = useUser();
+  const { user } = useUser();
   const personalOrgSlug = user?.personalOrgSlug;
 
   return (

@@ -6,7 +6,7 @@ import { useUser } from "@/hooks/use-user";
 const HUB_URL = process.env.NEXT_PUBLIC_HUB_URL ?? "https://id.stageholder.com";
 
 export function ProfileForm() {
-  const { data: user, isLoading } = useUser();
+  const { user, isLoading } = useUser();
 
   if (isLoading) {
     return (

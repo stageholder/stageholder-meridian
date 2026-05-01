@@ -190,7 +190,7 @@ export async function signInTauri(): Promise<InMemorySession> {
     const tokens = await exchangeCode(code, verifier, redirectUri);
     await writeRefreshToken(tokens.refresh_token);
     // Identity claims are no longer extracted here — consumers verify the
-    // id_token via @stageholder/auth/client where they read it.
+    // id_token via @stageholder/sdk/core's verifyIdToken where they read it.
     memorySession = {
       accessToken: tokens.access_token,
       idToken: tokens.id_token,

@@ -3,7 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
 } from "@nestjs/common";
-import type { StageholderUser } from "@stageholder/auth";
+import type { StageholderUser } from "@stageholder/sdk/core";
 import { TodoListRepository } from "./todo-list.repository";
 import { TodoList } from "./todo-list.entity";
 import { CreateTodoListDto, UpdateTodoListDto } from "./todo-list.dto";

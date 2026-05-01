@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint --max-warnings 0",
-    "check": "next typegen && tsc --noEmit"
+    "check": "next typegen && tsc --noEmit",
+    "check:cookie-size": "bun run scripts/check-cookie-size.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -29,7 +30,8 @@
     "@repo/crypto": "*",
     "@repo/offline": "*",
     "@repo/ui": "*",
-    "@stageholder/auth": "^0.1.3",
+    "@stageholder/sdk": "^1.0.0-alpha.0",
+    "mongodb": "^6.10.0",
     "@tanstack/react-query": "^5.62.0",
     "@tauri-apps/plugin-opener": "^2.5.3",
     "@tauri-apps/plugin-process": "^2",

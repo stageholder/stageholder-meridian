@@ -30,8 +30,8 @@ export async function enqueue(
     PendingMutation,
     "id" | "userSub" | "retryCount" | "status" | "timestamp"
   >,
-): Promise<number> {
-  return db.pendingMutations.add({
+): Promise<void> {
+  await db.pendingMutations.add({
     ...mutation,
     userSub,
     timestamp: Date.now(),

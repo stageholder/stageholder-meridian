@@ -10,9 +10,9 @@ import { Reflector } from "@nestjs/core";
 import {
   StageholderAuthGuard,
   STAGEHOLDER_AUTH_CONFIG,
-  introspectAccessToken,
   type StageholderAuthConfig,
-} from "@stageholder/auth";
+} from "@stageholder/sdk/nestjs";
+import { introspectAccessToken } from "@stageholder/sdk/core";
 import { IS_PUBLIC_KEY } from "../decorators/public.decorator";
 import { IS_INTROSPECT_KEY } from "../decorators/introspect.decorator";
 

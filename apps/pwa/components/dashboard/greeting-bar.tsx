@@ -14,7 +14,7 @@ function getGreeting(hour: number): string {
 }
 
 export function GreetingBar() {
-  const { data: user } = useUser();
+  const { user } = useUser();
   const { data: userLight } = useUserLight();
   const now = new Date();
   const greeting = getGreeting(now.getHours());

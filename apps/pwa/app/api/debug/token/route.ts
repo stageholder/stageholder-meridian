@@ -1,24 +1,28 @@
-import { NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
-
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
 /**
  * Development-only diagnostic endpoint. Decodes the JWT in the current
- * iron-session cookie so we can verify issuer / audience / expiry /
- * scope against what Meridian API's AuthGuard is configured to accept.
+ * SDK session cookie so we can verify issuer / audience / expiry / scope
+ * against what Meridian API's AuthGuard is configured to accept. Also
+ * exposes `session.custom` so `enrichSession` output can be inspected.
  *
  * Returns 404 outside of development so a production build never exposes
  * token claims (even behind an httpOnly cookie) to anyone who can reach
  * this URL with a valid session.
  */
-export async function GET() {
+import { NextResponse } from "next/server";
+import { stageholder } from "@/lib/stageholder";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function GET(): Promise<NextResponse> {
   if (process.env.NODE_ENV === "production") {
     return new NextResponse(null, { status: 404 });
   }
-  const session = await getSession();
-  if (!session.accessToken) {
+
+  const sessionStore = await stageholder.sessionStore();
+  const session = await sessionStore.get();
+
+  if (!session?.accessToken) {
     return NextResponse.json({ error: "no session" }, { status: 401 });
   }
 
@@ -36,8 +40,8 @@ export async function GET() {
   let header: unknown;
   let payload: Record<string, unknown>;
   try {
-    header = JSON.parse(Buffer.from(parts[0], "base64").toString("utf-8"));
-    payload = JSON.parse(Buffer.from(parts[1], "base64").toString("utf-8"));
+    header = JSON.parse(Buffer.from(parts[0]!, "base64").toString("utf-8"));
+    payload = JSON.parse(Buffer.from(parts[1]!, "base64").toString("utf-8"));
   } catch (err) {
     return NextResponse.json(
       { error: "failed to decode JWT", message: (err as Error).message },
@@ -68,9 +72,9 @@ export async function GET() {
       sub: session.sub,
       email: session.email,
       name: session.name,
-      personalOrgId: session.personalOrgId,
-      personalOrgSlug: session.personalOrgSlug,
+      activeOrgId: session.activeOrgId,
       accessTokenExpiresAt: session.accessTokenExpiresAt,
+      custom: session.custom,
     },
   });
 }

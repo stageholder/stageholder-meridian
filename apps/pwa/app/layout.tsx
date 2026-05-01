@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { Bricolage_Grotesque } from "next/font/google";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { QueryProvider } from "@/lib/query-provider";
+import { StageholderProvider } from "@stageholder/sdk/react";
 import { Toaster } from "sonner";
 import { ServiceWorkerRegister } from "@/components/shared/sw-register";
 import { LogProvider } from "@/components/shared/log-provider";
@@ -65,12 +66,23 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <QueryProvider>
-            <PaywallListener />
-            <DesktopAuthBoot>
-              <EncryptionStoreInitializer>
-                <LogProvider>{children}</LogProvider>
-              </EncryptionStoreInitializer>
-            </DesktopAuthBoot>
+            {/*
+             * StageholderProvider manages web identity state for authenticated
+             * routes. Fetches from /auth/me (SDK BFF route) on mount, keeps
+             * state fresh via SSE + focus-refetch + polling.
+             *
+             * Desktop (Tauri) auth continues to use DesktopAuthBoot + oidc-tauri
+             * directly — the provider is a no-op on desktop since DesktopAuthBoot
+             * gates rendering before this subtree becomes active.
+             */}
+            <StageholderProvider productSlug="meridian">
+              <PaywallListener />
+              <DesktopAuthBoot>
+                <EncryptionStoreInitializer>
+                  <LogProvider>{children}</LogProvider>
+                </EncryptionStoreInitializer>
+              </DesktopAuthBoot>
+            </StageholderProvider>
             <Toaster />
             <ServiceWorkerRegister />
           </QueryProvider>

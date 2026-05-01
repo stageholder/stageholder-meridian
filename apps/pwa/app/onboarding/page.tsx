@@ -28,7 +28,7 @@ async function postCompletion(timezone: string): Promise<void> {
 export default function OnboardingPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { data: user, isLoading } = useUser();
+  const { user, isLoading } = useUser();
   const [step, setStep] = useState(0);
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
   const [timezone, setTimezone] = useState<string>(

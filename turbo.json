@@ -9,7 +9,18 @@
     },
     "lint": {
       "dependsOn": ["^lint"],
-      "env": ["NODE_ENV", "FRONTEND_URL", "PORT", "DEFAULT_TIMEZONE"]
+      "env": [
+        "NODE_ENV",
+        "FRONTEND_URL",
+        "PORT",
+        "DEFAULT_TIMEZONE",
+        "IDENTITY_ISSUER_URL",
+        "IDENTITY_CLIENT_ID",
+        "IDENTITY_CLIENT_SECRET",
+        "IDENTITY_TOKEN_AUDIENCE",
+        "MERIDIAN_API_URL",
+        "SESSION_SECRET"
+      ]
     },
     "check": {
       "dependsOn": ["^check"]

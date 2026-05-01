@@ -6,7 +6,11 @@ import { ScheduleModule } from "@nestjs/schedule";
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { LoggerModule } from "nestjs-pino";
 import { randomUUID } from "crypto";
-import { StageholderAuthModule } from "@stageholder/auth";
+import { StageholderAuthModule } from "@stageholder/sdk/nestjs";
+import {
+  validateConfig,
+  stageholderAuthConfigSchema,
+} from "@stageholder/sdk/core";
 import { TagModule } from "./modules/tag/tag.module";
 import { TodoListModule } from "./modules/todo-list/todo-list.module";
 import { TodoModule } from "./modules/todo/todo.module";
@@ -61,18 +65,25 @@ import { AuthGuard } from "./common/guards/auth.guard";
         uri: config.get<string>("MONGODB_URI"),
       }),
     }),
-    StageholderAuthModule.forRoot({
-      issuerUrl: process.env.IDENTITY_ISSUER_URL!,
-      clientId: process.env.IDENTITY_CLIENT_ID!,
-      clientSecret: process.env.IDENTITY_CLIENT_SECRET!,
-      // Must match whatever `aud` claim the Hub puts on access tokens.
-      // Hub's oidc-provider resourceIndicators config decides this. If
-      // that config sets `defaultResource: () => "urn:stageholder:api"`,
-      // this must be the exact same string. Override via env so the Hub
-      // can change its resource identifier without requiring a redeploy
-      // of every product.
-      audience: process.env.IDENTITY_TOKEN_AUDIENCE ?? "urn:stageholder:api",
-    }),
+    StageholderAuthModule.forRoot(
+      validateConfig(
+        stageholderAuthConfigSchema,
+        {
+          issuerUrl: process.env.IDENTITY_ISSUER_URL,
+          clientId: process.env.IDENTITY_CLIENT_ID,
+          clientSecret: process.env.IDENTITY_CLIENT_SECRET,
+          // Must match whatever `aud` claim the Hub puts on access tokens.
+          // Hub's oidc-provider resourceIndicators config decides this. If
+          // that config sets `defaultResource: () => "urn:stageholder:api"`,
+          // this must be the exact same string. Override via env so the Hub
+          // can change its resource identifier without requiring a redeploy
+          // of every product.
+          audience:
+            process.env.IDENTITY_TOKEN_AUDIENCE ?? "urn:stageholder:api",
+        },
+        "stageholderAuth",
+      ),
+    ),
     TagModule,
     TodoListModule,
     TodoModule,

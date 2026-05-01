@@ -19,7 +19,7 @@ export function EncryptionStoreInitializer({
 }: {
   children: React.ReactNode;
 }) {
-  const { data: user } = useUser();
+  const { user } = useUser();
   const init = useEncryptionStore((s) => s.init);
 
   useEffect(() => {

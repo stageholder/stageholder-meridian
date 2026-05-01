@@ -1,5 +1,5 @@
 import type { Request } from "express";
-import type { StageholderUser } from "@stageholder/auth";
+import type { StageholderUser } from "@stageholder/sdk/core";
 
 /**
  * Incoming request after StageholderAuthGuard has run.

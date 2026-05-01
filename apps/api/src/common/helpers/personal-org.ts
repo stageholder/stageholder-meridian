@@ -1,4 +1,4 @@
-import type { StageholderUser } from "@stageholder/auth";
+import type { StageholderUser } from "@stageholder/sdk/core";
 import { InternalServerErrorException } from "@nestjs/common";
 
 /**

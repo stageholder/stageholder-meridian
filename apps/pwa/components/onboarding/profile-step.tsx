@@ -13,7 +13,7 @@ export function ProfileStep({
   onTimezoneChange: (value: string) => void;
   onContinue: () => void;
 }) {
-  const { data: user } = useUser();
+  const { user } = useUser();
   const [name, setName] = useState(user?.name || "");
 
   // Profile (name, email) is owned by the Hub — Meridian shows it as a

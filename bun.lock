@@ -5,6 +5,7 @@
     "": {
       "name": "stageholder-meridian",
       "dependencies": {
+        "@stageholder/sdk": "^1.0.0-alpha.11",
         "react-day-picker": "^9.14.0",
       },
       "devDependencies": {
@@ -30,7 +31,7 @@
         "@nestjs/swagger": "^11.2.6",
         "@nestjs/terminus": "^11.1.1",
         "@nestjs/throttler": "^6.5.0",
-        "@stageholder/auth": "^0.1.3",
+        "@stageholder/sdk": "^1.0.0-alpha.0",
         "date-fns": "^4.1.0",
         "express": "^5.2.1",
         "helmet": "^8.1.0",
@@ -113,7 +114,7 @@
         "@repo/crypto": "*",
         "@repo/offline": "*",
         "@repo/ui": "*",
-        "@stageholder/auth": "^0.1.3",
+        "@stageholder/sdk": "^1.0.0-alpha.0",
         "@tanstack/react-query": "^5.62.0",
         "@tauri-apps/plugin-opener": "^2.5.3",
         "@tauri-apps/plugin-process": "^2",
@@ -131,6 +132,7 @@
         "emoji-picker-react": "^4.18.0",
         "iron-session": "^8.0.4",
         "lucide-react": "^0.577.0",
+        "mongodb": "^6.10.0",
         "motion": "^12.38.0",
         "next": "16.1.5",
         "next-themes": "^0.4.6",
@@ -183,6 +185,7 @@
       "name": "@repo/crypto",
       "version": "0.0.0",
       "devDependencies": {
+        "@repo/eslint-config": "*",
         "@repo/typescript-config": "*",
         "typescript": "^5",
       },
@@ -777,7 +780,9 @@
 
     "@sindresorhus/is": ["@sindresorhus/is@5.6.0", "", {}, "sha512-TV7t8GKYaJWsn00tFDqBw8+Uqmr8A0fRU1tvTQhyZzGv0sJCGRQL3JGMI3ucuKo3XIZdUP+Lx7/gh2t3lewy7g=="],
 
-    "@stageholder/auth": ["@stageholder/auth@0.1.3", "https://npm.pkg.github.com/download/@stageholder/auth/0.1.3/73a46881fa02f5f9306e12e717b06ebff89f0d77", { "dependencies": { "jose": "^6.0.0" }, "peerDependencies": { "@nestjs/common": "^11.0.0", "@nestjs/core": "^11.0.0" } }, "sha512-sM3UM9C7BLmT3vwB9OkDNWfZHuRkg3mV06ADtMhhrnS3rhwFQqOVoQ/WVxNDRF5x1yN4u4m7BzMp9FTnTN41tg=="],
+    "@stablelib/base64": ["@stablelib/base64@1.0.1", "", {}, "sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ=="],
+
+    "@stageholder/sdk": ["@stageholder/sdk@1.0.0-alpha.11", "https://npm.pkg.github.com/download/@stageholder/sdk/1.0.0-alpha.11/20726c4a3eece6e1ccc558a16cca91abb3cd183d", { "dependencies": { "@radix-ui/react-dialog": "^1.1.0", "@radix-ui/react-progress": "^1.1.0", "@radix-ui/react-slot": "^1.1.0", "class-variance-authority": "^0.7.0", "clsx": "^2.1.0", "iron-session": "^8.0.0", "jose": "^6.0.0", "svix": "^1.45.0", "tailwind-merge": "^2.5.0", "zod": "^3.24.0" }, "peerDependencies": { "@nestjs/common": "^11.0.0", "@nestjs/core": "^11.0.0", "@tauri-apps/api": "^2.0.0", "next": "^16.0.0", "react": "^19.2.0", "react-dom": "^19.2.0" } }, "sha512-cv8+debAdHflgbQaV+7cgIbjBU3RoyejxP4nlD9/s3xZcPjfrfQmJxEjli4ww8XZ73vfe0Q9NLvVmU8rAxz/Gw=="],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
@@ -1519,6 +1524,8 @@
 
     "fast-safe-stringify": ["fast-safe-stringify@2.1.1", "", {}, "sha512-W+KJc2dmILlPplD/H4K9l9LcAHAfPtP6BY84uVLXQ6Evcz9Lcg33Y2z1IVblT6xdY54PXYVHEv+0Wpq8Io6zkA=="],
 
+    "fast-sha256": ["fast-sha256@1.3.0", "", {}, "sha512-n11RGP/lrWEFI/bWdygLxhI+pVeo1ZYIVwvvPkW7azl/rOy+F3HYRZ2K5zeE9mmkhQppyv9sQFx0JM9UabnpPQ=="],
+
     "fast-uri": ["fast-uri@3.1.0", "", {}, "sha512-iPeeDKJSWf4IEOasVVrknXpaBV0IApz/gp7S2bb7Z4Lljbl2MGJRqInZiUrQwV16cpzw/D3S5j5Julj/gT52AA=="],
 
     "fastq": ["fastq@1.20.1", "", { "dependencies": { "reusify": "^1.0.4" } }, "sha512-GGToxJ/w1x32s/D2EKND7kTil4n8OVk/9mycTc4VDza13lOvpUZTGX3mFSCtV9ksdGBVzvsyAVLM6mHFThxXxw=="],
@@ -2247,6 +2254,8 @@
 
     "stackback": ["stackback@0.0.2", "", {}, "sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw=="],
 
+    "standardwebhooks": ["standardwebhooks@1.0.0", "", { "dependencies": { "@stablelib/base64": "^1.0.0", "fast-sha256": "^1.3.0" } }, "sha512-BbHGOQK9olHPMvQNHWul6MYlrRTAOKn03rOe4A8O3CLWhNf4YHBqq2HJKKC+sfqpxiBY52pNeesD6jIiLDz8jg=="],
+
     "statuses": ["statuses@2.0.2", "", {}, "sha512-DvEy55V3DB7uknRo+4iOGT5fP1slR8wQohVdknigZPMpMstaKJQWhwiYBACJE3Ul2pTnATihhBYnRhZQHGBiRw=="],
 
     "std-env": ["std-env@3.10.0", "", {}, "sha512-5GS12FdOZNliM5mAOxFRg7Ir0pWz8MdpYm6AY6VPkGpbA7ZzmbzNcBJQ0GPvvyWgcY7QAhCgf9Uy89I03faLkg=="],
@@ -2296,6 +2305,8 @@
     "supports-color": ["supports-color@7.2.0", "", { "dependencies": { "has-flag": "^4.0.0" } }, "sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw=="],
 
     "supports-preserve-symlinks-flag": ["supports-preserve-symlinks-flag@1.0.0", "", {}, "sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w=="],
+
+    "svix": ["svix@1.92.2", "", { "dependencies": { "standardwebhooks": "1.0.0" } }, "sha512-ZmuA3UVvlnF9EgxlzmPtF7CKjQb64Z6OFlyfdDfU0sdcC7dJa+3aOYX5B9mA+RS6ch1AxBa4UP/l6KmqfGtWBQ=="],
 
     "swagger-ui-dist": ["swagger-ui-dist@5.31.0", "", { "dependencies": { "@scarf/scarf": "=1.4.0" } }, "sha512-zSUTIck02fSga6rc0RZP3b7J7wgHXwLea8ZjgLA3Vgnb8QeOl3Wou2/j5QkzSGeoz6HusP/coYuJl33aQxQZpg=="],
 

@@ -137,7 +137,7 @@ function SidebarNav({
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { data: user, isLoading: userLoading } = useUser();
+  const { user, isLoading: userLoading } = useUser();
   const stableSyncAll = useCallback(() => syncAll(), []);
   // Heartbeat against the same-origin BFF proxy on web; on desktop the proxy
   // isn't reachable so fall back to NEXT_PUBLIC_API_URL.

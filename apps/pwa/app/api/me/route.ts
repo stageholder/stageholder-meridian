@@ -1,35 +1,58 @@
+/**
+ * Meridian-specific `/api/me` BFF route.
+ *
+ * Returns the current user's Meridian-internal fields: onboarding state,
+ * timezone, and personal org. These fields live on `session.custom`
+ * (populated by `enrichSession` in the auth catch-all) and are served
+ * directly from the session cookie without a live API hop.
+ *
+ * Called by:
+ *   - `hooks/use-user.ts` to merge with SDK identity claims.
+ *   - The app shell on every render to determine whether to show onboarding.
+ *
+ * Authorization: reads from the SDK session cookie. Returns 401 when no
+ * session is present. Does NOT call the Meridian API — the session cache
+ * is the source of truth for these fields between logins and token refreshes.
+ *
+ * Note: `personalOrgSlug` is a Meridian-API-only field not presently stored
+ * in `session.custom`. If slug-based routing is ever needed server-side,
+ * extend `MeridianCustom` and `provisionFromMeridianApi` in
+ * `lib/stageholder.ts` / the catch-all route.
+ */
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
+import type { ProductSession } from "@stageholder/sdk/nextjs";
+import { stageholder, type MeridianCustom } from "@/lib/stageholder";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/** Shape returned by this BFF route to the client. */
 export interface MeResponse {
   sub: string;
   email?: string;
   name?: string;
   personalOrgId: string | null;
-  personalOrgSlug: string | null;
   hasCompletedOnboarding: boolean;
   timezone: string | null;
 }
 
-export async function GET() {
-  const session = await getSession();
-  if (!session.sub) {
+export async function GET(): Promise<NextResponse<MeResponse | null>> {
+  const sessionStore = await stageholder.sessionStore();
+  const session: ProductSession<MeridianCustom> | null =
+    await sessionStore.get();
+
+  if (!session) {
     return new NextResponse(null, { status: 401 });
   }
+
   const body: MeResponse = {
     sub: session.sub,
     email: session.email,
     name: session.name,
-    personalOrgId: session.personalOrgId ?? null,
-    personalOrgSlug: session.personalOrgSlug ?? null,
-    // Legacy sessions minted before the onboarding feature have these
-    // undefined. Treat undefined as "not onboarded" so the user walks the
-    // flow once on their next active request.
-    hasCompletedOnboarding: session.hasCompletedOnboarding ?? false,
-    timezone: session.timezone ?? null,
+    personalOrgId: session.custom?.personalOrgId ?? null,
+    hasCompletedOnboarding: session.custom?.hasCompletedOnboarding ?? false,
+    timezone: session.custom?.timezone ?? null,
   };
+
   return NextResponse.json(body);
 }

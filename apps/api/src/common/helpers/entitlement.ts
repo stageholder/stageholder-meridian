@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus } from "@nestjs/common";
-import { getPlanForOrg } from "@stageholder/auth";
-import type { StageholderUser } from "@stageholder/auth";
+import { getPlanForOrg } from "@stageholder/sdk/core";
+import type { StageholderUser } from "@stageholder/sdk/core";
 import { getPersonalOrgId } from "./personal-org";
 
 const PRODUCT_SLUG = "meridian";

@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import type { StageholderUser } from "@stageholder/auth";
+import type { StageholderUser } from "@stageholder/sdk/core";
 import { HabitRepository } from "./habit.repository";
 import { Habit, HabitFrequency } from "./habit.entity";
 import { CreateHabitDto, UpdateHabitDto } from "./habit.dto";

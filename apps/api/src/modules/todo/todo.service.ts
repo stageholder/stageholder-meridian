@@ -4,7 +4,7 @@ import {
   BadRequestException,
   Logger,
 } from "@nestjs/common";
-import type { StageholderUser } from "@stageholder/auth";
+import type { StageholderUser } from "@stageholder/sdk/core";
 import { TodoRepository } from "./todo.repository";
 import { Todo, TodoStatus } from "./todo.entity";
 import {
