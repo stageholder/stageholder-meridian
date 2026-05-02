@@ -565,6 +565,126 @@ summary,
   animation: habit-card-glow 1s ease-out forwards;
 }
 
+/* ── Billing orbit illustration ── */
+
+@keyframes orbit-draw {
+  from { stroke-dashoffset: 1; opacity: 0; }
+  20%  { opacity: 1; }
+  to   { stroke-dashoffset: 0; opacity: 1; }
+}
+
+@keyframes orbit-point-pop {
+  0%   { opacity: 0; transform: scale(0.4); }
+  70%  { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes orbit-thread-draw {
+  from { stroke-dashoffset: 1; opacity: 0; }
+  to   { stroke-dashoffset: 0; opacity: 0.45; }
+}
+
+.orbit-arc {
+  animation: orbit-draw 1.6s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+.orbit-point {
+  opacity: 0;
+  animation: orbit-point-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.orbit-thread {
+  animation: orbit-thread-draw 0.8s linear both;
+}
+
+/* ── Paywall boundary marker ── */
+
+@keyframes paywall-boundary-in {
+  from { opacity: 0; transform: scale(0.4); }
+  60%  { opacity: 1; transform: scale(1.18); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes paywall-pulse {
+  0%   { opacity: 0.55; transform: scale(0.9); }
+  70%  { opacity: 0;    transform: scale(2);   }
+  100% { opacity: 0;    transform: scale(2.2); }
+}
+
+.paywall-boundary {
+  opacity: 0;
+  animation: paywall-boundary-in 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.paywall-pulse-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: paywall-pulse 2.4s cubic-bezier(0.4, 0, 0.6, 1) 0.4s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .paywall-boundary { animation: none; opacity: 1; transform: none; }
+  .paywall-pulse-ring { animation: none; opacity: 0.4; }
+}
+
+/* ── Billing reveal (staggered fade-up for plan cards / hero blocks) ── */
+
+@keyframes billing-reveal {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.billing-reveal {
+  opacity: 0;
+  animation: billing-reveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.billing-stagger-1 { animation-delay: 60ms; }
+.billing-stagger-2 { animation-delay: 140ms; }
+.billing-stagger-3 { animation-delay: 220ms; }
+.billing-stagger-4 { animation-delay: 300ms; }
+.billing-stagger-5 { animation-delay: 380ms; }
+.billing-stagger-6 { animation-delay: 460ms; }
+
+/* Paper-grain texture used as a soft overlay on the billing pages.
+   Single SVG turbulence rendered at low opacity. */
+.billing-paper {
+  position: relative;
+}
+.billing-paper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+  background-image:
+    radial-gradient(circle at 20% 18%, oklch(0.65 0.29 25 / 0.04), transparent 38%),
+    radial-gradient(circle at 84% 72%, oklch(0.83 0.19 85 / 0.05), transparent 42%),
+    radial-gradient(circle at 0% 100%, oklch(0.75 0.22 55 / 0.04), transparent 36%);
+}
+.billing-paper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(
+      circle at 1px 1px,
+      color-mix(in oklch, var(--foreground) 5%, transparent) 1px,
+      transparent 0
+    );
+  background-size: 28px 28px;
+  mask-image: radial-gradient(ellipse at 50% 30%, black 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 30%, black 30%, transparent 80%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-arc, .orbit-point, .orbit-thread, .billing-reveal {
+    animation: none;
+    opacity: 1;
+    stroke-dashoffset: 0;
+    transform: none;
+  }
+}
+
 /* Hide scrollbar utility */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }

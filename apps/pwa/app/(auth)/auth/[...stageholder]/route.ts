@@ -28,6 +28,7 @@
 import { stageholderAuth } from "@stageholder/sdk/nextjs";
 import type { ProductSession } from "@stageholder/sdk/nextjs";
 import { stageholder, type MeridianCustom } from "@/lib/stageholder";
+import { decodeAccessTokenClaims } from "@/lib/access-token-claims";
 
 export const { GET, POST } = stageholderAuth<MeridianCustom>(stageholder, {
   enrichSession: async (
@@ -37,10 +38,24 @@ export const { GET, POST } = stageholderAuth<MeridianCustom>(stageholder, {
   },
   afterCallback: async (
     session: ProductSession<MeridianCustom>,
+    { defaultRedirectTo },
   ): Promise<{ redirectTo?: string } | void> => {
+    // Order of priority — onboarding is a hard gate, then org choice, then
+    // whatever the user originally asked for.
     if (session.custom && !session.custom.hasCompletedOnboarding) {
       return { redirectTo: "/onboarding" };
     }
+
+    // Hub keeps `organizations` out of the id_token; decode the access
+    // token instead. Opaque tokens decode to null — treat as "single org"
+    // (the SDK already auto-set activeOrgId in that case).
+    const claims = decodeAccessTokenClaims(session.accessToken);
+    const orgCount = claims?.organizations?.length ?? 0;
+    if (orgCount > 1) {
+      const target = encodeURIComponent(defaultRedirectTo);
+      return { redirectTo: `/choose-org?returnTo=${target}` };
+    }
+
     // Falls through to the default loginRedirectPath ("/" — set on the bundle).
   },
 });

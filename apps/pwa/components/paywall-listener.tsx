@@ -1,8 +1,9 @@
 "use client";
 
 import { createContext, useContext, useEffect, type ReactNode } from "react";
-import { usePaywall, PaywallModal } from "@stageholder/sdk/react";
+import { usePaywall } from "@stageholder/sdk/react";
 import type { UsePaywallResult } from "@stageholder/sdk/react";
+import { MeridianPaywallModal } from "@/components/billing/meridian-paywall-modal";
 
 /**
  * Meridian-specific 402 response body shape. The Meridian API returns this
@@ -101,7 +102,13 @@ export function PaywallListener({ children }: PaywallListenerProps) {
 
   return (
     <PaywallControllerContext.Provider value={paywall}>
-      <PaywallModal
+      {/* Meridian-custom modal — built on Radix Dialog directly, NOT
+          on `<PaywallModal>` from the SDK. State machine still flows
+          from the SDK's `usePaywall()`; only the presentation is
+          owned by Meridian so it can light up the gated pillar
+          (todos / habits / journal) in the orbital diagram and match
+          the editorial language of the billing/upgrade pages. */}
+      <MeridianPaywallModal
         open={paywall.isOpen}
         onOpenChange={(o) => !o && paywall.close()}
         reason={paywall.reason}
