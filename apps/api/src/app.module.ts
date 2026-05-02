@@ -6,7 +6,10 @@ import { ScheduleModule } from "@nestjs/schedule";
 import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { LoggerModule } from "nestjs-pino";
 import { randomUUID } from "crypto";
-import { StageholderAuthModule } from "@stageholder/sdk/nestjs";
+import {
+  StageholderAuthModule,
+  StageholderWebhookModule,
+} from "@stageholder/sdk/nestjs";
 import {
   validateConfig,
   stageholderAuthConfigSchema,
@@ -27,7 +30,7 @@ import { EncryptionModule } from "./modules/encryption";
 import { JournalSecurityModule } from "./modules/journal-security/journal-security.module";
 import { MeModule } from "./modules/me/me.module";
 import { UserModule } from "./modules/user/user.module";
-import { HubEventsModule } from "./modules/hub-events/hub-events.module";
+import { HubWebhookModule } from "./modules/hub-webhook/hub-webhook.module";
 import { AuthGuard } from "./common/guards/auth.guard";
 
 @Module({
@@ -84,6 +87,12 @@ import { AuthGuard } from "./common/guards/auth.guard";
         "stageholderAuth",
       ),
     ),
+    // Hub-emitted outbound webhooks. Secret is generated once when the admin
+    // registers Meridian's endpoint in Hub's `/admin/webhook-endpoints` UI;
+    // copy it into the env. Without it the guard refuses every request.
+    StageholderWebhookModule.forRoot({
+      secret: process.env.STAGEHOLDER_WEBHOOK_SECRET ?? "",
+    }),
     TagModule,
     TodoListModule,
     TodoModule,
@@ -99,7 +108,7 @@ import { AuthGuard } from "./common/guards/auth.guard";
     JournalSecurityModule,
     MeModule,
     UserModule,
-    HubEventsModule,
+    HubWebhookModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: AuthGuard },

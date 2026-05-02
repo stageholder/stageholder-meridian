@@ -2,6 +2,7 @@ import { NestFactory } from "@nestjs/core";
 import helmet from "helmet";
 import express from "express";
 import { Logger } from "nestjs-pino";
+import { StageholderWebhookExceptionFilter } from "@stageholder/sdk/nestjs";
 import { AppModule } from "./app.module";
 import { validateEnv } from "./config/env.validation";
 import { GlobalExceptionFilter } from "./common/filters/http-exception.filter";
@@ -34,11 +35,24 @@ function parseOrigins(raw: string | undefined): string[] {
 
 async function bootstrap() {
   validateEnv();
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  // `rawBody: true` preserves the original request bytes on `req.rawBody`,
+  // which `StageholderWebhookGuard` requires for HMAC signature verification.
+  // Without it, the JSON body parser strips the raw bytes and verification
+  // always fails.
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+    rawBody: true,
+  });
 
   app.useLogger(app.get(Logger));
   app.enableShutdownHooks();
-  app.useGlobalFilters(new GlobalExceptionFilter());
+  // Order matters: the webhook filter is more specific (catches only SDK
+  // webhook errors) and must run before the catch-all GlobalExceptionFilter
+  // so signature/replay errors map to 401/400 instead of 500.
+  app.useGlobalFilters(
+    new StageholderWebhookExceptionFilter(),
+    new GlobalExceptionFilter(),
+  );
   app.use(helmet());
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: true, limit: "1mb" }));

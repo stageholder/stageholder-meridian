@@ -1,12 +1,8 @@
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
-import { HubEventsService } from "./hub-events.service";
-import {
-  HubEventFailed,
-  HubEventFailedSchema,
-  HubEventsCursor,
-  HubEventsCursorSchema,
-} from "./hub-events.schema";
+import { HubWebhookService } from "./hub-webhook.service";
+import { HubWebhookController } from "./hub-webhook.controller";
+import { HubWebhookFailed, HubWebhookFailedSchema } from "./hub-webhook.schema";
 import { JournalModule } from "../journal/journal.module";
 import { HabitModule } from "../habit/habit.module";
 import { HabitEntryModule } from "../habit-entry/habit-entry.module";
@@ -20,11 +16,22 @@ import { ActivityModule } from "../activity/activity.module";
 import { FeedbackModule } from "../feedback/feedback.module";
 import { UserModule } from "../user/user.module";
 
+/**
+ * Stageholder webhook receiver for Meridian.
+ *
+ * Replaced the legacy `HubEventsModule` polling cron — Hub now pushes
+ * events via Svix to {@link HubWebhookController}'s POST endpoint. The
+ * `StageholderWebhookGuard` from the SDK verifies signatures; everything
+ * downstream of the guard is plain Nest.
+ *
+ * Data services for the cascade-delete fan-out are imported here. When
+ * adding a new event handler that needs another service, import its
+ * module here so the DI graph stays explicit.
+ */
 @Module({
   imports: [
     MongooseModule.forFeature([
-      { name: HubEventsCursor.name, schema: HubEventsCursorSchema },
-      { name: HubEventFailed.name, schema: HubEventFailedSchema },
+      { name: HubWebhookFailed.name, schema: HubWebhookFailedSchema },
     ]),
     JournalModule,
     HabitModule,
@@ -39,6 +46,7 @@ import { UserModule } from "../user/user.module";
     FeedbackModule,
     UserModule,
   ],
-  providers: [HubEventsService],
+  controllers: [HubWebhookController],
+  providers: [HubWebhookService],
 })
-export class HubEventsModule {}
+export class HubWebhookModule {}
