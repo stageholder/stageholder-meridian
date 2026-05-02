@@ -62,8 +62,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-const HUB_URL = process.env.NEXT_PUBLIC_HUB_URL ?? "https://id.stageholder.com";
-
 const navItems = [
   { href: "/app", label: "Dashboard", icon: Home, shortcutKey: "D" },
   {
@@ -605,8 +603,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 hideSignOut
                 menuItems={[
                   {
+                    // Profile editing now lives in-app via the SDK's
+                    // <ProfileSettings>. Security operations (password,
+                    // MFA, sessions, account deletion) still live on Hub
+                    // and are reachable from /app/settings → Account tab.
                     label: "Account settings",
-                    href: `${HUB_URL}/account/profile`,
+                    href: "/app/settings",
                     icon: <UserCog className="size-4" />,
                   },
                   {

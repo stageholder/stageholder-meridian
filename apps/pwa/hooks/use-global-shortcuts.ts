@@ -40,6 +40,10 @@ export function useGlobalShortcuts(callbacks: ShortcutCallbacks) {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      // Some browser-driven events (notably IME composition and certain
+      // <datalist>/autofill interactions in Chromium) dispatch a KeyboardEvent
+      // without `key` populated. Guard before accessing it.
+      if (!e.key) return;
       const mod = isMac() ? e.metaKey : e.ctrlKey;
       const key = e.key.toLowerCase();
 

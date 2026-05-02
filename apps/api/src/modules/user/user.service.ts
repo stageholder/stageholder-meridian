@@ -17,16 +17,15 @@ export class UserService {
     const created = User.create({
       sub,
       hasCompletedOnboarding: false,
-      timezone: null,
     });
     if (!created.ok) throw created.error;
     await this.repository.save(created.value);
     return created.value;
   }
 
-  async completeOnboarding(sub: string, timezone: string): Promise<User> {
+  async completeOnboarding(sub: string): Promise<User> {
     const user = await this.upsertBySub(sub);
-    user.completeOnboarding(timezone);
+    user.completeOnboarding();
     await this.repository.save(user);
     return user;
   }

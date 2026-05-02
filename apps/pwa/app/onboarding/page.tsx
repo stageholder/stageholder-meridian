@@ -13,12 +13,12 @@ import { CompleteStep } from "@/components/onboarding/complete-step";
 
 const TOTAL_STEPS = 5;
 
-async function postCompletion(timezone: string): Promise<void> {
+async function postCompletion(): Promise<void> {
   const res = await fetch("/api/me/onboarding/complete", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ timezone }),
+    body: "{}",
   });
   if (!res.ok) {
     throw new Error(`completion failed: ${res.status}`);
@@ -31,9 +31,6 @@ export default function OnboardingPage() {
   const { user, isLoading } = useUser();
   const [step, setStep] = useState(0);
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
-  const [timezone, setTimezone] = useState<string>(
-    () => Intl.DateTimeFormat().resolvedOptions().timeZone,
-  );
 
   useEffect(() => {
     if (isLoading) return;
@@ -51,21 +48,21 @@ export default function OnboardingPage() {
 
   // Throws on failure — CompleteStep catches and surfaces the inline error.
   const finishOnboarding = useCallback(async () => {
-    await postCompletion(timezone);
+    await postCompletion();
     await queryClient.invalidateQueries({ queryKey: ["me-meridian-extras"] });
     router.push("/app");
-  }, [timezone, queryClient, router]);
+  }, [queryClient, router]);
 
   const handleSkip = useCallback(async () => {
     try {
-      await postCompletion(timezone);
+      await postCompletion();
       await queryClient.invalidateQueries({ queryKey: ["me-meridian-extras"] });
       router.push("/app");
     } catch {
       // Skip failed. Intentionally silent — CompleteStep is the primary
       // error surface; the user can finish the flow normally or retry skip.
     }
-  }, [timezone, queryClient, router]);
+  }, [queryClient, router]);
 
   if (!user) return null;
 
@@ -76,13 +73,7 @@ export default function OnboardingPage() {
           <WelcomeStep name={user.name ?? ""} onContinue={() => setStep(1)} />
         );
       case 1:
-        return (
-          <ProfileStep
-            timezone={timezone}
-            onTimezoneChange={setTimezone}
-            onContinue={() => setStep(2)}
-          />
-        );
+        return <ProfileStep onContinue={() => setStep(2)} />;
       case 2:
         return (
           <GoalsStep

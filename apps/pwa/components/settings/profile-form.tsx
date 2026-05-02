@@ -1,58 +1,16 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
-import { useUser } from "@/hooks/use-user";
+import { ProfileSettings } from "@stageholder/sdk/react";
 
-const HUB_URL = process.env.NEXT_PUBLIC_HUB_URL ?? "https://id.stageholder.com";
-
+/**
+ * Profile editor for the Settings → Profile tab. Hub is the source of
+ * truth for these fields; the SDK component handles fetch, optimistic
+ * pending state, validation-error surfacing, and cross-tab cache sync.
+ *
+ * `phoneNumber` is hidden — Meridian doesn't surface phone-based notifications,
+ * so the field would just be unused noise. Re-enable by removing it from
+ * `hideFields` if/when Meridian adds phone-tied features.
+ */
 export function ProfileForm() {
-  const { user, isLoading } = useUser();
-
-  if (isLoading) {
-    return (
-      <div className="text-sm text-muted-foreground">Loading profile...</div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-foreground">
-          Name
-        </label>
-        <input
-          type="text"
-          value={user?.name ?? ""}
-          disabled
-          className="mt-1 block w-full max-w-md rounded-lg border border-border bg-muted px-3 py-2 text-sm text-muted-foreground"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-foreground">
-          Email
-        </label>
-        <input
-          type="email"
-          value={user?.email ?? ""}
-          disabled
-          className="mt-1 block w-full max-w-md rounded-lg border border-border bg-muted px-3 py-2 text-sm text-muted-foreground"
-        />
-      </div>
-
-      <p className="text-xs text-muted-foreground">
-        Profile information is managed on Stageholder.
-      </p>
-
-      <a
-        href={`${HUB_URL}/account/profile`}
-        target="_blank"
-        rel="noopener"
-        className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-      >
-        Edit profile on Stageholder
-        <ExternalLink className="size-3.5 opacity-80" />
-      </a>
-    </div>
-  );
+  return <ProfileSettings hideFields={["phoneNumber"]} />;
 }

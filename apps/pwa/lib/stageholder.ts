@@ -13,8 +13,6 @@ export interface MeridianCustom {
   personalOrgId: string;
   /** Onboarding flag — gates the post-login → /onboarding redirect. */
   hasCompletedOnboarding: boolean;
-  /** User timezone for date-formatting at the BFF/API boundary. */
-  timezone: string | null;
 }
 
 /**

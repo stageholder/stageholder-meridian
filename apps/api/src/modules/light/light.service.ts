@@ -633,8 +633,9 @@ export class LightService {
     };
   }
 
-  // TODO(Group 7): source the user's timezone from the Stageholder Hub profile
-  // once it exposes one. For now we rely on DEFAULT_TIMEZONE / UTC.
+  // The OIDC `zoneinfo` standard claim is the long-term plan; until the
+  // Hub emits it, server-side scheduling falls back to DEFAULT_TIMEZONE / UTC.
+  // Per-user timezone is now sourced client-side from the SDK's `useProfile()`.
   private async getTodayForUser(_userSub: string): Promise<string> {
     return this.getToday();
   }

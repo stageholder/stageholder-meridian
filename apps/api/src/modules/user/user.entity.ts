@@ -3,7 +3,6 @@ import { Entity, EntityProps, Ok, Err, Result } from "../../shared";
 export interface UserProps extends EntityProps {
   sub: string;
   hasCompletedOnboarding: boolean;
-  timezone: string | null;
 }
 
 export class User extends Entity<UserProps> {
@@ -17,13 +16,9 @@ export class User extends Entity<UserProps> {
   get hasCompletedOnboarding(): boolean {
     return this.get("hasCompletedOnboarding");
   }
-  get timezone(): string | null {
-    return this.get("timezone");
-  }
 
-  completeOnboarding(timezone: string): void {
+  completeOnboarding(): void {
     this.set("hasCompletedOnboarding", true);
-    this.set("timezone", timezone);
   }
 
   static create(

@@ -6,8 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 
 /**
  * Meridian-specific user shape extended with fields returned by the Meridian
- * API's `GET /api/v1/me` endpoint (onboarding state, timezone, personal org).
- * These fields are Meridian-internal and are NOT part of the SDK's `MeResponse`
+ * API's `GET /api/v1/me` endpoint (onboarding state, personal org). These
+ * fields are Meridian-internal and are NOT part of the SDK's `MeResponse`
  * — they live in the Meridian API's user document, not in OIDC token claims.
  */
 export interface MeridianUser {
@@ -18,7 +18,6 @@ export interface MeridianUser {
   personalOrgId: string | null;
   personalOrgSlug: string | null;
   hasCompletedOnboarding: boolean;
-  timezone: string | null;
   avatar?: string;
 }
 
@@ -60,7 +59,6 @@ async function fetchMeDesktop(): Promise<MeridianUser | null> {
   }
 
   let hasCompletedOnboarding = false;
-  let timezone: string | null = null;
   let personalOrgId: string | null = null;
   let personalOrgSlug: string | null = null;
   try {
@@ -70,12 +68,10 @@ async function fetchMeDesktop(): Promise<MeridianUser | null> {
     if (res.ok) {
       const me = (await res.json()) as {
         hasCompletedOnboarding: boolean;
-        timezone: string | null;
         personalOrgId: string | null;
         personalOrgSlug: string | null;
       };
       hasCompletedOnboarding = me.hasCompletedOnboarding;
-      timezone = me.timezone;
       personalOrgId = me.personalOrgId;
       personalOrgSlug = me.personalOrgSlug;
     }
@@ -90,7 +86,6 @@ async function fetchMeDesktop(): Promise<MeridianUser | null> {
     personalOrgId,
     personalOrgSlug,
     hasCompletedOnboarding,
-    timezone,
     avatar: identity.picture,
   };
 }
@@ -109,7 +104,6 @@ async function fetchMeridianExtras(): Promise<{
   personalOrgId: string | null;
   personalOrgSlug: string | null;
   hasCompletedOnboarding: boolean;
-  timezone: string | null;
 } | null> {
   const res = await fetch("/api/me", { credentials: "include" });
   if (res.status === 401) return null;
@@ -118,7 +112,6 @@ async function fetchMeridianExtras(): Promise<{
     personalOrgId: string | null;
     personalOrgSlug: string | null;
     hasCompletedOnboarding: boolean;
-    timezone: string | null;
   };
 }
 
@@ -126,7 +119,9 @@ async function fetchMeridianExtras(): Promise<{
 
 /**
  * Read the current authenticated user, including Meridian-specific fields
- * (`personalOrgId`, `personalOrgSlug`, `hasCompletedOnboarding`, `timezone`).
+ * (`personalOrgId`, `personalOrgSlug`, `hasCompletedOnboarding`). Per-account
+ * timezone lives on the Hub — read it via `useProfile().timezone` from
+ * `@stageholder/sdk/react` when needed.
  *
  * **Web:** identity claims come from the SDK's `<StageholderProvider>` via
  * `useUser()`. Meridian-specific fields are fetched from the BFF's
@@ -189,7 +184,6 @@ export function useUser(): {
     personalOrgId: extrasQuery.data.personalOrgId,
     personalOrgSlug: extrasQuery.data.personalOrgSlug,
     hasCompletedOnboarding: extrasQuery.data.hasCompletedOnboarding,
-    timezone: extrasQuery.data.timezone,
     avatar: sdkUser.user.picture,
   };
 

@@ -40,7 +40,6 @@ export class MeController {
       personalOrgId: personalOrg?.id ?? null,
       personalOrgSlug: personalOrg?.slug ?? null,
       hasCompletedOnboarding: user.hasCompletedOnboarding,
-      timezone: user.timezone,
     };
   }
 
@@ -48,16 +47,12 @@ export class MeController {
   async completeOnboarding(
     @Req() req: StageholderRequest,
     @Body(new ZodValidationPipe(CompleteOnboardingSchema))
-    dto: CompleteOnboardingDto,
+    _dto: CompleteOnboardingDto,
   ) {
-    const user = await this.userService.completeOnboarding(
-      req.user.sub,
-      dto.timezone,
-    );
+    const user = await this.userService.completeOnboarding(req.user.sub);
     return {
       sub: user.sub,
       hasCompletedOnboarding: user.hasCompletedOnboarding,
-      timezone: user.timezone,
     };
   }
 

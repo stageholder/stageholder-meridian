@@ -21,7 +21,6 @@ export class UserModel {
   sub: string;
   @Prop({ type: Boolean, required: true, default: false })
   has_completed_onboarding: boolean;
-  @Prop({ type: String, default: null }) timezone: string | null;
 }
 
 export const UserSchema = SchemaFactory.createForClass(UserModel);

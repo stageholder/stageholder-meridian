@@ -1,33 +1,52 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useUser } from "@/hooks/use-user";
+import { useEffect, useState } from "react";
+import { useProfile, useUpdateProfile } from "@stageholder/sdk/react";
 import { TimezoneSelect } from "@/components/ui/timezone-select";
 
-export function ProfileStep({
-  timezone,
-  onTimezoneChange,
-  onContinue,
-}: {
-  timezone: string;
-  onTimezoneChange: (value: string) => void;
-  onContinue: () => void;
-}) {
-  const { user } = useUser();
-  const [name, setName] = useState(user?.name || "");
+/**
+ * Onboarding step where the user confirms display name and picks a
+ * timezone. Both fields commit to Hub (single source of truth) on
+ * Continue. Skipping or backing out leaves whatever was last persisted.
+ *
+ * The displayName field is editable here so the user can correct anything
+ * imported from their OIDC provider (e.g. an awkward Google account name)
+ * before the onboarding flow finishes.
+ */
+export function ProfileStep({ onContinue }: { onContinue: () => void }) {
+  const { data: profile, isLoading } = useProfile();
+  const { mutateAsync, isPending, error } = useUpdateProfile();
 
-  // Profile (name, email) is owned by the Hub — Meridian shows it as a
-  // read-only confirmation here. Timezone is Meridian-local state,
-  // persisted on onboarding completion; the parent page owns the value.
-  const HUB_URL = process.env.NEXT_PUBLIC_HUB_URL;
+  const [displayName, setDisplayName] = useState<string>("");
+  const [timezone, setTimezone] = useState<string>(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone,
+  );
+  const [hydrated, setHydrated] = useState(false);
 
+  // Hydrate once from the profile fetch. Profile may load after first paint;
+  // we only seed the form when it lands and only once, so user typing during
+  // load doesn't get overwritten.
   useEffect(() => {
-    if (user?.name) setName(user.name);
-  }, [user]);
+    if (!profile || hydrated) return;
+    setDisplayName(profile.displayName ?? "");
+    if (profile.timezone) setTimezone(profile.timezone);
+    setHydrated(true);
+  }, [profile, hydrated]);
 
-  function openHubProfile() {
-    if (!HUB_URL) return;
-    window.open(`${HUB_URL}/account/profile`, "_blank", "noopener,noreferrer");
+  const handleContinue = async (): Promise<void> => {
+    if (!displayName.trim()) return;
+    try {
+      await mutateAsync({ displayName, timezone });
+      onContinue();
+    } catch {
+      // Error is surfaced inline via the `error` state below; don't advance.
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="text-sm text-muted-foreground">Loading profile…</div>
+    );
   }
 
   return (
@@ -37,8 +56,8 @@ export function ProfileStep({
           Confirm your profile
         </h2>
         <p className="text-sm text-muted-foreground">
-          Your name and email live in your Stageholder account. Edit them in the
-          Hub at any time.
+          Edit your name and timezone here. They sync with your Stageholder
+          account and follow you across products.
         </p>
       </div>
 
@@ -53,10 +72,9 @@ export function ProfileStep({
           <input
             id="onboard-name"
             type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            disabled
-            className="mt-1 block w-full rounded-lg border border-input bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
 
@@ -69,28 +87,24 @@ export function ProfileStep({
           </label>
           <TimezoneSelect
             value={timezone}
-            onValueChange={onTimezoneChange}
+            onValueChange={setTimezone}
             className="mt-1"
           />
         </div>
 
-        {HUB_URL && (
-          <button
-            type="button"
-            onClick={openHubProfile}
-            className="text-xs text-muted-foreground hover:text-foreground underline"
-          >
-            Edit profile in Hub →
-          </button>
+        {error && (
+          <p className="text-xs text-destructive" role="alert">
+            {error.message}
+          </p>
         )}
       </div>
 
       <button
-        onClick={onContinue}
-        disabled={!name.trim()}
+        onClick={() => void handleContinue()}
+        disabled={!displayName.trim() || isPending}
         className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
       >
-        Continue
+        {isPending ? "Saving…" : "Continue"}
       </button>
     </div>
   );

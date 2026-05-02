@@ -18,8 +18,9 @@
  * `enrichSession` wires in the JIT provisioning call: at every session
  * create or refresh, `GET /api/v1/me` is called on the Meridian API to
  * upsert the user row and populate `session.custom` (`personalOrgId`,
- * `hasCompletedOnboarding`, `timezone`). Downstream `getSession()` calls
- * read these fields without a live API hop.
+ * `hasCompletedOnboarding`). Per-account timezone lives on the Hub and
+ * is read client-side via `useProfile()`. Downstream `getSession()` calls
+ * read the cached extras without a live API hop.
  *
  * `afterCallback` replaces the `/post-login` Server Component workaround:
  * users who have not completed onboarding are redirected to `/onboarding`
@@ -64,8 +65,9 @@ export const { GET, POST } = stageholderAuth<MeridianCustom>(stageholder, {
  * Best-effort JIT provisioning + extras fetch from Meridian's API.
  *
  * Calls `GET /api/v1/me` (which upserts the user row on first call), reads
- * back `hasCompletedOnboarding`, `personalOrgId`, and `timezone`, and
- * returns the typed payload that the SDK assigns to `session.custom`.
+ * back `hasCompletedOnboarding` and `personalOrgId`, and returns the typed
+ * payload that the SDK assigns to `session.custom`. Per-account timezone
+ * lives on the Stageholder Hub and is read client-side via `useProfile()`.
  *
  * - Throws on `401`/`403` (token rejected) so login fails loudly rather than
  *   silently succeeding with stale session state.
@@ -93,7 +95,7 @@ async function provisionFromMeridianApi(
     });
   } catch {
     // Network-level failure (DNS, timeout, etc.) — degrade gracefully.
-    return { personalOrgId: "", hasCompletedOnboarding: false, timezone: null };
+    return { personalOrgId: "", hasCompletedOnboarding: false };
   }
 
   if (res.status === 401 || res.status === 403) {
@@ -104,18 +106,16 @@ async function provisionFromMeridianApi(
 
   if (!res.ok) {
     // Transient server error — degrade gracefully so login still completes.
-    return { personalOrgId: "", hasCompletedOnboarding: false, timezone: null };
+    return { personalOrgId: "", hasCompletedOnboarding: false };
   }
 
   const body = (await res.json()) as {
     personalOrgId?: string;
     hasCompletedOnboarding?: boolean;
-    timezone?: string | null;
   };
 
   return {
     personalOrgId: body.personalOrgId ?? "",
     hasCompletedOnboarding: body.hasCompletedOnboarding ?? false,
-    timezone: body.timezone ?? null,
   };
 }

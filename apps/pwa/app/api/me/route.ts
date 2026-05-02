@@ -1,8 +1,8 @@
 /**
  * Meridian-specific `/api/me` BFF route.
  *
- * Returns the current user's Meridian-internal fields: onboarding state,
- * timezone, and personal org. These fields live on `session.custom`
+ * Returns the current user's Meridian-internal fields: onboarding state
+ * and personal org. These fields live on `session.custom`
  * (populated by `enrichSession` in the auth catch-all) and are served
  * directly from the session cookie without a live API hop.
  *
@@ -33,7 +33,6 @@ export interface MeResponse {
   name?: string;
   personalOrgId: string | null;
   hasCompletedOnboarding: boolean;
-  timezone: string | null;
 }
 
 export async function GET(): Promise<NextResponse<MeResponse | null>> {
@@ -51,7 +50,6 @@ export async function GET(): Promise<NextResponse<MeResponse | null>> {
     name: session.name,
     personalOrgId: session.custom?.personalOrgId ?? null,
     hasCompletedOnboarding: session.custom?.hasCompletedOnboarding ?? false,
-    timezone: session.custom?.timezone ?? null,
   };
 
   return NextResponse.json(body);

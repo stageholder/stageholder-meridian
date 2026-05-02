@@ -32,7 +32,6 @@ const fakeFatSession: ProductSession<MeridianCustom> = {
   custom: {
     personalOrgId: "00000000-0000-0000-0000-000000000000",
     hasCompletedOnboarding: false,
-    timezone: "America/Los_Angeles",
   },
 };
 

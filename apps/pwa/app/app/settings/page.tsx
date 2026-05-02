@@ -56,8 +56,9 @@ export default function SettingsPage() {
         {activeTab === "account" && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Your billing and subscription live in-app. Identity (password,
-              email, MFA) is managed on Stageholder.
+              Your billing and subscription live in-app. Password, MFA,
+              connected accounts, sessions, and account deletion are managed on
+              Stageholder.
             </p>
             <div className="flex flex-col gap-2">
               <Link
@@ -75,12 +76,12 @@ export default function SettingsPage() {
                 <ArrowRight className="ml-auto size-3.5 opacity-70" />
               </Link>
               <a
-                href={`${HUB_URL}/account/profile`}
+                href={`${HUB_URL}/account`}
                 target="_blank"
                 rel="noopener"
                 className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
               >
-                Manage identity on Stageholder
+                Security &amp; sign-in on Stageholder
                 <ExternalLink className="ml-auto size-3.5 opacity-70" />
               </a>
             </div>

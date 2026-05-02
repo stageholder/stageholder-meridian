@@ -23,7 +23,6 @@ export class UserRepository {
         $set: {
           sub: data.sub,
           has_completed_onboarding: data.hasCompletedOnboarding,
-          timezone: data.timezone,
         },
       },
       { upsert: true },
@@ -41,7 +40,6 @@ export class UserRepository {
       {
         sub: doc.sub,
         hasCompletedOnboarding: !!doc.has_completed_onboarding,
-        timezone: doc.timezone ?? null,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at,
       },
