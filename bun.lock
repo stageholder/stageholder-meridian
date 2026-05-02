@@ -5,7 +5,7 @@
     "": {
       "name": "stageholder-meridian",
       "dependencies": {
-        "@stageholder/sdk": "^1.0.0-alpha.23",
+        "@stageholder/sdk": "^1.0.0-alpha.24",
         "react-day-picker": "^9.14.0",
       },
       "devDependencies": {
@@ -782,7 +782,7 @@
 
     "@stablelib/base64": ["@stablelib/base64@1.0.1", "", {}, "sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ=="],
 
-    "@stageholder/sdk": ["@stageholder/sdk@1.0.0-alpha.23", "https://npm.pkg.github.com/download/@stageholder/sdk/1.0.0-alpha.23/b96c0d41f0604b758bdf2c1820b00078729de663", { "dependencies": { "@radix-ui/react-avatar": "^1.1.0", "@radix-ui/react-dialog": "^1.1.0", "@radix-ui/react-dropdown-menu": "^2.1.0", "@radix-ui/react-popover": "^1.1.0", "@radix-ui/react-progress": "^1.1.0", "@radix-ui/react-select": "^2.1.0", "@radix-ui/react-slot": "^1.1.0", "class-variance-authority": "^0.7.0", "clsx": "^2.1.0", "cmdk": "^1.0.0", "iron-session": "^8.0.0", "jose": "^6.0.0", "svix": "^1.45.0", "tailwind-merge": "^2.5.0", "zod": "^3.24.0" }, "peerDependencies": { "@nestjs/common": "^11.0.0", "@nestjs/core": "^11.0.0", "@tauri-apps/api": "^2.0.0", "next": "^16.0.0", "react": "^19.2.0", "react-dom": "^19.2.0" } }, "sha512-QNZIQLpUplzWjOVVOZQ8H5FVDhkklved69izZSrTmZ4V4ixmHiYsZdc8ksVTQmkVequMWvvN0c8T0UvyhN8vkQ=="],
+    "@stageholder/sdk": ["@stageholder/sdk@1.0.0-alpha.24", "https://npm.pkg.github.com/download/@stageholder/sdk/1.0.0-alpha.24/0fd8b3f3f34b3b70b3002cd4a2ef216f105d430a", { "dependencies": { "@radix-ui/react-avatar": "^1.1.0", "@radix-ui/react-dialog": "^1.1.0", "@radix-ui/react-dropdown-menu": "^2.1.0", "@radix-ui/react-popover": "^1.1.0", "@radix-ui/react-progress": "^1.1.0", "@radix-ui/react-select": "^2.1.0", "@radix-ui/react-slot": "^1.1.0", "class-variance-authority": "^0.7.0", "clsx": "^2.1.0", "cmdk": "^1.0.0", "iron-session": "^8.0.0", "jose": "^6.0.0", "svix": "^1.45.0", "tailwind-merge": "^2.5.0", "zod": "^3.24.0" }, "peerDependencies": { "@nestjs/common": "^11.0.0", "@nestjs/core": "^11.0.0", "@tauri-apps/api": "^2.0.0", "next": "^16.0.0", "react": "^19.2.0", "react-dom": "^19.2.0" } }, "sha512-wGlhbb5l7/2EjpQtvFt0hW9axeVExV3YH1UYkKxqxOYvwct5MNCTA3eyCqejQko6UHfXX6E72GUqDmr2STyKUg=="],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
