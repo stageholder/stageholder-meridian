@@ -4,14 +4,23 @@ import Link from "next/link";
 import type { PricingPlan, ProductFeature } from "@stageholder/sdk/react";
 import {
   BillingError,
+  useBillingPortal,
   useCanManageBilling,
   useOrg,
   useStageholder,
   useStartCheckout,
+  useSubscription,
 } from "@stageholder/sdk/react";
 import { OrbitIllustration } from "./orbit-illustration";
 import { cn } from "@/lib/utils";
-import { ArrowUpRight, AlertCircle, Building2, Check } from "lucide-react";
+import {
+  ArrowUpRight,
+  AlertCircle,
+  Building2,
+  Check,
+  ExternalLink,
+  Sparkles,
+} from "lucide-react";
 
 /**
  * Single pricing-tier card. Editorial layout: vertical "Plan / 01" gutter
@@ -36,14 +45,29 @@ export function PlanTierCard({
   isCurrent: boolean;
   className?: string;
 }) {
-  const { mutateAsync, isPending } = useStartCheckout();
+  const { mutateAsync, isPending: checkoutPending } = useStartCheckout();
+  const { open: openPortal, isPending: portalPending } = useBillingPortal();
   const { canManage } = useCanManageBilling();
   const { org, organizations } = useOrg();
   const { state } = useStageholder();
+  const sub = useSubscription();
+  const [changePending, setChangePending] = useState(false);
   const [errorState, setErrorState] = useState<{
     code: string | null;
     message: string;
   } | null>(null);
+
+  // The org has an active Polar subscription whenever Polar tracks period
+  // boundaries on the row. Trial → trialEndsAt set; paid → currentPeriodEnd
+  // set. Free-tier rows seeded by Hub at org-creation have neither, so this
+  // cleanly separates "first-time purchase" from "plan change for existing
+  // subscriber". Plan changes for the second case go through the new
+  // `/api/billing/change-plan` endpoint, which calls Polar's
+  // `subscriptions.update({product_id})` — checkout would create a duplicate
+  // Polar subscription and double-bill the customer.
+  const hasPolarSubscription =
+    !!sub && (sub.trialEndsAt !== null || sub.currentPeriodEnd !== null);
+  const isPending = checkoutPending || portalPending || changePending;
 
   // mutate() swallows errors and only console.errors them — we need the
   // structured error to drive inline UI, so we use mutateAsync and handle
@@ -72,6 +96,91 @@ export function PlanTierCard({
       }
     }
   }
+
+  /**
+   * Swap the existing Polar subscription onto this plan via Hub's
+   * `/api/billing/change-plan` endpoint (which calls
+   * `polar.subscriptions.update({product_id})` server-side). Used for any
+   * plan change once the org has an active subscription — including
+   * trial → different tier and monthly ↔ yearly switches. Polar emits
+   * `subscription.updated` and Hub refreshes the local row from the
+   * webhook, so we just send the user back to the billing dashboard.
+   */
+  async function changePlan() {
+    if (!org?.id) {
+      setErrorState({
+        code: null,
+        message: "No active organization. Refresh and try again.",
+      });
+      return;
+    }
+    setErrorState(null);
+    setChangePending(true);
+    try {
+      const res = await fetch("/api/billing/change-plan", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          orgId: org.id,
+          product: "meridian",
+          planSlug: plan.slug,
+          billingCycle: cycle,
+        }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as {
+          code?: string;
+          message?: string;
+        };
+        // Mirror the SDK's parseBillingError shape so the catch below can
+        // read `err.code` for inline copy. Plain Error when Hub didn't
+        // return a structured body — typically a 5xx HTML page.
+        if (body.code) {
+          throw new BillingError(
+            body.message ?? `change-plan failed: ${body.code}`,
+            body.code,
+            body,
+          );
+        }
+        throw new Error(`change-plan failed: ${res.status}`);
+      }
+      // Polar's `subscription.updated` webhook will update the local row;
+      // the success page polls Hub state to ride out webhook latency. Reuse
+      // it so the user sees the new plan reflected before returning to the
+      // billing dashboard.
+      window.location.href = `/app/settings/billing/success?changed=1`;
+    } catch (err) {
+      if (err instanceof BillingError) {
+        setErrorState({ code: err.code, message: err.message });
+      } else {
+        setErrorState({
+          code: null,
+          message:
+            err instanceof Error
+              ? err.message
+              : "Could not change plan. Please try again.",
+        });
+      }
+    } finally {
+      setChangePending(false);
+    }
+  }
+
+  async function manageSubscription() {
+    setErrorState(null);
+    try {
+      await openPortal({
+        returnUrl: `${window.location.origin}/app/settings/billing`,
+      });
+    } catch (err) {
+      setErrorState({
+        code: null,
+        message:
+          err instanceof Error ? err.message : "Could not open billing portal.",
+      });
+    }
+  }
   // Show the active-org label only when the user has more than one org —
   // otherwise it's noise. Single-org Meridian users (the majority) see no
   // extra chrome.
@@ -87,11 +196,20 @@ export function PlanTierCard({
   const price = cycle === "monthly" ? plan.priceMonthly : plan.priceYearly;
   const bullets = derivePlanBullets(plan, catalog, 4);
   const hasTrial = !!plan.trialDays && plan.trialDays > 0 && !plan.isFreeTier;
+  // CTA label depends on whether this is a first-time purchase (checkout)
+  // or a plan switch on an existing subscription (change-plan). Same paid
+  // plan, different button copy — telling users explicitly that an
+  // immediate switch is happening (rather than a fresh trial) reduces
+  // surprise when they land on the success page already paying.
   const ctaLabel = isPending
-    ? "Redirecting to checkout…"
-    : hasTrial
-      ? `Start ${plan.trialDays}-day free trial`
-      : `Get ${plan.displayName}`;
+    ? hasPolarSubscription
+      ? "Switching plan…"
+      : "Redirecting to checkout…"
+    : hasPolarSubscription
+      ? `Switch to ${plan.displayName}`
+      : hasTrial
+        ? `Start ${plan.trialDays}-day free trial`
+        : `Get ${plan.displayName}`;
 
   return (
     <article
@@ -202,7 +320,19 @@ export function PlanTierCard({
       {/* CTA */}
       <div className="mt-8">
         {isCurrent ? (
-          <CurrentBadge />
+          sub?.status === "trialing" ? (
+            // The plan being trialed shouldn't dead-end with "Your current
+            // plan" disabled — the user came here from the trial pill
+            // wanting to do *something*. Surface the trial state plus a
+            // portal link so they can update payment / cancel without
+            // leaving the page.
+            <TrialingActions
+              onManage={() => void manageSubscription()}
+              pending={portalPending}
+            />
+          ) : (
+            <CurrentBadge />
+          )
         ) : plan.isFreeTier ? (
           <DisabledChip>Free plan</DisabledChip>
         ) : price === null ? (
@@ -213,7 +343,9 @@ export function PlanTierCard({
           <button
             type="button"
             disabled={isPending}
-            onClick={() => void startCheckout()}
+            onClick={() =>
+              void (hasPolarSubscription ? changePlan() : startCheckout())
+            }
             className={cn(
               "group/btn relative inline-flex h-12 w-full items-center justify-between overflow-hidden rounded-full px-5",
               "text-sm font-medium",
@@ -300,6 +432,20 @@ function explainBillingError(code: string | null): ErrorCopy | null {
         message:
           "This plan is misconfigured on the billing provider. We've logged the issue — please contact support so we can fix it for you.",
       };
+    case "EXISTING_SUBSCRIPTION_USE_PORTAL":
+      // Defensive: the card already routes existing subscribers through
+      // change-plan, so this only fires if state is mid-flight (just
+      // upgraded / webhook hasn't refreshed the claim yet). Tell the user
+      // to retry rather than silently no-op.
+      return {
+        message:
+          "Your subscription was just updated. Refresh the page to see the new plan.",
+      };
+    case "NO_ACTIVE_SUBSCRIPTION":
+      return {
+        message:
+          "We couldn't find an active subscription to change. Refresh the page and try again.",
+      };
     case null:
       return null;
     default:
@@ -314,6 +460,45 @@ function CurrentBadge() {
     <div className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border border-dashed border-foreground/30 bg-foreground/4 text-sm font-medium text-foreground/70">
       <span className="size-1.5 rounded-full bg-foreground/70" />
       Your current plan
+    </div>
+  );
+}
+
+/**
+ * Replaces the disabled "Your current plan" badge for the plan that's
+ * currently in trial. Trialing users don't need to take action to keep
+ * their plan — Polar auto-charges at trial end if a card was captured —
+ * but the page came from a "Click to upgrade" trial pill, so the affordance
+ * here is "manage your subscription" (cancel, update card) via the Polar
+ * portal. Other plan cards on the page stay clickable for tier switches
+ * via change-plan.
+ */
+function TrialingActions({
+  onManage,
+  pending,
+}: {
+  onManage: () => void;
+  pending: boolean;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 text-sm font-medium text-amber-800 dark:border-amber-400/40 dark:bg-amber-400/10 dark:text-amber-200">
+        <Sparkles className="size-3.5" strokeWidth={2} />
+        Currently trialing this plan
+      </div>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={onManage}
+        className={cn(
+          "inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full",
+          "text-xs font-medium text-foreground/70 transition-colors hover:text-foreground",
+          "disabled:pointer-events-none disabled:opacity-50",
+        )}
+      >
+        {pending ? "Opening…" : "Manage subscription"}
+        <ExternalLink className="size-3" strokeWidth={2} />
+      </button>
     </div>
   );
 }

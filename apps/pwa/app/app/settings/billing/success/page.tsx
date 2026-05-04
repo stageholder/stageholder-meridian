@@ -17,10 +17,23 @@ import { tryGetCurrentUserSub } from "@/lib/current-user-sub";
 import { cn } from "@/lib/utils";
 
 /**
- * Post-checkout landing page. Polar redirects here with `?checkout_id=...`
- * after successful payment.
+ * Post-billing-action landing page. Two entry modes:
  *
- * Three-step landing sequence — order matters:
+ * - **Checkout success** (Polar redirects with `?checkout_id=...`): poll
+ *   Polar through Hub's passthrough until it confirms `succeeded`, THEN
+ *   rotate the session and bust caches.
+ * - **Plan change success** (Hub's change-plan handler redirects with
+ *   `?changed=1`): no Polar polling — Hub already issued the
+ *   `subscriptions.update` call before redirecting, and we trust its
+ *   `subscription.updated` webhook will land within the
+ *   refreshSession round-trip. Skip straight to rotate + bust.
+ *
+ * Both modes share the post-conditions (rotate access token, bust
+ * entitlement + React Query caches) so they share this page rather than
+ * forking into a parallel "/billing/changed" route — one mental model,
+ * two entry points.
+ *
+ * Three-step landing sequence (checkout mode) — order matters:
  *
  * 1. **Poll Hub's Polar passthrough** (`useCheckoutStatus`) until Polar
  *    itself confirms `status: "succeeded"`. This bypasses the local DB so
@@ -45,13 +58,25 @@ type Phase =
 export default function BillingSuccessPage() {
   const searchParams = useSearchParams();
   const checkoutId = searchParams.get("checkout_id");
+  // `?changed=1` signals a plan-change return path (no Polar checkout was
+  // involved). Set by Hub's change-plan handler, consumed by the effect
+  // below to skip polling and go straight to refresh+bust.
+  const isChangePlan = searchParams.get("changed") === "1";
   const refreshSession = useRefreshSession();
   const { signOut } = useStageholder();
   const queryClient = useQueryClient();
   const sub = useSubscription();
-  const [phase, setPhase] = useState<Phase>("polling");
+  // Skip the polling phase for plan-change mode — there's no Polar checkout
+  // to wait on, the row was updated server-side before we got redirected.
+  const [phase, setPhase] = useState<Phase>(
+    isChangePlan ? "refreshing" : "polling",
+  );
 
-  const checkout = useCheckoutStatus({ checkoutId });
+  // Pass `null` in plan-change mode so useCheckoutStatus stays idle; we
+  // only want it driving the state machine for the checkout entry path.
+  const checkout = useCheckoutStatus({
+    checkoutId: isChangePlan ? null : checkoutId,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -119,6 +144,15 @@ export default function BillingSuccessPage() {
     }
 
     void (async () => {
+      // Plan-change path skips Polar polling entirely — Hub already called
+      // `subscriptions.update` before redirecting us here, so the only work
+      // left is rotating the session and busting caches. Run recovery
+      // immediately rather than waiting on a `checkout.phase` transition
+      // that will never come (checkoutId is null in this mode).
+      if (isChangePlan) {
+        await runRecovery(false);
+        return;
+      }
       if (checkout.phase === "polling" || checkout.phase === "idle") return;
       if (checkout.phase === "succeeded") {
         setPhase("refreshing");
@@ -138,7 +172,7 @@ export default function BillingSuccessPage() {
     return () => {
       cancelled = true;
     };
-  }, [checkout.phase, refreshSession, queryClient]);
+  }, [isChangePlan, checkout.phase, refreshSession, queryClient]);
 
   /**
    * Sign-out fast path: when the session is in the "stale claims, dead
@@ -157,19 +191,30 @@ export default function BillingSuccessPage() {
     }
   }
 
+  // Copy switches between checkout entry ("payment confirmed", "purchase")
+  // and plan-change entry ("plan updated", "switch") — the same phases drive
+  // both, but the framing has to match the user's mental model so a trial
+  // user who clicked "Switch to Conduct" doesn't see "your purchase is
+  // confirmed" and wonder if they were charged.
   const headline = (() => {
     if (phase === "polling")
       return checkout.phase === "polling" && checkout.data?.status
         ? `Confirming with Polar…`
         : "Confirming your payment…";
-    if (phase === "refreshing") return "Refreshing your access…";
+    if (phase === "refreshing")
+      return isChangePlan ? "Switching your plan…" : "Refreshing your access…";
     if (phase === "ready")
       return sub?.planName
         ? `You're on ${sub.planName}.`
-        : "Your new plan is live.";
+        : isChangePlan
+          ? "Your new plan is live."
+          : "Your new plan is live.";
     if (phase === "timeout")
       return "Almost there — your plan should appear shortly.";
-    if (phase === "pending") return "Your purchase is confirmed.";
+    if (phase === "pending")
+      return isChangePlan
+        ? "Your plan change is confirmed."
+        : "Your purchase is confirmed.";
     if (phase === "session_expired")
       return "Sign in again to see your new plan.";
     return "Your checkout didn't complete.";
@@ -179,22 +224,32 @@ export default function BillingSuccessPage() {
     if (phase === "polling")
       return "Waiting for Polar to mark your checkout complete. This usually takes a couple of seconds.";
     if (phase === "refreshing")
-      return "Polar confirmed your purchase. Updating your subscription claim and entitlement cache so every limit reflects your new plan.";
+      return isChangePlan
+        ? "We've asked Polar to swap your subscription onto the new plan. Rotating your session and busting caches so every limit reflects the change."
+        : "Polar confirmed your purchase. Updating your subscription claim and entitlement cache so every limit reflects your new plan.";
     if (phase === "ready")
-      return "Your subscription is active. Every limit and gated feature is now updated across this device.";
+      return isChangePlan
+        ? "Your subscription is now on the new plan. Every limit and gated feature is updated across this device."
+        : "Your subscription is active. Every limit and gated feature is now updated across this device.";
     if (phase === "timeout")
       return "Polar took longer than usual to confirm. Your purchase is being processed in the background — refresh this page in a minute, or check Billing for the live status.";
     if (phase === "pending")
-      return "Polar accepted your payment, but we couldn't refresh your session in this tab. Your new plan will be applied automatically within a few minutes — or sign out and back in to see it immediately.";
+      return isChangePlan
+        ? "Polar accepted the plan change, but we couldn't refresh your session in this tab. Your new plan will be applied automatically within a few minutes — or sign out and back in to see it immediately."
+        : "Polar accepted your payment, but we couldn't refresh your session in this tab. Your new plan will be applied automatically within a few minutes — or sign out and back in to see it immediately.";
     if (phase === "session_expired")
-      return "Polar accepted your payment, but your session expired before we could update it. Sign in again to pick up your new plan.";
+      return isChangePlan
+        ? "Polar accepted the plan change, but your session expired before we could update it. Sign in again to pick up your new plan."
+        : "Polar accepted your payment, but your session expired before we could update it. Sign in again to pick up your new plan.";
     return "Polar reported the checkout as failed or expired. No charge was made — try again from the upgrade page.";
   })();
 
   const kicker = (() => {
     if (phase === "polling") return "Confirming payment";
-    if (phase === "refreshing") return "Activating your plan";
-    if (phase === "ready") return "Welcome aboard";
+    if (phase === "refreshing")
+      return isChangePlan ? "Updating your plan" : "Activating your plan";
+    if (phase === "ready")
+      return isChangePlan ? "Plan updated" : "Welcome aboard";
     if (phase === "timeout") return "Still processing";
     if (phase === "pending") return "Plan updating";
     if (phase === "session_expired") return "Sign in to continue";

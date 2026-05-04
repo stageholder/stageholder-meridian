@@ -53,7 +53,7 @@ export function TrialPill({
         <TooltipTrigger asChild>
           <Link
             href={upgradeHref}
-            aria-label={`${longLabel} in trial — upgrade`}
+            aria-label={`${longLabel} in trial — manage subscription`}
             className={cn(
               "group relative inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5",
               "text-[11px] font-medium tracking-tight",
@@ -80,6 +80,11 @@ export function TrialPill({
               aria-hidden
               className="mx-0.5 hidden h-3 w-px bg-current opacity-30 sm:inline-block"
             />
+            {/* "Manage" rather than "Upgrade": the trialed plan can already
+                be the top tier, so there's nothing to upgrade *to*. The
+                destination /upgrade page handles plan switches AND trial
+                management uniformly, so this verb covers both cases without
+                misleading top-tier trialers. */}
             <span
               aria-hidden
               className={cn(
@@ -87,7 +92,7 @@ export function TrialPill({
                 "transition-transform duration-200 group-hover:translate-x-0.5",
               )}
             >
-              Upgrade
+              Manage
             </span>
           </Link>
         </TooltipTrigger>
@@ -99,11 +104,11 @@ export function TrialPill({
                 <span className="font-semibold">{sub.planName}</span>
               </span>
               <span className="opacity-70">
-                Ends {endsAtLabel} · Click to upgrade
+                Ends {endsAtLabel} · Click to manage
               </span>
             </div>
           ) : (
-            <span>Trial in progress — click to upgrade</span>
+            <span>Trial in progress — click to manage</span>
           )}
         </TooltipContent>
       </Tooltip>
