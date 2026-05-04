@@ -43,11 +43,14 @@ import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 import { CreateTodoDialog } from "@/components/todos/create-todo-dialog";
 import { useUser } from "@/hooks/use-user";
 import {
+  CancellationBanner,
+  PaymentFailedBanner,
   useStageholder,
   UserButton,
   OrganizationSwitcher,
   useOrg,
 } from "@stageholder/sdk/react";
+import { TrialPill } from "@/components/billing/trial-pill";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -350,6 +353,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <DailyTargetRings />
               <div className="mx-0.5 h-4 w-px bg-border" />
               <OfflineIndicator />
+              <TrialPill />
 
               {/* Journey progress popover */}
               {userLight &&
@@ -633,6 +637,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           {/* Page content */}
           <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[calc(3.5rem+max(0.5rem,env(safe-area-inset-bottom,0px)))] md:pb-0">
+            {/* Lifecycle banners — render conditionally based on the active
+                subscription's status. Each is null when not applicable so
+                only one (at most) renders at a time in practice. The trial
+                countdown lives in the header as <TrialPill> instead of a
+                page-width strip. PaymentFailed and Cancellation stay as
+                banners — they're rare, urgent, and demand to be read in
+                full. */}
+            <div className="mx-auto w-full max-w-5xl space-y-2 px-4 pt-3 empty:pt-0">
+              <PaymentFailedBanner />
+              <CancellationBanner />
+            </div>
             {children}
           </main>
 

@@ -120,7 +120,9 @@ export function CurrentPlanHero({
                 type="button"
                 disabled={portalPending}
                 onClick={() => {
-                  openPortal().catch((err) =>
+                  openPortal({
+                    returnUrl: `${window.location.origin}/app/settings/billing`,
+                  }).catch((err) =>
                     // eslint-disable-next-line no-console
                     console.error("[meridian] portal failed:", err),
                   );
