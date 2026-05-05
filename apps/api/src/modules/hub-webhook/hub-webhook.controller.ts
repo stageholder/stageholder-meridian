@@ -1,7 +1,7 @@
 import { Controller, HttpCode, Post, Req, UseGuards } from "@nestjs/common";
 import { StageholderWebhookGuard } from "@stageholder/sdk/nestjs";
 import type { StageholderWebhookEvent } from "@stageholder/sdk/core";
-import { Public } from "../../common/decorators/public.decorator";
+import { Public } from "@stageholder/sdk/nestjs";
 import { HubWebhookService } from "./hub-webhook.service";
 
 interface AuthenticatedWebhookRequest {

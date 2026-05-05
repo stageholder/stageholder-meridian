@@ -2,18 +2,13 @@ import { NestFactory } from "@nestjs/core";
 import helmet from "helmet";
 import express from "express";
 import { Logger } from "nestjs-pino";
-import { StageholderWebhookExceptionFilter } from "@stageholder/sdk/nestjs";
+import {
+  StageholderWebhookExceptionFilter,
+  getTauriCorsOrigins,
+} from "@stageholder/sdk/nestjs";
 import { AppModule } from "./app.module";
 import { validateEnv } from "./config/env.validation";
 import { GlobalExceptionFilter } from "./common/filters/http-exception.filter";
-
-// Tauri webview origins vary by OS:
-//   macOS/Linux → tauri://localhost
-//   Windows     → http://tauri.localhost
-// Both need allow-listing so the desktop app can call the API directly with
-// its Bearer token (web goes through the BFF proxy on the same origin and
-// doesn't trigger CORS preflight).
-const TAURI_ORIGINS = ["tauri://localhost", "http://tauri.localhost"];
 
 function parseOrigins(raw: string | undefined): string[] {
   const parsed =
@@ -30,7 +25,12 @@ function parseOrigins(raw: string | undefined): string[] {
     parsed.push("http://localhost:4001");
   }
 
-  return [...parsed, ...TAURI_ORIGINS];
+  // `getTauriCorsOrigins()` returns the canonical Tauri webview origins
+  // (`tauri://localhost` macOS/Linux, `http://tauri.localhost` Windows).
+  // Both need allow-listing so the desktop app can call the API directly
+  // with its Bearer token; web traffic goes through the BFF proxy on the
+  // same origin and doesn't trigger preflight.
+  return [...parsed, ...getTauriCorsOrigins()];
 }
 
 async function bootstrap() {

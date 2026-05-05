@@ -30,7 +30,7 @@
     "@repo/crypto": "*",
     "@repo/offline": "*",
     "@repo/ui": "*",
-    "@stageholder/sdk": "^1.0.0-alpha.0",
+    "@stageholder/sdk": "^1.0.0-alpha.35",
     "mongodb": "^6.10.0",
     "@tanstack/react-query": "^5.62.0",
     "@tauri-apps/plugin-opener": "^2.5.3",

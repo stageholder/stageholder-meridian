@@ -6,7 +6,7 @@ import {
   HealthCheck,
 } from "@nestjs/terminus";
 import { ApiTags } from "@nestjs/swagger";
-import { Public } from "../../common/decorators/public.decorator";
+import { Public } from "@stageholder/sdk/nestjs";
 
 @ApiTags("Health")
 @Controller("health")

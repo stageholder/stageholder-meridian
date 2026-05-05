@@ -8,12 +8,9 @@ import { LoggerModule } from "nestjs-pino";
 import { randomUUID } from "crypto";
 import {
   StageholderAuthModule,
+  StageholderAuthGuard,
   StageholderWebhookModule,
 } from "@stageholder/sdk/nestjs";
-import {
-  validateConfig,
-  stageholderAuthConfigSchema,
-} from "@stageholder/sdk/core";
 import { TagModule } from "./modules/tag/tag.module";
 import { TodoListModule } from "./modules/todo-list/todo-list.module";
 import { TodoModule } from "./modules/todo/todo.module";
@@ -31,7 +28,6 @@ import { JournalSecurityModule } from "./modules/journal-security/journal-securi
 import { MeModule } from "./modules/me/me.module";
 import { UserModule } from "./modules/user/user.module";
 import { HubWebhookModule } from "./modules/hub-webhook/hub-webhook.module";
-import { AuthGuard } from "./common/guards/auth.guard";
 
 @Module({
   imports: [
@@ -68,25 +64,11 @@ import { AuthGuard } from "./common/guards/auth.guard";
         uri: config.get<string>("MONGODB_URI"),
       }),
     }),
-    StageholderAuthModule.forRoot(
-      validateConfig(
-        stageholderAuthConfigSchema,
-        {
-          issuerUrl: process.env.IDENTITY_ISSUER_URL,
-          clientId: process.env.IDENTITY_CLIENT_ID,
-          clientSecret: process.env.IDENTITY_CLIENT_SECRET,
-          // Must match whatever `aud` claim the Hub puts on access tokens.
-          // Hub's oidc-provider resourceIndicators config decides this. If
-          // that config sets `defaultResource: () => "urn:stageholder:api"`,
-          // this must be the exact same string. Override via env so the Hub
-          // can change its resource identifier without requiring a redeploy
-          // of every product.
-          audience:
-            process.env.IDENTITY_TOKEN_AUDIENCE ?? "urn:stageholder:api",
-        },
-        "stageholderAuth",
-      ),
-    ),
+    // Reads canonical env vars (IDENTITY_ISSUER_URL, IDENTITY_CLIENT_ID,
+    // IDENTITY_CLIENT_SECRET, IDENTITY_TOKEN_AUDIENCE, STAGEHOLDER_AUTH_DEBUG).
+    // Validates synchronously at boot — misconfigured env throws ConfigError
+    // before any request is handled.
+    StageholderAuthModule.fromEnv(),
     // Hub-emitted outbound webhooks. Secret is generated once when the admin
     // registers Meridian's endpoint in Hub's `/admin/webhook-endpoints` UI;
     // copy it into the env. Without it the guard refuses every request.
@@ -111,7 +93,16 @@ import { AuthGuard } from "./common/guards/auth.guard";
     HubWebhookModule,
   ],
   providers: [
-    { provide: APP_GUARD, useClass: AuthGuard },
+    // Explicit factory injection — Nest looks up the SDK-provided
+    // StageholderAuthGuard singleton (from the global StageholderAuthModule)
+    // and aliases it as APP_GUARD. `useExisting` and `useClass` both fail
+    // here because of how Nest resolves cross-module DI scopes for symbol
+    // tokens like STAGEHOLDER_AUTH_CONFIG.
+    {
+      provide: APP_GUARD,
+      useFactory: (guard: StageholderAuthGuard) => guard,
+      inject: [StageholderAuthGuard],
+    },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })

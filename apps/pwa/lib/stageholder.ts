@@ -1,5 +1,8 @@
-import { defineStageholderConfig } from "@stageholder/sdk/nextjs";
-import { createMongoSessionBackend } from "./session-backend";
+import { MongoClient } from "mongodb";
+import {
+  defineStageholderConfig,
+  createMongoStorageBackend,
+} from "@stageholder/sdk/nextjs";
 
 /**
  * Meridian-specific custom session shape.
@@ -23,12 +26,28 @@ export interface MeridianCustom {
  * server restarts and replicate across Cloud Run replicas because they
  * live in the database, not in process memory.
  *
- * The hub's access tokens carry `organizations`, `product_access`, and
+ * The Hub's access tokens carry `organizations`, `product_access`, and
  * `subscriptions` claims that push the sealed iron-session cookie past
  * the browser's 4096-byte per-cookie limit; with this backend the cookie
  * carries only an opaque session id (~120 bytes).
+ *
+ * Document shape `{ _id, value, expiresAt: Date }` and TTL index are
+ * byte-compatible with the previous custom impl — live sessions migrate
+ * seamlessly across the SDK swap.
  */
-export const sessionBackend = createMongoSessionBackend();
+const mongoUri = process.env.MONGODB_URI;
+if (!mongoUri) {
+  throw new Error(
+    "MONGODB_URI is not set on the PWA. The session backend cannot connect.",
+  );
+}
+const mongoClient = await MongoClient.connect(mongoUri);
+
+export const sessionBackend = createMongoStorageBackend({
+  client: mongoClient,
+  db: "meridian",
+  collection: "sessions",
+});
 
 /**
  * Singleton SDK config bundle for Meridian's BFF.
@@ -36,8 +55,9 @@ export const sessionBackend = createMongoSessionBackend();
  * Env-derived defaults: `issuerUrl` (`IDENTITY_ISSUER_URL`), `clientId`
  * (`IDENTITY_CLIENT_ID`), `clientSecret` (`IDENTITY_CLIENT_SECRET`),
  * `redirectUri` (`IDENTITY_REDIRECT_URI`), `sessionSecret`
- * (`SESSION_SECRET`). Config is validated synchronously at module init —
- * misconfigured env throws a `ConfigError` at cold-start.
+ * (`SESSION_SECRET`), `audience` (`IDENTITY_TOKEN_AUDIENCE`). Config is
+ * validated synchronously at module init — misconfigured env throws a
+ * `ConfigError` at cold-start.
  */
 export const stageholder = defineStageholderConfig<MeridianCustom>({
   productSlug: "meridian",
