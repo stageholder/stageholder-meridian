@@ -116,16 +116,30 @@ export class LegacyMigrationService {
       oldUser.encrypted_dek &&
       oldUser.dek_salt
     ) {
-      const existing = await db
-        .collection("journal_security")
-        .findOne({ _id: sub });
+      // `journal_security` is keyed by string `sub` (not ObjectId), so type
+      // the collection accessor accordingly to satisfy the driver's typings.
+      type JournalSecurityDoc = {
+        _id: string;
+        encryptionEnabled: boolean;
+        passphraseWrappedDek: string;
+        passphraseSalt: string;
+        recoveryWrappedDek: string;
+        recoveryCodeHashes: string[];
+        recoveryCodesRemaining: number;
+        createdAt: Date;
+        updatedAt: Date;
+        __v: number;
+      };
+      const journalSecurity =
+        db.collection<JournalSecurityDoc>("journal_security");
+      const existing = await journalSecurity.findOne({ _id: sub });
       if (!existing) {
         const now = new Date();
-        await db.collection("journal_security").insertOne({
+        await journalSecurity.insertOne({
           _id: sub,
           encryptionEnabled: true,
-          passphraseWrappedDek: oldUser.encrypted_dek,
-          passphraseSalt: oldUser.dek_salt,
+          passphraseWrappedDek: oldUser.encrypted_dek as string,
+          passphraseSalt: oldUser.dek_salt as string,
           recoveryWrappedDek: "",
           recoveryCodeHashes: [],
           recoveryCodesRemaining: 0,
