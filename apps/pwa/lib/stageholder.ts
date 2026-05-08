@@ -1,4 +1,3 @@
-import { MongoClient } from "mongodb";
 import {
   defineStageholderConfig,
   createMongoStorageBackend,
@@ -35,16 +34,11 @@ export interface MeridianCustom {
  * byte-compatible with the previous custom impl — live sessions migrate
  * seamlessly across the SDK swap.
  */
-const mongoUri = process.env.MONGODB_URI;
-if (!mongoUri) {
-  throw new Error(
-    "MONGODB_URI is not set on the PWA. The session backend cannot connect.",
-  );
-}
-const mongoClient = await MongoClient.connect(mongoUri);
-
+// Pass `uri` (not a pre-connected client) so the SDK lazy-connects on first
+// session read/write. Keeps `next build`'s page-data collection from
+// attempting a real DB connection at module load.
 export const sessionBackend = createMongoStorageBackend({
-  client: mongoClient,
+  uri: process.env.MONGODB_URI ?? "mongodb://build-placeholder.invalid:27017",
   db: "meridian",
   collection: "sessions",
 });

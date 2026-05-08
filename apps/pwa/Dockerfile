@@ -36,6 +36,18 @@ ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_IDENTITY_ISSUER_URL
 ENV NEXT_PUBLIC_IDENTITY_ISSUER_URL=$NEXT_PUBLIC_IDENTITY_ISSUER_URL
 ENV NEXT_OUTPUT=standalone
+# Build-time placeholders — Next.js's "Collecting page data" phase imports
+# server modules, which triggers eager schema validation in
+# `defineStageholderConfig` and `createMongoStorageBackend`. The values below
+# only need to satisfy the SDK's Zod schema; real values are injected at
+# runtime via Cloud Run env vars and override these.
+ENV MONGODB_URI="mongodb://build-placeholder.invalid:27017"
+ENV IDENTITY_ISSUER_URL="https://build-placeholder.invalid/oidc"
+ENV IDENTITY_CLIENT_ID="build-placeholder"
+ENV IDENTITY_CLIENT_SECRET="build-placeholder"
+ENV IDENTITY_REDIRECT_URI="https://build-placeholder.invalid/auth/callback"
+ENV SESSION_SECRET="build-placeholder-build-placeholder-build-placeholder"
+ENV IDENTITY_TOKEN_AUDIENCE="urn:stageholder:api"
 RUN turbo build --filter=pwa --no-daemon && \
     if [ ! -d "/app/apps/pwa/.next/standalone" ]; then \
       echo "ERROR: Next.js standalone build failed"; exit 1; \
