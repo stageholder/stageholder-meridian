@@ -90,20 +90,19 @@ export class LegacyMigrationService {
     }
 
     // Re-key user_lights: legacy row lives under `user_id`; the LightService
-    // auto-provisions an empty row under the new `userSub` on first access.
-    // Delete the empty placeholder, then move the rich legacy row onto sub.
+    // auto-provisions an empty row under the new `userSub` on first access
+    // (and may do so concurrently with this migration on a hot first login).
+    // Drop any empty placeholder at this userSub, then move the legacy row
+    // onto sub. Empty (`total_light: 0`) is the placeholder signature — a
+    // non-zero row at this userSub cannot exist on first-user-record-insert,
+    // so leaving it alone is the safe fallback.
     const oldLight = await db
       .collection("user_lights")
       .findOne({ user_id: OLD_ID });
-    const newLight = await db
-      .collection("user_lights")
-      .findOne({ userSub: sub });
-    if (oldLight && newLight && newLight.total_light === 0) {
-      await db.collection("user_lights").deleteOne({ _id: newLight._id });
+    if (oldLight) {
       await db
         .collection("user_lights")
-        .updateOne({ _id: oldLight._id }, { $set: { userSub: sub } });
-    } else if (oldLight && !newLight) {
+        .deleteMany({ userSub: sub, total_light: 0 });
       await db
         .collection("user_lights")
         .updateOne({ _id: oldLight._id }, { $set: { userSub: sub } });

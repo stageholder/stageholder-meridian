@@ -35,13 +35,7 @@ export class LightService {
   ) {}
 
   async getOrCreateUserLight(userSub: string): Promise<UserLight> {
-    const existing = await this.userLightRepo.findByUserSub(userSub);
-    if (existing) return existing;
-
-    const result = UserLight.create(userSub);
-    if (!result.ok) throw result.error;
-    await this.userLightRepo.save(result.value);
-    return result.value;
+    return this.userLightRepo.getOrCreateByUserSub(userSub);
   }
 
   async getUserLight(userSub: string): Promise<UserLight> {
