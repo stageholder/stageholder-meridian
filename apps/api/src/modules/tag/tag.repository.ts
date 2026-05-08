@@ -1,12 +1,33 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger, OnApplicationBootstrap } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { TagModel, TagDocument } from "./tag.schema";
 import { Tag } from "./tag.entity";
 
 @Injectable()
-export class TagRepository {
+export class TagRepository implements OnApplicationBootstrap {
+  private readonly logger = new Logger(TagRepository.name);
+
   constructor(@InjectModel(TagModel.name) private model: Model<TagDocument>) {}
+
+  // The pre-Hub schema enforced (workspace_id, name) unique. The current
+  // schema scopes by `userSub`, doesn't write `workspace_id`, and declares
+  // its own `userSub_1_name_1` unique index. The legacy index would otherwise
+  // collapse to "globally unique tag names across all new users" — the second
+  // user to create a tag named "work" would E11000 on (null, "work"). Drop
+  // it at boot.
+  async onApplicationBootstrap(): Promise<void> {
+    try {
+      await this.model.collection.dropIndex("workspace_id_1_name_1");
+      this.logger.log("Dropped legacy workspace_id_1_name_1 index from tags");
+    } catch (err: any) {
+      const code = err?.code ?? err?.codeName;
+      if (code === 27 || code === "IndexNotFound") return;
+      this.logger.warn(
+        `Could not drop legacy workspace_id_1_name_1 index: ${err?.message ?? err}`,
+      );
+    }
+  }
 
   async save(tag: Tag): Promise<void> {
     const data = tag.toObject();

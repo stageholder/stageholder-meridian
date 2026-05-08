@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger, OnApplicationBootstrap } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { randomUUID } from "crypto";
@@ -6,10 +6,34 @@ import { UserLightModel, UserLightDocument } from "../user-light.schema";
 import { UserLight } from "../domain/user-light.entity";
 
 @Injectable()
-export class UserLightRepository {
+export class UserLightRepository implements OnApplicationBootstrap {
+  private readonly logger = new Logger(UserLightRepository.name);
+
   constructor(
     @InjectModel(UserLightModel.name) private model: Model<UserLightDocument>,
   ) {}
+
+  // The pre-Hub schema declared `user_id` as a unique field; the current
+  // schema scopes by `userSub` instead and does not write `user_id` on new
+  // inserts. The legacy `user_id_1` unique index is still in production
+  // Mongo, so the very first new row inserts as `user_id: null` and every
+  // subsequent insert collides (E11000 dup key on null) — manifesting as a
+  // 500 on `GET /light/me`. Drop the stale index once at boot. Idempotent:
+  // IndexNotFound after the first deploy is swallowed silently.
+  async onApplicationBootstrap(): Promise<void> {
+    try {
+      await this.model.collection.dropIndex("user_id_1");
+      this.logger.log(
+        "Dropped legacy user_id_1 index from user_lights collection",
+      );
+    } catch (err: any) {
+      const code = err?.code ?? err?.codeName;
+      if (code === 27 || code === "IndexNotFound") return;
+      this.logger.warn(
+        `Could not drop legacy user_id_1 index: ${err?.message ?? err}`,
+      );
+    }
+  }
 
   /**
    * Atomic get-or-create keyed by `userSub`. The previous implementation did
