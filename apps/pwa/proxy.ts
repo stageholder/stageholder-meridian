@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createProxy } from "@stageholder/sdk/nextjs";
 import { stageholder } from "@/lib/stageholder";
+import { publicOrigin } from "@/lib/public-origin";
 
 const PROTECTED_PREFIXES = ["/app", "/onboarding", "/choose-org"];
 
@@ -52,7 +53,10 @@ export function proxy(request: NextRequest) {
 
   const location = sdkResult.headers.get("location");
   const res = location
-    ? NextResponse.redirect(new URL(location, request.url), sdkResult.status)
+    ? NextResponse.redirect(
+        new URL(location, publicOrigin(request)),
+        sdkResult.status,
+      )
     : NextResponse.next();
 
   // Forward any Set-Cookie headers (the breaker counter).

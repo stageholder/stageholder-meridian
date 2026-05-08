@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { stageholder } from "@/lib/stageholder";
+import { publicOrigin } from "@/lib/public-origin";
 
 /**
  * Root entry point. Plain HTTP 307 redirect based on session presence.
@@ -22,5 +23,5 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const hasSession = (await cookies()).has(stageholder.config.cookieName);
   const target = hasSession ? "/app" : "/auth/login";
-  return NextResponse.redirect(new URL(target, request.url));
+  return NextResponse.redirect(new URL(target, publicOrigin(request)));
 }
