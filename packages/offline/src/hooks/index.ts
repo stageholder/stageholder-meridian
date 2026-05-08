@@ -31,11 +31,22 @@ export function useOfflineQuery<T extends SyncableEntity>(
     queryKey,
     queryFn: async () => {
       const data = await fetchFn();
-      await db.transaction("rw", table, async () => {
-        for (const item of data) {
-          await table.put(item);
-        }
-      });
+      // Cache write is best-effort: remote is source of truth. A Dexie
+      // failure (stale schema, quota, structured-clone error on one record)
+      // must not flip the query into an error state and hide data the API
+      // already returned successfully.
+      try {
+        await db.transaction("rw", table, async () => {
+          for (const item of data) {
+            await table.put(item);
+          }
+        });
+      } catch (err) {
+        console.warn(
+          `[offline-cache] write to ${table.name} failed; serving remote data anyway:`,
+          err,
+        );
+      }
       return data;
     },
     enabled: isOnline && options?.enabled !== false,
@@ -63,7 +74,14 @@ export function useOfflineQuerySingle<T extends SyncableEntity>(
     queryKey,
     queryFn: async () => {
       const data = await fetchFn();
-      await table.put(data);
+      try {
+        await table.put(data);
+      } catch (err) {
+        console.warn(
+          `[offline-cache] write to ${table.name} failed; serving remote data anyway:`,
+          err,
+        );
+      }
       return data;
     },
     enabled: isOnline && options?.enabled !== false,
@@ -91,11 +109,18 @@ export function useOfflineQueryFiltered<T extends SyncableEntity>(
     queryKey,
     queryFn: async () => {
       const data = await fetchFn();
-      await db.transaction("rw", table, async () => {
-        for (const item of data) {
-          await table.put(item);
-        }
-      });
+      try {
+        await db.transaction("rw", table, async () => {
+          for (const item of data) {
+            await table.put(item);
+          }
+        });
+      } catch (err) {
+        console.warn(
+          `[offline-cache] write to ${table.name} failed; serving remote data anyway:`,
+          err,
+        );
+      }
       return data;
     },
     enabled: isOnline && options?.enabled !== false,

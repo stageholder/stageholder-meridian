@@ -32,7 +32,10 @@ export class MeController {
    */
   @Get()
   async me(@Req() req: StageholderRequest) {
-    const user = await this.userService.upsertBySub(req.user.sub);
+    const user = await this.userService.upsertBySub(
+      req.user.sub,
+      req.user.email ?? null,
+    );
     const personalOrg = getPersonalOrgMembership(req.user);
     return {
       sub: user.sub,
@@ -50,7 +53,10 @@ export class MeController {
     @Body(new ZodValidationPipe(CompleteOnboardingSchema))
     _dto: CompleteOnboardingDto,
   ) {
-    const user = await this.userService.completeOnboarding(req.user.sub);
+    const user = await this.userService.completeOnboarding(
+      req.user.sub,
+      req.user.email ?? null,
+    );
     return {
       sub: user.sub,
       hasCompletedOnboarding: user.hasCompletedOnboarding,
