@@ -5,7 +5,25 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "env": [
+        "NODE_ENV",
+        "MONGODB_URI",
+        "IDENTITY_ISSUER_URL",
+        "IDENTITY_CLIENT_ID",
+        "IDENTITY_CLIENT_SECRET",
+        "IDENTITY_REDIRECT_URI",
+        "IDENTITY_TOKEN_AUDIENCE",
+        "SESSION_SECRET",
+        "MERIDIAN_API_URL",
+        "LOGOUT_REDIRECT_URI",
+        "NEXT_PUBLIC_API_URL",
+        "NEXT_PUBLIC_HUB_URL",
+        "NEXT_PUBLIC_APP_URL",
+        "NEXT_PUBLIC_IDENTITY_ISSUER_URL",
+        "NEXT_TELEMETRY_DISABLED",
+        "NEXT_OUTPUT"
+      ]
     },
     "lint": {
       "dependsOn": ["^lint"],
