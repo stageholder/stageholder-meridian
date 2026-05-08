@@ -133,18 +133,18 @@ export function OrbitIllustration({
       )}
 
       {/* Plotted points — like marking entries on a chart. Density per tier. */}
-      <PlottedPoint cx="120" cy="28" color="todo" delay={420} />
+      <PlottedPoint cx={120} cy={28} color="todo" delay={420} />
       {tier !== "rest" && (
         <>
-          <PlottedPoint cx="184" cy="76" color="habit" delay={500} />
-          <PlottedPoint cx="64" cy="164" color="todo" delay={580} />
+          <PlottedPoint cx={184} cy={76} color="habit" delay={500} />
+          <PlottedPoint cx={64} cy={164} color="todo" delay={580} />
         </>
       )}
       {tier === "conduct" && (
         <>
-          <PlottedPoint cx="158" cy="120" color="journal" delay={660} ring />
-          <PlottedPoint cx="86" cy="86" color="habit" delay={740} />
-          <PlottedPoint cx="148" cy="172" color="todo" delay={820} />
+          <PlottedPoint cx={158} cy={120} color="journal" delay={660} ring />
+          <PlottedPoint cx={86} cy={86} color="habit" delay={740} />
+          <PlottedPoint cx={148} cy={172} color="todo" delay={820} />
           {/* Constellation lines — only on the top tier, "everything connected" */}
           <line
             className="orbit-thread"
