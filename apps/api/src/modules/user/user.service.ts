@@ -17,19 +17,30 @@ export class UserService {
    * Called on every `GET /me` — the user's first sign-in is just the
    * first call that results in an insert.
    *
-   * On the *insert* path, the legacy-migration service runs once to
-   * rewire any pre-Hub data the user had under their email to the
-   * new `sub`. Migration failures must not block first-login provisioning.
+   * The legacy-migration service runs on **every** login, not only on
+   * insert. It's fully idempotent (every step filters on "missing userSub"
+   * / "no existing journal_security" / "empty auto-Inbox"), so re-runs are
+   * cheap no-ops once a user is migrated. This handles the case where a
+   * legacy user logged in *before* the JIT migration code shipped — their
+   * Hub user record was created without migration, and tying migration to
+   * the insert path alone left their data orphaned forever (their next
+   * login would skip migration because `findBySub` finds the existing
+   * record). With migration on every login, those users self-heal on their
+   * next sign-in.
+   *
+   * Migration failures must not block login: caught and logged.
    */
   async upsertBySub(sub: string, email: string | null = null): Promise<User> {
     const existing = await this.repository.findBySub(sub);
-    if (existing) return existing;
-    const created = User.create({
-      sub,
-      hasCompletedOnboarding: false,
-    });
-    if (!created.ok) throw created.error;
-    await this.repository.save(created.value);
+    let user: User;
+    if (existing) {
+      user = existing;
+    } else {
+      const created = User.create({ sub, hasCompletedOnboarding: false });
+      if (!created.ok) throw created.error;
+      await this.repository.save(created.value);
+      user = created.value;
+    }
     try {
       await this.legacyMigration.migrateIfLegacy(sub, email);
     } catch (err) {
@@ -37,7 +48,7 @@ export class UserService {
         `Legacy migration failed for sub=${sub} email=${email}: ${(err as Error).message}`,
       );
     }
-    return created.value;
+    return user;
   }
 
   async completeOnboarding(
