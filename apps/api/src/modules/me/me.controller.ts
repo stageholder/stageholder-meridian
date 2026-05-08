@@ -1,7 +1,10 @@
 import { Controller, Get, Post, Body, Req } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { StageholderRequest } from "../../common/types";
-import { getPersonalOrgId } from "../../common/helpers/personal-org";
+import {
+  getPersonalOrgId,
+  getPersonalOrgMembership,
+} from "../../common/helpers/personal-org";
 import { getMeridianLimit } from "../../common/helpers/entitlement";
 import { UserService } from "../user/user.service";
 import {
@@ -30,15 +33,13 @@ export class MeController {
   @Get()
   async me(@Req() req: StageholderRequest) {
     const user = await this.userService.upsertBySub(req.user.sub);
-    // The Hub treats the user's first `OrgMembership` as their personal org;
-    // that convention is set on the Hub and mirrored in every product.
-    const personalOrg = req.user.organizations?.[0];
+    const personalOrg = getPersonalOrgMembership(req.user);
     return {
       sub: user.sub,
       email: req.user.email ?? null,
       name: req.user.name ?? null,
-      personalOrgId: personalOrg?.id ?? null,
-      personalOrgSlug: personalOrg?.slug ?? null,
+      personalOrgId: personalOrg.id,
+      personalOrgSlug: personalOrg.slug,
       hasCompletedOnboarding: user.hasCompletedOnboarding,
     };
   }

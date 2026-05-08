@@ -47,8 +47,6 @@ import {
   PaymentFailedBanner,
   useStageholder,
   UserButton,
-  OrganizationSwitcher,
-  useOrg,
 } from "@stageholder/sdk/react";
 import { TrialPill } from "@/components/billing/trial-pill";
 import { Button } from "@/components/ui/button";
@@ -136,7 +134,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, isLoading: userLoading } = useUser();
   const { signOut } = useStageholder();
-  const { organizations } = useOrg();
   const stableSyncAll = useCallback(() => syncAll(), []);
   // Heartbeat against the same-origin BFF proxy on web; on desktop the proxy
   // isn't reachable so fall back to NEXT_PUBLIC_API_URL.
@@ -589,15 +586,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 })()}
 
               <ThemeToggle />
-
-              {/* Org switcher — only when the user has multiple orgs.
-                  Single-org users (the common Meridian case) don't need a
-                  dropdown showing only their personal org. The SDK
-                  component handles the dropdown UX, async setActive, and
-                  re-fetching /auth/me on switch. */}
-              {organizations.length > 1 && (
-                <OrganizationSwitcher className="hidden sm:inline-flex" />
-              )}
 
               {/* User menu — SDK primitive. The built-in sign-out only runs
                   the SDK web logout flow; we hide it and pass a custom

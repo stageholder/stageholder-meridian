@@ -3,7 +3,7 @@ import { createProxy } from "@stageholder/sdk/nextjs";
 import { stageholder } from "@/lib/stageholder";
 import { publicOrigin } from "@/lib/public-origin";
 
-const PROTECTED_PREFIXES = ["/app", "/onboarding", "/choose-org"];
+const PROTECTED_PREFIXES = ["/app", "/onboarding"];
 
 /**
  * Next.js 16 proxy. Allowlist-style: only the app shell and onboarding
@@ -67,5 +67,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/app/:path*", "/onboarding/:path*", "/choose-org/:path*"],
+  matcher: ["/app/:path*", "/onboarding/:path*"],
 };

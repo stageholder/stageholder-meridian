@@ -39,22 +39,26 @@ export const { GET, POST } = stageholderAuth<MeridianCustom>(stageholder, {
   },
   afterCallback: async (
     session: ProductSession<MeridianCustom>,
-    { defaultRedirectTo },
   ): Promise<{ redirectTo?: string } | void> => {
-    // Order of priority — onboarding is a hard gate, then org choice, then
-    // whatever the user originally asked for.
-    if (session.custom && !session.custom.hasCompletedOnboarding) {
-      return { redirectTo: "/onboarding" };
+    // Meridian is personal-only: every Hub user has exactly one personal
+    // org and team-org memberships are irrelevant here. The SDK's callback
+    // hard-codes activeOrgId to organizations[0], which can land on a team
+    // org for users who joined a team workspace elsewhere. Override that
+    // by picking the explicit `kind: "personal"` membership (with a fall
+    // back to the first org for older Hub deployments that don't yet emit
+    // `kind`) and persisting it via the session store.
+    const claims = decodeAccessTokenClaims(session.accessToken);
+    const orgs = claims?.organizations ?? [];
+    const personal = orgs.find((o) => o.kind === "personal") ?? orgs[0];
+    if (personal && personal.id !== session.activeOrgId) {
+      const store = await stageholder.sessionStore();
+      await store.set({ ...session, activeOrgId: personal.id });
     }
 
-    // Hub keeps `organizations` out of the id_token; decode the access
-    // token instead. Opaque tokens decode to null — treat as "single org"
-    // (the SDK already auto-set activeOrgId in that case).
-    const claims = decodeAccessTokenClaims(session.accessToken);
-    const orgCount = claims?.organizations?.length ?? 0;
-    if (orgCount > 1) {
-      const target = encodeURIComponent(defaultRedirectTo);
-      return { redirectTo: `/choose-org?returnTo=${target}` };
+    // Onboarding is the only post-login gate that affects routing — no org
+    // picker, ever.
+    if (session.custom && !session.custom.hasCompletedOnboarding) {
+      return { redirectTo: "/onboarding" };
     }
 
     // Falls through to the default loginRedirectPath ("/" — set on the bundle).

@@ -1,14 +1,34 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger, OnApplicationBootstrap } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { UserModel, UserDocument } from "./user.schema";
 import { User } from "./user.entity";
 
 @Injectable()
-export class UserRepository {
+export class UserRepository implements OnApplicationBootstrap {
+  private readonly logger = new Logger(UserRepository.name);
+
   constructor(
     @InjectModel(UserModel.name) private model: Model<UserDocument>,
   ) {}
+
+  // The pre-Hub schema declared `email` as a unique field, leaving an
+  // `email_1` index in production MongoDB. The current schema doesn't store
+  // email at all, so every new insert lands `email: null` and the second
+  // signup collides on the unique constraint (E11000). Drop the stale index
+  // once at boot — idempotent (NamespaceNotFound after the first deploy).
+  async onApplicationBootstrap(): Promise<void> {
+    try {
+      await this.model.collection.dropIndex("email_1");
+      this.logger.log("Dropped legacy email_1 index from users collection");
+    } catch (err: any) {
+      const code = err?.code ?? err?.codeName;
+      if (code === 27 || code === "IndexNotFound") return;
+      this.logger.warn(
+        `Could not drop legacy email_1 index: ${err?.message ?? err}`,
+      );
+    }
+  }
 
   async findBySub(sub: string): Promise<User | null> {
     const doc = await this.model.findOne({ sub }).lean();
