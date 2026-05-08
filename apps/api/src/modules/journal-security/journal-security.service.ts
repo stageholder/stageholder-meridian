@@ -13,10 +13,32 @@ import {
 
 const EXPECTED_RECOVERY_CODE_COUNT = 8;
 
-// Argon2id via Bun's native password API. Parameters match Bun's default
-// argon2id profile which is comparable to OWASP's recommended memory cost.
-// Adequate for low-entropy recovery codes against a DB-leak threat model.
-const PASSWORD_HASH_OPTIONS = { algorithm: "argon2id" as const };
+// Argon2id via Bun's native password API. Parameters are pinned explicitly
+// (rather than letting Bun's default memoryCost ~ 64 MiB apply) so 8 sequential
+// hashes have a predictable memory footprint on Cloud Run. 19 MiB matches
+// OWASP's minimum-strength Argon2id profile and remains comfortably out of
+// brute-force reach for the 32^8 recovery-code keyspace.
+const PASSWORD_HASH_OPTIONS = {
+  algorithm: "argon2id" as const,
+  memoryCost: 19456,
+  timeCost: 2,
+};
+
+/**
+ * Hash recovery codes one-at-a-time. Argon2id is intentionally memory-hard:
+ * issuing 8 hashes via `Promise.all` allocates ~8× the memory cost simul-
+ * taneously and is what was OOM-killing the Cloud Run container on
+ * `/journal-security/setup` (default 512 MiB instance, 8 × 64 MiB ≈ cap).
+ * Sequential is well under 100 ms × 8 ≈ <1 s of wall time and stays inside
+ * any reasonable container budget.
+ */
+async function hashCodesSerially(codes: string[]): Promise<string[]> {
+  const out: string[] = [];
+  for (const code of codes) {
+    out.push(await Bun.password.hash(code, PASSWORD_HASH_OPTIONS));
+  }
+  return out;
+}
 
 export interface SetupPayload {
   passphraseWrappedDek: string;
@@ -72,11 +94,7 @@ export class JournalSecurityService {
       throw new ConflictException("Encryption is already set up");
     }
 
-    const hashes = await Promise.all(
-      dto.recoveryCodes.map((code) =>
-        Bun.password.hash(code, PASSWORD_HASH_OPTIONS),
-      ),
-    );
+    const hashes = await hashCodesSerially(dto.recoveryCodes);
 
     await this.model.findByIdAndUpdate(
       userSub,
@@ -124,11 +142,17 @@ export class JournalSecurityService {
     }
 
     // Verify ALL codes positionally; never short-circuit so timing leaks nothing.
-    const results = await Promise.all(
-      submittedCodes.map((code, i) =>
-        Bun.password.verify(code, doc.recoveryCodeHashes[i]!),
-      ),
-    );
+    // Sequential for the same memory-budget reason as `hashCodesSerially`:
+    // Argon2id verify recomputes the hash and is just as memory-hard.
+    const results: boolean[] = [];
+    for (let i = 0; i < submittedCodes.length; i++) {
+      results.push(
+        await Bun.password.verify(
+          submittedCodes[i]!,
+          doc.recoveryCodeHashes[i]!,
+        ),
+      );
+    }
     const allMatch = results.every((ok) => ok === true);
     if (!allMatch) {
       throw new UnauthorizedException("Invalid recovery codes");
@@ -161,11 +185,7 @@ export class JournalSecurityService {
       throw new BadRequestException("Encryption is not set up");
     }
 
-    const hashes = await Promise.all(
-      dto.recoveryCodes.map((code) =>
-        Bun.password.hash(code, PASSWORD_HASH_OPTIONS),
-      ),
-    );
+    const hashes = await hashCodesSerially(dto.recoveryCodes);
 
     doc.passphraseWrappedDek = dto.passphraseWrappedDek;
     doc.passphraseSalt = dto.passphraseSalt;
