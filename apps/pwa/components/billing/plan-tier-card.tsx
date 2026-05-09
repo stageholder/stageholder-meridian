@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { PricingPlan, ProductFeature } from "@stageholder/sdk/react";
 import {
   BillingError,
+  formatPlanPrice,
   useBillingPortal,
   useCanManageBilling,
   useOrg,
@@ -263,7 +264,8 @@ export function PlanTierCard({
         )}
       </header>
 
-      {/* Price block — tabular mono. Cents → display via formatPrice. */}
+      {/* Price block — tabular mono. Hub stores Polar/Stripe minor units;
+          formatPlanPrice handles the /100 conversion for both USD and IDR. */}
       <div className="mt-7 flex items-baseline gap-2">
         <span
           className={cn(
@@ -271,7 +273,11 @@ export function PlanTierCard({
             "text-foreground",
           )}
         >
-          {formatPriceShort(price, plan.currency, plan.isFreeTier)}
+          {plan.isFreeTier
+            ? "Free"
+            : price === null
+              ? "Custom"
+              : formatPlanPrice(price, plan.currency)}
         </span>
         {!plan.isFreeTier && price !== null && (
           <span className="text-sm text-muted-foreground">
@@ -523,27 +529,6 @@ function ContactSalesLink() {
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
-
-function formatPriceShort(
-  price: number | null,
-  currency: "USD" | "IDR",
-  isFreeTier: boolean,
-): string {
-  if (isFreeTier) return "Free";
-  if (price === null) return "Custom";
-  // Polar/Stripe store every currency in minor units, IDR included (Rp
-  // 39,000 → 3,900,000), so divide by 100 before rendering. Matches Hub's
-  // formatter and the SDK's formatPlanPrice (use that once Meridian bumps
-  // @stageholder/sdk past alpha.41).
-  const major = price / 100;
-  if (currency === "IDR") {
-    return `Rp ${major.toLocaleString("id-ID", { maximumFractionDigits: 0 })}`;
-  }
-  return `$${major.toLocaleString("en-US", {
-    minimumFractionDigits: price % 100 === 0 ? 0 : 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
 
 /**
  * Derive a short bullet list per plan. Mirrors the SDK's planBullets()
