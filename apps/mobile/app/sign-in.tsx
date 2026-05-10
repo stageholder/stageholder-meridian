@@ -1,16 +1,24 @@
+// apps/mobile/app/sign-in.tsx
+//
+// Sign-in screen. Same OIDC flow as before — restyled with @stageholder/ui
+// primitives so it shares the observatory aesthetic with the rest of the app.
+// One CTA, calm copy, error surface only when relevant.
+
 import {
   useSignIn,
   useStageholder,
   SignInCancelledError,
 } from "@stageholder/sdk/react-native";
-import { Redirect } from "expo-router";
 import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+  Banner,
+  Button,
+  H1,
+  Paragraph,
+  Spinner,
+  YStack,
+} from "@stageholder/ui";
+import { Redirect } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SignInScreen() {
   const { state } = useStageholder();
@@ -18,93 +26,74 @@ export default function SignInScreen() {
 
   if (state.status === "loading") {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator />
-      </View>
+      <YStack flex={1} bg="$background" items="center" justify="center">
+        <Spinner size="large" />
+      </YStack>
     );
   }
   if (state.status === "authenticated") {
     return <Redirect href="/" />;
   }
 
+  const showError = error && !(error instanceof SignInCancelledError);
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Meridian</Text>
-      <Text style={styles.subtitle}>Sign in with your Stageholder account</Text>
+    <YStack flex={1} bg="$background">
+      <SafeAreaView style={{ flex: 1 }}>
+        <YStack flex={1} px="$6" justify="center" gap="$5">
+          <YStack gap="$2">
+            <Paragraph
+              fontFamily="$mono"
+              fontSize={11}
+              letterSpacing={2.4}
+              textTransform="uppercase"
+              color="$color11"
+            >
+              Meridian
+            </Paragraph>
+            <H1 color="$color12" lineHeight="$11">
+              Light, kept.
+            </H1>
+            <Paragraph fontSize="$3" color="$color11" lineHeight="$3">
+              Habits, todos, and journaling — all in one place. Track the things
+              that move you forward.
+            </Paragraph>
+          </YStack>
 
-      <Pressable
-        accessibilityRole="button"
-        disabled={isLoading}
-        onPress={() => {
-          // Swallow user cancellation — leaving the screen mounted is the
-          // right UX. Surface anything else.
-          signIn().catch((e) => {
-            if (e instanceof SignInCancelledError) return;
-            // Other errors land on `error` via the hook; nothing to do.
-          });
-        }}
-        style={({ pressed }) => [
-          styles.button,
-          pressed && styles.buttonPressed,
-          isLoading && styles.buttonDisabled,
-        ]}
-      >
-        <Text style={styles.buttonText}>
-          {isLoading ? "Opening browser…" : "Continue with Stageholder"}
-        </Text>
-      </Pressable>
+          <YStack gap="$3" pt="$4">
+            {/* `key` flips when disabled changes — Tamagui v2 calls a few
+                hooks conditionally based on prop shape, so a same-instance
+                disabled-toggle triggers "Rendered more hooks…". Forcing a
+                remount via key sidesteps it. This is the workaround Tamagui
+                docs recommend; see the `transition prop rules` section. */}
+            <Button
+              key={isLoading ? "loading" : "idle"}
+              intent="primary"
+              size="$5"
+              disabled={isLoading}
+              onPress={() => {
+                signIn().catch((e) => {
+                  if (e instanceof SignInCancelledError) return;
+                  // Anything else surfaces via the `error` field below.
+                });
+              }}
+            >
+              {isLoading ? "Opening browser…" : "Continue with Stageholder"}
+            </Button>
 
-      {error && !(error instanceof SignInCancelledError) ? (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorTitle}>Sign-in failed</Text>
-          <Text style={styles.errorText}>{error.message}</Text>
-        </View>
-      ) : null}
-    </View>
+            {showError ? (
+              <Banner intent="danger">
+                <Banner.Title>Sign-in failed</Banner.Title>
+                <Banner.Description>{error.message}</Banner.Description>
+              </Banner>
+            ) : null}
+          </YStack>
+
+          <Paragraph fontSize={11} color="$color10" text="center" pt="$8">
+            Stageholder handles auth. We never see your password.
+          </Paragraph>
+        </YStack>
+      </SafeAreaView>
+    </YStack>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    paddingHorizontal: 32,
-    backgroundColor: "#fafafa",
-  },
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "600",
-    marginBottom: 4,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "#6b7280",
-    marginBottom: 32,
-    textAlign: "center",
-  },
-  button: {
-    backgroundColor: "#111827",
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  buttonPressed: { opacity: 0.85 },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: "#ffffff", fontSize: 16, fontWeight: "500" },
-  errorBox: {
-    marginTop: 24,
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: "#fee2e2",
-    borderWidth: 1,
-    borderColor: "#fecaca",
-  },
-  errorTitle: { fontWeight: "600", color: "#991b1b", marginBottom: 4 },
-  errorText: { color: "#991b1b", fontSize: 13 },
-});

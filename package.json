@@ -39,5 +39,10 @@
   "dependencies": {
     "@stageholder/sdk": "^1.0.0-alpha.43",
     "react-day-picker": "^9.14.0"
+  },
+  "resolutions": {
+    "@tamagui/core": "^2.0.0-rc.41",
+    "@tamagui/web": "^2.0.0-rc.41",
+    "tamagui": "^2.0.0-rc.41"
   }
 }

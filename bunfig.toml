@@ -1,0 +1,20 @@
+# bunfig.toml — workspace install settings
+#
+# `linker = "hoisted"` forces bun to install all packages into a flat
+# `node_modules/` tree (with workspace deduplication) instead of bun's
+# default content-addressed store under `node_modules/.bun/<pkg>@<version>`.
+#
+# Why this matters:
+#   - Metro's resolver walks UP from a file's location through `node_modules/`
+#     directories looking for peer deps. Bun's content-addressed layout puts
+#     packages at `node_modules/.bun/<long-name>/node_modules/<pkg>/` which
+#     Metro doesn't know how to traverse for sibling-package resolution.
+#   - Tamagui v2 RC's native entry does `import "@tamagui/core"` from inside
+#     `tamagui/dist/esm/index.native.js`. With the isolated/store layout
+#     this fails. With hoisted, it resolves immediately.
+#
+# This is the standard recommendation for Bun + Expo + Metro monorepos —
+# matches what pnpm/yarn users do via `nodeLinker: hoisted` and what every
+# working Bun + Tamagui Expo monorepo on GitHub uses.
+[install]
+linker = "hoisted"
