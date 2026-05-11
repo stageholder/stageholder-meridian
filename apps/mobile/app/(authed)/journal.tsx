@@ -1,42 +1,66 @@
 // apps/mobile/app/(authed)/journal.tsx
 //
-// Full Journal screen. DateStrip at the top to navigate days; below, the
-// entries for that day stacked. New entries via FAB. Each entry edits in
-// place with autosave; nothing to "save" — leaving the screen is fine.
+// Date-navigated journal. DateStrip lets the user walk back through prior
+// days; each day's entries come from useJournals filtered to that one
+// day. Tap + to create a new empty entry on the active day — the editor
+// autosaves as the user types.
 
 import {
+  Banner,
   Button,
   EmptyState,
   FAB,
   H3,
   Paragraph,
   Text,
+  XStack,
   YStack,
+  useToast,
 } from "@stageholder/ui";
+import type { Journal } from "@repo/core/types";
 import { useMemo, useState } from "react";
 import { ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { DateStrip } from "@/components/journal/DateStrip";
 import { EntryEditor } from "@/components/journal/EntryEditor";
-import { useJournal } from "@/lib/stores/journal";
-import { dateKey } from "@/lib/types";
+import { useCreateJournal, useJournals } from "@/lib/api";
+import { localDateKey } from "@/lib/streak";
+
+const DAILY_WORD_TARGET = 200;
 
 export default function JournalScreen() {
-  const [activeDay, setActiveDay] = useState<string>(dateKey());
-  const { entries, add, dailyTarget, wordsOn } = useJournal();
+  const [activeDay, setActiveDay] = useState<string>(localDateKey());
+  const journalsQuery = useJournals({
+    startDate: activeDay,
+    endDate: activeDay,
+  });
+  const create = useCreateJournal();
+  const toast = useToast();
 
+  const entries = journalsQuery.data ?? [];
   const dayEntries = useMemo(
-    () =>
-      entries
-        .filter((e) => e.dateKey === activeDay)
-        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-    [entries, activeDay],
+    () => [...entries].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    [entries],
   );
-  const totalWords = wordsOn(activeDay);
+  const totalWords = useMemo(
+    () => dayEntries.reduce((sum, e) => sum + (e.wordCount ?? 0), 0),
+    [dayEntries],
+  );
 
   function newEntry() {
-    add({ dateKey: activeDay, body: "" });
+    create.mutate(
+      { content: "", date: activeDay },
+      {
+        onError: (err) => {
+          toast.show({
+            title: "Couldn't create entry",
+            message: (err as Error).message ?? "Tap to retry.",
+            intent: "danger",
+          });
+        },
+      },
+    );
   }
 
   return (
@@ -56,6 +80,23 @@ export default function JournalScreen() {
             <H3 color="$color12">Journal</H3>
           </YStack>
           <DateStrip value={activeDay} onChange={setActiveDay} />
+          {journalsQuery.error ? (
+            <Banner intent="danger">
+              <Banner.Title>Couldn't load entries</Banner.Title>
+              <Banner.Description>
+                {(journalsQuery.error as Error).message ?? "Network error."}
+              </Banner.Description>
+              <XStack pt="$2">
+                <Button
+                  intent="secondary"
+                  size="$2"
+                  onPress={() => journalsQuery.refetch()}
+                >
+                  Try again
+                </Button>
+              </XStack>
+            </Banner>
+          ) : null}
         </YStack>
 
         <ScrollView
@@ -70,26 +111,30 @@ export default function JournalScreen() {
                 <Text fontSize={24}>✎</Text>
               </EmptyState.IconSlot>
               <EmptyState.Title>
-                {activeDay === dateKey()
-                  ? "Quiet today"
-                  : "Nothing on this day"}
+                {journalsQuery.isLoading
+                  ? "Loading…"
+                  : activeDay === localDateKey()
+                    ? "Quiet today"
+                    : "Nothing on this day"}
               </EmptyState.Title>
               <EmptyState.Description>
-                {activeDay === dateKey()
+                {activeDay === localDateKey()
                   ? "Tap + to capture how you're feeling. Thoughts. Wins. Things to remember."
                   : "Use the date strip to find a day with entries, or tap + to backfill."}
               </EmptyState.Description>
               <EmptyState.Actions>
-                <Button onPress={newEntry}>New entry</Button>
+                <Button onPress={newEntry} disabled={create.isPending}>
+                  {create.isPending ? "Creating…" : "New entry"}
+                </Button>
               </EmptyState.Actions>
             </EmptyState>
           ) : (
             <YStack gap="$3">
-              {dayEntries.map((e) => (
+              {dayEntries.map((e: Journal) => (
                 <EntryEditor
                   key={e.id}
                   entry={e}
-                  dailyTarget={dailyTarget}
+                  dailyTarget={DAILY_WORD_TARGET}
                   dayTotalWords={totalWords}
                 />
               ))}

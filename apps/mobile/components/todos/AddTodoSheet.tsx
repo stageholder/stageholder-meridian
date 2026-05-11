@@ -1,8 +1,8 @@
 // apps/mobile/components/todos/AddTodoSheet.tsx
 //
-// Bottom-sheet form for creating a new todo. Quick capture is the most
-// important interaction in any todo app, so this stays minimal — title is
-// the only required field, everything else is optional refinement.
+// Bottom-sheet form for creating a new todo. Calls useCreateTodo from the
+// API layer — server is the source of truth; we just translate user
+// intent into the right payload.
 
 import {
   Button,
@@ -13,16 +13,21 @@ import {
   TextArea,
   XStack,
   YStack,
+  useToast,
 } from "@stageholder/ui";
+import type { Todo } from "@repo/core/types";
 import { useState } from "react";
 
-import { dateKey, type Priority } from "@/lib/types";
+import { useCreateTodo, type CreateTodoInput } from "@/lib/api";
+import { localDateKey } from "@/lib/streak";
 
-const PRIORITIES: { value: Priority; label: string; color: string }[] = [
-  { value: "low", label: "Low", color: "#64748b" },
-  { value: "normal", label: "Normal", color: "#3b82f6" },
-  { value: "high", label: "High", color: "#ef4444" },
-];
+const PRIORITIES: { value: Todo["priority"]; label: string; color: string }[] =
+  [
+    { value: "low", label: "Low", color: "#64748b" },
+    { value: "medium", label: "Medium", color: "#3b82f6" },
+    { value: "high", label: "High", color: "#f59e0b" },
+    { value: "urgent", label: "Urgent", color: "#ef4444" },
+  ];
 
 const DUE_PRESETS: { label: string; offset: number | null }[] = [
   { label: "Today", offset: 0 },
@@ -34,45 +39,57 @@ const DUE_PRESETS: { label: string; offset: number | null }[] = [
 export type AddTodoSheetProps = {
   open: boolean;
   onClose: () => void;
-  onCreate: (input: {
-    title: string;
-    notes?: string;
-    priority: Priority;
-    dueDate?: string;
-  }) => void;
+  /** Optional listId — defaults to the user's default list on the server. */
+  listId?: string;
 };
 
-export function AddTodoSheet({ open, onClose, onCreate }: AddTodoSheetProps) {
+export function AddTodoSheet({ open, onClose, listId }: AddTodoSheetProps) {
+  const create = useCreateTodo();
+  const toast = useToast();
   const [title, setTitle] = useState("");
-  const [notes, setNotes] = useState("");
-  const [priority, setPriority] = useState<Priority>("normal");
+  const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState<Todo["priority"]>("medium");
   const [dueOffset, setDueOffset] = useState<number | null>(0);
 
   function reset() {
     setTitle("");
-    setNotes("");
-    setPriority("normal");
+    setDescription("");
+    setPriority("medium");
     setDueOffset(0);
   }
 
   function handleCreate() {
     if (!title.trim()) return;
-    const due =
+    const dueDate =
       dueOffset == null
         ? undefined
         : (() => {
             const d = new Date();
             d.setDate(d.getDate() + dueOffset);
-            return dateKey(d);
+            return localDateKey(d);
           })();
-    onCreate({
+
+    const input: CreateTodoInput = {
       title: title.trim(),
-      notes: notes.trim() || undefined,
+      description: description.trim() || undefined,
       priority,
-      dueDate: due,
+      dueDate,
+      ...(listId ? { listId } : {}),
+    };
+
+    create.mutate(input, {
+      onSuccess: () => {
+        reset();
+        onClose();
+      },
+      onError: (err) => {
+        toast.show({
+          title: "Couldn't create todo",
+          message: (err as Error).message ?? "Tap to retry.",
+          intent: "danger",
+        });
+      },
     });
-    reset();
-    onClose();
   }
 
   return (
@@ -83,7 +100,7 @@ export function AddTodoSheet({ open, onClose, onCreate }: AddTodoSheetProps) {
         if (!o) reset();
         onClose();
       }}
-      snapPoints={[78]}
+      snapPoints={[80]}
       dismissOnSnapToBottom
     >
       <Sheet.Overlay />
@@ -107,12 +124,12 @@ export function AddTodoSheet({ open, onClose, onCreate }: AddTodoSheetProps) {
           </YStack>
 
           <YStack gap="$2">
-            <Label htmlFor="todo-notes">Notes (optional)</Label>
+            <Label htmlFor="todo-description">Notes (optional)</Label>
             <TextArea
-              id="todo-notes"
+              id="todo-description"
               placeholder="Anything else..."
-              value={notes}
-              onChangeText={setNotes}
+              value={description}
+              onChangeText={setDescription}
               size="$3"
               minH={64 as never}
             />
@@ -120,7 +137,7 @@ export function AddTodoSheet({ open, onClose, onCreate }: AddTodoSheetProps) {
 
           <YStack gap="$2">
             <Label>Priority</Label>
-            <XStack gap="$2">
+            <XStack gap="$2" flexWrap="wrap">
               {PRIORITIES.map((p) => (
                 <PillButton
                   key={p.value}
@@ -153,15 +170,14 @@ export function AddTodoSheet({ open, onClose, onCreate }: AddTodoSheetProps) {
             <Button intent="ghost" onPress={onClose} flex={1}>
               Cancel
             </Button>
-            {/* `key` keyed off disabled — see sign-in.tsx for why. */}
             <Button
               key={title.trim() ? "ready" : "empty"}
               intent="primary"
               onPress={handleCreate}
               flex={1}
-              disabled={!title.trim()}
+              disabled={!title.trim() || create.isPending}
             >
-              Add
+              {create.isPending ? "Adding…" : "Add"}
             </Button>
           </XStack>
         </YStack>
@@ -181,12 +197,14 @@ function PillButton({
   onPress: () => void;
   children: React.ReactNode;
 }) {
+  // Tinted-when-active uses the color prop on Button; absent intent so
+  // the surface respects the custom color instead of the theme accent.
   return (
     <Button
       size="$2"
       intent={active ? "primary" : "secondary"}
       onPress={onPress}
-      bg={active && color ? (color as never) : undefined}
+      {...(active && color ? { backgroundColor: color as never } : {})}
     >
       {children}
     </Button>

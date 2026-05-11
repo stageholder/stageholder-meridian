@@ -23,6 +23,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Theme } from "tamagui";
 
+import { QueryProvider } from "@/lib/api";
 import { expoHapticImpl } from "@/lib/haptic-impl";
 
 // Required at app top-level so the system browser handoff completes on web.
@@ -76,8 +77,16 @@ export default function RootLayout() {
                     }}
                     onSignedOut={() => router.replace("/sign-in")}
                   >
-                    <StatusBar style="light" />
-                    <Slot />
+                    {/* QueryProvider sits INSIDE the SDK provider so its
+                        onUnauthorized handler can drive SDK sign-out (the
+                        SDK already handles the SecureStore cleanup on
+                        sign-out; we just kick off the route change). */}
+                    <QueryProvider
+                      onUnauthorized={() => router.replace("/sign-in")}
+                    >
+                      <StatusBar style="light" />
+                      <Slot />
+                    </QueryProvider>
                   </StageholderProvider>
                 </ToastProvider>
               </HapticProvider>

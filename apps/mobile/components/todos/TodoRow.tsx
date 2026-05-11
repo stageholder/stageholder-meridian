@@ -1,10 +1,13 @@
 // apps/mobile/components/todos/TodoRow.tsx
 //
-// One row in the todos list. SwipeableRow gives us swipe-to-complete on
-// the left and swipe-to-delete on the right. The checkbox in the row
-// itself is the primary "done" affordance for users who don't discover
-// the swipe — the swipe is a power-user shortcut. Both fire haptic +
-// EmberBurst on completion.
+// One row in the todos list. SwipeableRow gives swipe-to-complete (left)
+// and swipe-to-delete (right). The checkbox in the row is the primary
+// "done" affordance for users who don't discover the swipe — both call
+// the same mutations.
+//
+// Optimistic mutations from @/lib/api mean the UI updates instantly; if
+// the API rejects the change, the previous state snapshot rolls back
+// and a toast surfaces the error.
 
 import {
   Checkbox,
@@ -15,28 +18,33 @@ import {
   XStack,
   YStack,
   useHaptic,
+  useToast,
 } from "@stageholder/ui";
+import type { Todo } from "@repo/core/types";
 import { useState } from "react";
 
 import { EmberBurst } from "@/components/EmberBurst";
-import { dateKey, fromDateKey, type Todo } from "@/lib/types";
+import { useDeleteTodo, useToggleTodo } from "@/lib/api";
+import { localDateKey } from "@/lib/streak";
 
 const PRIORITY_COLOR: Record<Todo["priority"], string> = {
+  none: "#475569",
   low: "#64748b",
-  normal: "#3b82f6",
-  high: "#ef4444",
+  medium: "#3b82f6",
+  high: "#f59e0b",
+  urgent: "#ef4444",
 };
 
-export type TodoRowProps = {
-  todo: Todo;
-  onToggle: (id: string) => void;
-  onDelete: (id: string) => void;
-};
+export type TodoRowProps = { todo: Todo };
 
-export function TodoRow({ todo, onToggle, onDelete }: TodoRowProps) {
+export function TodoRow({ todo }: TodoRowProps) {
   const haptic = useHaptic();
+  const toast = useToast();
+  const toggle = useToggleTodo();
+  const remove = useDeleteTodo();
   const [burstAt, setBurstAt] = useState<number | null>(null);
-  const isDone = !!todo.completedAt;
+
+  const isDone = todo.status === "done";
   const dueLabel = todo.dueDate ? formatDue(todo.dueDate) : null;
 
   function complete() {
@@ -46,20 +54,34 @@ export function TodoRow({ todo, onToggle, onDelete }: TodoRowProps) {
     } else {
       haptic.impact("light");
     }
-    onToggle(todo.id);
+    toggle.mutate(todo, {
+      onError: () => {
+        toast.show({
+          title: "Couldn't save",
+          message: "Tap to retry.",
+          intent: "danger",
+        });
+      },
+    });
+  }
+
+  function handleDelete() {
+    haptic.impact("medium");
+    remove.mutate(todo.id, {
+      onError: () => {
+        toast.show({
+          title: "Delete failed",
+          message: "Restored. Tap to retry.",
+          intent: "danger",
+        });
+      },
+    });
   }
 
   return (
     <SwipeableRow
       rightActions={[
-        {
-          label: "Delete",
-          color: "#ef4444",
-          onPress: () => {
-            haptic.impact("medium");
-            onDelete(todo.id);
-          },
-        },
+        { label: "Delete", color: "#ef4444", onPress: handleDelete },
       ]}
       leftActions={
         isDone ? [] : [{ label: "Done", color: "#22c55e", onPress: complete }]
@@ -93,39 +115,38 @@ export function TodoRow({ todo, onToggle, onDelete }: TodoRowProps) {
             fontWeight={isDone ? "400" : "500"}
             color={isDone ? "$color10" : "$color12"}
             numberOfLines={1}
-            // strikethrough only when done. Done items deserve to look retired.
             style={isDone ? { textDecorationLine: "line-through" } : undefined}
           >
             {todo.title}
           </Text>
-          {dueLabel || todo.notes ? (
+          {dueLabel || todo.description ? (
             <XStack gap="$2" items="center" flexWrap="wrap">
               {dueLabel ? (
                 <Text fontSize="$1" color="$color11">
                   {dueLabel}
                 </Text>
               ) : null}
-              {todo.notes ? (
+              {todo.description ? (
                 <Paragraph
                   fontSize="$1"
                   color="$color11"
                   numberOfLines={1}
                   flex={1}
                 >
-                  · {todo.notes}
+                  · {todo.description}
                 </Paragraph>
               ) : null}
             </XStack>
           ) : null}
         </YStack>
 
-        {/* Priority dot — small, monochrome-restrained, only shown for high */}
-        {todo.priority === "high" && !isDone ? (
+        {/* Priority dot — only shown for high/urgent open todos */}
+        {(todo.priority === "high" || todo.priority === "urgent") && !isDone ? (
           <View
             width={6}
             height={6}
             rounded={3}
-            bg={PRIORITY_COLOR.high as never}
+            bg={PRIORITY_COLOR[todo.priority] as never}
           />
         ) : null}
       </XStack>
@@ -134,16 +155,15 @@ export function TodoRow({ todo, onToggle, onDelete }: TodoRowProps) {
 }
 
 function formatDue(due: string): string {
-  const today = dateKey();
+  const today = localDateKey();
   const tomorrow = (() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
-    return dateKey(d);
+    return localDateKey(d);
   })();
   if (due === today) return "Today";
   if (due === tomorrow) return "Tomorrow";
-  // Within a week → weekday name. Otherwise → short date.
-  const target = fromDateKey(due);
+  const target = new Date(due);
   const diff = Math.round(
     (target.getTime() - new Date().setHours(0, 0, 0, 0)) / 86400000,
   );

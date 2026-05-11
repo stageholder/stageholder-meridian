@@ -13,7 +13,7 @@ import {
   useHaptic,
 } from "@stageholder/ui";
 
-import { dateKey, fromDateKey } from "@/lib/types";
+import { localDateKey as dateKey, fromDateKey } from "@/lib/streak";
 
 export type DateStripProps = {
   value: string;
