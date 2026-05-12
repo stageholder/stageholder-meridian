@@ -92,7 +92,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
       label: format(date, "EEEEE"),
       dateStr,
       value: entry?.value ?? 0,
-      type: entry?.type as "completion" | "skip" | undefined,
+      type: entry?.type as "completion" | "skip" | "fail" | undefined,
       isToday: dateStr === today,
       isScheduled,
       effectiveTarget,
@@ -100,7 +100,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
   });
 
   function handleCheckIn() {
-    if (isComplete || isSkipped || !isScheduledOnActiveDate) return;
+    if (isComplete || !isScheduledOnActiveDate) return;
 
     const dateLabel = isViewingToday
       ? habit.name
@@ -120,16 +120,24 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
         { habitId: habit.id, data: { date: activeDate, value: 1 } },
         { onSuccess, onError: () => toast.error("Failed to check in") },
       );
-    } else {
-      updateEntry.mutate(
-        {
-          habitId: habit.id,
-          entryId: activeDateEntry.id,
-          data: { value: activeDateValue + 1 },
-        },
-        { onSuccess, onError: () => toast.error("Failed to check in") },
-      );
+      return;
     }
+
+    // An entry exists. If it's a skip or fail (value=0), promote it to a
+    // completion in one PATCH — the API zeros skipReason and stamps type
+    // for us. For an in-progress completion, increment value.
+    const isNonCompletion =
+      activeDateEntry.type === "skip" || activeDateEntry.type === "fail";
+    updateEntry.mutate(
+      {
+        habitId: habit.id,
+        entryId: activeDateEntry.id,
+        data: isNonCompletion
+          ? { type: "completion", value: 1 }
+          : { value: activeDateValue + 1 },
+      },
+      { onSuccess, onError: () => toast.error("Failed to check in") },
+    );
   }
 
   function handleSkip() {
@@ -244,6 +252,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
             const ratio =
               day.effectiveTarget > 0 ? day.value / day.effectiveTarget : 0;
             const isDaySkipped = day.type === "skip";
+            const isDayFailed = day.type === "fail";
             return (
               <div
                 key={day.dateStr}
@@ -259,7 +268,20 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
                 >
                   {day.label}
                 </span>
-                {isDaySkipped ? (
+                {isDayFailed ? (
+                  <div
+                    className={cn(
+                      "flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive/80",
+                      day.isToday &&
+                        "ring-1 ring-offset-1 ring-offset-background",
+                    )}
+                    title="Failed"
+                  >
+                    <span className="text-[8px] leading-none text-destructive-foreground">
+                      ✕
+                    </span>
+                  </div>
+                ) : isDaySkipped ? (
                   <div
                     className={cn(
                       "flex h-3.5 w-3.5 items-center justify-center rounded-full border border-dashed border-muted-foreground/40",
@@ -452,6 +474,8 @@ function calculateStreak(
 
     // Skipped day: preserve streak but don't increment
     if (dayEntry?.type === "skip") continue;
+    // Failed day: user explicitly marked this date as a miss — chain breaks.
+    if (dayEntry?.type === "fail") break;
 
     const dayValue = dayEntry?.value ?? 0;
     const dayTarget = resolveTargetCount(

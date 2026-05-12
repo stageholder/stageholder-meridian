@@ -11,6 +11,22 @@ import type { Habit, HabitEntry } from "@repo/core/types";
 import { apiClient } from "../client";
 import { habitKeys } from "../keys";
 
+/**
+ * Recover gracefully when a POST to /habits/:id/entries races another
+ * client and lands on an active entry the API refuses to overwrite (409).
+ * We refetch entries so the next render's smart handlers will PATCH the
+ * fresh entry instead, and we surface a single human-readable error.
+ *
+ * Returns true if the error WAS a 409 (caller should suppress its own
+ * generic error toast in favor of the more accurate "refreshed" message).
+ */
+function isAxios409(err: unknown): boolean {
+  // axios attaches `response.status`; keep the shape check loose so this
+  // works whether axios, fetch, or a test mock surfaces the error.
+  const e = err as { response?: { status?: number }; status?: number };
+  return e?.response?.status === 409 || e?.status === 409;
+}
+
 /* ------------------------------ Reads -------------------------------- */
 
 export function useHabits() {
@@ -182,14 +198,56 @@ export function useCheckInHabit() {
       qc.setQueryData<HabitEntry[]>(key, next);
       return { prev, key };
     },
-    onError: (_err, _vars, ctx) => {
+    onError: (err, vars, ctx) => {
       if (ctx?.prev !== undefined) qc.setQueryData(ctx.key, ctx.prev);
+      // 409 = another client raced us and created an entry first. Force a
+      // refetch so the next render's smart handlers PATCH the live entry.
+      if (isAxios409(err)) {
+        qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
+      }
     },
     onSettled: (_data, _error, vars) => {
       qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
       qc.invalidateQueries({ queryKey: habitKeys.lists() });
     },
   });
+}
+
+/**
+ * Optimistic insert of a value-0 entry of the given type. Used by skip + fail
+ * so the UI flips instantly. Returns the rollback context for onError.
+ */
+function optimisticInsertNonCompletion(
+  qc: ReturnType<typeof useQueryClient>,
+  habitId: string,
+  date: string | undefined,
+  type: "skip" | "fail",
+  skipReason?: string,
+) {
+  const key = habitKeys.entries(habitId);
+  const d = date ?? new Date().toISOString().slice(0, 10);
+  const prev = qc.getQueryData<HabitEntry[]>(key);
+  const existing = prev?.find((e) => e.date === d);
+  const next: HabitEntry[] = existing
+    ? prev!.map((e) =>
+        e.date === d ? ({ ...e, type, value: 0, skipReason } as HabitEntry) : e,
+      )
+    : [
+        ...(prev ?? []),
+        {
+          id: `optimistic-${type}-${d}`,
+          habitId,
+          userSub: "",
+          date: d,
+          value: 0,
+          type,
+          skipReason,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as HabitEntry,
+      ];
+  qc.setQueryData<HabitEntry[]>(key, next);
+  return { prev, key };
 }
 
 /** Mark a date as skipped (off-day, doesn't break streak). */
@@ -206,6 +264,63 @@ export function useSkipHabit() {
         { date: input.date, value: 0, type: "skip", skipReason: input.reason },
       );
       return data;
+    },
+    onMutate: async (input) => {
+      await qc.cancelQueries({ queryKey: habitKeys.entries(input.habitId) });
+      return optimisticInsertNonCompletion(
+        qc,
+        input.habitId,
+        input.date,
+        "skip",
+        input.reason,
+      );
+    },
+    onError: (err, vars, ctx) => {
+      if (ctx?.prev !== undefined) qc.setQueryData(ctx.key, ctx.prev);
+      // 409 = race with another client. Refetch so the next attempt sees
+      // the live entry and PATCHes it instead of POSTing again.
+      if (isAxios409(err)) {
+        qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
+      }
+    },
+    onSettled: (_data, _error, vars) => {
+      qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
+      qc.invalidateQueries({ queryKey: habitKeys.lists() });
+    },
+  });
+}
+
+/**
+ * Mark a date as failed — user explicitly admitting a miss. Breaks the
+ * streak immediately. Distinct from skip (which preserves the streak) and
+ * from leaving the day open (which doesn't break until day-rollover).
+ */
+export function useFailHabit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { habitId: string; date?: string }) => {
+      const { data } = await apiClient.post<HabitEntry>(
+        `/habits/${input.habitId}/entries`,
+        { date: input.date, value: 0, type: "fail" },
+      );
+      return data;
+    },
+    onMutate: async (input) => {
+      await qc.cancelQueries({ queryKey: habitKeys.entries(input.habitId) });
+      return optimisticInsertNonCompletion(
+        qc,
+        input.habitId,
+        input.date,
+        "fail",
+      );
+    },
+    onError: (err, vars, ctx) => {
+      if (ctx?.prev !== undefined) qc.setQueryData(ctx.key, ctx.prev);
+      // 409 = race with another client. Refetch so the next attempt sees
+      // the live entry and PATCHes it instead of POSTing again.
+      if (isAxios409(err)) {
+        qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
+      }
     },
     onSettled: (_data, _error, vars) => {
       qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
@@ -250,8 +365,13 @@ export function useUpdateHabitEntry() {
       }
       return { prev, key };
     },
-    onError: (_err, _vars, ctx) => {
+    onError: (err, vars, ctx) => {
       if (ctx?.prev !== undefined) qc.setQueryData(ctx.key, ctx.prev);
+      // 409 = race with another client. Refetch so the next attempt sees
+      // the live entry and PATCHes it instead of POSTing again.
+      if (isAxios409(err)) {
+        qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
+      }
     },
     onSettled: (_data, _error, vars) => {
       qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
@@ -260,7 +380,15 @@ export function useUpdateHabitEntry() {
   });
 }
 
-/** Delete an entry outright — used by the detail screen for cleanup. */
+/**
+ * Hard-delete an entry. NOT used by HabitCard / detail-screen day actions —
+ * those PATCH instead of DELETE because the Mongo (userSub, habit_id, date)
+ * unique index doesn't filter soft-deleted rows, so a delete+create cycle
+ * E11000s on the next POST. This hook is retained for an explicit "remove
+ * this entry from history" affordance (e.g. a future "delete from recent
+ * entries" gesture). If you reach for it in a Skip/Fail/Undo flow, you
+ * almost certainly want useUpdateHabitEntry instead.
+ */
 export function useDeleteHabitEntry() {
   const qc = useQueryClient();
   return useMutation({

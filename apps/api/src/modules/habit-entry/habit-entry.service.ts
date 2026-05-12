@@ -39,13 +39,19 @@ export class HabitEntryService {
       throw new ConflictException(
         "Entry already exists for this habit on this date",
       );
+    // findByHabitAndDate filters `deleted_at: null`, but the Mongo unique
+    // index on (userSub, habit_id, date) does NOT. So a soft-deleted ghost
+    // still occupies the slot and would crash this insert with E11000.
+    // Sweep it before inserting — safe because the ghost was already
+    // trashed by an earlier delete().
+    await this.repository.hardDeleteGhost(userSub, habitId, dto.date);
     const habit = await this.habitRepository.findById(userSub, habitId);
     if (!habit) throw new NotFoundException("Habit not found");
-    const isSkip = dto.type === "skip";
+    const isNonCompletion = dto.type === "skip" || dto.type === "fail";
     const result = HabitEntry.create({
       habitId,
       date: dto.date,
-      value: isSkip ? 0 : dto.value,
+      value: isNonCompletion ? 0 : dto.value,
       type: dto.type,
       skipReason: dto.skipReason,
       notes: dto.notes,
@@ -55,7 +61,7 @@ export class HabitEntryService {
     });
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);
-    if (!isSkip) {
+    if (!isNonCompletion) {
       await this.lightService
         .awardHabitCheckin(userSub, habitId, result.value.id)
         .catch((err) => this.logger.warn("Failed to award light", err.message));
@@ -120,9 +126,25 @@ export class HabitEntryService {
     dto: UpdateHabitEntryDto,
   ): Promise<HabitEntry> {
     const entry = await this.findById(userSub, id);
+    const wasNonCompletion = entry.type === "skip" || entry.type === "fail";
+    // Apply type first: switching to skip/fail forces value to 0, so applying
+    // a caller-supplied value AFTER type avoids the new value being clobbered
+    // by the invariant.
+    if (dto.type !== undefined) entry.updateType(dto.type);
     if (dto.value !== undefined) entry.updateValue(dto.value);
     if (dto.notes !== undefined) entry.updateNotes(dto.notes);
+    if (dto.skipReason !== undefined) entry.updateSkipReason(dto.skipReason);
     await this.repository.save(entry);
+    // Promoting a non-completion (skip or fail) into a completion is
+    // functionally equivalent to having created a completion in the first
+    // place — award the light here. awardHabitCheckin is idempotent per
+    // (userSub, "habit_checkin", date, entryId).
+    const becameCompletion: boolean = entry.type === "completion";
+    if (wasNonCompletion && becameCompletion) {
+      await this.lightService
+        .awardHabitCheckin(userSub, entry.habitId, entry.id)
+        .catch((err) => this.logger.warn("Failed to award light", err.message));
+    }
     return entry;
   }
 

@@ -4,7 +4,7 @@ export interface HabitEntryProps extends EntityProps {
   habitId: string;
   date: string;
   value: number;
-  type?: "completion" | "skip";
+  type?: "completion" | "skip" | "fail";
   skipReason?: string;
   notes?: string;
   targetCountSnapshot?: number;
@@ -26,7 +26,7 @@ export class HabitEntry extends Entity<HabitEntryProps> {
   get value(): number {
     return this.get("value");
   }
-  get type(): "completion" | "skip" {
+  get type(): "completion" | "skip" | "fail" {
     return this.get("type") || "completion";
   }
   get skipReason(): string | undefined {
@@ -51,6 +51,17 @@ export class HabitEntry extends Entity<HabitEntryProps> {
   updateNotes(notes: string | undefined): void {
     this.set("notes", notes);
   }
+  // skip and fail are both value-0 outcomes (they differ only in their
+  // effect on the streak). Switching to either forces value to 0.
+  // Switching to "completion" clears any lingering skipReason.
+  updateType(type: "completion" | "skip" | "fail"): void {
+    this.set("type", type);
+    if (type === "skip" || type === "fail") this.set("value", 0);
+    if (type !== "skip") this.set("skipReason", undefined);
+  }
+  updateSkipReason(reason: string | undefined): void {
+    this.set("skipReason", reason);
+  }
 
   static create(
     props: Omit<HabitEntryProps, "id" | "createdAt" | "updatedAt">,
@@ -60,7 +71,7 @@ export class HabitEntry extends Entity<HabitEntryProps> {
     if (props.value === undefined || props.value === null)
       return Err(new Error("Value is required"));
     if (!props.userSub) return Err(new Error("User is required"));
-    if (props.type === "skip") props.value = 0;
+    if (props.type === "skip" || props.type === "fail") props.value = 0;
     return Ok(new HabitEntry(props as HabitEntryProps));
   }
 

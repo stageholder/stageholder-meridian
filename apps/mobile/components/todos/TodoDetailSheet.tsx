@@ -17,7 +17,6 @@
 import {
   Button,
   Checkbox,
-  DatePicker,
   Input,
   Paragraph,
   Sheet,
@@ -26,6 +25,7 @@ import {
   View,
   XStack,
   YStack,
+  useCalendarPicker,
   useHaptic,
   useToast,
 } from "@stageholder/ui";
@@ -456,7 +456,12 @@ export function TodoDetailSheet({ open, onClose, todo }: TodoDetailSheetProps) {
               </XStack>
             </YStack>
 
-            {/* ---- Dates ---- */}
+            {/* ---- Dates ----
+                Two trigger buttons that open a nested CalendarSheet on
+                tap. We use CalendarSheet instead of DatePicker here
+                because we're already inside a Sheet — popover-based
+                pickers get clipped/buried by the parent Sheet's modal
+                stack; nested Sheets stack natively. */}
             <XStack gap="$3">
               <YStack flex={1} gap="$2">
                 <Text
@@ -469,13 +474,11 @@ export function TodoDetailSheet({ open, onClose, todo }: TodoDetailSheetProps) {
                 >
                   Due date
                 </Text>
-                <DatePicker
+                <DateTrigger
                   value={todo.dueDate ?? null}
-                  onChange={(v: string | null) =>
-                    patch({ dueDate: v ?? undefined })
-                  }
                   placeholder="Set due date"
-                  clearable
+                  title="Due date"
+                  onChange={(v) => patch({ dueDate: v ?? undefined })}
                 />
               </YStack>
               <YStack flex={1} gap="$2">
@@ -489,13 +492,11 @@ export function TodoDetailSheet({ open, onClose, todo }: TodoDetailSheetProps) {
                 >
                   Do date
                 </Text>
-                <DatePicker
+                <DateTrigger
                   value={todo.doDate ?? null}
-                  onChange={(v: string | null) =>
-                    patch({ doDate: v ?? undefined })
-                  }
                   placeholder="Set do date"
-                  clearable
+                  title="Do date"
+                  onChange={(v) => patch({ doDate: v ?? undefined })}
                 />
               </YStack>
             </XStack>
@@ -530,8 +531,85 @@ export function TodoDetailSheet({ open, onClose, todo }: TodoDetailSheetProps) {
   );
 }
 
+// DatePicker takes Date | null; the API and the rest of the app deal in
+// yyyy-mm-dd strings. Marshal at this boundary so neither side leaks.
+function parseDateKey(yyyymmdd: string): Date {
+  const [y, m, d] = yyyymmdd.split("-").map(Number);
+  return new Date(y!, (m ?? 1) - 1, d ?? 1);
+}
+
+function formatDateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/**
+ * Compact date trigger — button that shows the current date (or
+ * placeholder) and opens the app-root CalendarSheet on tap. We can't
+ * render a Sheet directly here because TodoDetailSheet is itself a
+ * Sheet; nested Modals on RN drop the inner Frame. The
+ * CalendarPickerProvider mounts a single sheet at the app root and
+ * exposes a hook so anywhere in the tree can trigger it.
+ */
+function DateTrigger({
+  value,
+  placeholder,
+  title,
+  onChange,
+}: {
+  value: string | null;
+  placeholder: string;
+  title: string;
+  onChange: (v: string | null) => void;
+}) {
+  const { pickDate } = useCalendarPicker();
+  function open() {
+    pickDate({
+      title,
+      value: value ? parseDateKey(value) : null,
+      onSelect: (d) => onChange(d ? formatDateKey(d) : null),
+    });
+  }
+  return (
+    <Pressable onPress={open}>
+      <XStack
+        items="center"
+        justify="space-between"
+        px="$3"
+        py="$2.5"
+        rounded="$3"
+        bg="$color2"
+        borderWidth={1}
+        borderColor="$color6"
+      >
+        <Text
+          fontSize="$2"
+          color={(value ? "$color12" : "$color10") as never}
+          numberOfLines={1}
+        >
+          {value ? formatDateShort(value) : placeholder}
+        </Text>
+        <Text fontSize="$1" color="$color11">
+          ▾
+        </Text>
+      </XStack>
+    </Pressable>
+  );
+}
+
+function formatDateShort(yyyymmdd: string): string {
+  const dt = parseDateKey(yyyymmdd);
+  return dt.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
     year: "numeric",

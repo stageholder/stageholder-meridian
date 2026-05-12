@@ -39,6 +39,7 @@ import { EditHabitSheet } from "@/components/habits/EditHabitSheet";
 import {
   useCheckInHabit,
   useDeleteHabit,
+  useFailHabit,
   useHabit,
   useHabitEntries,
   useSkipHabit,
@@ -58,6 +59,7 @@ export default function HabitDetailScreen() {
   const checkIn = useCheckInHabit();
   const updateEntry = useUpdateHabitEntry();
   const skipMutation = useSkipHabit();
+  const failMutation = useFailHabit();
   const deleteHabit = useDeleteHabit();
 
   const [editOpen, setEditOpen] = useState(false);
@@ -116,6 +118,13 @@ export default function HabitDetailScreen() {
       const k = localDateKey(d);
       const day = dayMap.get(k);
       if (day?.type === "skip") continue;
+      // Explicit fail breaks the running streak just like a missed day.
+      // (A past scheduled day with no entry also breaks below via the
+      // value-check; this branch handles the "marked failed" case.)
+      if (day?.type === "fail") {
+        temp = 0;
+        continue;
+      }
       const tgt = resolveTargetCount(
         { targetCountSnapshot: day?.targetCountSnapshot },
         habit,
@@ -222,68 +231,144 @@ export default function HabitDetailScreen() {
     );
   }
 
-  function handleDateAction(action: "record" | "undo" | "skip") {
+  // Unified state machine for any date in the detail screen. Every action
+  // chooses POST (no entry) vs PATCH (entry exists) — never DELETE — for
+  // the same reason as the card: the Mongo per-(habit, date) unique index
+  // doesn't filter soft-deleted ghosts. PATCH keeps the slot occupied while
+  // letting type/value transition freely.
+  type DateAction = "record" | "undo" | "skip" | "fail" | "clear";
+
+  function handleDateAction(action: DateAction) {
     if (!habit || !selectedDate) return;
     const day = dayMap.get(selectedDate);
     haptic.impact("light");
 
+    const onError = (verb: string) =>
+      toast.show({ title: `Couldn't ${verb}`, intent: "danger" });
+
     if (action === "record") {
       const value = day?.value ?? 0;
       const tgt = day?.target ?? habit.targetCount ?? 1;
-      if (day?.type === "skip") {
-        toast.show({ title: "This day was skipped", intent: "info" });
-        return;
-      }
-      if (value >= tgt) {
+      const isNonCompletion = day?.type === "skip" || day?.type === "fail";
+      if (!isNonCompletion && value >= tgt) {
         toast.show({ title: "Already complete", intent: "info" });
         return;
       }
       if (day?.entry) {
+        // PATCH — promote skip/fail to completion(value=1), or increment.
         updateEntry.mutate(
           {
             habitId: habit.id,
             entryId: day.entry.id,
-            patch: { value: value + 1 },
+            patch: isNonCompletion
+              ? { type: "completion", value: 1 }
+              : { value: value + 1 },
           },
-          {
-            onError: () =>
-              toast.show({ title: "Couldn't record", intent: "danger" }),
-          },
+          { onError: () => onError("record") },
         );
       } else {
         checkIn.mutate(
           { habitId: habit.id, date: selectedDate, value: 1 },
-          {
-            onError: () =>
-              toast.show({ title: "Couldn't record", intent: "danger" }),
-          },
+          { onError: () => onError("record") },
         );
       }
-    } else if (action === "undo") {
-      if (!day?.entry || day.value <= 0) return;
+      return;
+    }
+
+    if (action === "undo") {
+      // Decrement value on a completion entry. Skip/fail use "clear" instead.
+      if (
+        !day?.entry ||
+        day.value <= 0 ||
+        day.type === "skip" ||
+        day.type === "fail"
+      )
+        return;
       updateEntry.mutate(
         {
           habitId: habit.id,
           entryId: day.entry.id,
           patch: { value: day.value - 1 },
         },
-        {
-          onError: () =>
-            toast.show({ title: "Couldn't undo", intent: "danger" }),
-        },
+        { onError: () => onError("undo") },
       );
-    } else if (action === "skip") {
+      return;
+    }
+
+    if (action === "skip") {
+      if (day?.type === "skip") return;
       if (day?.entry) {
-        toast.show({ title: "This date already has an entry", intent: "info" });
-        return;
+        updateEntry.mutate(
+          {
+            habitId: habit.id,
+            entryId: day.entry.id,
+            patch: { type: "skip", value: 0 },
+          },
+          {
+            onSuccess: () => toast.show({ title: "Skipped", intent: "info" }),
+            onError: () => onError("skip"),
+          },
+        );
+      } else {
+        skipMutation.mutate(
+          { habitId: habit.id, date: selectedDate },
+          {
+            onSuccess: () => toast.show({ title: "Skipped", intent: "info" }),
+            onError: () => onError("skip"),
+          },
+        );
       }
-      skipMutation.mutate(
-        { habitId: habit.id, date: selectedDate },
+      return;
+    }
+
+    if (action === "fail") {
+      if (day?.type === "fail") return;
+      haptic.impact("medium");
+      if (day?.entry) {
+        updateEntry.mutate(
+          {
+            habitId: habit.id,
+            entryId: day.entry.id,
+            patch: { type: "fail", value: 0 },
+          },
+          {
+            onSuccess: () =>
+              toast.show({
+                title: "Marked failed",
+                message: "Streak reset.",
+                intent: "warning",
+              }),
+            onError: () => onError("mark failed"),
+          },
+        );
+      } else {
+        failMutation.mutate(
+          { habitId: habit.id, date: selectedDate },
+          {
+            onSuccess: () =>
+              toast.show({
+                title: "Marked failed",
+                message: "Streak reset.",
+                intent: "warning",
+              }),
+            onError: () => onError("mark failed"),
+          },
+        );
+      }
+      return;
+    }
+
+    if (action === "clear") {
+      // Convert a skip or fail back to completion(value=0). Same recovery
+      // pattern as HabitCard.handleUndoSkip / handleUndoFail.
+      if (!day?.entry || (day.type !== "skip" && day.type !== "fail")) return;
+      updateEntry.mutate(
         {
-          onSuccess: () => toast.show({ title: "Skipped", intent: "info" }),
-          onError: () =>
-            toast.show({ title: "Couldn't skip", intent: "danger" }),
+          habitId: habit.id,
+          entryId: day.entry.id,
+          patch: { type: "completion", value: 0 },
         },
+        { onError: () => onError("undo") },
       );
     }
   }
@@ -463,28 +548,61 @@ export default function HabitDetailScreen() {
                   </Text>
                 </Card.Header>
                 <Card.Body gap="$2">
-                  <Paragraph fontSize="$2" color="$color11">
-                    {selected?.type === "skip"
-                      ? "Skipped"
-                      : `${selected?.value ?? 0}/${selected?.target ?? habit.targetCount ?? 1}`}
+                  <Paragraph
+                    fontSize="$2"
+                    color={
+                      (selected?.type === "fail"
+                        ? "$red11"
+                        : "$color11") as never
+                    }
+                  >
+                    {selected?.type === "fail"
+                      ? "Failed — streak reset"
+                      : selected?.type === "skip"
+                        ? "Skipped — streak preserved"
+                        : `${selected?.value ?? 0}/${selected?.target ?? habit.targetCount ?? 1}`}
                   </Paragraph>
-                  <XStack gap="$2">
-                    <ActionPill
-                      onPress={() => handleDateAction("record")}
-                      primary
-                    >
-                      Record
-                    </ActionPill>
-                    {selected && selected.value > 0 ? (
-                      <ActionPill onPress={() => handleDateAction("undo")}>
-                        Undo
+                  <XStack gap="$2" flexWrap="wrap">
+                    {/* Skip/fail recovery: a single Undo pill that PATCHes the
+                        entry back to completion(value=0), letting the user
+                        Record again afterwards. */}
+                    {selected?.type === "skip" || selected?.type === "fail" ? (
+                      <ActionPill onPress={() => handleDateAction("clear")}>
+                        Undo {selected?.type === "fail" ? "fail" : "skip"}
                       </ActionPill>
-                    ) : null}
-                    {!selected ? (
-                      <ActionPill onPress={() => handleDateAction("skip")}>
-                        Skip
-                      </ActionPill>
-                    ) : null}
+                    ) : (
+                      <>
+                        <ActionPill
+                          onPress={() => handleDateAction("record")}
+                          primary
+                        >
+                          Record
+                        </ActionPill>
+                        {selected && selected.value > 0 ? (
+                          <ActionPill onPress={() => handleDateAction("undo")}>
+                            Undo
+                          </ActionPill>
+                        ) : null}
+                        {/* Skip + Fail offered when the day has no progress.
+                            Hidden for partials to avoid accidental data loss
+                            (Skip/Fail both zero the value). */}
+                        {!selected || selected.value === 0 ? (
+                          <>
+                            <ActionPill
+                              onPress={() => handleDateAction("skip")}
+                            >
+                              Skip
+                            </ActionPill>
+                            <ActionPill
+                              onPress={() => handleDateAction("fail")}
+                              tone="danger"
+                            >
+                              Fail
+                            </ActionPill>
+                          </>
+                        ) : null}
+                      </>
+                    )}
                   </XStack>
                 </Card.Body>
               </Card>
@@ -530,13 +648,19 @@ export default function HabitDetailScreen() {
                       fontSize="$2"
                       fontWeight="600"
                       color={
-                        (e.type === "skip" ? "$color11" : "$color12") as never
+                        (e.type === "fail"
+                          ? "$red11"
+                          : e.type === "skip"
+                            ? "$color11"
+                            : "$color12") as never
                       }
                       fontFamily="$mono"
                     >
-                      {e.type === "skip"
-                        ? "Skip"
-                        : `${e.value}/${resolveTargetCount({ targetCountSnapshot: e.targetCountSnapshot }, habit)}`}
+                      {e.type === "fail"
+                        ? "Fail"
+                        : e.type === "skip"
+                          ? "Skip"
+                          : `${e.value}/${resolveTargetCount({ targetCountSnapshot: e.targetCountSnapshot }, habit)}`}
                     </Text>
                   </XStack>
                 ))
@@ -596,7 +720,7 @@ function CalendarGrid({
   onSelect,
 }: {
   calendar: { days: Date[]; offset: number };
-  habit: { scheduledDays?: number[]; targetCount: number };
+  habit: { scheduledDays?: number[]; targetCount: number; createdAt?: string };
   dayMap: Map<string, { value: number; type?: string; target: number }>;
   today: string;
   selectedDate: string | null;
@@ -620,6 +744,11 @@ function CalendarGrid({
   }
 
   const hasSchedule = !!habit.scheduledDays && habit.scheduledDays.length > 0;
+  // Clip auto-fail to days after the habit was created so a brand-new
+  // habit doesn't render a sea of red dots.
+  const habitCreatedKey = habit.createdAt
+    ? localDateKey(new Date(habit.createdAt))
+    : null;
 
   return (
     <YStack gap={4}>
@@ -631,7 +760,8 @@ function CalendarGrid({
             }
             const dateStr = localDateKey(d);
             const isToday = dateStr === today;
-            const isFuture = d > new Date();
+            const isFuture = d > new Date() && !isToday;
+            const isPast = !isFuture && !isToday;
             const dow = d.getDay();
             const scheduled =
               !hasSchedule || habit.scheduledDays!.includes(dow);
@@ -644,16 +774,27 @@ function CalendarGrid({
                   : 0
                 : 0;
             const isSkip = day?.type === "skip";
-            const isComplete = !isSkip && ratio >= 1;
-            const isPartial = !isSkip && ratio > 0 && ratio < 1;
+            const isFail = day?.type === "fail";
+            const isComplete = !isSkip && !isFail && ratio >= 1;
+            const isPartial = !isSkip && !isFail && ratio > 0 && ratio < 1;
+            const afterHabitCreation =
+              !habitCreatedKey || dateStr >= habitCreatedKey;
+            // Auto-fail: scheduled past day without any entry. Matches the
+            // streak walk (which breaks at such a day) and the HabitCard
+            // 30-day strip — keeps every surface telling the same story.
+            const isAutoFail =
+              !day && isPast && scheduled && afterHabitCreation;
+            const isAnyFail = isFail || isAutoFail;
 
-            const bg = isSkip
-              ? "#94a3b8"
-              : isComplete
-                ? habitColor
-                : isPartial
-                  ? habitColor + "80"
-                  : "transparent";
+            const bg = isAnyFail
+              ? "#dc2626" // red-600
+              : isSkip
+                ? "#94a3b8"
+                : isComplete
+                  ? habitColor
+                  : isPartial
+                    ? habitColor + "80"
+                    : "transparent";
 
             return (
               <Pressable
@@ -682,7 +823,9 @@ function CalendarGrid({
                     fontSize={11}
                     fontWeight={isToday ? "700" : "500"}
                     color={
-                      (isComplete || isSkip ? "white" : "$color12") as never
+                      (isComplete || isSkip || isAnyFail
+                        ? "white"
+                        : "$color12") as never
                     }
                   >
                     {d.getDate()}
@@ -752,27 +895,33 @@ function StatCard({
 function ActionPill({
   onPress,
   primary,
+  tone,
   children,
 }: {
   onPress: () => void;
   primary?: boolean;
+  /** Semantic tint for non-primary pills. "danger" = red (used for Fail). */
+  tone?: "danger";
   children: React.ReactNode;
 }) {
+  const bg = primary ? "$color9" : tone === "danger" ? "$red3" : "$color3";
+  const borderColor = tone === "danger" && !primary ? "$red7" : "$color6";
+  const textColor = primary
+    ? "white"
+    : tone === "danger"
+      ? "$red11"
+      : "$color12";
   return (
     <Pressable onPress={onPress}>
       <XStack
         px="$3"
         py="$2"
         rounded="$3"
-        bg={(primary ? "$color9" : "$color3") as never}
+        bg={bg as never}
         borderWidth={primary ? 0 : 1}
-        borderColor="$color6"
+        borderColor={borderColor as never}
       >
-        <Text
-          fontSize="$2"
-          fontWeight="600"
-          color={(primary ? "white" : "$color12") as never}
-        >
+        <Text fontSize="$2" fontWeight="600" color={textColor as never}>
           {children}
         </Text>
       </XStack>

@@ -101,7 +101,7 @@
         "@react-native-async-storage/async-storage": "2.1.0",
         "@repo/core": "workspace:*",
         "@stageholder/sdk": "^1.0.0-alpha.45",
-        "@stageholder/ui": "^0.1.0-alpha.5",
+        "@stageholder/ui": "^0.1.0-alpha.7",
         "@tamagui/config": "^2.0.0-rc.41",
         "@tamagui/core": "^2.0.0-rc.41",
         "@tamagui/native": "^2.0.0-rc.41",
@@ -1174,7 +1174,7 @@
 
     "@stageholder/sdk": ["@stageholder/sdk@1.0.0-alpha.43", "https://npm.pkg.github.com/download/@stageholder/sdk/1.0.0-alpha.43/bad86f0d8d602f1236585fc6b62ba04c948149f0", { "dependencies": { "@radix-ui/react-avatar": "^1.1.0", "@radix-ui/react-dialog": "^1.1.0", "@radix-ui/react-dropdown-menu": "^2.1.0", "@radix-ui/react-popover": "^1.1.0", "@radix-ui/react-progress": "^1.1.0", "@radix-ui/react-select": "^2.1.0", "@radix-ui/react-slot": "^1.1.0", "class-variance-authority": "^0.7.0", "clsx": "^2.1.0", "cmdk": "^1.0.0", "iron-session": "^8.0.0", "jose": "^6.0.0", "svix": "^1.45.0", "tailwind-merge": "^2.5.0", "zod": "^3.24.0" }, "peerDependencies": { "@nestjs/common": "^11.0.0", "@nestjs/core": "^11.0.0", "expo-auth-session": ">=5.5.0", "expo-crypto": ">=13.0.0", "expo-linking": ">=6.3.0", "expo-secure-store": ">=13.0.0", "expo-web-browser": ">=13.0.0", "ioredis": "^5.0.0", "mongodb": "^6.0.0", "next": "^16.0.0", "pg": "^8.0.0", "react": "^19.2.0", "react-dom": "^19.2.0", "react-native": ">=0.74.0" } }, "sha512-Pcly/fCLC5qaQp4WjQN9BKXyUtrKLf1kH/StMd01ZlK1/trrZb5MBQX13Qwc0abk4LvYgilRt4s4knqxdl/poQ=="],
 
-    "@stageholder/ui": ["@stageholder/ui@0.1.0-alpha.5", "https://npm.pkg.github.com/download/@stageholder/ui/0.1.0-alpha.5/73d0ba5ed72e47a4822550bac1f8a8b917607501", { "peerDependencies": { "react": ">=19.0.0", "react-native": ">=0.81.0", "react-native-svg": ">=15.0.0", "react-native-web": "latest", "tamagui": "^2.0.0-rc.41" } }, "sha512-Kb6Qu4EDuH8BlEimFSIP5we9FG97CAAnCY3YglPn1EpeI7tzEyVScxCFjvk8xEgIUPNy4XYy7de2ZaG7v0VChg=="],
+    "@stageholder/ui": ["@stageholder/ui@0.1.0-alpha.7", "https://npm.pkg.github.com/download/@stageholder/ui/0.1.0-alpha.7/e63b6e56ad4604134d49269f8c4d9902076adee3", { "peerDependencies": { "react": ">=19.0.0", "react-native": ">=0.81.0", "react-native-svg": ">=15.0.0", "react-native-web": "latest", "tamagui": "^2.0.0-rc.41" } }, "sha512-4vGbvGXuEHeUiUc2FnzxZZTptBFlhbeK558nQom1lFzYtVOFhTsJedcY8kzKG6W2iIcmKYX76TT9cNtU0R/bZQ=="],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 

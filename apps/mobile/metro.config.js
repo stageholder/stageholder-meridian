@@ -50,6 +50,38 @@ config.resolver.disableHierarchicalLookup = false;
 config.resolver.unstable_enablePackageExports = true;
 config.resolver.unstable_enableSymlinks = true;
 
+// Reorder sourceExts so `.mjs` is checked LAST.
+//
+// Per Metro's RESOLVE_FILE (docs/Resolution.md), variants are tried
+// extension-grouped, not platform-grouped. With Expo's default
+// `['ts','tsx','mjs','js','jsx']` and platform=ios, the order is:
+//   .ios.ts, .native.ts, .ts,
+//   .ios.tsx, .native.tsx, .tsx,
+//   .ios.mjs, .native.mjs, .mjs,   ← `.mjs` is checked here
+//   .ios.js,  .native.js,  .js,    ← `.native.js` NEVER tried
+//   .ios.jsx, .native.jsx, .jsx
+//
+// So for any package that ships dual `Foo.mjs` + `Foo.native.js`
+// bundles (@stageholder/ui, Tamagui, every styled() RN library on the
+// modern build setup), Metro picks `Foo.mjs` — the WEB build — on
+// native. Inside that .mjs the imports cascade with explicit
+// `./Bar.mjs` references, so the whole import graph goes web.
+//
+// Concrete crash this prevents: `<ActivityRings>` rendering raw HTML
+// `<svg><circle/>` instead of `react-native-svg`'s `<Svg><Circle/>`,
+// throwing "View config getter callback for component `circle` must be
+// a function" because RN's view registry has no `circle` host.
+//
+// Moving `.mjs` to the end keeps it as a valid resolution for
+// packages that ONLY ship `.mjs` (e.g., `use-latest-callback`), so
+// nothing breaks downstream — `.native.js` just wins first when both
+// are present.
+config.resolver.sourceExts = [
+  ...config.resolver.sourceExts.filter((ext) => ext !== "mjs"),
+  "mjs",
+];
+
+
 const dedupedPackages = [
   "react",
   "react-dom",

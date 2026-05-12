@@ -131,7 +131,18 @@ export function useUpdateHabitEntry() {
     {
       habitId: string;
       entryId: string;
-      data: { value?: number; notes?: string };
+      // Mirrors the API's UpdateHabitEntryDto. Allowing `type` and
+      // `skipReason` here lets a caller convert an existing entry between
+      // completion / skip / fail without hitting the per-(habit, date)
+      // uniqueness conflict via DELETE+POST. The server enforces the
+      // value=0 invariant for skip/fail and clears skipReason on
+      // completion, so callers don't have to remember.
+      data: {
+        value?: number;
+        notes?: string;
+        type?: "completion" | "skip" | "fail";
+        skipReason?: string;
+      };
     }
   >({
     mutationFn: async ({ habitId, entryId, data }) => {
@@ -162,7 +173,12 @@ export function useCreateHabitEntry() {
     HabitEntry,
     {
       habitId: string;
-      data: { date: string; value: number; notes?: string };
+      data: {
+        date: string;
+        value: number;
+        notes?: string;
+        type?: "completion" | "skip" | "fail";
+      };
     }
   >({
     mutationFn: async ({ habitId, data }) => {

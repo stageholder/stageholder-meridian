@@ -25,7 +25,7 @@ export function isEntryComplete(
   entry: Pick<HabitEntry, "value" | "type" | "targetCountSnapshot">,
   habit: Pick<Habit, "targetCount">,
 ): boolean {
-  if (entry.type === "skip") return false;
+  if (entry.type === "skip" || entry.type === "fail") return false;
   return entry.value >= resolveTargetCount(entry, habit);
 }
 
@@ -48,7 +48,7 @@ export function entryCompletionRatio(
  */
 export type DayProgress = {
   value: number;
-  type: "completion" | "skip";
+  type: "completion" | "skip" | "fail";
   targetCountSnapshot?: number;
 };
 
@@ -58,13 +58,18 @@ export function resolveDayProgress(
 ): DayProgress | null {
   if (!entries) return null;
   let value = 0;
-  let type: "completion" | "skip" | undefined;
+  let type: "completion" | "skip" | "fail" | undefined;
   let targetCountSnapshot: number | undefined;
   for (const e of entries) {
     if (e.date !== dateKey) continue;
     value += e.value;
-    // `skip` wins over `completion` if both appear (rare; defensive).
-    type = e.type === "skip" ? "skip" : (type ?? e.type ?? "completion");
+    // Outcome precedence when multiple entries share a date (defensive —
+    // the API enforces uniqueness, but offline-merge could surface this):
+    // fail > skip > completion. Fail is the strongest signal that the
+    // user explicitly admitted a miss.
+    if (e.type === "fail") type = "fail";
+    else if (e.type === "skip" && type !== "fail") type = "skip";
+    else type = type ?? e.type ?? "completion";
     targetCountSnapshot = targetCountSnapshot ?? e.targetCountSnapshot;
   }
   if (type === undefined && value === 0) return null;

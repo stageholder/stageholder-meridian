@@ -145,6 +145,7 @@ export default function HabitDetailPage() {
       const d = format(checkDay, "yyyy-MM-dd");
       const dayEntry = entryMap.get(d);
       if (dayEntry?.type === "skip") continue; // skip preserves streak
+      if (dayEntry?.type === "fail") break; // explicit fail breaks the chain
       const dayTarget = resolveTargetCount(
         { targetCountSnapshot: dayEntry?.targetCountSnapshot },
         habit,
@@ -153,7 +154,8 @@ export default function HabitDetailPage() {
       else break;
     }
 
-    // Longest streak + total completions (skip entries preserve but don't extend)
+    // Longest streak + total completions. Skip preserves and is ignored;
+    // fail resets the running streak just like a missed scheduled day.
     let longestStreak = 0;
     let tempStreak = 0;
     let totalCompletions = 0;
@@ -164,6 +166,10 @@ export default function HabitDetailPage() {
       const d = format(checkDay, "yyyy-MM-dd");
       const dayEntry = entryMap.get(d);
       if (dayEntry?.type === "skip") continue; // skip preserves streak
+      if (dayEntry?.type === "fail") {
+        tempStreak = 0;
+        continue;
+      }
       const dayTarget = resolveTargetCount(
         { targetCountSnapshot: dayEntry?.targetCountSnapshot },
         habit,
@@ -221,15 +227,14 @@ export default function HabitDetailPage() {
     const currentEntry = monthEntryMap.get(dateStr);
     const currentVal = currentEntry?.value ?? 0;
 
-    if (currentEntry?.type === "skip") {
-      toast.info("This day was skipped");
-      return;
-    }
-
     const checkTarget = existing
       ? resolveTargetCount(existing, habit)
       : habit.targetCount;
-    if (currentVal >= checkTarget) {
+    if (
+      currentEntry?.type !== "skip" &&
+      currentEntry?.type !== "fail" &&
+      currentVal >= checkTarget
+    ) {
       toast.info("Already completed for this date");
       return;
     }
@@ -242,16 +247,22 @@ export default function HabitDetailPage() {
         { habitId: habit.id, data: { date: dateStr, value: 1 } },
         { onSuccess, onError },
       );
-    } else {
-      updateEntry.mutate(
-        {
-          habitId: habit.id,
-          entryId: existing.id,
-          data: { value: currentVal + 1 },
-        },
-        { onSuccess, onError },
-      );
+      return;
     }
+
+    // Entry exists. Promote skip/fail to completion or increment partial.
+    const isNonCompletion =
+      currentEntry?.type === "skip" || currentEntry?.type === "fail";
+    updateEntry.mutate(
+      {
+        habitId: habit.id,
+        entryId: existing.id,
+        data: isNonCompletion
+          ? { type: "completion", value: 1 }
+          : { value: currentVal + 1 },
+      },
+      { onSuccess, onError },
+    );
   }
 
   function handleDateUndo(dateStr: string) {
@@ -262,6 +273,7 @@ export default function HabitDetailPage() {
       !existing ||
       !currentEntry ||
       currentEntry.type === "skip" ||
+      currentEntry.type === "fail" ||
       currentEntry.value <= 0
     )
       return;
@@ -275,6 +287,36 @@ export default function HabitDetailPage() {
       },
       {
         onSuccess: () => toast.success(`Undid for ${dateStr}`),
+        onError: () => toast.error("Failed to undo"),
+      },
+    );
+  }
+
+  // Convert a skip or fail entry back to an "open" state (completion / v=0)
+  // so the user can record fresh — or simply clear the outcome. We never
+  // DELETE because the Mongo per-(userSub, habit_id, date) unique index
+  // doesn't filter soft-deleted rows; PATCH keeps the slot occupied.
+  function handleClearNonCompletion(dateStr: string) {
+    if (!habit) return;
+    const existing = monthEntryObjMap.get(dateStr);
+    const currentEntry = monthEntryMap.get(dateStr);
+    if (
+      !existing ||
+      !currentEntry ||
+      (currentEntry.type !== "skip" && currentEntry.type !== "fail")
+    )
+      return;
+
+    const wasFail = currentEntry.type === "fail";
+    updateEntry.mutate(
+      {
+        habitId: habit.id,
+        entryId: existing.id,
+        data: { type: "completion", value: 0 },
+      },
+      {
+        onSuccess: () =>
+          toast.success(wasFail ? "Cleared fail" : "Cleared skip"),
         onError: () => toast.error("Failed to undo"),
       },
     );
@@ -429,21 +471,33 @@ export default function HabitDetailPage() {
               const monthEntry = monthEntryMap.get(dateStr);
               const value = monthEntry?.value ?? 0;
               const isDaySkipped = monthEntry?.type === "skip";
+              const isDayFailed = monthEntry?.type === "fail";
               const entryObj = monthEntryObjMap.get(dateStr);
               const effectiveTarget = entryObj
                 ? resolveTargetCount(entryObj, habit)
                 : habit.targetCount;
               const ratio = effectiveTarget > 0 ? value / effectiveTarget : 0;
-              const isComplete = !isDaySkipped && ratio >= 1;
-              const isPartial = !isDaySkipped && ratio > 0 && ratio < 1;
+              const isComplete = !isDaySkipped && !isDayFailed && ratio >= 1;
+              const isPartial =
+                !isDaySkipped && !isDayFailed && ratio > 0 && ratio < 1;
               const isDayToday = dateStr === today;
               const isFutureDay = isFuture(day) && !isTodayFn(day);
+              const isPastDay = !isFutureDay && !isDayToday;
               const isSelected = selectedDate === dateStr;
               const dow = getDay(day);
               const hasSchedule =
                 habit.scheduledDays && habit.scheduledDays.length > 0;
               const isScheduled =
                 !hasSchedule || habit.scheduledDays!.includes(dow);
+              // Auto-fail: a past scheduled day with no entry (and after the
+              // habit was created) reads identically to an explicit fail in
+              // the streak math; render it the same way for consistency.
+              const habitCreated = habit.createdAt?.slice(0, 10);
+              const afterHabitCreation =
+                !habitCreated || dateStr >= habitCreated;
+              const isAutoFailed =
+                !monthEntry && isPastDay && isScheduled && afterHabitCreation;
+              const isAnyFail = isDayFailed || isAutoFailed;
 
               return (
                 <div key={dateStr} className="flex items-center justify-center">
@@ -461,9 +515,12 @@ export default function HabitDetailPage() {
                       isComplete && "text-white font-semibold",
                       isDaySkipped &&
                         "border-2 border-dashed border-muted-foreground/40 text-muted-foreground",
+                      isAnyFail &&
+                        "bg-destructive/80 text-destructive-foreground font-semibold",
                       !isComplete &&
                         !isPartial &&
                         !isDaySkipped &&
+                        !isAnyFail &&
                         "text-muted-foreground",
                       isPartial && "font-medium text-foreground",
                       !isFutureDay && "cursor-pointer hover:scale-110",
@@ -476,7 +533,7 @@ export default function HabitDetailPage() {
                           ? { backgroundColor: habitColor + "25" }
                           : undefined
                     }
-                    title={`${dateStr}: ${isDaySkipped ? "Skipped" : `${value}/${effectiveTarget}`}${!isScheduled ? " (rest day)" : ""}${isFutureDay ? " (future)" : ""}`}
+                    title={`${dateStr}: ${isDayFailed ? "Failed" : isDaySkipped ? "Skipped" : isAutoFailed ? "Missed" : `${value}/${effectiveTarget}`}${!isScheduled ? " (rest day)" : ""}${isFutureDay ? " (future)" : ""}`}
                   >
                     {isComplete ? (
                       <svg
@@ -494,6 +551,8 @@ export default function HabitDetailPage() {
                       </svg>
                     ) : isDaySkipped ? (
                       <span className="text-[9px]">—</span>
+                    ) : isAnyFail ? (
+                      <span className="text-[10px]">✕</span>
                     ) : (
                       day.getDate()
                     )}
@@ -509,12 +568,14 @@ export default function HabitDetailPage() {
               const selEntry = monthEntryMap.get(selectedDate);
               const selValue = selEntry?.value ?? 0;
               const selIsSkipped = selEntry?.type === "skip";
+              const selIsFailed = selEntry?.type === "fail";
               const selEntryObj = monthEntryObjMap.get(selectedDate);
               const selEffectiveTarget = selEntryObj
                 ? resolveTargetCount(selEntryObj, habit)
                 : habit.targetCount;
               const selComplete =
                 !selIsSkipped &&
+                !selIsFailed &&
                 selEffectiveTarget > 0 &&
                 selValue >= selEffectiveTarget;
               const selDow = getDay(new Date(selectedDate + "T00:00:00"));
@@ -534,15 +595,24 @@ export default function HabitDetailPage() {
                         "MMM d, yyyy",
                       )}
                     </span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {selIsSkipped
-                        ? "Skipped"
-                        : `${selValue}/${selEffectiveTarget}`}
+                    <span
+                      className={cn(
+                        "text-[10px]",
+                        selIsFailed
+                          ? "text-destructive"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {selIsFailed
+                        ? "Failed — streak reset"
+                        : selIsSkipped
+                          ? "Skipped"
+                          : `${selValue}/${selEffectiveTarget}`}
                       {!selScheduled && " · Rest day"}
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    {selValue > 0 && !selIsSkipped && (
+                    {selValue > 0 && !selIsSkipped && !selIsFailed && (
                       <button
                         onClick={() => handleDateUndo(selectedDate)}
                         disabled={isMutating}
@@ -552,7 +622,25 @@ export default function HabitDetailPage() {
                         Undo
                       </button>
                     )}
-                    {selIsSkipped ? (
+                    {selIsSkipped || selIsFailed ? (
+                      // Recovery: PATCH the entry back to a value=0 completion
+                      // so the user can Record again. The Fail button itself
+                      // is mobile-only per current scope; this Undo lets a
+                      // user fix a mobile-set fail from PWA.
+                      <button
+                        onClick={() => handleClearNonCompletion(selectedDate)}
+                        disabled={isMutating}
+                        className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+                      >
+                        <Undo2 className="size-3" />
+                        Undo {selIsFailed ? "fail" : "skip"}
+                      </button>
+                    ) : null}
+                    {selIsFailed ? (
+                      <span className="flex items-center gap-1 rounded-md bg-destructive/15 px-2.5 py-1 text-xs font-medium text-destructive">
+                        ✕ Failed
+                      </span>
+                    ) : selIsSkipped ? (
                       <span className="flex items-center gap-1 rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
                         <SkipForward className="size-3" />
                         Skipped
@@ -629,6 +717,7 @@ export default function HabitDetailPage() {
               {recentEntries.map((entry: HabitEntry) => {
                 const dateStr = entry.date.split("T")[0]!;
                 const entryIsSkip = entry.type === "skip";
+                const entryIsFail = entry.type === "fail";
                 const isComplete = isEntryComplete(entry, habit);
                 return (
                   <div
@@ -639,11 +728,13 @@ export default function HabitDetailPage() {
                       <div
                         className={cn(
                           "h-2 w-2 rounded-full",
-                          entryIsSkip
-                            ? "bg-muted-foreground/40"
-                            : isComplete
-                              ? "bg-green-500"
-                              : "bg-orange-400",
+                          entryIsFail
+                            ? "bg-destructive"
+                            : entryIsSkip
+                              ? "bg-muted-foreground/40"
+                              : isComplete
+                                ? "bg-green-500"
+                                : "bg-orange-400",
                         )}
                       />
                       <span className="text-sm text-foreground">
@@ -651,7 +742,11 @@ export default function HabitDetailPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {entryIsSkip ? (
+                      {entryIsFail ? (
+                        <span className="text-xs font-medium text-destructive">
+                          Failed
+                        </span>
+                      ) : entryIsSkip ? (
                         <span className="text-xs text-muted-foreground">
                           Skipped
                         </span>
@@ -665,7 +760,7 @@ export default function HabitDetailPage() {
                           {entry.skipReason}
                         </span>
                       )}
-                      {entry.notes && !entryIsSkip && (
+                      {entry.notes && !entryIsSkip && !entryIsFail && (
                         <span className="max-w-[120px] truncate text-xs text-muted-foreground">
                           {entry.notes}
                         </span>

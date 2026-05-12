@@ -326,8 +326,9 @@ export default function TodayScreen() {
 
       <FAB
         icon={<PlusGlyph />}
-        placement="bottom-right"
-        b={88}
+        position="absolute"
+        right={24}
+        bottom={88}
         onPress={handleQuickAdd}
       />
 

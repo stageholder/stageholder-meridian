@@ -20,6 +20,11 @@ import "@tamagui/native/setup-teleport"
 // the hood (which we already have installed for SwipeableRow etc).
 import "@tamagui/native/setup-gesture-handler"
 
+// Native menu support for ContextMenu / DropdownMenu via zeego. Tamagui v2
+// requires this opt-in import; without it, every render of a menu primitive
+// logs a warning about it not being set up.
+import "@tamagui/native/setup-zeego"
+
 // Now hand off to Expo Router. Order is critical — the imports above set
 // up module-level state that the router's screens depend on.
 import "expo-router/entry"

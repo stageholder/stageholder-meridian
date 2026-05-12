@@ -20,7 +20,7 @@ export function isEntryComplete(
   entry: Pick<HabitEntry, "value" | "type" | "targetCountSnapshot">,
   habit: Pick<Habit, "targetCount">,
 ): boolean {
-  if (entry.type === "skip") return false;
+  if (entry.type === "skip" || entry.type === "fail") return false;
   return entry.value >= resolveTargetCount(entry, habit);
 }
 

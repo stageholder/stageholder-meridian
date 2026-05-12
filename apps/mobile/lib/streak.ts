@@ -83,12 +83,18 @@ export function computeStreak(
       cursor = prevDay(cursor);
       continue;
     }
+    // Fail breaks the chain even though the entry exists — it's an explicit
+    // user-declared miss. We check this before the value-based completion
+    // check so a value=0 fail entry isn't misread as just "an open day".
+    if (entry?.type === "fail") break;
     if (entry && entry.value > 0) {
       streak += 1;
       cursor = prevDay(cursor);
       continue;
     }
-    // First scheduled, non-skipped day without a completion → chain broken.
+    // First scheduled, non-skipped, non-fail day without a completion →
+    // chain broken. This also covers the auto-fail case: a past scheduled
+    // day with no entry at all reads the same as an explicit fail.
     break;
   }
 

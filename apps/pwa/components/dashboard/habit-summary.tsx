@@ -76,12 +76,13 @@ export function HabitSummary({
             const progress = habitProgress.get(habit.id);
             const value = progress?.value ?? 0;
             const isSkipped = progress?.type === "skip";
+            const isFailed = progress?.type === "fail";
             const target = resolveTargetCount(
               { targetCountSnapshot: progress?.targetCountSnapshot },
               habit,
             );
             const pct = Math.min(100, target > 0 ? (value / target) * 100 : 0);
-            const isComplete = !isSkipped && value >= target;
+            const isComplete = !isSkipped && !isFailed && value >= target;
 
             if (!isScheduledToday) {
               return (
@@ -91,6 +92,19 @@ export function HabitSummary({
                   </span>
                   <span className="text-[10px] text-muted-foreground/60">
                     Rest day
+                  </span>
+                </div>
+              );
+            }
+
+            if (isFailed) {
+              return (
+                <div key={habit.id} className="flex items-center gap-3">
+                  <span className="flex-1 truncate text-sm text-muted-foreground line-through">
+                    {habit.name}
+                  </span>
+                  <span className="text-[10px] font-medium text-destructive">
+                    ✕ Failed
                   </span>
                 </div>
               );

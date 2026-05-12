@@ -310,8 +310,9 @@ export default function JournalScreen() {
               +
             </Text>
           }
-          placement="bottom-right"
-          b={88}
+          position="absolute"
+          right={24}
+          bottom={88}
           onPress={newEntry}
         />
       ) : null}

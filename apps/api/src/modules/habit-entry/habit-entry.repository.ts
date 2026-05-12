@@ -129,6 +129,24 @@ export class HabitEntryRepository {
     );
   }
 
+  // The (userSub, habit_id, date) Mongo unique index does NOT filter on
+  // deleted_at, so a soft-deleted doc still occupies the slot and any
+  // subsequent insert for the same key fails with E11000. Sweep ghosts
+  // before inserting a fresh entry. Safe because a soft-deleted row was
+  // already trashed by the user.
+  async hardDeleteGhost(
+    userSub: string,
+    habitId: string,
+    date: string,
+  ): Promise<void> {
+    await this.model.deleteOne({
+      userSub,
+      habit_id: habitId,
+      date,
+      deleted_at: { $ne: null },
+    });
+  }
+
   // Hard-delete every habit entry for the given userSub. Used by the Hub
   // user.deleted cascade. Filtering on userSub is sufficient — each entry
   // doc carries userSub directly, so we don't need to look up habits first.
