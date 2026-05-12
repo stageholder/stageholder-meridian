@@ -38,6 +38,8 @@ import type { Todo, TodoList } from "@repo/core/types";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Pressable } from "react-native";
 
+import { CheckboxFlame } from "@/components/todos/CheckboxFlame";
+import { RowFireSweep } from "@/components/todos/RowFireSweep";
 import { TodoFireBurst } from "@/components/todos/TodoFireBurst";
 import { extractServerMessage, useDeleteTodo, useToggleTodo } from "@/lib/api";
 import { localDateKey } from "@/lib/streak";
@@ -165,30 +167,67 @@ export function TodoRow({
     });
   }
 
-  // The row's glow is interpolated to a low-opacity tint of the priority
-  // color. We compose it as a bg layer underneath the content so text
-  // doesn't get washed out.
-  const glowBg = glow.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["rgba(0,0,0,0)", hexToRgba(stripeColor, 0.22)],
-  });
+  // Glow tint opacity: peaks at 0.22 (the same intensity the old
+  // backgroundColor interpolation reached) and rides the glow value.
+  // Multiply produces an Animated.Node that's still native-drivable.
+  const tintOpacity = Animated.multiply(glow, 0.22);
 
   return (
     <SwipeableRow
+      // Delete is destructive — keep the reveal-and-tap flow so the user
+      // has to confirm. A long left-swipe still reveals the red panel.
       rightActions={[
         { label: "Delete", color: "#ef4444", onPress: handleDelete },
       ]}
+      // Done auto-commits on long swipe (added in @stageholder/ui
+      // SwipeAction.autoCommit). A short swipe still reveals the green
+      // panel as a fallback for users who don't know the gesture. A
+      // full-row swipe fires `complete()` directly and snaps the row
+      // closed — feels like wiping the todo off the screen.
       leftActions={
-        isDone ? [] : [{ label: "Done", color: "#22c55e", onPress: complete }]
+        isDone
+          ? []
+          : [
+              {
+                label: "Done",
+                color: "#22c55e",
+                onPress: complete,
+                autoCommit: true,
+              },
+            ]
       }
     >
-      <Animated.View style={{ backgroundColor: glowBg }}>
+      {/* Outer wrapper provides the always-opaque row surface (so adjacent
+          rows are distinguishable from the scroll bg) AND the
+          positioning context for the absolute effect layers. */}
+      <View style={{ position: "relative", backgroundColor: "#0a0f1f" }}>
+        {/* GLOW TINT — colored overlay, animated opacity (native-driven).
+            Sits behind the sweep + content so text stays crisp. */}
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
+            backgroundColor: stripeColor,
+            opacity: tintOpacity,
+          }}
+        />
+
+        {/* FIRE SWEEP — fills from the very left edge of the row outward.
+            Native-driven via translateX + opacity. originX=0 makes the
+            wave wash across the priority stripe and checkbox area too,
+            so the whole row reads as "consumed by the flame". */}
+        <RowFireSweep trigger={burstAt} originX={0} color={stripeColor} />
+
         <XStack
           py="$2.5"
           pr="$3"
           gap="$2"
           items="stretch"
-          bg="$background"
+          bg="transparent"
           opacity={isSettledDone ? 0.6 : 1}
         >
           {/* PRIORITY STRIPE — vertical color bar, dimmed for none/low so
@@ -213,7 +252,11 @@ export function TodoRow({
               paddingRight: 4,
             }}
           >
-            <CheckCircle done={isDone} color={stripeColor} />
+            <CheckCircle
+              done={isDone}
+              celebrating={completing}
+              color={stripeColor}
+            />
             <TodoFireBurst
               trigger={burstAt}
               x={20}
@@ -292,7 +335,7 @@ export function TodoRow({
             </Text>
           </View>
         </XStack>
-      </Animated.View>
+      </View>
     </SwipeableRow>
   );
 }
@@ -302,7 +345,15 @@ export function TodoRow({
  * Checkbox is a fine generic, but we want a hot color when done (priority
  * stripe color, not brand $color9) and a tight tap timing.
  */
-function CheckCircle({ done, color }: { done: boolean; color: string }) {
+function CheckCircle({
+  done,
+  celebrating,
+  color,
+}: {
+  done: boolean;
+  celebrating: boolean;
+  color: string;
+}) {
   return (
     <View
       width={26}
@@ -313,8 +364,14 @@ function CheckCircle({ done, color }: { done: boolean; color: string }) {
       borderWidth={2}
       borderColor={(done ? color : "$color8") as never}
       bg={(done ? color : "transparent") as never}
+      overflow="hidden"
     >
-      {done ? (
+      {/* Flame layer — only animates while celebrating. Sits over the
+          filled background, replacing the checkmark visually. */}
+      <CheckboxFlame active={done && celebrating} size={26} />
+      {/* Settled checkmark — hidden during celebration so the flame
+          has the spotlight. */}
+      {done && !celebrating ? (
         <Text color="white" fontWeight="700" fontSize={14} lineHeight={14}>
           ✓
         </Text>
