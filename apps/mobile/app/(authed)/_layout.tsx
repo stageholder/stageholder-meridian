@@ -75,6 +75,11 @@ export default function AuthedLayout() {
         name="profile"
         options={{ title: "Profile", tabBarIcon: TabGlyph("◇") }}
       />
+      {/* Hide detail routes from the tab bar. Without `href: null`, Expo
+          Router auto-generates a tab entry for every sibling file/folder
+          under (authed) — including dynamic routes like /habits/[id],
+          which would render as "HABITS/..." beside the real Habits tab. */}
+      <Tabs.Screen name="habits/[id]" options={{ href: null }} />
     </Tabs>
   );
 }
