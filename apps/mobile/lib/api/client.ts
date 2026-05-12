@@ -124,3 +124,28 @@ export function createMeridianClient(): ApiClient {
  * factory directly.
  */
 export const apiClient: ApiClient = createMeridianClient();
+
+/**
+ * Pulls the NestJS validation message out of an Axios error response so
+ * UI toasts can say e.g. "Title is required" or "List is required"
+ * instead of "Request failed with status code 400". Falls back to
+ * undefined when no body / unknown shape — call sites should chain a
+ * generic fallback.
+ *
+ * NestJS validation errors come as `{ message: string | string[] }`;
+ * Zod-pipe errors are wrapped the same way by our ZodValidationPipe
+ * (apps/api/src/common/zod-validation.pipe.ts).
+ *
+ *   onError: (err) => toast.show({
+ *     message: extractServerMessage(err) ?? "Tap to retry.",
+ *   })
+ */
+export function extractServerMessage(err: unknown): string | undefined {
+  if (typeof err !== "object" || err === null) return undefined;
+  const e = err as {
+    response?: { data?: { message?: string | string[] } };
+  };
+  const m = e.response?.data?.message;
+  if (Array.isArray(m)) return m[0];
+  return typeof m === "string" ? m : undefined;
+}

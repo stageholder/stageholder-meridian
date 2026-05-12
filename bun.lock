@@ -100,8 +100,8 @@
         "@expo/ngrok": "^4.1.0",
         "@react-native-async-storage/async-storage": "2.1.0",
         "@repo/core": "workspace:*",
-        "@stageholder/sdk": "^1.0.0-alpha.44",
-        "@stageholder/ui": "^0.1.0-alpha.1",
+        "@stageholder/sdk": "^1.0.0-alpha.45",
+        "@stageholder/ui": "^0.1.0-alpha.2",
         "@tamagui/config": "^2.0.0-rc.41",
         "@tamagui/core": "^2.0.0-rc.41",
         "@tamagui/native": "^2.0.0-rc.41",
@@ -1174,7 +1174,7 @@
 
     "@stageholder/sdk": ["@stageholder/sdk@1.0.0-alpha.43", "https://npm.pkg.github.com/download/@stageholder/sdk/1.0.0-alpha.43/bad86f0d8d602f1236585fc6b62ba04c948149f0", { "dependencies": { "@radix-ui/react-avatar": "^1.1.0", "@radix-ui/react-dialog": "^1.1.0", "@radix-ui/react-dropdown-menu": "^2.1.0", "@radix-ui/react-popover": "^1.1.0", "@radix-ui/react-progress": "^1.1.0", "@radix-ui/react-select": "^2.1.0", "@radix-ui/react-slot": "^1.1.0", "class-variance-authority": "^0.7.0", "clsx": "^2.1.0", "cmdk": "^1.0.0", "iron-session": "^8.0.0", "jose": "^6.0.0", "svix": "^1.45.0", "tailwind-merge": "^2.5.0", "zod": "^3.24.0" }, "peerDependencies": { "@nestjs/common": "^11.0.0", "@nestjs/core": "^11.0.0", "expo-auth-session": ">=5.5.0", "expo-crypto": ">=13.0.0", "expo-linking": ">=6.3.0", "expo-secure-store": ">=13.0.0", "expo-web-browser": ">=13.0.0", "ioredis": "^5.0.0", "mongodb": "^6.0.0", "next": "^16.0.0", "pg": "^8.0.0", "react": "^19.2.0", "react-dom": "^19.2.0", "react-native": ">=0.74.0" } }, "sha512-Pcly/fCLC5qaQp4WjQN9BKXyUtrKLf1kH/StMd01ZlK1/trrZb5MBQX13Qwc0abk4LvYgilRt4s4knqxdl/poQ=="],
 
-    "@stageholder/ui": ["@stageholder/ui@0.1.0-alpha.1", "https://npm.pkg.github.com/download/@stageholder/ui/0.1.0-alpha.1/94dd18327bbcfcb5ce73fa503a369fc143c065f1", { "peerDependencies": { "react": ">=19.0.0", "react-native": ">=0.81.0", "react-native-svg": ">=15.0.0", "react-native-web": "latest", "tamagui": "^2.0.0-rc.41" } }, "sha512-mpXKmsFL+BoOsLAWMeXLjS6thsx8A2E0DzVf6NHinM+Sayf5VNN9VI0jLG9hWDCp0qC2IcyoBfoNGG7QKhFGgg=="],
+    "@stageholder/ui": ["@stageholder/ui@0.1.0-alpha.2", "https://npm.pkg.github.com/download/@stageholder/ui/0.1.0-alpha.2/f4169fd3eef6affd5cea31f94fc5dc967e889df5", { "peerDependencies": { "react": ">=19.0.0", "react-native": ">=0.81.0", "react-native-svg": ">=15.0.0", "react-native-web": "latest", "tamagui": "^2.0.0-rc.41" } }, "sha512-ee/l9RmFutVai9VEDIe126wUpXA3Ty06EZMepTUxInmJMyfZhVNIL014PPAethgwuba9G0VMN0T25d+KqoZE+A=="],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
@@ -3816,7 +3816,7 @@
 
     "@istanbuljs/load-nyc-config/js-yaml": ["js-yaml@3.14.2", "", { "dependencies": { "argparse": "^1.0.7", "esprima": "^4.0.0" }, "bin": { "js-yaml": "bin/js-yaml.js" } }, "sha512-PMSmkqxr106Xa156c2M265Z+FTrPl+oxd/rgOQy2tijQeK5TxQ43psO1ZCwhVOSdnn+RzkzlRz/eY4BgJBYVpg=="],
 
-    "@meridian/mobile/@stageholder/sdk": ["@stageholder/sdk@1.0.0-alpha.44", "https://npm.pkg.github.com/download/@stageholder/sdk/1.0.0-alpha.44/9e3a85dcb9ea6639e1dc226c775f5b67e7d95915", { "dependencies": { "@radix-ui/react-avatar": "^1.1.0", "@radix-ui/react-dialog": "^1.1.0", "@radix-ui/react-dropdown-menu": "^2.1.0", "@radix-ui/react-popover": "^1.1.0", "@radix-ui/react-progress": "^1.1.0", "@radix-ui/react-select": "^2.1.0", "@radix-ui/react-slot": "^1.1.0", "class-variance-authority": "^0.7.0", "clsx": "^2.1.0", "cmdk": "^1.0.0", "iron-session": "^8.0.0", "jose": "^6.0.0", "svix": "^1.45.0", "tailwind-merge": "^2.5.0", "zod": "^3.24.0" }, "peerDependencies": { "@nestjs/common": "^11.0.0", "@nestjs/core": "^11.0.0", "expo-auth-session": ">=5.5.0", "expo-crypto": ">=13.0.0", "expo-linking": ">=6.3.0", "expo-secure-store": ">=13.0.0", "expo-web-browser": ">=13.0.0", "ioredis": "^5.0.0", "mongodb": "^6.0.0", "next": "^16.0.0", "pg": "^8.0.0", "react": "^19.2.0", "react-dom": "^19.2.0", "react-native": ">=0.74.0" } }, "sha512-+/UR2UbZqBLviZDrXMF+RZ0mHS2ePkHzW45cM469d3VpnbIMdmrNe8++E5Sgp7y31KqYpZLvXGs8i3rRdvhx9Q=="],
+    "@meridian/mobile/@stageholder/sdk": ["@stageholder/sdk@1.0.0-alpha.45", "https://npm.pkg.github.com/download/@stageholder/sdk/1.0.0-alpha.45/00c91b5ef9b3422f0444b45270999c07cc93340e", { "dependencies": { "@radix-ui/react-avatar": "^1.1.0", "@radix-ui/react-dialog": "^1.1.0", "@radix-ui/react-dropdown-menu": "^2.1.0", "@radix-ui/react-popover": "^1.1.0", "@radix-ui/react-progress": "^1.1.0", "@radix-ui/react-select": "^2.1.0", "@radix-ui/react-slot": "^1.1.0", "class-variance-authority": "^0.7.0", "clsx": "^2.1.0", "cmdk": "^1.0.0", "iron-session": "^8.0.0", "jose": "^6.0.0", "svix": "^1.45.0", "tailwind-merge": "^2.5.0", "zod": "^3.24.0" }, "peerDependencies": { "@nestjs/common": "^11.0.0", "@nestjs/core": "^11.0.0", "expo-auth-session": ">=5.5.0", "expo-crypto": ">=13.0.0", "expo-linking": ">=6.3.0", "expo-secure-store": ">=13.0.0", "expo-web-browser": ">=13.0.0", "ioredis": "^5.0.0", "mongodb": "^6.0.0", "next": "^16.0.0", "pg": "^8.0.0", "react": "^19.2.0", "react-dom": "^19.2.0", "react-native": ">=0.74.0" } }, "sha512-WI9LOXtFGrcqUY54+SC5qTk5VYFoSLHoRLQ6/JP5zzRKkRK8r9ISQAYYEDIElspzISOcfWRv3RQTnxWXtqNwig=="],
 
     "@meridian/mobile/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 

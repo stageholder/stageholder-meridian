@@ -21,13 +21,15 @@ import { useMemo, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AddHabitSheet } from "@/components/habits/AddHabitSheet";
+import { EditHabitSheet } from "@/components/habits/EditHabitSheet";
 import { HabitCard } from "@/components/habits/HabitCard";
 import { useHabits } from "@/lib/api";
 import { isScheduledToday } from "@/lib/streak";
 
 export default function HabitsScreen() {
   const habitsQuery = useHabits();
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   async function handleRefresh() {
@@ -106,13 +108,19 @@ export default function HabitsScreen() {
                   minutes of stillness. The streak takes care of itself.
                 </EmptyState.Description>
                 <EmptyState.Actions>
-                  <Button onPress={() => setSheetOpen(true)}>
+                  <Button onPress={() => setAddOpen(true)}>
                     Add first habit
                   </Button>
                 </EmptyState.Actions>
               </EmptyState>
             ) : (
-              sorted.map((h: Habit) => <HabitCard key={h.id} habit={h} />)
+              sorted.map((h: Habit) => (
+                <HabitCard
+                  key={h.id}
+                  habit={h}
+                  onEdit={(habit) => setEditId(habit.id)}
+                />
+              ))
             )}
           </YStack>
         </PullToRefresh>
@@ -126,10 +134,15 @@ export default function HabitsScreen() {
         }
         placement="bottom-right"
         b={88}
-        onPress={() => setSheetOpen(true)}
+        onPress={() => setAddOpen(true)}
       />
 
-      <AddHabitSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
+      <AddHabitSheet open={addOpen} onClose={() => setAddOpen(false)} />
+      <EditHabitSheet
+        open={!!editId}
+        habit={habits.find((h) => h.id === editId) ?? null}
+        onClose={() => setEditId(null)}
+      />
     </YStack>
   );
 }

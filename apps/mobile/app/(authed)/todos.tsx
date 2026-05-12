@@ -1,14 +1,17 @@
 // apps/mobile/app/(authed)/todos.tsx
 //
-// Three views via SegmentedControl: Today / Upcoming / Done. Pulls live
-// data from useTodos and filters client-side — keeps the API simple
-// (one endpoint, all the filtering knobs are local).
+// Four views via SegmentedControl: Today / Upcoming / Inbox / Done.
+// Mirrors the PWA's todo navigation surfaces
+// (apps/pwa/components/todos/todo-list-sidebar.tsx):
 //
-// Mobile UX:
-//   - Pull-to-refresh hands off to React Query's refetch
-//   - Error banner with retry surfaces above the list on query failure
-//   - Optimistic toggle/delete via the API layer means the UI is instant
-//   - FAB → AddTodoSheet for quick capture, above the tab bar
+//   - Today    — due/do today OR completed today OR no-due-but-created-today
+//   - Upcoming — due tomorrow or later, not done
+//   - Inbox    — no dueDate AND no doDate, not done
+//   - Done     — completed (any time)
+//
+// Tapping a row opens TodoDetailSheet for the full edit experience
+// (click-to-edit title/description, subtasks, priority, dates, delete).
+// Swipe gestures remain for done/delete shortcuts.
 
 import {
   Banner,
@@ -29,15 +32,17 @@ import { useMemo, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AddTodoSheet } from "@/components/todos/AddTodoSheet";
+import { TodoDetailSheet } from "@/components/todos/TodoDetailSheet";
 import { TodoRow } from "@/components/todos/TodoRow";
 import { useTodos } from "@/lib/api";
 import { localDateKey } from "@/lib/streak";
 
-type View = "today" | "upcoming" | "done";
+type View = "today" | "upcoming" | "inbox" | "done";
 
 export default function TodosScreen() {
   const [view, setView] = useState<View>("today");
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const todosQuery = useTodos();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -54,6 +59,14 @@ export default function TodosScreen() {
 
   const todos = todosQuery.data ?? [];
 
+  // Always look up the selected todo by id so optimistic updates from the
+  // detail sheet's mutations re-render the sheet without us having to
+  // copy state.
+  const detailTodo = useMemo(
+    () => (detailId ? (todos.find((t) => t.id === detailId) ?? null) : null),
+    [detailId, todos],
+  );
+
   const filtered = useMemo(() => {
     return todos.filter((t) => {
       const isDone = t.status === "done";
@@ -68,6 +81,10 @@ export default function TodosScreen() {
         if (!t.dueDate && t.createdAt.slice(0, 10) === today) return true;
         return false;
       }
+      if (view === "inbox") {
+        return !t.dueDate && !t.doDate;
+      }
+      // upcoming
       if (!t.dueDate) return false;
       return t.dueDate > today;
     });
@@ -97,8 +114,11 @@ export default function TodosScreen() {
     const u = todos.filter(
       (x) => x.status !== "done" && x.dueDate && x.dueDate > today,
     ).length;
+    const i = todos.filter(
+      (x) => x.status !== "done" && !x.dueDate && !x.doDate,
+    ).length;
     const d = todos.filter((x) => x.status === "done").length;
-    return { today: t, upcoming: u, done: d };
+    return { today: t, upcoming: u, inbox: i, done: d };
   }, [todos, today]);
 
   return (
@@ -113,7 +133,7 @@ export default function TodosScreen() {
               textTransform="uppercase"
               color="$color11"
             >
-              Inbox · upcoming · done
+              Today · upcoming · inbox · done
             </Paragraph>
             <H3 color="$color12">Todos</H3>
           </YStack>
@@ -124,10 +144,13 @@ export default function TodosScreen() {
             fullWidth
           >
             <SegmentedControl.Item value="today">
-              Today {counts.today > 0 ? `(${counts.today})` : ""}
+              Today{counts.today > 0 ? ` ${counts.today}` : ""}
             </SegmentedControl.Item>
             <SegmentedControl.Item value="upcoming">
-              Upcoming {counts.upcoming > 0 ? `(${counts.upcoming})` : ""}
+              Upcoming{counts.upcoming > 0 ? ` ${counts.upcoming}` : ""}
+            </SegmentedControl.Item>
+            <SegmentedControl.Item value="inbox">
+              Inbox{counts.inbox > 0 ? ` ${counts.inbox}` : ""}
             </SegmentedControl.Item>
             <SegmentedControl.Item value="done">Done</SegmentedControl.Item>
           </SegmentedControl>
@@ -153,7 +176,9 @@ export default function TodosScreen() {
               {sorted.length === 0 ? (
                 <EmptyState>
                   <EmptyState.IconSlot>
-                    <Text fontSize={24}>{view === "done" ? "✓" : "◐"}</Text>
+                    <Text fontSize={24}>
+                      {view === "done" ? "✓" : view === "inbox" ? "✦" : "◐"}
+                    </Text>
                   </EmptyState.IconSlot>
                   <EmptyState.Title>
                     {todosQuery.isLoading
@@ -162,21 +187,25 @@ export default function TodosScreen() {
                         ? "Nothing for today"
                         : view === "upcoming"
                           ? "Clear road ahead"
-                          : "Nothing finished yet"}
+                          : view === "inbox"
+                            ? "Inbox is empty"
+                            : "Nothing finished yet"}
                   </EmptyState.Title>
                   <EmptyState.Description>
                     {view === "today"
                       ? "Tap + to add the first thing you want to handle today."
                       : view === "upcoming"
                         ? "Schedule something with a due date and it'll show up here."
-                        : "Done items live here. Complete a todo to see it."}
+                        : view === "inbox"
+                          ? "Quick captures without a date land here. Add one with +."
+                          : "Done items live here. Complete a todo to see it."}
                   </EmptyState.Description>
                 </EmptyState>
               ) : (
                 sorted.map((t: Todo, i) => (
                   <YStack key={t.id}>
                     {i > 0 ? <Separator /> : null}
-                    <TodoRow todo={t} />
+                    <TodoRow todo={t} onPress={() => setDetailId(t.id)} />
                   </YStack>
                 ))
               )}
@@ -193,10 +222,15 @@ export default function TodosScreen() {
         }
         placement="bottom-right"
         b={88}
-        onPress={() => setSheetOpen(true)}
+        onPress={() => setAddOpen(true)}
       />
 
-      <AddTodoSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
+      <AddTodoSheet open={addOpen} onClose={() => setAddOpen(false)} />
+      <TodoDetailSheet
+        open={!!detailTodo}
+        todo={detailTodo}
+        onClose={() => setDetailId(null)}
+      />
     </YStack>
   );
 }

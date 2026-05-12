@@ -179,3 +179,123 @@ export function useDeleteTodo() {
     onSettled: () => qc.invalidateQueries({ queryKey: todoKeys.lists() }),
   });
 }
+
+/* ----------------------------- Subtasks ---------------------------------- */
+//
+// Subtasks live under /todos/:id/subtasks. We optimistically update the
+// parent todo's subtasks array in every cached list so the TodoDetailSheet
+// reflects changes instantly. Server returns the updated parent Todo on
+// every mutation, which we use to settle the cache.
+
+type Subtask = NonNullable<Todo["subtasks"]>[number];
+
+export type CreateSubtaskInput = { todoId: string; title: string };
+export type UpdateSubtaskInput = {
+  todoId: string;
+  subtaskId: string;
+  patch: { title?: string; status?: "todo" | "done" };
+};
+export type DeleteSubtaskInput = { todoId: string; subtaskId: string };
+
+function patchTodoInCaches(
+  qc: ReturnType<typeof useQueryClient>,
+  todoId: string,
+  apply: (t: Todo) => Todo,
+) {
+  const snapshots = qc.getQueriesData<Todo[]>({ queryKey: todoKeys.lists() });
+  for (const [key, prev] of snapshots) {
+    if (!prev) continue;
+    qc.setQueryData<Todo[]>(
+      key,
+      prev.map((t) => (t.id === todoId ? apply(t) : t)),
+    );
+  }
+  return snapshots;
+}
+
+export function useAddSubtask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateSubtaskInput) => {
+      const { data } = await apiClient.post<Todo>(
+        `/todos/${input.todoId}/subtasks`,
+        { title: input.title },
+      );
+      return data;
+    },
+    onMutate: async (input) => {
+      await qc.cancelQueries({ queryKey: todoKeys.lists() });
+      const snapshots = patchTodoInCaches(qc, input.todoId, (t) => ({
+        ...t,
+        subtasks: [
+          ...(t.subtasks ?? []),
+          {
+            id: `optimistic-${Date.now()}`,
+            title: input.title,
+            status: "todo",
+            order: (t.subtasks?.length ?? 0) + 1,
+          } as Subtask,
+        ],
+      }));
+      return { snapshots };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (!ctx?.snapshots) return;
+      for (const [key, prev] of ctx.snapshots) qc.setQueryData(key, prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: todoKeys.lists() }),
+  });
+}
+
+export function useUpdateSubtask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateSubtaskInput) => {
+      const { data } = await apiClient.patch<Todo>(
+        `/todos/${input.todoId}/subtasks/${input.subtaskId}`,
+        input.patch,
+      );
+      return data;
+    },
+    onMutate: async (input) => {
+      await qc.cancelQueries({ queryKey: todoKeys.lists() });
+      const snapshots = patchTodoInCaches(qc, input.todoId, (t) => ({
+        ...t,
+        subtasks: (t.subtasks ?? []).map((s) =>
+          s.id === input.subtaskId ? ({ ...s, ...input.patch } as Subtask) : s,
+        ),
+      }));
+      return { snapshots };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (!ctx?.snapshots) return;
+      for (const [key, prev] of ctx.snapshots) qc.setQueryData(key, prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: todoKeys.lists() }),
+  });
+}
+
+export function useDeleteSubtask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: DeleteSubtaskInput) => {
+      await apiClient.delete(
+        `/todos/${input.todoId}/subtasks/${input.subtaskId}`,
+      );
+      return input;
+    },
+    onMutate: async (input) => {
+      await qc.cancelQueries({ queryKey: todoKeys.lists() });
+      const snapshots = patchTodoInCaches(qc, input.todoId, (t) => ({
+        ...t,
+        subtasks: (t.subtasks ?? []).filter((s) => s.id !== input.subtaskId),
+      }));
+      return { snapshots };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (!ctx?.snapshots) return;
+      for (const [key, prev] of ctx.snapshots) qc.setQueryData(key, prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: todoKeys.lists() }),
+  });
+}

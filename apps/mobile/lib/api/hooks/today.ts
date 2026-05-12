@@ -11,7 +11,7 @@
 // useQueries — same as one hook returning a stream, but each habit's
 // entry cache is independently invalidatable and indexable.
 
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import type { Habit, HabitEntry } from "@repo/core/types";
 
 import { apiClient } from "../client";
@@ -19,6 +19,53 @@ import { habitKeys } from "../keys";
 import { computeStreak, isCheckedToday, isScheduledToday } from "@/lib/streak";
 
 import { useHabits } from "./habits";
+
+/* ------------------------- Calendar (month) -------------------------- */
+//
+// /calendar?month=YYYY-MM returns a Record keyed by yyyy-mm-dd, with each
+// day's aggregated todos / journals / habit entries. Same shape the PWA
+// consumes via apps/pwa/lib/api/calendar.ts so client logic can be shared.
+
+export type CalendarDay = {
+  todos: Array<{
+    id: string;
+    title: string;
+    status: string;
+    priority: string;
+    dueDate?: string;
+    doDate?: string;
+    listId: string;
+  }>;
+  journals: Array<{
+    id: string;
+    title: string;
+    date: string;
+    wordCount: number;
+  }>;
+  habitEntries: Array<{
+    id: string;
+    habitId: string;
+    value: number;
+    type?: "completion" | "skip";
+    targetCountSnapshot?: number;
+  }>;
+};
+
+export type CalendarMonth = Record<string, CalendarDay>;
+
+export function useCalendarData(month: string | null) {
+  return useQuery({
+    queryKey: ["calendar", month] as const,
+    queryFn: async () => {
+      const { data } = await apiClient.get<CalendarMonth>("/calendar", {
+        params: { month },
+      });
+      return data;
+    },
+    enabled: !!month,
+    staleTime: 60_000,
+  });
+}
 
 export type TodayHabitProgress = {
   doneToday: number;

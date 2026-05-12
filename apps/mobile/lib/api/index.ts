@@ -7,6 +7,7 @@ export {
   apiClient,
   ClientEvents,
   createMeridianClient,
+  extractServerMessage,
   type ApiClient,
 } from "./client";
 export { QueryProvider, type QueryProviderProps } from "./Provider";
@@ -19,3 +20,4 @@ export * from "./hooks/todos";
 export * from "./hooks/habits";
 export * from "./hooks/journal";
 export * from "./hooks/today";
+export * from "./hooks/light";

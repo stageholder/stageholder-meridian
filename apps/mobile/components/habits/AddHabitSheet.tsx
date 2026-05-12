@@ -17,7 +17,7 @@ import {
 } from "@stageholder/ui";
 import { useState } from "react";
 
-import { useCreateHabit } from "@/lib/api";
+import { extractServerMessage, useCreateHabit } from "@/lib/api";
 
 const HABIT_COLOR_PALETTE = [
   "#ef4444", // red
@@ -66,7 +66,10 @@ export function AddHabitSheet({ open, onClose }: AddHabitSheetProps) {
         onError: (err) => {
           toast.show({
             title: "Couldn't create habit",
-            message: (err as Error).message ?? "Tap to retry.",
+            message:
+              extractServerMessage(err) ??
+              (err as Error).message ??
+              "Tap to retry.",
             intent: "danger",
           });
         },
@@ -170,7 +173,6 @@ export function AddHabitSheet({ open, onClose }: AddHabitSheetProps) {
               Cancel
             </Button>
             <Button
-              key={name.trim() ? "ready" : "empty"}
               intent="primary"
               onPress={handleCreate}
               flex={1}

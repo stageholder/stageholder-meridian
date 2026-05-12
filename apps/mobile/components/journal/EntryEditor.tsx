@@ -1,14 +1,19 @@
 // apps/mobile/components/journal/EntryEditor.tsx
 //
-// One journal entry's editor: mood + body + tags. useAutosave fires
-// useUpdateJournal after 500ms of typing-quiet — the EntryEditor stays
-// honest about its scope (plain TextArea, no rich-text editor; that's
-// deferred to a future round with a proper cross-platform decision).
+// One journal entry's editor: title + mood + body + tags. useAutosave
+// fires useUpdateJournal after 500ms of typing-quiet. Match the PWA's
+// editor field set (apps/pwa/components/journal/journal-editor.tsx) —
+// minus the TipTap rich text, which is deferred to a future round.
 //
-// Crossing the daily word target fires the only celebration in this
-// screen — a toast + success haptic, exactly once per day per entry.
+// Crossing the daily word target fires a single celebration toast +
+// success haptic.
+//
+// The delete action lives here (per-entry) and uses Alert.alert for the
+// confirm — matches the PWA's window.confirm before useDeleteJournal.
 
 import {
+  IconButton,
+  Input,
   MoodPicker,
   Paragraph,
   Progress,
@@ -23,8 +28,9 @@ import {
 } from "@stageholder/ui";
 import type { Journal } from "@repo/core/types";
 import { useEffect, useRef, useState } from "react";
+import { Alert } from "react-native";
 
-import { useUpdateJournal } from "@/lib/api";
+import { useDeleteJournal, useUpdateJournal } from "@/lib/api";
 
 function normalizeTags(t: Journal["tags"]): string[] {
   if (Array.isArray(t)) return t;
@@ -45,7 +51,7 @@ export type EntryEditorProps = {
   entry: Journal;
   /** Daily word target — drives the target-hit celebration. */
   dailyTarget: number;
-  /** Total words across all entries on the same day (server's `wordCount`s summed). */
+  /** Total words across all entries on the same day. */
   dayTotalWords: number;
 };
 
@@ -55,17 +61,18 @@ export function EntryEditor({
   dayTotalWords,
 }: EntryEditorProps) {
   const update = useUpdateJournal();
+  const remove = useDeleteJournal();
   const haptic = useHaptic();
   const toast = useToast();
 
+  const [title, setTitle] = useState(entry.title ?? "");
   const [content, setContent] = useState(entry.content);
   const [mood, setMood] = useState<number | undefined>(entry.mood ?? undefined);
   const [tags, setTags] = useState<string[]>(normalizeTags(entry.tags));
 
   const wordCount = countWords(content);
   // Project today's total: subtract the server's wordCount for this entry,
-  // add the live local count. Lets the progress bar move smoothly while
-  // the user types instead of jumping when the autosave settles.
+  // add the live local count. Lets the progress bar move smoothly.
   const totalForDay = dayTotalWords - (entry.wordCount ?? 0) + wordCount;
   const percentToTarget =
     dailyTarget > 0 ? Math.min(100, (totalForDay / dailyTarget) * 100) : 0;
@@ -89,19 +96,44 @@ export function EntryEditor({
     }
   }, [totalForDay, dayTotalWords, dailyTarget, haptic, toast]);
 
-  // Autosave: id changes when the user switches entries; including `_id`
-  // in the watched value forces useAutosave to re-arm without firing
-  // a save just for the entry swap.
-  const watched = { content, mood, tags, _id: entry.id };
+  // Autosave — `_id` in the watched value forces useAutosave to re-arm
+  // when the user switches entries without firing a save for the swap.
+  const watched = { title, content, mood, tags, _id: entry.id };
   useAutosave(watched, {
     delay: 500,
     onSave: async (v) => {
       await update.mutateAsync({
         id: entry.id,
-        patch: { content: v.content, mood: v.mood, tags: v.tags },
+        patch: {
+          title: v.title,
+          content: v.content,
+          mood: v.mood,
+          tags: v.tags,
+        },
       });
     },
   });
+
+  function handleDelete() {
+    Alert.alert("Delete entry?", "This entry will be removed permanently.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          haptic.impact("medium");
+          remove.mutate(entry.id, {
+            onError: () =>
+              toast.show({
+                title: "Couldn't delete",
+                message: "Restored. Tap to retry.",
+                intent: "danger",
+              }),
+          });
+        },
+      },
+    ]);
+  }
 
   return (
     <YStack
@@ -112,6 +144,33 @@ export function EntryEditor({
       borderWidth={1}
       borderColor="$color6"
     >
+      {/* Title (placeholder = formatted date, matches PWA new-entry editor) */}
+      <XStack items="center" gap="$2">
+        <Input
+          flex={1}
+          value={title}
+          onChangeText={setTitle}
+          placeholder="Untitled entry"
+          fontSize="$4"
+          fontWeight="600"
+          size="$3"
+          borderWidth={0}
+          bg="transparent"
+          px={0 as never}
+        />
+        <IconButton
+          size="$2"
+          variant="ghost"
+          intent="danger"
+          onPress={handleDelete}
+          aria-label="Delete entry"
+        >
+          <Text fontSize="$3" color="$color11">
+            ✕
+          </Text>
+        </IconButton>
+      </XStack>
+
       <XStack items="center" justify="space-between">
         <MoodPicker
           value={mood ?? null}

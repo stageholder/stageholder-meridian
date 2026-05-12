@@ -22,6 +22,7 @@ import {
 } from "@stageholder/ui";
 import type { Todo } from "@repo/core/types";
 import { useState } from "react";
+import { Pressable } from "react-native";
 
 import { EmberBurst } from "@/components/EmberBurst";
 import { useDeleteTodo, useToggleTodo } from "@/lib/api";
@@ -35,9 +36,13 @@ const PRIORITY_COLOR: Record<Todo["priority"], string> = {
   urgent: "#ef4444",
 };
 
-export type TodoRowProps = { todo: Todo };
+export type TodoRowProps = {
+  todo: Todo;
+  /** Tap the row body (not the checkbox) to open the detail sheet. */
+  onPress?: (todo: Todo) => void;
+};
 
-export function TodoRow({ todo }: TodoRowProps) {
+export function TodoRow({ todo, onPress }: TodoRowProps) {
   const haptic = useHaptic();
   const toast = useToast();
   const toggle = useToggleTodo();
@@ -109,36 +114,50 @@ export function TodoRow({ todo }: TodoRowProps) {
           />
         </View>
 
-        <YStack flex={1} gap={2}>
-          <Text
-            fontSize="$3"
-            fontWeight={isDone ? "400" : "500"}
-            color={isDone ? "$color10" : "$color12"}
-            numberOfLines={1}
-            style={isDone ? { textDecorationLine: "line-through" } : undefined}
-          >
-            {todo.title}
-          </Text>
-          {dueLabel || todo.description ? (
-            <XStack gap="$2" items="center" flexWrap="wrap">
-              {dueLabel ? (
-                <Text fontSize="$1" color="$color11">
-                  {dueLabel}
-                </Text>
-              ) : null}
-              {todo.description ? (
-                <Paragraph
-                  fontSize="$1"
-                  color="$color11"
-                  numberOfLines={1}
-                  flex={1}
-                >
-                  · {todo.description}
-                </Paragraph>
-              ) : null}
-            </XStack>
-          ) : null}
-        </YStack>
+        {/* Row body is the tap target for the detail sheet — checkbox and
+            swipe gestures sit outside it so they don't fight each other. */}
+        <Pressable style={{ flex: 1 }} onPress={() => onPress?.(todo)}>
+          <YStack gap={2}>
+            <Text
+              fontSize="$3"
+              fontWeight={isDone ? "400" : "500"}
+              color={isDone ? "$color10" : "$color12"}
+              numberOfLines={1}
+              style={
+                isDone ? { textDecorationLine: "line-through" } : undefined
+              }
+            >
+              {todo.title}
+            </Text>
+            {dueLabel ||
+            todo.description ||
+            (todo.subtasks?.length ?? 0) > 0 ? (
+              <XStack gap="$2" items="center" flexWrap="wrap">
+                {dueLabel ? (
+                  <Text fontSize="$1" color="$color11">
+                    {dueLabel}
+                  </Text>
+                ) : null}
+                {(todo.subtasks?.length ?? 0) > 0 ? (
+                  <Text fontSize="$1" color="$color11">
+                    · {todo.subtasks!.filter((s) => s.status === "done").length}
+                    /{todo.subtasks!.length}
+                  </Text>
+                ) : null}
+                {todo.description ? (
+                  <Paragraph
+                    fontSize="$1"
+                    color="$color11"
+                    numberOfLines={1}
+                    flex={1}
+                  >
+                    · {todo.description}
+                  </Paragraph>
+                ) : null}
+              </XStack>
+            ) : null}
+          </YStack>
+        </Pressable>
 
         {/* Priority dot — only shown for high/urgent open todos */}
         {(todo.priority === "high" || todo.priority === "urgent") && !isDone ? (

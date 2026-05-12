@@ -69,14 +69,41 @@ export function useCreateJournal() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: CreateJournalInput) => {
+      // CreateJournalDto requires title.min(1) AND date (yyyy-mm-dd) —
+      // see apps/api/src/modules/journal/journal.dto.ts. Default both so
+      // call sites don't need to pre-fill: title becomes the date label
+      // (matches PWA's editor where the date is the title placeholder),
+      // date falls back to today.
+      const date = input.date ?? localDateKey();
+      const title =
+        input.title && input.title.trim().length > 0
+          ? input.title.trim()
+          : dateLabel(date);
       const { data } = await apiClient.post<Journal>("/journals", {
-        title: "",
         ...input,
+        title,
+        date,
       });
       return data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: journalKeys.lists() }),
   });
+}
+
+function dateLabel(yyyymmdd: string): string {
+  const [y, m, d] = yyyymmdd.split("-").map(Number);
+  const dt = new Date(y!, (m ?? 1) - 1, d ?? 1);
+  return dt.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function localDateKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export type UpdateJournalInput = Partial<CreateJournalInput>;

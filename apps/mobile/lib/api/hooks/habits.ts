@@ -213,3 +213,70 @@ export function useSkipHabit() {
     },
   });
 }
+
+/**
+ * Update an existing entry (used by Undo — PATCH value -= 1). Matches
+ * the PWA's handleUndo path in components/habits/habit-card.tsx:147 so
+ * deleting an entry only happens when the user explicitly removes it
+ * via the detail screen, not via Undo on the card.
+ */
+export type UpdateHabitEntryInput = {
+  habitId: string;
+  entryId: string;
+  patch: Partial<Pick<HabitEntry, "value" | "type" | "notes" | "skipReason">>;
+};
+
+export function useUpdateHabitEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ habitId, entryId, patch }: UpdateHabitEntryInput) => {
+      const { data } = await apiClient.patch<HabitEntry>(
+        `/habits/${habitId}/entries/${entryId}`,
+        patch,
+      );
+      return data;
+    },
+    onMutate: async ({ habitId, entryId, patch }) => {
+      const key = habitKeys.entries(habitId);
+      await qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<HabitEntry[]>(key);
+      if (prev) {
+        qc.setQueryData<HabitEntry[]>(
+          key,
+          prev.map((e) =>
+            e.id === entryId ? ({ ...e, ...patch } as HabitEntry) : e,
+          ),
+        );
+      }
+      return { prev, key };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev !== undefined) qc.setQueryData(ctx.key, ctx.prev);
+    },
+    onSettled: (_data, _error, vars) => {
+      qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
+      qc.invalidateQueries({ queryKey: habitKeys.lists() });
+    },
+  });
+}
+
+/** Delete an entry outright — used by the detail screen for cleanup. */
+export function useDeleteHabitEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      habitId,
+      entryId,
+    }: {
+      habitId: string;
+      entryId: string;
+    }) => {
+      await apiClient.delete(`/habits/${habitId}/entries/${entryId}`);
+      return { habitId, entryId };
+    },
+    onSettled: (_data, _error, vars) => {
+      qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
+      qc.invalidateQueries({ queryKey: habitKeys.lists() });
+    },
+  });
+}

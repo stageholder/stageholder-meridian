@@ -61,13 +61,7 @@ export default function SignInScreen() {
           </YStack>
 
           <YStack gap="$3" pt="$4">
-            {/* `key` flips when disabled changes — Tamagui v2 calls a few
-                hooks conditionally based on prop shape, so a same-instance
-                disabled-toggle triggers "Rendered more hooks…". Forcing a
-                remount via key sidesteps it. This is the workaround Tamagui
-                docs recommend; see the `transition prop rules` section. */}
             <Button
-              key={isLoading ? "loading" : "idle"}
               intent="primary"
               size="$5"
               disabled={isLoading}
