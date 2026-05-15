@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "identifier": "com.stageholder.meridian",
   "build": {
-    "beforeDevCommand": "bun run dev --filter=pwa",
-    "beforeBuildCommand": "bun run build --filter=pwa",
+    "beforeDevCommand": "cd ../pwa && bun run dev",
+    "beforeBuildCommand": "cd ../pwa && bun run build",
     "devUrl": "http://localhost:4001",
     "frontendDist": "../pwa/dist"
   },
@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: asset: https://asset.localhost; font-src 'self' data:; connect-src 'self' http://localhost:4000 http://localhost:4001 http://localhost:4828 http://localhost:14001 http://127.0.0.1:* https://api.meridian.stageholder.com https://id.stageholder.com ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: asset: https://asset.localhost; font-src 'self' data:; connect-src 'self' http://localhost:14001 https://api.meridian.stageholder.com https://id.stageholder.com ipc: http://ipc.localhost"
     }
   },
   "plugins": {

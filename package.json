@@ -8,7 +8,7 @@
     "build:desktop:production": "turbo run build:production --filter=desktop",
     "dev": "turbo run dev",
     "dev:pwa": "turbo run dev --filter=pwa --filter=api",
-    "dev:desktop": "turbo run dev --filter=pwa --filter=desktop --filter=api",
+    "dev:desktop": "turbo run dev --filter=desktop --filter=api",
     "mobile": "turbo run dev dev:tunnel --filter=api --filter=@meridian/mobile",
     "mobile:ios": "turbo run dev dev:ios --filter=api --filter=@meridian/mobile",
     "mobile:android": "turbo run dev dev:android --filter=api --filter=@meridian/mobile",

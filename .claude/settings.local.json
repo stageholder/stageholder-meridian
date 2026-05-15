@@ -13,7 +13,11 @@
       "WebSearch",
       "mcp__plugin_context7_context7__query-docs",
       "WebFetch(domain:v2.tauri.app)",
-      "Bash(bun run *)"
+      "Bash(bun run *)",
+      "Read(//Users/garda_dafi/Project/stageholder-identity/apps/api/src/interaction/**)",
+      "Read(//Users/garda_dafi/Project/stageholder-identity/apps/web/app/**)",
+      "Read(//Users/garda_dafi/Project/stageholder-identity/apps/web/**)",
+      "Read(//Users/garda_dafi/Project/stageholder-identity/apps/**)"
     ]
   },
   "enabledPlugins": {
