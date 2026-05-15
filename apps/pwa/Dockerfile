@@ -1,12 +1,14 @@
+# ── Pruner: trim the monorepo to just the PWA + its workspace deps ──
 FROM oven/bun:1.3.6 AS pruner
 WORKDIR /app
 RUN bun add -g turbo@^2
 COPY . .
 RUN turbo prune pwa --docker
 
+# ── Installer: install only the pruned dep tree ──
 FROM oven/bun:1.3.6 AS installer
 WORKDIR /app
-# Private @stageholder/* packages resolve via npm.pkg.github.com — the PAT
+# Private @stageholder/* packages resolve via npm.pkg.github.com — PAT
 # travels in as a build-arg, wired to the committed .npmrc's
 # ${GITHUB_PACKAGES_TOKEN} reference. ARG scope ends at this stage so
 # the token never lands in the runtime image layers.
@@ -18,52 +20,37 @@ COPY .npmrc ./.npmrc
 RUN bun install --ignore-scripts
 RUN rm -f ./.npmrc
 
+# ── Builder: vite build → dist/ ──
 FROM oven/bun:1.3.6 AS builder
 WORKDIR /app
 RUN bun add -g turbo@^2
 COPY --from=installer /app/ .
 COPY --from=pruner /app/out/full/ .
-ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-# NEXT_PUBLIC_* vars are inlined by Next.js at build time — must flow in
-# here, not at runtime. Cloud Run's env vars only affect the server.
-ARG NEXT_PUBLIC_API_URL=/api/v1
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-ARG NEXT_PUBLIC_HUB_URL
-ENV NEXT_PUBLIC_HUB_URL=$NEXT_PUBLIC_HUB_URL
-ARG NEXT_PUBLIC_APP_URL
-ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
-ARG NEXT_PUBLIC_IDENTITY_ISSUER_URL
-ENV NEXT_PUBLIC_IDENTITY_ISSUER_URL=$NEXT_PUBLIC_IDENTITY_ISSUER_URL
-ENV NEXT_OUTPUT=standalone
-# Build-time placeholders — Next.js's "Collecting page data" phase imports
-# server modules, which triggers eager schema validation in
-# `defineStageholderConfig` and `createMongoStorageBackend`. The values below
-# only need to satisfy the SDK's Zod schema; real values are injected at
-# runtime via Cloud Run env vars and override these.
-ENV MONGODB_URI="mongodb://build-placeholder.invalid:27017"
-ENV IDENTITY_ISSUER_URL="https://build-placeholder.invalid/oidc"
-ENV IDENTITY_CLIENT_ID="build-placeholder"
-ENV IDENTITY_CLIENT_SECRET="build-placeholder"
-ENV IDENTITY_REDIRECT_URI="https://build-placeholder.invalid/auth/callback"
-ENV SESSION_SECRET="build-placeholder-build-placeholder-build-placeholder"
-ENV IDENTITY_TOKEN_AUDIENCE="urn:stageholder:api"
+# VITE_* vars are inlined into the SPA bundle at build time. Cloud Run's
+# runtime env vars CANNOT change these — they must flow in here. Public
+# only; no secrets ship in the client bundle.
+ARG VITE_IDENTITY_ISSUER_URL
+ENV VITE_IDENTITY_ISSUER_URL=$VITE_IDENTITY_ISSUER_URL
+ARG VITE_IDENTITY_CLIENT_ID
+ENV VITE_IDENTITY_CLIENT_ID=$VITE_IDENTITY_CLIENT_ID
+ARG VITE_PUBLIC_APP_URL
+ENV VITE_PUBLIC_APP_URL=$VITE_PUBLIC_APP_URL
+ARG VITE_API_URL=/api/v1
+ENV VITE_API_URL=$VITE_API_URL
+ARG VITE_HUB_WEB_URL
+ENV VITE_HUB_WEB_URL=$VITE_HUB_WEB_URL
 RUN turbo build --filter=pwa --no-daemon && \
-    if [ ! -d "/app/apps/pwa/.next/standalone" ]; then \
-      echo "ERROR: Next.js standalone build failed"; exit 1; \
+    if [ ! -d "/app/apps/pwa/dist" ]; then \
+      echo "ERROR: Vite build did not produce apps/pwa/dist/"; exit 1; \
     fi
 
-FROM oven/bun:1.3.6-slim AS runner
-WORKDIR /app
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-COPY --from=builder --chown=bun:bun /app/apps/pwa/.next/standalone ./
-COPY --from=builder --chown=bun:bun /app/apps/pwa/.next/static ./apps/pwa/.next/static
-COPY --from=builder --chown=bun:bun /app/apps/pwa/public ./apps/pwa/public
-USER bun
-EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD bun -e "fetch('http://localhost:3000/').then(r => process.exit(r.status < 500 ? 0 : 1)).catch(() => process.exit(1))"
-CMD ["bun", "run", "apps/pwa/server.js"]
+# ── Runner: nginx static-serve ──
+FROM nginx:1.27-alpine AS runner
+WORKDIR /usr/share/nginx/html
+COPY --from=builder /app/apps/pwa/dist/ ./
+COPY apps/pwa/nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 4001
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD wget --spider --quiet http://localhost:4001/ || exit 1
+CMD ["nginx", "-g", "daemon off;"]

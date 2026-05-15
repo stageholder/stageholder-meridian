@@ -7,10 +7,11 @@ steps:
         docker build \
           -t $_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/pwa:$COMMIT_SHA \
           -t $_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/pwa:latest \
-          --build-arg NEXT_PUBLIC_API_URL=$_NEXT_PUBLIC_API_URL \
-          --build-arg NEXT_PUBLIC_HUB_URL=$_NEXT_PUBLIC_HUB_URL \
-          --build-arg NEXT_PUBLIC_APP_URL=$_NEXT_PUBLIC_APP_URL \
-          --build-arg NEXT_PUBLIC_IDENTITY_ISSUER_URL=$_NEXT_PUBLIC_IDENTITY_ISSUER_URL \
+          --build-arg VITE_API_URL=$_VITE_API_URL \
+          --build-arg VITE_HUB_WEB_URL=$_VITE_HUB_WEB_URL \
+          --build-arg VITE_PUBLIC_APP_URL=$_VITE_PUBLIC_APP_URL \
+          --build-arg VITE_IDENTITY_ISSUER_URL=$_VITE_IDENTITY_ISSUER_URL \
+          --build-arg VITE_IDENTITY_CLIENT_ID=$_VITE_IDENTITY_CLIENT_ID \
           --build-arg GITHUB_PACKAGES_TOKEN=$_GITHUB_PACKAGES_TOKEN \
           -f apps/pwa/Dockerfile \
           .
@@ -31,17 +32,18 @@ steps:
       - --image=$_GCR_HOSTNAME/$PROJECT_ID/$REPO_NAME/pwa:$COMMIT_SHA
       - --region=$_DEPLOY_REGION
       - --platform=managed
-      - --port=3000
+      - --port=4001
       - --allow-unauthenticated
 
 substitutions:
   _GCR_HOSTNAME: gcr.io
   _SERVICE_NAME: stageholder-meridian-pwa
   _DEPLOY_REGION: asia-southeast1
-  _NEXT_PUBLIC_API_URL: https://api.meridian.stageholder.com/api/v1
-  _NEXT_PUBLIC_HUB_URL: https://id.stageholder.com
-  _NEXT_PUBLIC_APP_URL: https://meridian.stageholder.com
-  _NEXT_PUBLIC_IDENTITY_ISSUER_URL: https://id.stageholder.com
+  _VITE_API_URL: https://api.meridian.stageholder.com/api/v1
+  _VITE_HUB_WEB_URL: https://id.stageholder.com
+  _VITE_PUBLIC_APP_URL: https://meridian.stageholder.com
+  _VITE_IDENTITY_ISSUER_URL: https://id.stageholder.com/oidc
+  _VITE_IDENTITY_CLIENT_ID: meridian-web
   # _GITHUB_PACKAGES_TOKEN must be set as a substitution on the Cloud Build
   # trigger (PAT with read:packages scope on the stageholder-identity repo).
   # Visible in build logs — keep build-log access restricted.

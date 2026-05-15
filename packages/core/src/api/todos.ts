@@ -1,11 +1,11 @@
-import type { AxiosInstance } from "axios";
+import type { ApiClientLike } from "./client";
 import type { TodoList, Todo } from "@repo/core/types";
 
 /**
  * Todos + todo-lists API client. Routes are rooted at `/todos` and
  * `/todo-lists` — scoping is per authenticated user server-side.
  */
-export function createTodosApi(client: AxiosInstance) {
+export function createTodosApi(client: ApiClientLike) {
   return {
     // Todo Lists
     createList: async (data: {

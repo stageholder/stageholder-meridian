@@ -1,7 +1,6 @@
-import type { AxiosInstance } from "axios";
 import type { EntityTable } from "dexie";
 import { db } from "../db/index";
-import { flush } from "./mutation-queue";
+import { flush, type MutationApiClient } from "./mutation-queue";
 
 interface SyncableEntity {
   id: string;
@@ -83,7 +82,7 @@ export async function syncEntity<T extends SyncableEntity>(
 
 export async function fullSync(
   userSub: string,
-  client: AxiosInstance,
+  client: MutationApiClient,
   fetchers: Record<string, (since?: string) => Promise<SyncableEntity[]>>,
   tables: Record<string, EntityTable<SyncableEntity, "id">>,
 ): Promise<SyncConflict[]> {

@@ -1,11 +1,11 @@
-import type { AxiosInstance } from "axios";
+import type { ApiClientLike } from "./client";
 import type { Habit, HabitEntry } from "@repo/core/types";
 
 /**
  * Habits API client. Routes are rooted at `/habits` — scoping is per
  * authenticated user server-side, so no workspace prefix is needed.
  */
-export function createHabitsApi(client: AxiosInstance) {
+export function createHabitsApi(client: ApiClientLike) {
   return {
     // Habits
     create: async (data: {

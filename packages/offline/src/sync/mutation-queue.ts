@@ -1,5 +1,21 @@
-import type { AxiosInstance } from "axios";
 import { db, type PendingMutation } from "../db/index";
+
+/**
+ * Structural shape the mutation queue needs from the host's API client.
+ * Compatible with both axios's `AxiosInstance` (mobile, packages/core) and
+ * the PWA's `ServiceWrapper` (SDK SPA-backed fetch wrapper).
+ *
+ * Only the three methods the queue actually calls are required — anything
+ * else on the underlying client is irrelevant here.
+ */
+export interface MutationApiClient {
+  post(
+    path: string,
+    payload?: unknown,
+  ): Promise<{ data: { id?: string } & Record<string, unknown> }>;
+  patch(path: string, payload?: unknown): Promise<unknown>;
+  delete(path: string): Promise<unknown>;
+}
 import { reconcileId } from "./id-reconciler";
 import { logger } from "@repo/core/platform/logger";
 
@@ -58,7 +74,7 @@ export async function clearForOtherSubs(currentSub: string): Promise<number> {
 }
 
 export async function flush(
-  client: AxiosInstance,
+  client: MutationApiClient,
   userSub?: string,
 ): Promise<{ success: number; failed: number }> {
   const query = db.pendingMutations.where("status").anyOf("pending", "failed");

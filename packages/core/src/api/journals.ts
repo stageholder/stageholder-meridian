@@ -1,4 +1,4 @@
-import type { AxiosInstance } from "axios";
+import type { ApiClientLike } from "./client";
 import type { Journal } from "@repo/core/types";
 
 /**
@@ -6,7 +6,7 @@ import type { Journal } from "@repo/core/types";
  * API scopes everything off the authenticated `sub` server-side, so there is
  * no longer a workspace prefix.
  */
-export function createJournalsApi(client: AxiosInstance) {
+export function createJournalsApi(client: ApiClientLike) {
   return {
     create: async (data: {
       title: string;

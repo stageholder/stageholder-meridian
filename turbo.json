@@ -5,24 +5,22 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "outputs": ["dist/**", ".output/**"],
       "env": [
         "NODE_ENV",
         "MONGODB_URI",
         "IDENTITY_ISSUER_URL",
         "IDENTITY_CLIENT_ID",
         "IDENTITY_CLIENT_SECRET",
-        "IDENTITY_REDIRECT_URI",
         "IDENTITY_TOKEN_AUDIENCE",
-        "SESSION_SECRET",
         "MERIDIAN_API_URL",
-        "LOGOUT_REDIRECT_URI",
-        "NEXT_PUBLIC_API_URL",
-        "NEXT_PUBLIC_HUB_URL",
-        "NEXT_PUBLIC_APP_URL",
-        "NEXT_PUBLIC_IDENTITY_ISSUER_URL",
-        "NEXT_TELEMETRY_DISABLED",
-        "NEXT_OUTPUT"
+        "CORS_ORIGINS",
+        "FRONTEND_URL",
+        "VITE_API_URL",
+        "VITE_HUB_WEB_URL",
+        "VITE_PUBLIC_APP_URL",
+        "VITE_IDENTITY_ISSUER_URL",
+        "VITE_IDENTITY_CLIENT_ID"
       ]
     },
     "lint": {
@@ -30,14 +28,14 @@
       "env": [
         "NODE_ENV",
         "FRONTEND_URL",
+        "CORS_ORIGINS",
         "PORT",
         "DEFAULT_TIMEZONE",
         "IDENTITY_ISSUER_URL",
         "IDENTITY_CLIENT_ID",
         "IDENTITY_CLIENT_SECRET",
         "IDENTITY_TOKEN_AUDIENCE",
-        "MERIDIAN_API_URL",
-        "SESSION_SECRET"
+        "MERIDIAN_API_URL"
       ]
     },
     "check": {

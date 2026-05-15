@@ -1,11 +1,11 @@
-import type { AxiosInstance } from "axios";
+import type { ApiClientLike } from "./client";
 import type { Activity } from "@repo/core/types";
 
 /**
  * Activities API client. Routes are rooted at `/activities` — scoping
  * is per authenticated user server-side.
  */
-export function createActivitiesApi(client: AxiosInstance) {
+export function createActivitiesApi(client: ApiClientLike) {
   return {
     list: async (params?: {
       page?: number;

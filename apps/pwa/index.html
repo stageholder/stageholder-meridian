@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon/apple-touch-icon.png" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <!--
+      `mobile-web-app-capable` is the W3C standard (Chrome/Edge). Apple
+      deprecates `apple-mobile-web-app-capable` but iOS still ONLY honors
+      that one for adding-to-home-screen, so we ship both. Same story for
+      the status-bar style and title — Apple-specific extensions live
+      under the apple-* prefix and have no W3C equivalent.
+    -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Meridian" />
+    <meta name="theme-color" content="#0e7490" />
+    <title>Meridian — Personal Productivity</title>
+
+    <!--
+      Resolve the theme synchronously before first paint so the splash
+      doesn't flash light-then-dark on dark-mode users. `next-themes`
+      does the same on the React side once it mounts; this just covers
+      the gap before hydration.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("theme");
+          var prefersDark = window.matchMedia(
+            "(prefers-color-scheme: dark)",
+          ).matches;
+          var resolved =
+            stored === "dark" || stored === "light"
+              ? stored
+              : prefersDark
+                ? "dark"
+                : "light";
+          document.documentElement.dataset.splashTheme = resolved;
+          if (resolved === "dark") {
+            document.documentElement.classList.add("dark");
+          }
+        } catch (e) {
+          document.documentElement.dataset.splashTheme = "light";
+        }
+      })();
+    </script>
+
+    <style>
+      :root {
+        --splash-bg: oklch(0.99 0.005 210);
+        --splash-fg: oklch(0.14 0.02 210);
+        --splash-muted: oklch(0.55 0.03 210);
+        --splash-border: oklch(0.92 0.008 210);
+        --splash-primary: oklch(0.5 0.15 210);
+        --splash-grid: oklch(0.14 0.02 210 / 0.06);
+      }
+      [data-splash-theme="dark"] {
+        --splash-bg: oklch(0.15 0.02 210);
+        --splash-fg: oklch(0.98 0.008 210);
+        --splash-muted: oklch(0.7 0.025 210);
+        --splash-border: oklch(0.98 0.008 210 / 0.12);
+        --splash-primary: oklch(0.58 0.15 210);
+        --splash-grid: oklch(0.98 0.008 210 / 0.06);
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--splash-bg);
+        color: var(--splash-fg);
+      }
+
+      #meridian-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483646;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: var(--splash-bg);
+        color: var(--splash-fg);
+        font-family:
+          "Geist Variable", -apple-system, BlinkMacSystemFont, system-ui,
+          "Segoe UI", Helvetica, Arial, sans-serif;
+        opacity: 1;
+        transition:
+          opacity 520ms cubic-bezier(0.22, 1, 0.36, 1),
+          visibility 0s linear 520ms;
+        contain: layout style paint;
+        overflow: hidden;
+      }
+      #meridian-splash[data-state="leaving"] {
+        opacity: 0;
+        visibility: hidden;
+      }
+
+      /* Subtle grid behind the core, masked to fade out at the edges. */
+      #meridian-splash::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+          radial-gradient(
+            circle at 1px 1px,
+            var(--splash-grid) 1px,
+            transparent 0
+          );
+        background-size: 28px 28px;
+        background-position: center center;
+        mask-image: radial-gradient(
+          ellipse at center,
+          black 0%,
+          black 50%,
+          transparent 85%
+        );
+        -webkit-mask-image: radial-gradient(
+          ellipse at center,
+          black 0%,
+          black 50%,
+          transparent 85%
+        );
+        pointer-events: none;
+      }
+      #meridian-splash::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          ellipse at center,
+          transparent 50%,
+          color-mix(in oklch, var(--splash-bg), black 6%) 100%
+        );
+        pointer-events: none;
+      }
+
+      /* Frame corners — mono-typography metadata at TL/TR/BR */
+      .splash-frame {
+        position: absolute;
+        inset: 24px;
+        pointer-events: none;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto 1fr auto;
+        font-family:
+          "Geist Mono Variable", ui-monospace, "SF Mono", "Menlo", "Consolas",
+          monospace;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--splash-muted);
+        z-index: 2;
+      }
+      .splash-frame > * {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .splash-frame .tl {
+        grid-column: 1;
+        grid-row: 1;
+        justify-self: start;
+      }
+      .splash-frame .tr {
+        grid-column: 2;
+        grid-row: 1;
+        justify-self: end;
+      }
+      .splash-frame .br {
+        grid-column: 2;
+        grid-row: 3;
+        justify-self: end;
+      }
+
+      .splash-pulse {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: var(--splash-primary);
+        animation: splash-pulse 1.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+      }
+      @keyframes splash-pulse {
+        0% {
+          box-shadow: 0 0 0 0 color-mix(in oklch, var(--splash-primary), transparent 30%);
+        }
+        70% {
+          box-shadow: 0 0 0 8px color-mix(in oklch, var(--splash-primary), transparent 100%);
+        }
+        100% {
+          box-shadow: 0 0 0 0 color-mix(in oklch, var(--splash-primary), transparent 100%);
+        }
+      }
+
+      /* Central column — brand mark + wordmark + progress */
+      .splash-core {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 28px;
+        animation: splash-rise 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      @keyframes splash-rise {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /*
+        Meridian mark — "solar transit." Composition:
+          - A celestial-sphere outline that gently breathes (opacity)
+          - Two emission rings expanding outward in offset cycles (the
+            passage of time)
+          - The horizon (horizontal) and meridian (vertical) lines, both
+            drawing in once on mount
+          - The "sun": a small filled dot transiting along the meridian
+            in a continuous sine wave — above horizon = bright, below
+            horizon = dim, mimicking real solar transit through the
+            celestial meridian (which is literally where the name
+            "meridian" comes from in astronomy)
+        No square brackets, no rays — quiet and continuous instead of
+        flashing.
+      */
+      .splash-mark {
+        position: relative;
+        width: 96px;
+        height: 96px;
+      }
+      .splash-mark svg {
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+
+      /* Celestial sphere — the outer outline. Always visible; opacity
+         breathes in sync with the sun's transit period. */
+      .splash-mark .sphere {
+        stroke: var(--splash-fg);
+        stroke-width: 1.25;
+        fill: none;
+        opacity: 0.35;
+        animation: sphere-breathe 4s ease-in-out infinite;
+      }
+      @keyframes sphere-breathe {
+        0%,
+        100% {
+          opacity: 0.3;
+        }
+        50% {
+          opacity: 0.6;
+        }
+      }
+
+      /* Emission rings — expand outward and fade, suggesting passage of
+         time (each cycle ≈ a "moment"). Two rings with an offset so the
+         emanation feels continuous rather than pulsed. */
+      .splash-mark .emit {
+        stroke: var(--splash-primary);
+        stroke-width: 1;
+        fill: none;
+        transform-box: fill-box;
+        transform-origin: center;
+        animation: emit-ring 3.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+      }
+      .splash-mark .emit.emit-2 {
+        animation-delay: 1.8s;
+      }
+      @keyframes emit-ring {
+        0% {
+          opacity: 0;
+          transform: scale(0.88);
+        }
+        20% {
+          opacity: 0.55;
+        }
+        100% {
+          opacity: 0;
+          transform: scale(1.4);
+        }
+      }
+
+      /* Horizon (horizontal) + meridian (vertical) — fixed reference
+         lines on the celestial sphere. Both draw in once on mount,
+         meridian after a short delay so the eye reads "horizon, then
+         the meridian crossing it". */
+      .splash-mark .horizon,
+      .splash-mark .meridian {
+        stroke: var(--splash-fg);
+        stroke-width: 1;
+        stroke-linecap: round;
+        opacity: 0.25;
+        stroke-dasharray: 80;
+        stroke-dashoffset: 80;
+        animation: line-draw 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      }
+      .splash-mark .meridian {
+        animation-delay: 280ms;
+      }
+      @keyframes line-draw {
+        to {
+          stroke-dashoffset: 0;
+        }
+      }
+
+      /* The sun — a small filled disc transiting along the meridian.
+         translateY oscillates over 4 s in a sine curve; opacity dims
+         below the horizon and brightens above. Soft glow drop-shadow
+         keeps it luminous at the peak without overpowering the
+         composition. */
+      .splash-mark .sun {
+        fill: var(--splash-primary);
+        transform-box: fill-box;
+        transform-origin: center;
+        filter: drop-shadow(
+          0 0 5px color-mix(in oklch, var(--splash-primary), transparent 40%)
+        );
+        animation: sun-transit 4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+      }
+      @keyframes sun-transit {
+        0% {
+          transform: translateY(0);
+          opacity: 0.55;
+        }
+        25% {
+          transform: translateY(-26px);
+          opacity: 1;
+        }
+        50% {
+          transform: translateY(0);
+          opacity: 0.55;
+        }
+        75% {
+          transform: translateY(26px);
+          opacity: 0.18;
+        }
+        100% {
+          transform: translateY(0);
+          opacity: 0.55;
+        }
+      }
+
+      .splash-wordmark {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+      }
+      .splash-wordmark .wm-primary {
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        color: var(--splash-fg);
+      }
+      .splash-wordmark .wm-secondary {
+        font-family:
+          "Geist Mono Variable", ui-monospace, "SF Mono", "Menlo", "Consolas",
+          monospace;
+        font-size: 10px;
+        letter-spacing: 0.5em;
+        padding-left: 0.5em;
+        text-transform: uppercase;
+        color: var(--splash-muted);
+      }
+
+      .splash-progress {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        width: 240px;
+      }
+      .splash-track {
+        position: relative;
+        height: 6px;
+        background: var(--splash-border);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .splash-track .splash-fill {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 0%;
+        background: var(--splash-primary);
+        border-radius: 999px;
+        transition: width 240ms cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .splash-track .splash-fill::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        right: 0;
+        width: 32px;
+        background: linear-gradient(
+          90deg,
+          transparent 0%,
+          color-mix(in oklch, var(--splash-primary), white 30%) 100%
+        );
+        filter: blur(0.5px);
+      }
+      .splash-meta {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        font-family:
+          "Geist Mono Variable", ui-monospace, "SF Mono", "Menlo", "Consolas",
+          monospace;
+        font-size: 10px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--splash-muted);
+        font-variant-numeric: tabular-nums;
+      }
+      .splash-message {
+        min-width: 0;
+        flex: 1 1 auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        transition: opacity 240ms ease;
+      }
+      .splash-meta-value {
+        color: var(--splash-fg);
+        flex-shrink: 0;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .splash-mark .sun,
+        .splash-mark .sphere,
+        .splash-mark .emit,
+        .splash-pulse,
+        .splash-core {
+          animation: none !important;
+        }
+        /* Draw-in animations still run but instantly settle. */
+        .splash-mark .horizon,
+        .splash-mark .meridian {
+          stroke-dashoffset: 0;
+          animation: none !important;
+        }
+        /* Sun parks at horizon when motion is reduced. */
+        .splash-mark .sun {
+          opacity: 0.85;
+        }
+      }
+    </style>
+  </head>
+  <body class="antialiased">
+    <!--
+      The splash lives outside #root so React never owns or unmounts it.
+      The bootstrap script at the bottom runs the crawl, listens for
+      meridian:progress / meridian:ready events from React (via
+      `src/lib/loading-progress.ts`), and removes itself on completion.
+    -->
+    <div
+      id="meridian-splash"
+      role="status"
+      aria-live="polite"
+      aria-label="Loading Meridian"
+    >
+      <div class="splash-frame" aria-hidden="true">
+        <span class="tl">
+          <span class="splash-pulse"></span>
+          <span>SYS</span>
+        </span>
+        <span class="tr">
+          <span>v0.1</span>
+        </span>
+        <span class="br">
+          <span>STAGEHOLDER · MERIDIAN</span>
+        </span>
+      </div>
+
+      <div class="splash-core">
+        <div class="splash-mark" aria-hidden="true">
+          <svg
+            viewBox="0 0 88 88"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+          >
+            <!-- Emission rings — two offset cycles for continuous emanation -->
+            <circle class="emit emit-1" cx="44" cy="44" r="34" />
+            <circle class="emit emit-2" cx="44" cy="44" r="34" />
+
+            <!-- Celestial sphere outline -->
+            <circle class="sphere" cx="44" cy="44" r="34" />
+
+            <!-- Horizon line (horizontal great circle) -->
+            <line class="horizon" x1="12" y1="44" x2="76" y2="44" />
+
+            <!-- Meridian line (vertical great circle) -->
+            <line class="meridian" x1="44" y1="12" x2="44" y2="76" />
+
+            <!-- Sun — transits along the meridian via CSS animation -->
+            <circle class="sun" cx="44" cy="44" r="3.5" />
+          </svg>
+        </div>
+
+        <div class="splash-wordmark">
+          <span class="wm-primary">Meridian</span>
+          <span class="wm-secondary">Stageholder</span>
+        </div>
+
+        <div class="splash-progress" aria-hidden="true">
+          <div class="splash-track">
+            <div class="splash-fill" data-splash-fill></div>
+          </div>
+          <div class="splash-meta">
+            <span class="splash-message" data-splash-message>Initializing runtime</span>
+            <span>
+              <span class="splash-meta-value" data-splash-percent>00</span>%
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="root"></div>
+
+    <script type="module" src="/src/main.tsx"></script>
+
+    <!--
+      Splash runtime — owns the progress crawl, listens for React signals,
+      tears down on `meridian:ready`. Vanilla JS so it runs immediately
+      without waiting on the React bundle to download/parse.
+    -->
+    <script>
+      (function () {
+        var splash = document.getElementById("meridian-splash");
+        if (!splash) return;
+
+        // Skip the splash when we're about to bounce straight to the
+        // identity hub for sign-in. We only have something to load when
+        // (a) a session is already persisted in localStorage, or
+        // (b) the URL carries `?code=` — we're returning from the hub
+        //     and need to exchange the code. Otherwise React mounts,
+        //     `_app`'s beforeLoad sees `isAuthenticated: false`, and
+        //     the SDK's signIn() immediately redirects to the Hub. A
+        //     multi-second progress bar in front of that redirect is
+        //     just noise.
+        try {
+          var hasSession = !!window.localStorage.getItem(
+            "stageholder:session:meridian",
+          );
+          var hasCode = /[?&]code=/.test(window.location.search);
+          if (!hasSession && !hasCode) {
+            if (splash.parentNode) splash.parentNode.removeChild(splash);
+            return;
+          }
+        } catch (e) {
+          // localStorage may throw in private mode / sandboxed iframes —
+          // fall through and let the splash run as before.
+        }
+
+        var fillEl = splash.querySelector("[data-splash-fill]");
+        var percentEl = splash.querySelector("[data-splash-percent]");
+        var messageEl = splash.querySelector("[data-splash-message]");
+
+        var current = 0;
+        var target = 8;
+        var done = false;
+
+        var phases = [
+          { at: 0, label: "Initializing runtime" },
+          { at: 22, label: "Loading interface" },
+          { at: 52, label: "Restoring session" },
+          { at: 78, label: "Preparing workspace" },
+          { at: 96, label: "Almost ready" },
+        ];
+        var phaseIndex = -1;
+
+        function setMessage(text) {
+          if (!messageEl || messageEl.textContent === text) return;
+          messageEl.style.opacity = "0";
+          setTimeout(function () {
+            messageEl.textContent = text;
+            messageEl.style.opacity = "1";
+          }, 180);
+        }
+
+        function render() {
+          if (fillEl) fillEl.style.width = current.toFixed(1) + "%";
+          if (percentEl)
+            percentEl.textContent = String(Math.round(current)).padStart(2, "0");
+          for (var i = phases.length - 1; i >= 0; i--) {
+            if (current >= phases[i].at && phaseIndex < i) {
+              phaseIndex = i;
+              setMessage(phases[i].label);
+              break;
+            }
+          }
+        }
+
+        var lastTs = performance.now();
+        function tick(ts) {
+          if (done) return;
+          var dt = Math.min((ts - lastTs) / 1000, 0.1);
+          lastTs = ts;
+          // Decelerating crawl toward 92% so the bar feels alive without
+          // ever reaching completion before React signals ready. The
+          // tighter the gap (ceiling - current), the slower the crawl —
+          // mimics the "almost there" feel of real loaders.
+          var ceiling = 92;
+          var remaining = Math.max(0, ceiling - current);
+          var speed = Math.max(2, remaining * 0.9);
+          current = Math.min(ceiling, current + speed * dt);
+          if (current < target) current = target;
+          render();
+          requestAnimationFrame(tick);
+        }
+
+        function bump(to, message) {
+          target = Math.max(target, Math.min(to, 92));
+          if (message) setMessage(message);
+        }
+
+        // Resource-load nudges — each chunk that lands bumps the floor up
+        // so the bar tracks actual asset loading rather than pure time.
+        try {
+          if (typeof PerformanceObserver !== "undefined") {
+            var po = new PerformanceObserver(function (list) {
+              var loaded = list.getEntries().length;
+              target = Math.min(92, target + Math.min(4, loaded * 1.5));
+            });
+            po.observe({ type: "resource", buffered: true });
+            setTimeout(function () {
+              try {
+                po.disconnect();
+              } catch (e) {}
+            }, 15000);
+          }
+        } catch (e) {}
+
+        function finish() {
+          if (done) return;
+          done = true;
+          current = 100;
+          if (fillEl) fillEl.style.width = "100%";
+          if (percentEl) percentEl.textContent = "100";
+          setMessage("Ready");
+          // Hold briefly at 100 so users notice the completion, then
+          // fade out (CSS handles the transition); remove from DOM
+          // after the fade settles so it doesn't tab-trap anything.
+          setTimeout(function () {
+            splash.dataset.state = "leaving";
+            setTimeout(function () {
+              if (splash.parentNode) splash.parentNode.removeChild(splash);
+            }, 600);
+          }, 220);
+        }
+
+        window.addEventListener("meridian:progress", function (e) {
+          var detail = (e && e.detail) || {};
+          if (typeof detail.value === "number") bump(detail.value, detail.label);
+          else if (detail.label) setMessage(detail.label);
+        });
+        window.addEventListener("meridian:ready", finish);
+
+        // Safety net — never let the splash hang forever if a signal
+        // is missed in dev or behind a proxy.
+        setTimeout(function () {
+          if (!done) finish();
+        }, 20000);
+
+        document.addEventListener("DOMContentLoaded", function () {
+          bump(28);
+        });
+        window.addEventListener("load", function () {
+          bump(48);
+        });
+
+        requestAnimationFrame(tick);
+      })();
+    </script>
+  </body>
+</html>

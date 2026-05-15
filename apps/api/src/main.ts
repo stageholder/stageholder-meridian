@@ -19,17 +19,17 @@ function parseOrigins(raw: string | undefined): string[] {
 
   if (parsed.length === 0) {
     if (process.env.NODE_ENV === "production") {
-      throw new Error("FRONTEND_URL required in production");
+      throw new Error("CORS_ORIGINS or FRONTEND_URL required in production");
     }
-    // Dev default: PWA on 4001 after the Hub integration port shuffle.
+    // Dev default: PWA on 4001 after the Vite SPA migration.
     parsed.push("http://localhost:4001");
   }
 
   // `getTauriCorsOrigins()` returns the canonical Tauri webview origins
   // (`tauri://localhost` macOS/Linux, `http://tauri.localhost` Windows).
-  // Both need allow-listing so the desktop app can call the API directly
-  // with its Bearer token; web traffic goes through the BFF proxy on the
-  // same origin and doesn't trigger preflight.
+  // Both need allow-listing so the desktop app — which now mounts the PWA
+  // Vite source tree directly and calls this API cross-origin with a
+  // Bearer token — can hit the API. Same code path as the web SPA.
   return [...parsed, ...getTauriCorsOrigins()];
 }
 
@@ -57,9 +57,23 @@ async function bootstrap() {
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: true, limit: "1mb" }));
   app.setGlobalPrefix("api/v1");
+  // SPA cutover: the PWA now calls this API cross-origin with
+  // `Authorization: Bearer <access-token>` injected by `@stageholder/sdk/spa`.
+  // No cookies cross — `credentials: false`. Allowed headers are explicit so
+  // CORS preflight doesn't reject the SDK's auth header, request-id, or
+  // idempotency-key. `CORS_ORIGINS` is the canonical multi-origin env var;
+  // `FRONTEND_URL` stays as a single-origin fallback.
   app.enableCors({
-    origin: parseOrigins(process.env.FRONTEND_URL),
-    credentials: true,
+    origin: parseOrigins(process.env.CORS_ORIGINS ?? process.env.FRONTEND_URL),
+    credentials: false,
+    allowedHeaders: [
+      "Authorization",
+      "Content-Type",
+      "X-Request-Id",
+      "X-Idempotency-Key",
+    ],
+    exposedHeaders: ["Content-Disposition", "Content-Type", "X-Request-Id"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   });
 
   // Bare /health for Docker healthcheck (outside global prefix)

@@ -1,7 +1,7 @@
-import type { AxiosInstance } from "axios";
+import type { ApiClientLike } from "./client";
 import type { UserLight, LightEvent } from "@repo/core/types";
 
-export function createLightApi(client: AxiosInstance) {
+export function createLightApi(client: ApiClientLike) {
   return {
     me: async (): Promise<UserLight> => {
       const res = await client.get("/light/me");

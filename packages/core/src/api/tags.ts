@@ -1,11 +1,11 @@
-import type { AxiosInstance } from "axios";
+import type { ApiClientLike } from "./client";
 import type { Tag } from "@repo/core/types";
 
 /**
  * Tags API client. Routes are rooted at `/tags` — scoping is per
  * authenticated user server-side.
  */
-export function createTagsApi(client: AxiosInstance) {
+export function createTagsApi(client: ApiClientLike) {
   return {
     create: async (data: { name: string; color: string }): Promise<Tag> => {
       const res = await client.post(`/tags`, data);

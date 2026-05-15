@@ -1,7 +1,7 @@
-import type { AxiosInstance } from "axios";
+import type { ApiClientLike } from "./client";
 import type { Feedback } from "@repo/core/types";
 
-export function createFeedbackApi(client: AxiosInstance) {
+export function createFeedbackApi(client: ApiClientLike) {
   return {
     create: async (data: {
       type: "general" | "bug" | "feature";

@@ -29,7 +29,6 @@
     "@repo/typescript-config": "*",
     "@repo/core": "*",
     "@tanstack/react-query": "^5.62.0",
-    "@types/react": "^19",
     "axios": "^1.7.9",
     "react": "^19.1.0",
     "typescript": "^5"
