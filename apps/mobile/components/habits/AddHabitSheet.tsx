@@ -1,11 +1,15 @@
 // apps/mobile/components/habits/AddHabitSheet.tsx
 //
-// Sheet for creating a new habit. Sends name + color + scheduledDays to
-// the API; the server fills in defaults (frequency: "daily", targetCount: 1)
-// when omitted.
+// Sheet for creating a new habit. Sends name + icon + color + scheduledDays
+// to the API; the server fills in defaults (frequency: "daily",
+// targetCount: 1) when omitted.
+//
+// Icon picker uses @stageholder/ui's EmojiPickerSheet — opens as a nested
+// bottom sheet on tap of the icon chip beside the name field.
 
 import {
   Button,
+  EmojiPickerSheet,
   Input,
   Label,
   Sheet,
@@ -18,6 +22,10 @@ import {
 import { useState } from "react";
 
 import { extractServerMessage, useCreateHabit } from "@/lib/api";
+
+// Fire matches Meridian's gamification metaphor — streak fire, light-earned,
+// ignition palette. Consistent visual language for a new habit.
+const DEFAULT_ICON = "🔥";
 
 const HABIT_COLOR_PALETTE = [
   "#ef4444", // red
@@ -40,11 +48,14 @@ export function AddHabitSheet({ open, onClose }: AddHabitSheetProps) {
   const toast = useToast();
 
   const [name, setName] = useState("");
+  const [icon, setIcon] = useState<string>(DEFAULT_ICON);
   const [color, setColor] = useState<string>(HABIT_COLOR_PALETTE[0]!);
   const [days, setDays] = useState<number[]>([]); // empty = every day
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
 
   function reset() {
     setName("");
+    setIcon(DEFAULT_ICON);
     setColor(HABIT_COLOR_PALETTE[0]!);
     setDays([]);
   }
@@ -54,6 +65,7 @@ export function AddHabitSheet({ open, onClose }: AddHabitSheetProps) {
     create.mutate(
       {
         name: name.trim(),
+        icon,
         color,
         scheduledDays: days.length > 0 ? days : undefined,
         frequency: days.length > 0 ? "custom" : "daily",
@@ -95,8 +107,8 @@ export function AddHabitSheet({ open, onClose }: AddHabitSheetProps) {
       dismissOnSnapToBottom
     >
       <Sheet.Overlay />
-      <Sheet.Handle />
       <Sheet.Frame>
+        <Sheet.Handle />
         <YStack gap="$4">
           <Text fontSize="$6" fontWeight="700" color="$color12">
             New habit
@@ -104,14 +116,33 @@ export function AddHabitSheet({ open, onClose }: AddHabitSheetProps) {
 
           <YStack gap="$2">
             <Label htmlFor="habit-name">Name</Label>
-            <Input
-              id="habit-name"
-              autoFocus
-              placeholder="e.g. Read 30 minutes"
-              value={name}
-              onChangeText={setName}
-              size="$4"
-            />
+            <XStack gap="$2" items="center">
+              <View
+                width={48}
+                height={48}
+                rounded="$3"
+                bg="$color3"
+                borderWidth={1}
+                borderColor="$color6"
+                items="center"
+                justify="center"
+                cursor="pointer"
+                accessibilityRole="button"
+                accessibilityLabel="Pick habit icon"
+                onPress={() => setEmojiPickerOpen(true)}
+              >
+                <Text fontSize={24}>{icon}</Text>
+              </View>
+              <Input
+                id="habit-name"
+                autoFocus
+                placeholder="e.g. Read 30 minutes"
+                value={name}
+                onChangeText={setName}
+                size="$4"
+                flex={1}
+              />
+            </XStack>
           </YStack>
 
           <YStack gap="$2">
@@ -183,6 +214,13 @@ export function AddHabitSheet({ open, onClose }: AddHabitSheetProps) {
           </XStack>
         </YStack>
       </Sheet.Frame>
+
+      <EmojiPickerSheet
+        open={emojiPickerOpen}
+        onClose={() => setEmojiPickerOpen(false)}
+        onSelect={(e) => setIcon(e)}
+        title="Pick a habit icon"
+      />
     </Sheet>
   );
 }

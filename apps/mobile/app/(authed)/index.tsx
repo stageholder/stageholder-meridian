@@ -31,12 +31,12 @@ import {
 } from "@stageholder/ui";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { Pressable } from "react-native";
 import type { LightTier } from "@repo/core/types";
 import { Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { HabitSummaryPanel } from "@/components/dashboard/HabitSummaryPanel";
+import { LevelProgressCard } from "@/components/dashboard/LevelProgressCard";
 import { LevelUpCelebration } from "@/components/LevelUpCelebration";
 import { LightEarnedChart } from "@/components/dashboard/LightEarnedChart";
 import { TodayTodosPanel } from "@/components/dashboard/TodayTodosPanel";
@@ -51,6 +51,7 @@ import {
   useTodos,
   useUserLight,
 } from "@/lib/api";
+import { IGNITION } from "@/lib/ignition-palette";
 import { greeting, todayLabel } from "@/lib/mock-data";
 import { localDateKey } from "@/lib/streak";
 
@@ -148,18 +149,25 @@ export default function TodayScreen() {
     bestStreak: 0,
   };
 
+  // Ring order is anatomically the cross-section of a flame: yellow outer
+  // (journal), orange body (habit), red core (todo). @stageholder/ui's
+  // ActivityRings renders index 0 as the outermost ring, so the array is
+  // laid out outer-to-inner here. Colors come from the shared ignition
+  // palette so every dashboard surface stays calibrated.
   const rings = [
-    {
-      value: habitStats.doneToday,
-      max: Math.max(1, habitStats.totalScheduledToday),
-      color: "#ef4444",
-      label: "Habits",
-    },
     {
       value: journalStats.words,
       max: Math.max(1, journalStats.target),
-      color: "#f59e0b",
-      label: "Words",
+      color: IGNITION.journal.base,
+      trackColor: IGNITION.journal.track,
+      label: IGNITION.journal.label,
+    },
+    {
+      value: habitStats.doneToday,
+      max: Math.max(1, habitStats.totalScheduledToday),
+      color: IGNITION.habit.base,
+      trackColor: IGNITION.habit.track,
+      label: IGNITION.habit.label,
     },
     {
       // Use the user's target as the ring's max — "done today" out of
@@ -167,8 +175,9 @@ export default function TodayScreen() {
       // todoTargetDaily semantics (apps/api/src/modules/light/light.dto.ts).
       value: todoStats.done,
       max: Math.max(1, Math.max(todoStats.total, todoTarget)),
-      color: "#3b82f6",
-      label: "Todos",
+      color: IGNITION.todo.base,
+      trackColor: IGNITION.todo.track,
+      label: IGNITION.todo.label,
     },
   ];
 
@@ -188,36 +197,20 @@ export default function TodayScreen() {
         <PullToRefresh refreshing={refreshing} onRefresh={handleRefresh}>
           <YStack gap="$5" px="$5" pt="$4" pb={96}>
             {/* ---- Header ---- */}
+            {/* Tier identity used to live as an inline pill here; it's been
+                promoted to LevelProgressCard below the rings so the header
+                stays a calm date + greeting and the tier story gets the
+                space it deserves. */}
             <YStack gap="$1">
-              <XStack items="center" justify="space-between">
-                <Paragraph
-                  fontFamily="$mono"
-                  fontSize={11}
-                  letterSpacing={2}
-                  textTransform="uppercase"
-                  color="$color11"
-                >
-                  {todayLabel()}
-                </Paragraph>
-                {lightQuery.data ? (
-                  <Pressable onPress={() => router.push("/profile")}>
-                    <XStack items="center" gap="$1.5">
-                      <Text fontSize="$1" color="$color11" fontFamily="$mono">
-                        {lightQuery.data.totalLight.toLocaleString()}
-                      </Text>
-                      <Text
-                        fontSize={10}
-                        letterSpacing={1.6}
-                        color="$color11"
-                        fontWeight="600"
-                        fontFamily="$mono"
-                      >
-                        · {lightQuery.data.currentTitle?.toUpperCase()}
-                      </Text>
-                    </XStack>
-                  </Pressable>
-                ) : null}
-              </XStack>
+              <Paragraph
+                fontFamily="$mono"
+                fontSize={11}
+                letterSpacing={2}
+                textTransform="uppercase"
+                color="$color11"
+              >
+                {todayLabel()}
+              </Paragraph>
               <H2 color="$color12">
                 {greeting()}
                 {user?.name ? `, ${user.name.split(" ")[0]}` : ""}.
@@ -277,6 +270,9 @@ export default function TodayScreen() {
                 </XStack>
               </Card.Body>
             </Card>
+
+            {/* ---- Light Journey pyrometer ---- */}
+            <LevelProgressCard />
 
             {/* ---- Streak strip ---- */}
             <XStack

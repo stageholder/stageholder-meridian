@@ -1,23 +1,45 @@
 // apps/mobile/app/(authed)/_layout.tsx
 //
-// Two responsibilities:
+// Three responsibilities:
 //   1. Auth gate — redirect to /sign-in if not authenticated
-//   2. Tabs frame — five product tabs, dark navy chrome, tab bar styled
+//   2. Onboarding gate — redirect to /onboarding on first launch per
+//      account (isOnboarded() backed by expo-secure-store)
+//   3. Tabs frame — five product tabs, dark navy chrome, tab bar styled
 //      from @stageholder/ui tokens via the active theme
 //
-// The auth check runs BEFORE Tabs renders so we never flash an empty tab
-// frame at unauthenticated users.
+// Both checks run BEFORE Tabs renders so we never flash a half-onboarded
+// dashboard at first-launch users.
 
 import { useStageholder } from "@stageholder/sdk/react-native";
 import { CalendarPickerProvider } from "@stageholder/ui";
 import { Redirect, Tabs } from "expo-router";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Text as RNText } from "react-native";
 import { useTheme, View } from "tamagui";
+
+import { isOnboarded } from "@/lib/onboarding";
 
 export default function AuthedLayout() {
   const { state } = useStageholder();
   const theme = useTheme();
   const themeT = theme as unknown as Record<string, { val?: string }>;
+
+  // null = still checking SecureStore; true/false = resolved.
+  const [onboarded, setOnboarded] = useState<boolean | null>(null);
+  const sub = state.status === "authenticated" ? state.data.sub : null;
+  useEffect(() => {
+    if (!sub) {
+      setOnboarded(null);
+      return;
+    }
+    let cancelled = false;
+    isOnboarded(sub).then((v) => {
+      if (!cancelled) setOnboarded(v);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [sub]);
 
   if (state.status === "loading") {
     return (
@@ -28,6 +50,20 @@ export default function AuthedLayout() {
   }
   if (state.status === "unauthenticated" || state.status === "error") {
     return <Redirect href="/sign-in" />;
+  }
+
+  // Hold render until the onboarding flag resolves. The check is a quick
+  // keychain read (sub-ms typically); rendering nothing avoids a flash of
+  // the dashboard before we redirect first-launch users to /onboarding.
+  if (onboarded === null) {
+    return (
+      <View flex={1} items="center" justify="center" bg="$background">
+        <ActivityIndicator color={themeT.color9?.val ?? "#0074D9"} />
+      </View>
+    );
+  }
+  if (onboarded === false) {
+    return <Redirect href="/onboarding" />;
   }
 
   // Resolve token values for the Tabs screenOptions — RN's tab bar accepts

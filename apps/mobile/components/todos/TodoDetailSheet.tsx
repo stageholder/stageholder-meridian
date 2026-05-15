@@ -195,8 +195,8 @@ export function TodoDetailSheet({ open, onClose, todo }: TodoDetailSheetProps) {
       dismissOnSnapToBottom
     >
       <Sheet.Overlay />
-      <Sheet.Handle />
       <Sheet.Frame>
+        <Sheet.Handle />
         <Sheet.ScrollView showsVerticalScrollIndicator={false}>
           <YStack gap="$4" pb="$6">
             {/* ---- Header: checkbox + title + close ---- */}

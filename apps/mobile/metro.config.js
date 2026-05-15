@@ -50,6 +50,30 @@ config.resolver.disableHierarchicalLookup = false;
 config.resolver.unstable_enablePackageExports = true;
 config.resolver.unstable_enableSymlinks = true;
 
+// Prefer `import` / `module` conditions over `require` when resolving
+// conditional package exports.
+//
+// Critical for Tamagui v2: its packages have conditional exports where the
+// `require` branch points to `dist/cjs/...` and the `import` branch points
+// to `dist/esm/...` — DIFFERENT files. Each file calls
+// `createContext("")` for `ThemeStateContext` at the top level, so loading
+// both creates two React contexts. `TamaguiProvider` (reached via ESM)
+// sets context in one; `@tamagui/helpers-icon`'s `IconWrapper` (reached via
+// CJS — visible in stack traces as `dist/cjs/themed.native.js`) reads from
+// the other and gets `null`, throwing MISSING_THEME_MESSAGE.
+//
+// Forcing `import` first makes every conditional export resolve to the ESM
+// file regardless of caller (CJS or ESM), so there is a single module
+// instance and a single context. `require` and `default` stay as fallbacks
+// for packages that only ship CJS.
+config.resolver.unstable_conditionNames = [
+  "react-native",
+  "import",
+  "module",
+  "require",
+  "default",
+];
+
 // Reorder sourceExts so `.mjs` is checked LAST.
 //
 // Per Metro's RESOLVE_FILE (docs/Resolution.md), variants are tried

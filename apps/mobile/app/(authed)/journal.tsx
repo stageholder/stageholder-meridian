@@ -212,8 +212,31 @@ export default function JournalScreen() {
             <Banner intent="danger">
               <Banner.Title>Couldn't load entries</Banner.Title>
               <Banner.Description>
-                {((mode === "day" ? dayQuery.error : allQuery.error) as Error)
-                  .message ?? "Network error."}
+                {(() => {
+                  const err = (
+                    mode === "day" ? dayQuery.error : allQuery.error
+                  ) as
+                    | (Error & {
+                        response?: { status?: number; data?: unknown };
+                        code?: string;
+                      })
+                    | null;
+                  if (!err) return "Network error.";
+                  // Prefer server-provided friendly message; else surface
+                  // the HTTP status verbatim (so a truncated "Request
+                  // failed with status code 42…" never hides the real
+                  // code); else fall back to the raw axios message.
+                  const serverMsg = extractServerMessage(err);
+                  if (serverMsg) return serverMsg;
+                  const status = err.response?.status;
+                  if (typeof status === "number") {
+                    return `HTTP ${status} from the API. Check apps/api is running and the URL in .env.local is reachable from the simulator.`;
+                  }
+                  if (err.code === "ECONNABORTED") {
+                    return "Request timed out. The API didn't respond within 10 seconds.";
+                  }
+                  return err.message ?? "Network error.";
+                })()}
               </Banner.Description>
               <XStack pt="$2">
                 <Button

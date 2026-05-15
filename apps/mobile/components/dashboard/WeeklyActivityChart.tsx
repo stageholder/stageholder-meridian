@@ -23,10 +23,11 @@ import {
 import { useMemo } from "react";
 
 import { useCalendarData } from "@/lib/api";
+import { IGNITION } from "@/lib/ignition-palette";
 
-const TODO_COLOR = "#3b82f6";
-const HABIT_COLOR = "#ef4444";
-const JOURNAL_COLOR = "#f59e0b";
+const TODO_COLOR = IGNITION.todo.base;
+const HABIT_COLOR = IGNITION.habit.base;
+const JOURNAL_COLOR = IGNITION.journal.base;
 
 function fmtMonth(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;

@@ -133,8 +133,8 @@ export function EditProfileSheet({ open, onClose }: EditProfileSheetProps) {
       dismissOnSnapToBottom
     >
       <Sheet.Overlay />
-      <Sheet.Handle />
       <Sheet.Frame>
+        <Sheet.Handle />
         <Sheet.ScrollView showsVerticalScrollIndicator={false}>
           <YStack gap="$4" pb="$6">
             <Text fontSize="$6" fontWeight="700" color="$color12">

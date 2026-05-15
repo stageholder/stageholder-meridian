@@ -24,6 +24,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Theme } from "tamagui";
 
 import { QueryProvider } from "@/lib/api";
+import { useBrandStore } from "@/lib/brand-store";
 import { expoHapticImpl } from "@/lib/haptic-impl";
 
 // Required at app top-level so the system browser handoff completes on web.
@@ -40,6 +41,8 @@ const CLIENT_ID =
 
 export default function RootLayout() {
   const router = useRouter();
+  const brand = useBrandStore((s) => s.brand);
+  const hydrateBrand = useBrandStore((s) => s.hydrate);
 
   useEffect(() => {
     if (!ISSUER_URL || !CLIENT_ID) {
@@ -51,6 +54,14 @@ export default function RootLayout() {
     }
   }, []);
 
+  // Hydrate persisted brand from expo-secure-store on first mount. Initial
+  // render uses the "cosmos" default; once hydrate resolves, the brand
+  // swaps in place (acceptable single transient if the user picked a
+  // non-default brand previously).
+  useEffect(() => {
+    hydrateBrand();
+  }, [hydrateBrand]);
+
   if (!ISSUER_URL || !CLIENT_ID) {
     return null;
   }
@@ -60,10 +71,9 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <UIProvider defaultTheme="dark">
           <Theme name="dark">
-            {/* Cosmos = deep navy. Picked because it best fits Meridian's
-                "light in the night sky" gamification metaphor. Switch to
-                `null` to use neutral chrome only. */}
-            <BrandProvider brand="cosmos">
+            {/* Brand is driven by useBrandStore so Profile can switch it
+                live. Initial render is cosmos until hydrate() resolves. */}
+            <BrandProvider brand={brand}>
               <HapticProvider impl={expoHapticImpl}>
                 <ToastProvider>
                   <StageholderProvider

@@ -4,15 +4,15 @@
 // (apps/pwa/components/habits/edit-habit-sheet.tsx) — same field set,
 // mobile-native shell (bottom sheet vs right-side panel).
 //
-// Fields: name, description, frequency (daily / weekly), targetCount,
-// unit, scheduledDays (when frequency=weekly), color.
+// Fields: icon, name, description, frequency (daily / weekly),
+// targetCount, unit, scheduledDays (when frequency=weekly), color.
 //
-// Icon picker is deferred: cross-platform emoji-picker is its own thing.
-// We accept the existing icon as-is so it doesn't get blown away on save,
-// and show it as a read-only chip in the title row.
+// Icon picker uses @stageholder/ui's EmojiPickerSheet — opens as a
+// nested bottom sheet on tap of the icon chip in the title row.
 
 import {
   Button,
+  EmojiPickerSheet,
   Input,
   Label,
   NumberInput,
@@ -63,6 +63,7 @@ export function EditHabitSheet({ habit, open, onClose }: EditHabitSheetProps) {
   const update = useUpdateHabit();
   const toast = useToast();
 
+  const [icon, setIcon] = useState<string>("🔥");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [frequency, setFrequency] = useState<Habit["frequency"]>("daily");
@@ -70,11 +71,13 @@ export function EditHabitSheet({ habit, open, onClose }: EditHabitSheetProps) {
   const [unit, setUnit] = useState("");
   const [color, setColor] = useState<string>(COLOR_PALETTE[4]!);
   const [scheduledDays, setScheduledDays] = useState<number[]>([]);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
 
   // Re-seed local state whenever the target habit changes (sheet open or
   // user opened a different habit's edit sheet).
   useEffect(() => {
     if (!habit) return;
+    setIcon(habit.icon ?? "🔥");
     setName(habit.name);
     setDescription(habit.description ?? "");
     setFrequency(habit.frequency);
@@ -93,6 +96,7 @@ export function EditHabitSheet({ habit, open, onClose }: EditHabitSheetProps) {
         id: habit.id,
         patch: {
           name: name.trim(),
+          icon,
           description: description.trim() || undefined,
           frequency,
           targetCount,
@@ -142,8 +146,8 @@ export function EditHabitSheet({ habit, open, onClose }: EditHabitSheetProps) {
       dismissOnSnapToBottom
     >
       <Sheet.Overlay />
-      <Sheet.Handle />
       <Sheet.Frame>
+        <Sheet.Handle />
         <Sheet.ScrollView showsVerticalScrollIndicator={false}>
           <YStack gap="$4" pb="$6">
             <Text fontSize="$6" fontWeight="700" color="$color12">
@@ -152,13 +156,32 @@ export function EditHabitSheet({ habit, open, onClose }: EditHabitSheetProps) {
 
             <YStack gap="$2">
               <Label htmlFor="habit-name-edit">Name</Label>
-              <Input
-                id="habit-name-edit"
-                value={name}
-                onChangeText={setName}
-                size="$4"
-                autoFocus
-              />
+              <XStack gap="$2" items="center">
+                <View
+                  width={48}
+                  height={48}
+                  rounded="$3"
+                  bg="$color3"
+                  borderWidth={1}
+                  borderColor="$color6"
+                  items="center"
+                  justify="center"
+                  cursor="pointer"
+                  accessibilityRole="button"
+                  accessibilityLabel="Pick habit icon"
+                  onPress={() => setEmojiPickerOpen(true)}
+                >
+                  <Text fontSize={24}>{icon}</Text>
+                </View>
+                <Input
+                  id="habit-name-edit"
+                  value={name}
+                  onChangeText={setName}
+                  size="$4"
+                  autoFocus
+                  flex={1}
+                />
+              </XStack>
             </YStack>
 
             <YStack gap="$2">
@@ -290,6 +313,13 @@ export function EditHabitSheet({ habit, open, onClose }: EditHabitSheetProps) {
           </YStack>
         </Sheet.ScrollView>
       </Sheet.Frame>
+
+      <EmojiPickerSheet
+        open={emojiPickerOpen}
+        onClose={() => setEmojiPickerOpen(false)}
+        onSelect={(e) => setIcon(e)}
+        title="Pick a habit icon"
+      />
     </Sheet>
   );
 }

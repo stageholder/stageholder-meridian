@@ -175,8 +175,8 @@ export function AddTodoSheet({
       dismissOnSnapToBottom
     >
       <Sheet.Overlay />
-      <Sheet.Handle />
       <Sheet.Frame>
+        <Sheet.Handle />
         <Sheet.ScrollView
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"

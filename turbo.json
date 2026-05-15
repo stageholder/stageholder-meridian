@@ -47,6 +47,18 @@
       "cache": false,
       "persistent": true
     },
+    "dev:ios": {
+      "cache": false,
+      "persistent": true
+    },
+    "dev:android": {
+      "cache": false,
+      "persistent": true
+    },
+    "dev:tunnel": {
+      "cache": false,
+      "persistent": true
+    },
     "test": {
       "dependsOn": ["^build"],
       "cache": false

@@ -25,7 +25,6 @@ import {
   Button,
   EmptyState,
   FAB,
-  H3,
   Paragraph,
   PullToRefresh,
   Progress,
@@ -57,6 +56,7 @@ import { AddTodoSheet } from "@/components/todos/AddTodoSheet";
 import { ListChips } from "@/components/todos/ListChips";
 import { TodoDetailSheet } from "@/components/todos/TodoDetailSheet";
 import { TodoRow } from "@/components/todos/TodoRow";
+import { SearchableHeader } from "@/components/shared/SearchableHeader";
 import { useTodoLists, useTodos } from "@/lib/api";
 import { fromDateKey, localDateKey } from "@/lib/streak";
 
@@ -68,6 +68,8 @@ export default function TodosScreen() {
   const [addOpen, setAddOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
 
   // IDs of todos whose celebration is still playing. While an id is in
   // this set, the row is treated as "still open" for sort + filter so
@@ -159,9 +161,22 @@ export default function TodosScreen() {
     return todos.filter((t) => t.listId === listFilter);
   }, [todos, listFilter]);
 
+  // -------- search-axis filter ----------
+  // Text search runs first so the time/list axes operate on a smaller
+  // pool. Match against title + description for a forgiving find.
+  const q = query.trim().toLowerCase();
+  const byText = useMemo(() => {
+    if (!q) return byList;
+    return byList.filter((t) => {
+      if (t.title.toLowerCase().includes(q)) return true;
+      if (t.description?.toLowerCase().includes(q)) return true;
+      return false;
+    });
+  }, [byList, q]);
+
   // -------- time-axis filter ----------
   const filtered = useMemo(() => {
-    return byList.filter((t) => {
+    return byText.filter((t) => {
       // effectiveStatus pretends celebrating todos are still "todo" so
       // they stay visible (in their open position) for the burst.
       const isDone = effectiveStatus(t) === "done";
@@ -183,7 +198,7 @@ export default function TodosScreen() {
       if (!t.dueDate) return false;
       return t.dueDate > today;
     });
-  }, [byList, view, today, effectiveStatus]);
+  }, [byText, view, today, effectiveStatus]);
 
   // For "later" view, group by date buckets for scannable structure.
   const grouped = useMemo(() => {
@@ -273,21 +288,32 @@ export default function TodosScreen() {
     <YStack flex={1} bg="$background">
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
         <YStack gap="$3" pt="$4" px="$5">
-          <YStack gap="$1">
+          <SearchableHeader
+            title="Todos"
+            subtitle={
+              todayTotal === 0
+                ? "Nothing on the table"
+                : `${todayDone.length} of ${todayTotal} lit today`
+            }
+            query={query}
+            onQueryChange={setQuery}
+            open={searchOpen}
+            onOpenChange={setSearchOpen}
+            placeholder="Search todos…"
+          />
+
+          {q ? (
             <Paragraph
               fontFamily="$mono"
               fontSize={10}
-              letterSpacing={2}
+              letterSpacing={1.6}
               textTransform="uppercase"
               color="$color11"
               fontWeight="600"
             >
-              {todayTotal === 0
-                ? "Nothing on the table"
-                : `${todayDone.length} of ${todayTotal} lit today`}
+              {`${byText.length} match${byText.length === 1 ? "" : "es"}`}
             </Paragraph>
-            <H3 color="$color12">Todos</H3>
-          </YStack>
+          ) : null}
 
           {/* Daily ignition progress — visible only when there's something
               to track. The bar fills in the priority-fire palette as the
