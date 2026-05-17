@@ -255,7 +255,19 @@ if [[ -n "$INSTALLER_DIR" ]]; then
     aws s3 cp "$INSTALLER" "s3://${S3_BUCKET}/${DEST_KEY}" \
       --endpoint-url "$S3_ENDPOINT_URL"
 
-    UPLOADED+=("${DEST_KEY}")
+    # Also mirror to a stable URL at the bucket root so end users have
+    # one link that never changes between releases:
+    #   https://<S3_PUBLIC_URL>/Meridian-darwin-aarch64.dmg
+    # Cache-Control: no-cache lets new releases propagate immediately
+    # at Cloudflare's edge without users seeing yesterday's installer.
+    EXT="${INSTALLER_BASENAME##*.}"
+    STABLE_KEY="Meridian-${PLATFORM}.${EXT}"
+    echo "Mirroring stable URL [${PLATFORM}]: ${STABLE_KEY}"
+    aws s3 cp "$INSTALLER" "s3://${S3_BUCKET}/${STABLE_KEY}" \
+      --endpoint-url "$S3_ENDPOINT_URL" \
+      --cache-control "no-cache"
+
+    UPLOADED+=("${DEST_KEY}" "${STABLE_KEY}")
     INSTALLER_COUNT=$((INSTALLER_COUNT + 1))
   done
 
