@@ -36,6 +36,7 @@ import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { FeedbackButton } from "@/components/shared/feedback-button";
 import { CommandPalette } from "@/components/shared/command-palette";
 import { ShortcutsDialog } from "@/components/shared/shortcuts-dialog";
+import { MeridianLogo } from "@/components/shared/meridian-logo";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 import { CreateTodoDialog } from "@/components/todos/create-todo-dialog";
 import { useUser } from "@/hooks/use-user";
@@ -213,10 +214,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {/* Brand */}
           <div className="p-3">
             <div className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm">
-              <div className="flex size-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
-                M
-              </div>
-              <span className="flex-1 truncate text-sm font-semibold text-sidebar-foreground">
+              <MeridianLogo size="md" />
+              <span className="flex-1 truncate text-lg font-semibold text-sidebar-foreground">
                 Meridian
               </span>
             </div>
@@ -261,9 +260,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <SheetHeader className="p-3">
                   <SheetTitle className="sr-only">Navigation</SheetTitle>
                   <div className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm">
-                    <div className="flex size-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-primary-foreground">
-                      M
-                    </div>
+                    <MeridianLogo size="xs" />
                     <span className="flex-1 truncate text-sm font-semibold text-sidebar-foreground">
                       Meridian
                     </span>
