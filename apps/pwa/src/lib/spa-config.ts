@@ -1,6 +1,6 @@
 import type { StageholderSpaConfig } from "@stageholder/sdk/spa";
 import { ConfigError } from "@stageholder/sdk/spa";
-import { TauriStorageAdapter } from "@/lib/tauri-storage";
+import { createTauriStoreStorage, isTauri } from "@stageholder/sdk/tauri";
 
 function readEnv(key: string): string {
   const value = import.meta.env[key];
@@ -10,10 +10,6 @@ function readEnv(key: string): string {
     );
   }
   return value;
-}
-
-function isTauri(): boolean {
-  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
 
 const issuerUrl = readEnv("VITE_IDENTITY_ISSUER_URL");
@@ -30,10 +26,23 @@ const redirectOrigin = isTauri() ? TAURI_LOOPBACK_ORIGIN : appUrl;
 // On desktop, persist session via tauri-plugin-store so tokens survive
 // `clear_all_browsing_data()` at every Tauri cold boot (`src-tauri/src/lib.rs`).
 // On web, the SDK's default LocalStorageAdapter applies — no storage option.
+//
+// File name (`auth.dat`) and key prefix (`sdk:`) are preserved from the
+// hand-rolled adapter this replaced so existing desktop installs keep
+// their session across the SDK swap. See the SDK's
+// `docs/superpowers/plans/2026-05-16-sdk-tauri-storage-helper.md` for the
+// helper's contract.
 export const spaConfig: StageholderSpaConfig = {
   issuerUrl,
   clientId,
   redirectUri: `${redirectOrigin}/auth/callback`,
   postLogoutRedirectUri: `${redirectOrigin}/goodbye`,
-  ...(isTauri() ? { storage: new TauriStorageAdapter() } : {}),
+  ...(isTauri()
+    ? {
+        storage: createTauriStoreStorage({
+          storeFile: "auth.dat",
+          keyPrefix: "sdk:",
+        }),
+      }
+    : {}),
 };

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useProfile, useUpdateProfile } from "@/lib/sdk-compat";
+import { useProfile, useUpdateProfile } from "@stageholder/sdk/spa";
 import { TimezoneSelect } from "@/components/ui/timezone-select";
 
 /**

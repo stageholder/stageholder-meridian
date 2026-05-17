@@ -1,16 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Sparkles } from "lucide-react";
 import {
   RefreshSessionError,
+  useCheckoutStatus,
+  useRefreshSession,
   useStageholder,
   useSubscription,
 } from "@stageholder/sdk/spa";
-import { useCheckoutStatus, useRefreshSession } from "@/lib/sdk-compat";
 import { refreshEntitlement } from "@/lib/entitlement";
 import { tryGetCurrentUserSub } from "@/lib/current-user-sub";
 import { cn } from "@/lib/utils";
+
+/** Hard cap on Polar polling — beyond this we run recovery optimistically. */
+const MAX_POLL_DURATION_MS = 15_000;
 
 /**
  * Post-billing-action landing page. Two entry modes:
@@ -67,7 +71,7 @@ function BillingSuccessPage() {
   // involved). Set by Hub's change-plan handler, consumed by the effect
   // below to skip polling and go straight to refresh+bust.
   const isChangePlan = search.changed === "1";
-  const refreshSession = useRefreshSession();
+  const refreshSessionMutation = useRefreshSession();
   const { signOut } = useStageholder();
   const queryClient = useQueryClient();
   const sub = useSubscription();
@@ -82,6 +86,57 @@ function BillingSuccessPage() {
   const checkout = useCheckoutStatus({
     checkoutId: isChangePlan ? null : checkoutId,
   });
+
+  // Local timeout for Polar polling — the SDK's `useCheckoutStatus` polls
+  // indefinitely until a terminal status, so we cap it here so the user
+  // isn't stuck on "Confirming…" if Polar's webhook is delayed.
+  const startedAt = useRef<number>(Date.now());
+  const [timedOut, setTimedOut] = useState(false);
+  useEffect(() => {
+    if (isChangePlan || !checkoutId) return;
+    const elapsed = Date.now() - startedAt.current;
+    const remaining = MAX_POLL_DURATION_MS - elapsed;
+    if (remaining <= 0) {
+      setTimedOut(true);
+      return;
+    }
+    const handle = setTimeout(() => setTimedOut(true), remaining);
+    return () => clearTimeout(handle);
+  }, [isChangePlan, checkoutId]);
+
+  // Derive a coarse polling phase from the SDK's raw checkout status +
+  // the local timeout — keeps the rest of the page's state machine
+  // (which was written against `idle | polling | succeeded | failed |
+  // timeout | error`) unchanged.
+  type CheckoutPhase =
+    | "idle"
+    | "polling"
+    | "succeeded"
+    | "failed"
+    | "error"
+    | "timeout";
+  const checkoutPhase = useMemo<CheckoutPhase>(() => {
+    if (!checkoutId || isChangePlan) return "idle";
+    if (checkout.isError) return "error";
+    const s = checkout.data?.status;
+    if (s === "succeeded") return "succeeded";
+    if (s === "failed" || s === "expired") return "failed";
+    if (timedOut) return "timeout";
+    return "polling";
+  }, [
+    checkoutId,
+    isChangePlan,
+    checkout.isError,
+    checkout.data?.status,
+    timedOut,
+  ]);
+
+  // Stable refs so the recovery effect doesn't re-run when the mutation
+  // hook re-renders. `useRefreshSession()` returns a fresh mutation
+  // object on each render — capturing `mutateAsync` directly in deps
+  // would re-enter the effect mid-flight.
+  const refreshRef = useRef(refreshSessionMutation.mutateAsync);
+  refreshRef.current = refreshSessionMutation.mutateAsync;
 
   useEffect(() => {
     let cancelled = false;
@@ -126,7 +181,7 @@ function BillingSuccessPage() {
      */
     async function runRecovery(timeoutMode: boolean) {
       try {
-        await Promise.all([refreshSession(), bustCaches()]);
+        await Promise.all([refreshRef.current(), bustCaches()]);
         if (!cancelled) setPhase(timeoutMode ? "timeout" : "ready");
       } catch (err) {
         // eslint-disable-next-line no-console
@@ -152,23 +207,23 @@ function BillingSuccessPage() {
       // Plan-change path skips Polar polling entirely — Hub already called
       // `subscriptions.update` before redirecting us here, so the only work
       // left is rotating the session and busting caches. Run recovery
-      // immediately rather than waiting on a `checkout.phase` transition
+      // immediately rather than waiting on a `checkoutPhase` transition
       // that will never come (checkoutId is null in this mode).
       if (isChangePlan) {
         await runRecovery(false);
         return;
       }
-      if (checkout.phase === "polling" || checkout.phase === "idle") return;
-      if (checkout.phase === "succeeded") {
+      if (checkoutPhase === "polling" || checkoutPhase === "idle") return;
+      if (checkoutPhase === "succeeded") {
         setPhase("refreshing");
         await runRecovery(false);
         return;
       }
-      if (checkout.phase === "failed" || checkout.phase === "error") {
+      if (checkoutPhase === "failed" || checkoutPhase === "error") {
         if (!cancelled) setPhase("checkout_failed");
         return;
       }
-      if (checkout.phase === "timeout") {
+      if (checkoutPhase === "timeout") {
         // Polar didn't reach a terminal state in 15s. Optimistically refresh
         // anyway — the webhook may still arrive — and surface a soft warning.
         await runRecovery(true);
@@ -177,7 +232,7 @@ function BillingSuccessPage() {
     return () => {
       cancelled = true;
     };
-  }, [isChangePlan, checkout.phase, refreshSession, queryClient]);
+  }, [isChangePlan, checkoutPhase, queryClient]);
 
   /**
    * Sign-out fast path: when the session is in the "stale claims, dead
@@ -203,7 +258,7 @@ function BillingSuccessPage() {
   // confirmed" and wonder if they were charged.
   const headline = (() => {
     if (phase === "polling")
-      return checkout.phase === "polling" && checkout.data?.status
+      return checkoutPhase === "polling" && checkout.data?.status
         ? `Confirming with Polar…`
         : "Confirming your payment…";
     if (phase === "refreshing")

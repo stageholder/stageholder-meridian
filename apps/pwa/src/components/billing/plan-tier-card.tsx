@@ -1,15 +1,18 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import type { PricingPlan, ProductFeature } from "@stageholder/sdk/react";
-import { useOrg, useStageholder, useSubscription } from "@stageholder/sdk/spa";
-import { BillingError } from "@stageholder/sdk/core";
 import {
+  formatPlanPrice,
   useBillingPortal,
   useCanManageBilling,
   useChangePlan,
+  useOrg,
+  useStageholder,
   useStartCheckout,
-  formatPlanPrice,
-} from "@/lib/sdk-compat";
+  useSubscription,
+  type PricingPlan,
+  type ProductFeature,
+} from "@stageholder/sdk/spa";
+import { BillingError } from "@stageholder/sdk/core";
 import { OrbitIllustration } from "./orbit-illustration";
 import { cn } from "@/lib/utils";
 import {
@@ -45,7 +48,8 @@ export function PlanTierCard({
   className?: string;
 }) {
   const { mutateAsync, isPending: checkoutPending } = useStartCheckout();
-  const { open: openPortal, isPending: portalPending } = useBillingPortal();
+  const billingPortal = useBillingPortal();
+  const portalPending = billingPortal.isPending;
   const { canManage } = useCanManageBilling();
   const { org, organizations } = useOrg();
   const { state } = useStageholder();
@@ -77,8 +81,17 @@ export function PlanTierCard({
   // isn't a typed BillingError (network failures, 5xx HTML responses).
   async function startCheckout() {
     setErrorState(null);
+    if (!org) {
+      setErrorState({
+        code: null,
+        message: "No active workspace to bill against.",
+      });
+      return;
+    }
     try {
       const { url } = await mutateAsync({
+        orgId: org.id,
+        product: "meridian",
         planSlug: plan.slug,
         billingCycle: cycle,
         returnUrl: `${window.location.origin}/settings/billing/success`,
@@ -105,24 +118,28 @@ export function PlanTierCard({
    * `polar.subscriptions.update({product_id})` server-side). Polar fires
    * `subscription.updated` webhook → Hub refreshes the local row.
    *
-   * Most of the time Hub returns no URL (the change settled
-   * server-side); we navigate to the success page locally so the user
-   * sees confirmation + the poll-and-refresh-session flow runs. If Hub
-   * does return a URL (rare — Polar proration confirmation), we follow
-   * it instead.
+   * The SDK's `useChangePlan` returns `unknown` — Hub settles the change
+   * server-side and our success page polls/refreshes from there. Navigate
+   * to `?changed=1` so the success route runs its refresh + cache-bust
+   * sequence.
    */
   async function changePlan() {
     setErrorState(null);
+    if (!org) {
+      setErrorState({
+        code: null,
+        message: "No active workspace to bill against.",
+      });
+      return;
+    }
     try {
-      const result = await changePlanMutation.mutateAsync({
+      await changePlanMutation.mutateAsync({
+        orgId: org.id,
+        product: "meridian",
         planSlug: plan.slug,
         billingCycle: cycle,
       });
-      if (result.url) {
-        window.location.href = result.url;
-      } else {
-        window.location.href = `/settings/billing/success?changed=1`;
-      }
+      window.location.href = `/settings/billing/success?changed=1`;
     } catch (err) {
       if (err instanceof BillingError) {
         setErrorState({ code: err.code, message: err.message });
@@ -140,10 +157,19 @@ export function PlanTierCard({
 
   async function manageSubscription() {
     setErrorState(null);
+    if (!org) {
+      setErrorState({
+        code: null,
+        message: "No active workspace to bill against.",
+      });
+      return;
+    }
     try {
-      await openPortal({
+      const { url } = await billingPortal.mutateAsync({
+        orgId: org.id,
         returnUrl: `${window.location.origin}/settings/billing`,
       });
+      window.location.href = url;
     } catch (err) {
       setErrorState({
         code: null,

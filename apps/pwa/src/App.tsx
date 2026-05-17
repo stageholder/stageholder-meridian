@@ -11,7 +11,6 @@ import {
   dispatchLoadingProgress,
   dispatchLoadingReady,
 } from "./lib/loading-progress";
-import { PaywallProvider } from "./lib/sdk-compat";
 import { PaywallListener } from "@/components/paywall-listener";
 import { EncryptionStoreInitializer } from "@/components/providers/encryption-store-initializer";
 import { LogProvider } from "@/components/shared/log-provider";
@@ -33,8 +32,7 @@ function InnerApp() {
   // doesn't default `activeOrgId` (it only reads it from localStorage on
   // resume), so on a fresh sign-in `useOrg().org` stays null until
   // something explicitly sets it. That breaks every consumer of
-  // `useOrg().org` — billing hooks, sdk-compat fetches that scope by
-  // orgId, etc.
+  // `useOrg().org` — billing hooks, SDK fetches that scope by orgId, etc.
   //
   // Replaces what the old Next.js BFF's `afterCallback` hook did
   // server-side; same logic, now client-side, runs exactly once per
@@ -114,14 +112,21 @@ export function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <QueryClientProvider client={queryClient}>
-        <StageholderSpaProvider productSlug="meridian" config={spaConfig}>
+        <StageholderSpaProvider
+          productSlug="meridian"
+          config={{ ...spaConfig, renderPaywall: false }}
+        >
           {/*
-           * PaywallProvider: SPA-compatible replacement for the SDK's
-           * `/react` usePaywall (which is unreachable under SPA — the SDK
-           * has a dual-package hazard between `/react` and `/spa` contexts).
-           * Owns the meridian:paywall event subscription + open/close state.
+           * PaywallListener: bridges Meridian's `meridian:paywall` window
+           * event (dispatched by ServiceWrapper on 402 responses from the
+           * Meridian API) into the SDK's `usePaywall()` controller, and
+           * paints the bespoke `<MeridianPaywallModal>`. We pass
+           * `renderPaywall: false` to the provider so the SDK's default
+           * modal stays unmounted — Meridian ships its own.
            *
-           * PaywallListener: paints the modal off the controller state.
+           * The SDK's auto-paywall (403 `PLAN_UPGRADE_REQUIRED`) covers
+           * Hub-side gating done through SDK hooks; this listener covers
+           * the Meridian API's own 402 paywall responses.
            *
            * EncryptionStoreInitializer: hydrates journal-encryption store
            * from OIDC `sub` once authenticated; drops queued offline
@@ -129,15 +134,13 @@ export function App() {
            *
            * LogProvider: installs the platform logger's global error capture.
            */}
-          <PaywallProvider>
-            <PaywallListener>
-              <EncryptionStoreInitializer>
-                <LogProvider>
-                  <InnerApp />
-                </LogProvider>
-              </EncryptionStoreInitializer>
-            </PaywallListener>
-          </PaywallProvider>
+          <PaywallListener>
+            <EncryptionStoreInitializer>
+              <LogProvider>
+                <InnerApp />
+              </LogProvider>
+            </EncryptionStoreInitializer>
+          </PaywallListener>
           <Toaster />
         </StageholderSpaProvider>
       </QueryClientProvider>

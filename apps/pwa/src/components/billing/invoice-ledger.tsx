@@ -1,6 +1,9 @@
 import { useState } from "react";
-import { useStageholder } from "@stageholder/sdk/spa";
-import { useCanManageBilling, useInvoices } from "@/lib/sdk-compat";
+import {
+  useCanManageBilling,
+  useInvoices,
+  useStageholder,
+} from "@stageholder/sdk/spa";
 import { Download, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,9 +22,9 @@ export function InvoiceLedger({
 }) {
   const { state } = useStageholder();
   const { canManage } = useCanManageBilling();
-  const { data, isLoading, isError } = useInvoices();
   const orgId =
     state.status === "authenticated" ? state.data.activeOrgId : undefined;
+  const { data, isLoading, isError } = useInvoices(orgId);
 
   return (
     <section

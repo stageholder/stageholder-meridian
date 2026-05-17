@@ -1,4 +1,4 @@
-import type { PricingPlan, ProductFeature } from "@stageholder/sdk/react";
+import type { PricingPlan, ProductFeature } from "@stageholder/sdk/spa";
 import { cn } from "@/lib/utils";
 import { Check, Minus } from "lucide-react";
 

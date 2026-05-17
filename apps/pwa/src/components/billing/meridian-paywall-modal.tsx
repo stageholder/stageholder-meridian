@@ -1,5 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { useCanManageBilling, type PaywallReason } from "@/lib/sdk-compat";
+import { useCanManageBilling } from "@stageholder/sdk/spa";
+import type { PaywallReason } from "@stageholder/sdk/core";
 import { ArrowUpRight } from "lucide-react";
 import { LimitOrbit } from "./limit-orbit";
 import { cn } from "@/lib/utils";

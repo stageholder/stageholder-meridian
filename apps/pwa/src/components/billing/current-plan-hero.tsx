@@ -1,5 +1,10 @@
-import { useStageholder, useSubscription } from "@stageholder/sdk/spa";
-import { useBillingPortal, useCanManageBilling } from "@/lib/sdk-compat";
+import {
+  useBillingPortal,
+  useCanManageBilling,
+  useOrg,
+  useStageholder,
+  useSubscription,
+} from "@stageholder/sdk/spa";
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, ExternalLink } from "lucide-react";
 import { OrbitIllustration } from "./orbit-illustration";
@@ -24,8 +29,10 @@ export function CurrentPlanHero({
 }) {
   const sub = useSubscription();
   const { state } = useStageholder();
+  const { org } = useOrg();
   const { canManage } = useCanManageBilling();
-  const { open: openPortal, isPending: portalPending } = useBillingPortal();
+  const billingPortal = useBillingPortal();
+  const portalPending = billingPortal.isPending;
 
   if (state.status !== "authenticated") {
     return <HeroSkeleton />;
@@ -110,17 +117,23 @@ export function CurrentPlanHero({
               </span>
             </Link>
 
-            {canManage && !isFree && (
+            {canManage && !isFree && org && (
               <button
                 type="button"
                 disabled={portalPending}
                 onClick={() => {
-                  openPortal({
-                    returnUrl: `${window.location.origin}/app/settings/billing`,
-                  }).catch((err) =>
-                    // eslint-disable-next-line no-console
-                    console.error("[meridian] portal failed:", err),
-                  );
+                  billingPortal
+                    .mutateAsync({
+                      orgId: org.id,
+                      returnUrl: `${window.location.origin}/app/settings/billing`,
+                    })
+                    .then(({ url }) => {
+                      window.location.href = url;
+                    })
+                    .catch((err) =>
+                      // eslint-disable-next-line no-console
+                      console.error("[meridian] portal failed:", err),
+                    );
                 }}
                 className={cn(
                   "inline-flex h-11 items-center gap-2 rounded-full border border-foreground/80 bg-background px-5 text-sm font-medium text-foreground",

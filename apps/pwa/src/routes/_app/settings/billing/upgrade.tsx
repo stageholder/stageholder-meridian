@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-import { useSubscription } from "@stageholder/sdk/spa";
-import { usePricing } from "@/lib/sdk-compat";
-import type { PricingPlan } from "@stageholder/sdk/react";
+import {
+  usePricing,
+  useSubscription,
+  type PricingPlan,
+} from "@stageholder/sdk/spa";
 import { CycleToggle } from "@/components/billing/cycle-toggle";
 import { PlanTierCard } from "@/components/billing/plan-tier-card";
 import { ComparisonSheet } from "@/components/billing/comparison-sheet";
@@ -21,7 +23,9 @@ export const Route = createFileRoute("/_app/settings/billing/upgrade")({
 
 function UpgradePage() {
   const sub = useSubscription();
-  const { plans, features, isLoading } = usePricing("meridian");
+  const { data: pricing, isLoading } = usePricing("meridian");
+  const plans = pricing?.plans;
+  const features = pricing?.features;
   const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
 
   const ordered = useMemo(() => orderPlans(plans), [plans]);
@@ -157,8 +161,10 @@ function UpgradePage() {
  * the `-translate-y-6` lift in the grid, not by reordering, so the
  * comparison table below stays intuitive (cheapest → most expensive).
  */
-function orderPlans(plans: PricingPlan[] | null): PricingPlan[] | null {
-  if (!plans) return null;
+function orderPlans(
+  plans: PricingPlan[] | undefined,
+): PricingPlan[] | undefined {
+  if (!plans) return undefined;
   return [...plans].sort((a, b) => {
     if (a.isFreeTier && !b.isFreeTier) return -1;
     if (!a.isFreeTier && b.isFreeTier) return 1;
@@ -175,7 +181,7 @@ function orderPlans(plans: PricingPlan[] | null): PricingPlan[] | null {
  * no honest comparison to print.
  */
 function bestYearlyDiscountLabel(
-  plans: PricingPlan[] | null,
+  plans: PricingPlan[] | undefined,
 ): string | undefined {
   if (!plans) return undefined;
   let best = 0;

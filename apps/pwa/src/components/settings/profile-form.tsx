@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useProfile, useUpdateProfile } from "@/lib/sdk-compat";
+import { useProfile, useUpdateProfile } from "@stageholder/sdk/spa";
 import { TimezoneSelect } from "@/components/ui/timezone-select";
 
 /**
@@ -12,7 +12,7 @@ import { TimezoneSelect } from "@/components/ui/timezone-select";
  * original — not rendered here for the same reason.
  *
  * Hub is the source of truth; writes go straight to `PATCH
- * /api/users/me` via `useUpdateProfile` (also in sdk-compat).
+ * /api/account/profile` via `useUpdateProfile`.
  */
 export function ProfileForm() {
   const { data: profile, isLoading } = useProfile();
@@ -25,7 +25,7 @@ export function ProfileForm() {
   // on subsequent profile changes — that would clobber an in-flight edit.
   useEffect(() => {
     if (profile && !name && !timezone) {
-      setName(profile.displayName ?? profile.name ?? "");
+      setName(profile.displayName ?? "");
       setTimezone(profile.timezone ?? "");
     }
   }, [profile, name, timezone]);
@@ -38,9 +38,7 @@ export function ProfileForm() {
 
   function save(e: React.FormEvent) {
     e.preventDefault();
-    // Send both `displayName` (Hub's canonical field) and `name` (legacy
-    // alias some callers still set) so either Hub revision accepts it.
-    update.mutate({ displayName: name, name, timezone });
+    update.mutate({ displayName: name, timezone });
   }
 
   return (
