@@ -56,6 +56,22 @@ export function useGlobalShortcuts(callbacks: ShortcutCallbacks) {
       // All other shortcuts are blocked when focus is in an input
       if (isInputFocused()) return;
 
+      // Cmd/Ctrl+[ — browser-style back; Cmd/Ctrl+] — forward.
+      // Matches the header chevron buttons (desktop) and the macOS
+      // convention. Forward is a no-op when there's no forward entry.
+      if (mod && !e.shiftKey && !e.altKey) {
+        if (e.key === "[") {
+          e.preventDefault();
+          window.history.back();
+          return;
+        }
+        if (e.key === "]") {
+          e.preventDefault();
+          window.history.forward();
+          return;
+        }
+      }
+
       // Check for chord completions (G → X)
       if (pendingKeyRef.current === "g") {
         clearPending();

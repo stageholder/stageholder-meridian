@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useCanGoBack, useRouterState } from "@tanstack/react-router";
 import {
   Home,
   CalendarDays,
@@ -13,6 +13,8 @@ import {
   Keyboard,
   CreditCard,
   UserCog,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useAutoSync, useSyncOnFocus } from "@repo/offline/hooks";
 import { useNetworkStatusWithHeartbeat } from "@repo/offline/network";
@@ -166,6 +168,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
   useGlobalShortcuts(shortcutCallbacks);
 
+  // Browser-style nav for desktop. `useCanGoBack` reflects the router's
+  // internal history pointer; forward is always enabled because the
+  // HTML5 History API doesn't expose a canGoForward signal — clicking
+  // when there's nothing forward is a no-op.
+  const canGoBack = useCanGoBack();
+  // macOS-only padding for the traffic lights that overlay the header
+  // when `titleBarStyle: "Overlay"` is set in tauri.conf.json.
+  const isMacDesktop =
+    isDesktop() &&
+    typeof navigator !== "undefined" &&
+    /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+
   // Listen for sign-outs from other tabs — hard-navigate so the new page load
   // runs through the auth proxy and the user lands on /auth/login cleanly.
   useEffect(() => {
@@ -211,6 +225,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex h-dvh overflow-hidden bg-background safe-area-top">
         {/* Desktop sidebar */}
         <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
+          {/* macOS traffic-light clearance. titleBarStyle: Overlay lets the
+              window content extend under the title bar, so the top ~28px
+              of the sidebar (where the brand would sit) is overlapped by
+              the traffic lights. This drag-region spacer pushes the brand
+              down and doubles as a window drag handle. */}
+          {isMacDesktop && (
+            <div data-tauri-drag-region className="h-7 shrink-0" />
+          )}
           {/* Brand */}
           <div className="p-3">
             <div className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm">
@@ -246,8 +268,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* Main content area */}
         <div className="flex min-w-0 flex-1 flex-col">
-          {/* Top header */}
-          <header className="flex h-12 shrink-0 items-center gap-3 overflow-hidden border-b border-border bg-background px-4">
+          {/* Top header. data-tauri-drag-region makes empty header space a
+              window drag handle (Tauri auto-excludes interactive children).
+              No traffic-light padding here — the lights sit over the
+              sidebar, which is to the LEFT of this header. */}
+          <header
+            data-tauri-drag-region
+            className="flex h-12 shrink-0 items-center gap-3 overflow-hidden border-b border-border bg-background px-4"
+          >
             {/* Mobile menu trigger */}
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild>
@@ -260,8 +288,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <SheetHeader className="p-3">
                   <SheetTitle className="sr-only">Navigation</SheetTitle>
                   <div className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm">
-                    <MeridianLogo size="xs" />
-                    <span className="flex-1 truncate text-sm font-semibold text-sidebar-foreground">
+                    <MeridianLogo size="md" />
+                    <span className="flex-1 truncate text-lg font-semibold text-sidebar-foreground">
                       Meridian
                     </span>
                   </div>
@@ -275,6 +303,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
               </SheetContent>
             </Sheet>
+
+            {/* Browser-style nav, desktop only. Forward is always enabled —
+                HTML5 history has no canGoForward signal; clicking when
+                there's no forward entry is a no-op. */}
+            {isDesktop() && (
+              <div className="hidden items-center gap-0.5 md:flex">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={!canGoBack}
+                  onClick={() => window.history.back()}
+                  title="Back (⌘[)"
+                >
+                  <ChevronLeft className="size-4" />
+                  <span className="sr-only">Back</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => window.history.forward()}
+                  title="Forward (⌘])"
+                >
+                  <ChevronRight className="size-4" />
+                  <span className="sr-only">Forward</span>
+                </Button>
+                <div className="mx-1 h-4 w-px bg-border" />
+              </div>
+            )}
 
             {/* Page title */}
             <div className="flex items-center gap-2">
