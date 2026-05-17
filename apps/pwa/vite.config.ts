@@ -28,6 +28,11 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon/*", "logo/*", "robots.txt"],
+      // We register the SW manually from main.tsx so we can gate it on
+      // `window.location.protocol` — WebKit rejects ServiceWorker.register()
+      // on non-http(s) origins (Tauri's tauri:// scheme), and the default
+      // auto-injected registerSW.js doesn't check first.
+      injectRegister: false,
       // Explicitly disable the PWA plugin in dev. The default already
       // skips SW generation in `vite dev`, but a stale SW from a previous
       // dev session can still be active in the browser — adding this

@@ -22,13 +22,14 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: asset: https://asset.localhost; font-src 'self' data:; connect-src 'self' http://localhost:14001 https://api.meridian.stageholder.com https://id.stageholder.com ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: asset: https://asset.localhost https://*.googleusercontent.com https://*.gravatar.com; font-src 'self' data:; connect-src 'self' http://localhost:14001 https://api.meridian.stageholder.com https://id.stageholder.com ipc: http://ipc.localhost",
+      "dangerousDisableAssetCspModification": ["style-src"]
     }
   },
   "plugins": {
     "updater": {
       "endpoints": ["https://releases.meridian.stageholder.com/latest.json"],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDlCNjREREJCQzQ3N0YyRDUKUldUVjhuZkV1OTFrbTcweCs5OWJBR1R0V2JuYkdMWkNkYmQvQytCOEtEb2xHVXNVZ203a0NJSzMK"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM1MzNCMzk0MTJFOTNCRDQKUldUVU8ra1NsTE16TmRLczV1TGp1NlBIZFdGRG9ubXFiNHkrVmtDd2QxbkgrTHdrS29iN0I1cFIK"
     }
   },
   "bundle": {

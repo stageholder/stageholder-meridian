@@ -15,6 +15,7 @@ import {
   UserCog,
   ChevronLeft,
   ChevronRight,
+  RefreshCw,
 } from "lucide-react";
 import { useAutoSync, useSyncOnFocus } from "@repo/offline/hooks";
 import { useNetworkStatusWithHeartbeat } from "@repo/offline/network";
@@ -39,6 +40,7 @@ import { FeedbackButton } from "@/components/shared/feedback-button";
 import { CommandPalette } from "@/components/shared/command-palette";
 import { ShortcutsDialog } from "@/components/shared/shortcuts-dialog";
 import { MeridianLogo } from "@/components/shared/meridian-logo";
+import { checkForUpdate } from "@/lib/check-for-updates";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 import { CreateTodoDialog } from "@/components/todos/create-todo-dialog";
 import { useUser } from "@/hooks/use-user";
@@ -626,6 +628,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     href: "/settings/billing",
                     icon: <CreditCard className="size-4" />,
                   },
+                  // Manual trigger for the same updater the auto-poll uses
+                  // (UpdateChecker runs check() on launch + every 30 min
+                  // silently). Desktop-only — the updater plugin isn't
+                  // available on web.
+                  ...(isDesktop()
+                    ? [
+                        {
+                          label: "Check for updates",
+                          onSelect: () =>
+                            void checkForUpdate({ showWhenUpToDate: true }),
+                          icon: <RefreshCw className="size-4" />,
+                        },
+                      ]
+                    : []),
                   {
                     label: "Sign out",
                     onSelect: () => void handleLogout(),

@@ -23,3 +23,14 @@ createRoot(rootEl).render(
     <App />
   </StrictMode>,
 );
+
+// Register the PWA service worker only when running over http(s) — Tauri's
+// tauri:// (macOS/Linux) and http://tauri.localhost (Windows) origins make
+// WebKit reject ServiceWorker.register() with "must be called with a script
+// URL whose protocol is either HTTP or HTTPS". The PWA plugin's auto-inject
+// is off (see vite.config.ts) so this is the single registration site.
+if (/^https?:$/.test(window.location.protocol)) {
+  void import("virtual:pwa-register").then(({ registerSW }) => {
+    registerSW({ immediate: true });
+  });
+}

@@ -23,12 +23,26 @@ function CallbackPage() {
   }, [user, isLoading, error, navigate]);
 
   useEffect(() => {
-    if (error) {
-      navigate({
-        to: "/auth/error",
-        search: { reason: "token_exchange_failed" },
-      });
-    }
+    if (!error) return;
+    // Surface the actual error before redirecting to the generic error
+    // page — devtools is the only way to read what really failed
+    // (CSRF mismatch, network error from Hub, wrong client_id, etc.).
+    // The /auth/error page only knows the reason code, not the cause.
+    console.error("[meridian:auth] callback failed:", {
+      name: error.name,
+      message: error.message,
+      cause: (error as Error & { cause?: unknown }).cause,
+      stack: error.stack,
+    });
+    // Pick a more specific reason when we can identify the error class.
+    const msg = error.message ?? "";
+    const reason =
+      error.name === "CsrfError" || msg.toLowerCase().includes("state")
+        ? "state_mismatch"
+        : msg.toLowerCase().includes("missing")
+          ? "missing_params"
+          : "token_exchange_failed";
+    navigate({ to: "/auth/error", search: { reason } });
   }, [error, navigate]);
 
   return (

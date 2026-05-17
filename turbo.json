@@ -21,6 +21,16 @@
         "VITE_PUBLIC_APP_URL",
         "VITE_IDENTITY_ISSUER_URL",
         "VITE_IDENTITY_CLIENT_ID"
+      ],
+      "passThroughEnv": [
+        "TAURI_SIGNING_PRIVATE_KEY",
+        "TAURI_SIGNING_PRIVATE_KEY_PASSWORD",
+        "APPLE_CERTIFICATE",
+        "APPLE_CERTIFICATE_PASSWORD",
+        "APPLE_SIGNING_IDENTITY",
+        "APPLE_ID",
+        "APPLE_PASSWORD",
+        "APPLE_TEAM_ID"
       ]
     },
     "lint": {

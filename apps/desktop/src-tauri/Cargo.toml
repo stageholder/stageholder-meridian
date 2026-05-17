@@ -18,7 +18,12 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+# `devtools` keeps webview inspector available in release builds. Without
+# it, Cmd+Opt+I and right-click → Inspect do nothing in `tauri build`
+# output, so any prod-only bug (wrong env, CSP block, network error) is
+# invisible. Toggle off before shipping to actual users — keeping it on
+# means anyone can poke around in the running app.
+tauri = { version = "2", features = ["devtools"] }
 serde_json = "1"
 tauri-plugin-opener = "2"
 tauri-plugin-notification = "2"

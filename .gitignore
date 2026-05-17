@@ -39,3 +39,7 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+# Local release credentials (loaded by scripts/local-publish-desktop.sh).
+# Keep .env.publish.example committed as the template.
+.env.publish
