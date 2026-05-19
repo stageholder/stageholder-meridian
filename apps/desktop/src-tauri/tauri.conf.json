@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Meridian",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "com.stageholder.meridian",
   "build": {
     "beforeDevCommand": "cd ../pwa && bun run dev",
@@ -29,7 +29,7 @@
   "plugins": {
     "updater": {
       "endpoints": ["https://releases.meridian.stageholder.com/latest.json"],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM1MzNCMzk0MTJFOTNCRDQKUldUVU8ra1NsTE16TmRLczV1TGp1NlBIZFdGRG9ubXFiNHkrVmtDd2QxbkgrTHdrS29iN0I1cFIK"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEI5RkNDRkM0RjAzMjg1QkYKUldTL2hUTHd4TS84dVo1M0ZtTE1tays3VmtnU1N4eEFmWHpJd2ltR3l0c1ZneVl6R0c4ekNMeUkK"
     }
   },
   "bundle": {
@@ -45,9 +45,18 @@
     ],
     "macOS": {
       "dmg": {
-        "appPosition": { "x": 180, "y": 170 },
-        "applicationFolderPosition": { "x": 480, "y": 170 },
-        "windowSize": { "width": 660, "height": 400 }
+        "appPosition": {
+          "x": 180,
+          "y": 170
+        },
+        "applicationFolderPosition": {
+          "x": 480,
+          "y": 170
+        },
+        "windowSize": {
+          "width": 660,
+          "height": 400
+        }
       },
       "minimumSystemVersion": "10.15",
       "entitlements": "Entitlements.plist"

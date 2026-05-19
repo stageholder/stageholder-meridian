@@ -3,26 +3,30 @@ set -euo pipefail
 
 # ---------------------------------------------------------------------------
 # publish-desktop.sh
-# Called by CI after all platform builds complete.
-# Uploads Tauri updater artifacts and installer artifacts to any
-# S3-compatible object storage and publishes latest.json for the Tauri
-# updater endpoint.
+# Uploads Tauri updater + installer artifacts to Cloudflare R2 using
+# `wrangler` (the native Cloudflare CLI), and publishes latest.json for
+# the Tauri updater endpoint.
+#
+# Why wrangler over `aws s3`: wrangler is a single npm binary, has no
+# Python dependency (awscli's pyexpat crashes on macOS Python 3.14 mismatch),
+# and is the official tool for R2 — no need to configure S3-compat endpoint
+# URLs or fake region names.
 #
 # Usage:
 #   publish-desktop.sh <VERSION> [NOTES]
 #
 # Required env vars:
-#   S3_ACCESS_KEY_ID      - S3 access key
-#   S3_SECRET_ACCESS_KEY  - S3 secret key
-#   S3_ENDPOINT_URL       - S3 endpoint (e.g. https://acct.r2.cloudflarestorage.com)
-#   S3_BUCKET             - Bucket name
-#   S3_PUBLIC_URL         - Public base URL for the bucket (e.g. https://releases.example.com)
+#   CLOUDFLARE_API_TOKEN     Token with R2:Edit permission on the bucket.
+#                            Cloudflare dashboard → My Profile → API Tokens.
+#   CLOUDFLARE_ACCOUNT_ID    Cloudflare account ID (dashboard right sidebar).
+#   R2_BUCKET                Bucket name (e.g. meridian-releases).
+#   R2_PUBLIC_URL            Custom domain for the bucket
+#                            (e.g. https://releases.meridian.stageholder.com).
+#                            Must match the `endpoints` URL in tauri.conf.json.
 #
 # Optional env vars:
-#   S3_REGION             - Region (default: auto)
-#   UPDATER_DIR           - Directory containing updater artifacts (default: ARTIFACTS_DIR)
-#   INSTALLER_DIR         - Directory containing installer artifacts (default: empty = skip)
-#   ARTIFACTS_DIR         - Legacy fallback for UPDATER_DIR (default: .)
+#   UPDATER_DIR              Directory containing updater artifacts.
+#   INSTALLER_DIR            Directory containing installer artifacts.
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
@@ -40,7 +44,7 @@ NOTES="${2:-Release v${VERSION}}"
 # Required environment variable validation
 # ---------------------------------------------------------------------------
 MISSING=()
-for var in S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY S3_ENDPOINT_URL S3_BUCKET S3_PUBLIC_URL; do
+for var in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID R2_BUCKET R2_PUBLIC_URL; do
   if [[ -z "${!var:-}" ]]; then
     MISSING+=("$var")
   fi
@@ -54,14 +58,10 @@ if [[ ${#MISSING[@]} -gt 0 ]]; then
   exit 1
 fi
 
-S3_REGION="${S3_REGION:-auto}"
-
-# ---------------------------------------------------------------------------
-# Configure AWS CLI with S3-compatible credentials
-# ---------------------------------------------------------------------------
-aws configure set aws_access_key_id     "$S3_ACCESS_KEY_ID"
-aws configure set aws_secret_access_key "$S3_SECRET_ACCESS_KEY"
-aws configure set default.region        "$S3_REGION"
+# wrangler reads CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID automatically;
+# no `wrangler login` / `wrangler config` step needed.
+export CLOUDFLARE_API_TOKEN
+export CLOUDFLARE_ACCOUNT_ID
 
 # ---------------------------------------------------------------------------
 # Artifacts directories
@@ -71,45 +71,60 @@ UPDATER_DIR="${UPDATER_DIR:-$ARTIFACTS_DIR}"
 INSTALLER_DIR="${INSTALLER_DIR:-}"
 
 # Strip trailing slash from public URL
-S3_PUBLIC_URL="${S3_PUBLIC_URL%/}"
+R2_PUBLIC_URL="${R2_PUBLIC_URL%/}"
 
 echo "============================================================"
 echo "Publishing Meridian Desktop v${VERSION}"
 echo "Updater dir   : ${UPDATER_DIR}"
 echo "Installer dir : ${INSTALLER_DIR:-<none>}"
-echo "Bucket        : ${S3_BUCKET}"
-echo "Endpoint      : ${S3_ENDPOINT_URL}"
-echo "Public URL    : ${S3_PUBLIC_URL}"
+echo "Bucket        : ${R2_BUCKET}"
+echo "Public URL    : ${R2_PUBLIC_URL}"
 echo "============================================================"
 
 # ---------------------------------------------------------------------------
-# Platform target → (platform key, artifact glob) mapping
+# Tiny upload helper. Wraps `wrangler r2 object put` with consistent flags:
+#   $1 = local file path
+#   $2 = remote key inside the bucket
+#   $3 = (optional) cache-control value, default ""
+#   $4 = (optional) content-type, default auto-detected by wrangler
 # ---------------------------------------------------------------------------
-declare -A PLATFORM_KEY=(
-  [aarch64-apple-darwin]="darwin-aarch64"
-  [x86_64-apple-darwin]="darwin-x86_64"
-  [x86_64-unknown-linux-gnu]="linux-x86_64"
-  [aarch64-unknown-linux-gnu]="linux-aarch64"
-  [x86_64-pc-windows-msvc]="windows-x86_64"
+r2_upload() {
+  local src="$1"
+  local key="$2"
+  local cache="${3:-}"
+  local mime="${4:-}"
+
+  local args=(
+    r2 object put "${R2_BUCKET}/${key}"
+    --file="${src}"
+    --remote
+  )
+  if [[ -n "$cache" ]]; then args+=(--cache-control="${cache}"); fi
+  if [[ -n "$mime" ]]; then args+=(--content-type="${mime}"); fi
+
+  bunx wrangler "${args[@]}" >/dev/null
+}
+
+# ---------------------------------------------------------------------------
+# Platform targets. Plain indexed array — macOS default bash (3.2) doesn't
+# support `declare -A`, and the only thing we'd map per-target right now
+# is the display name + globs, both trivial to derive in a case statement.
+# ---------------------------------------------------------------------------
+TARGETS=(
+  aarch64-apple-darwin
+  x86_64-apple-darwin
 )
 
-declare -A ARTIFACT_GLOB=(
-  [aarch64-apple-darwin]="*.app.tar.gz"
-  [x86_64-apple-darwin]="*.app.tar.gz"
-  [x86_64-unknown-linux-gnu]="*.AppImage"
-  [aarch64-unknown-linux-gnu]="*.AppImage"
-  [x86_64-pc-windows-msvc]="*-setup.exe"
-)
+# platform_meta <target> → echoes "<platform_key>|<artifact_glob>|<installer_glob>"
+platform_meta() {
+  case "$1" in
+    aarch64-apple-darwin) echo "darwin-aarch64|*.app.tar.gz|*.dmg" ;;
+    x86_64-apple-darwin)  echo "darwin-x86_64|*.app.tar.gz|*.dmg" ;;
+    *) echo "ERROR: unknown target $1" >&2; return 1 ;;
+  esac
+}
 
-declare -A INSTALLER_GLOB=(
-  [aarch64-apple-darwin]="*.dmg"
-  [x86_64-apple-darwin]="*.dmg"
-  [x86_64-unknown-linux-gnu]="*.deb"
-  [aarch64-unknown-linux-gnu]="*.deb"
-  [x86_64-pc-windows-msvc]="*-setup.exe"
-)
-
-# Accumulate uploaded file basenames for the summary
+# Accumulate uploaded file keys for the summary
 UPLOADED=()
 
 # ---------------------------------------------------------------------------
@@ -118,7 +133,7 @@ UPLOADED=()
 PLATFORMS_JSON="{}"
 UPLOAD_COUNT=0
 
-for TARGET in "${!PLATFORM_KEY[@]}"; do
+for TARGET in "${TARGETS[@]}"; do
   TARGET_DIR="${UPDATER_DIR}/${TARGET}"
 
   if [[ ! -d "$TARGET_DIR" ]]; then
@@ -126,22 +141,14 @@ for TARGET in "${!PLATFORM_KEY[@]}"; do
     continue
   fi
 
-  GLOB="${ARTIFACT_GLOB[$TARGET]}"
-  PLATFORM="${PLATFORM_KEY[$TARGET]}"
+  IFS='|' read -r PLATFORM GLOB _ <<< "$(platform_meta "$TARGET")"
 
-  # Find the artifact file (expect exactly one match)
-  mapfile -t MATCHES < <(find "$TARGET_DIR" -maxdepth 1 -name "$GLOB" ! -name "*.sig" 2>/dev/null | sort)
-
-  if [[ ${#MATCHES[@]} -eq 0 ]]; then
+  # find ... | head -1 — `mapfile` is bash 4+, skip the array.
+  ARTIFACT="$(find "$TARGET_DIR" -maxdepth 1 -name "$GLOB" ! -name "*.sig" 2>/dev/null | sort | head -1)"
+  if [[ -z "$ARTIFACT" ]]; then
     echo "WARN: no artifact matching '${GLOB}' found in ${TARGET_DIR}, skipping." >&2
     continue
   fi
-
-  if [[ ${#MATCHES[@]} -gt 1 ]]; then
-    echo "WARN: multiple artifacts matching '${GLOB}' in ${TARGET_DIR}, using the first one." >&2
-  fi
-
-  ARTIFACT="${MATCHES[0]}"
   SIG_FILE="${ARTIFACT}.sig"
 
   if [[ ! -f "$SIG_FILE" ]]; then
@@ -151,23 +158,18 @@ for TARGET in "${!PLATFORM_KEY[@]}"; do
 
   ARTIFACT_BASENAME="$(basename "$ARTIFACT")"
   DEST_KEY="v${VERSION}/${ARTIFACT_BASENAME}"
-  PUBLIC_URL="${S3_PUBLIC_URL}/${DEST_KEY}"
+  PUBLIC_URL="${R2_PUBLIC_URL}/${DEST_KEY}"
   SIGNATURE="$(cat "$SIG_FILE")"
 
-  # Upload artifact
   echo "Uploading [${PLATFORM}]: ${ARTIFACT_BASENAME}"
-  aws s3 cp "$ARTIFACT" "s3://${S3_BUCKET}/${DEST_KEY}" \
-    --endpoint-url "$S3_ENDPOINT_URL"
+  r2_upload "$ARTIFACT" "$DEST_KEY"
 
-  # Upload .sig file alongside the artifact
   echo "Uploading [${PLATFORM}]: ${ARTIFACT_BASENAME}.sig"
-  aws s3 cp "$SIG_FILE" "s3://${S3_BUCKET}/${DEST_KEY}.sig" \
-    --endpoint-url "$S3_ENDPOINT_URL"
+  r2_upload "$SIG_FILE" "${DEST_KEY}.sig"
 
   UPLOADED+=("${DEST_KEY}" "${DEST_KEY}.sig")
   UPLOAD_COUNT=$((UPLOAD_COUNT + 1))
 
-  # Build platforms JSON incrementally
   PLATFORMS_JSON="$(
     jq -n \
       --argjson existing "$PLATFORMS_JSON" \
@@ -184,7 +186,7 @@ if [[ $UPLOAD_COUNT -eq 0 ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Build latest.json
+# Build + upload latest.json
 # ---------------------------------------------------------------------------
 PUB_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
@@ -208,18 +210,12 @@ echo "Generated latest.json:"
 echo "$LATEST_JSON"
 echo ""
 
-# ---------------------------------------------------------------------------
-# Upload latest.json to bucket root
-# ---------------------------------------------------------------------------
 echo "Uploading latest.json to bucket root..."
-aws s3 cp /tmp/latest.json "s3://${S3_BUCKET}/latest.json" \
-  --endpoint-url "$S3_ENDPOINT_URL" \
-  --cache-control "max-age=60"
-
+r2_upload /tmp/latest.json "latest.json" "max-age=60" "application/json"
 UPLOADED+=("latest.json")
 
 # ---------------------------------------------------------------------------
-# Upload installer artifacts (DMG, DEB, setup.exe for direct download)
+# Upload installer artifacts (DMG for direct download)
 # ---------------------------------------------------------------------------
 INSTALLER_COUNT=0
 
@@ -229,7 +225,7 @@ if [[ -n "$INSTALLER_DIR" ]]; then
   echo "Uploading installer artifacts..."
   echo "------------------------------------------------------------"
 
-  for TARGET in "${!INSTALLER_GLOB[@]}"; do
+  for TARGET in "${TARGETS[@]}"; do
     TARGET_DIR="${INSTALLER_DIR}/${TARGET}"
 
     if [[ ! -d "$TARGET_DIR" ]]; then
@@ -237,35 +233,27 @@ if [[ -n "$INSTALLER_DIR" ]]; then
       continue
     fi
 
-    GLOB="${INSTALLER_GLOB[$TARGET]}"
-    PLATFORM="${PLATFORM_KEY[$TARGET]}"
+    IFS='|' read -r PLATFORM _ GLOB <<< "$(platform_meta "$TARGET")"
 
-    mapfile -t MATCHES < <(find "$TARGET_DIR" -maxdepth 1 -name "$GLOB" ! -name "*.sig" 2>/dev/null | sort)
-
-    if [[ ${#MATCHES[@]} -eq 0 ]]; then
+    INSTALLER="$(find "$TARGET_DIR" -maxdepth 1 -name "$GLOB" ! -name "*.sig" 2>/dev/null | sort | head -1)"
+    if [[ -z "$INSTALLER" ]]; then
       echo "WARN: no installer matching '${GLOB}' found in ${TARGET_DIR}, skipping." >&2
       continue
     fi
 
-    INSTALLER="${MATCHES[0]}"
     INSTALLER_BASENAME="$(basename "$INSTALLER")"
     DEST_KEY="v${VERSION}/installers/${INSTALLER_BASENAME}"
 
     echo "Uploading installer [${PLATFORM}]: ${INSTALLER_BASENAME}"
-    aws s3 cp "$INSTALLER" "s3://${S3_BUCKET}/${DEST_KEY}" \
-      --endpoint-url "$S3_ENDPOINT_URL"
+    r2_upload "$INSTALLER" "$DEST_KEY"
 
-    # Also mirror to a stable URL at the bucket root so end users have
-    # one link that never changes between releases:
-    #   https://<S3_PUBLIC_URL>/Meridian-darwin-aarch64.dmg
-    # Cache-Control: no-cache lets new releases propagate immediately
-    # at Cloudflare's edge without users seeing yesterday's installer.
+    # Stable URL at the bucket root so end users have one link that never
+    # changes between releases. no-cache lets new releases propagate at
+    # Cloudflare's edge immediately.
     EXT="${INSTALLER_BASENAME##*.}"
     STABLE_KEY="Meridian-${PLATFORM}.${EXT}"
     echo "Mirroring stable URL [${PLATFORM}]: ${STABLE_KEY}"
-    aws s3 cp "$INSTALLER" "s3://${S3_BUCKET}/${STABLE_KEY}" \
-      --endpoint-url "$S3_ENDPOINT_URL" \
-      --cache-control "no-cache"
+    r2_upload "$INSTALLER" "$STABLE_KEY" "no-cache"
 
     UPLOADED+=("${DEST_KEY}" "${STABLE_KEY}")
     INSTALLER_COUNT=$((INSTALLER_COUNT + 1))
@@ -282,14 +270,22 @@ echo "============================================================"
 echo "Publish complete — v${VERSION}"
 echo "------------------------------------------------------------"
 for item in "${UPLOADED[@]}"; do
-  echo "  s3://${S3_BUCKET}/${item}"
+  echo "  ${R2_PUBLIC_URL}/${item}"
 done
 echo ""
 echo "Updater endpoint:"
-echo "  ${S3_PUBLIC_URL}/latest.json"
+echo "  ${R2_PUBLIC_URL}/latest.json"
 if [[ $INSTALLER_COUNT -gt 0 ]]; then
   echo ""
-  echo "Installer downloads:"
-  echo "  ${S3_PUBLIC_URL}/v${VERSION}/installers/"
+  echo "Stable download URLs (share these with users):"
+  for TARGET in "${TARGETS[@]}"; do
+    TARGET_DIR="${INSTALLER_DIR}/${TARGET}"
+    [[ -d "$TARGET_DIR" ]] || continue
+    IFS='|' read -r PLATFORM _ GLOB <<< "$(platform_meta "$TARGET")"
+    INSTALLER="$(find "$TARGET_DIR" -maxdepth 1 -name "$GLOB" ! -name "*.sig" 2>/dev/null | sort | head -1)"
+    [[ -n "$INSTALLER" ]] || continue
+    EXT="${INSTALLER##*.}"
+    echo "  ${R2_PUBLIC_URL}/Meridian-${PLATFORM}.${EXT}"
+  done
 fi
 echo "============================================================"
