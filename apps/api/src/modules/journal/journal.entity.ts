@@ -1,18 +1,26 @@
+import { countWordsFromContent } from "@repo/core/utils/text";
 import { Entity, EntityProps, Ok, Err, Result } from "../../shared";
 
-function countWords(html: string): number {
-  const text = html
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (text.length === 0) return 0;
-  return text.split(" ").length;
-}
+/**
+ * Content storage type during the Phase 2 HTML → JSON migration.
+ *
+ * - `string`  = legacy HTML (pre-migration journals, still in the DB)
+ * - `object`  = TipTap JSON (post-migration; canonical going forward)
+ *
+ * The dual support is intentional. Lazy backfill means rows stay in HTML
+ * format until the user opens + saves an entry, at which point the client
+ * sends JSON. New entries always come in as JSON. Encrypted content stays
+ * opaque on the server — the client handles HTML ↔ JSON discrimination
+ * after decrypt.
+ *
+ * Both formats round-trip through the unified `countWordsFromContent`
+ * helper so wordCount stays consistent across formats.
+ */
+export type JournalContent = string | Record<string, unknown>;
 
 export interface JournalProps extends EntityProps {
   title: string;
-  content: string;
+  content: JournalContent;
   mood?: number;
   tags: string[] | string;
   userSub: string;
@@ -29,7 +37,7 @@ export class Journal extends Entity<JournalProps> {
   get title(): string {
     return this.get("title");
   }
-  get content(): string {
+  get content(): JournalContent {
     return this.get("content");
   }
   get mood(): number | undefined {
@@ -54,10 +62,13 @@ export class Journal extends Entity<JournalProps> {
   updateTitle(title: string): void {
     this.set("title", title);
   }
-  updateContent(content: string): void {
+  updateContent(content: JournalContent): void {
     this.set("content", content);
     if (!this.encrypted) {
-      this.set("wordCount", countWords(content));
+      // Dispatch by content shape: legacy HTML strings → strip tags;
+      // new TipTap JSON → walk the tree. Encrypted content's wordCount
+      // is provided by the client (we can't count opaque ciphertext).
+      this.set("wordCount", countWordsFromContent(content));
     }
   }
   updateWordCount(wordCount: number): void {
@@ -98,7 +109,7 @@ export class Journal extends Entity<JournalProps> {
         tags: props.tags || [],
         wordCount:
           props.wordCount ??
-          (isEncrypted ? 0 : countWords(props.content || "")),
+          (isEncrypted ? 0 : countWordsFromContent(props.content || "")),
         encrypted: isEncrypted,
       } as JournalProps),
     );

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useProfile, useUpdateProfile } from "@stageholder/sdk/spa";
+import { Button, Input, Label } from "@stageholder/ui";
 import { TimezoneSelect } from "@/components/ui/timezone-select";
 
 /**
@@ -61,28 +62,17 @@ export function ProfileStep({ onContinue }: { onContinue: () => void }) {
 
       <div className="space-y-4">
         <div>
-          <label
-            htmlFor="onboard-name"
-            className="block text-sm font-medium text-foreground"
-          >
-            Display name
-          </label>
-          <input
+          <Label htmlFor="onboard-name">Display name</Label>
+          <Input
             id="onboard-name"
-            type="text"
+            className="mt-1"
             value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onChangeText={setDisplayName}
           />
         </div>
 
         <div>
-          <label
-            htmlFor="onboard-tz"
-            className="block text-sm font-medium text-foreground"
-          >
-            Timezone
-          </label>
+          <Label htmlFor="onboard-tz">Timezone</Label>
           <TimezoneSelect
             value={timezone}
             onValueChange={setTimezone}
@@ -97,13 +87,15 @@ export function ProfileStep({ onContinue }: { onContinue: () => void }) {
         )}
       </div>
 
-      <button
-        onClick={() => void handleContinue()}
+      <Button
+        className="w-full"
+        onPress={() => void handleContinue()}
         disabled={!displayName.trim() || isPending}
-        className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+        loading={isPending}
+        loadingText="Saving…"
       >
-        {isPending ? "Saving…" : "Continue"}
-      </button>
+        Continue
+      </Button>
     </div>
   );
 }

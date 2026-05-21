@@ -1,3 +1,5 @@
+import { CheckSquare } from "lucide-react";
+import { EmptyState } from "@stageholder/ui";
 import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
 import { useTodos } from "@/lib/api/todos";
@@ -58,11 +60,13 @@ export function TodoListContent({
             />
           ))}
           {pendingTodos.length === 0 && (
-            <div className="py-12 text-center">
-              <p className="text-sm text-muted-foreground">
-                No todos yet. Add one above!
-              </p>
-            </div>
+            <EmptyState>
+              <EmptyState.IconSlot>
+                <CheckSquare className="size-5 text-muted-foreground" />
+              </EmptyState.IconSlot>
+              <EmptyState.Title>No todos yet</EmptyState.Title>
+              <EmptyState.Description>Add one above!</EmptyState.Description>
+            </EmptyState>
           )}
         </div>
       )}

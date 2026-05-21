@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
+import { Separator } from "@stageholder/ui";
 import { cn } from "@/lib/utils";
 import { useTodoLists } from "@/lib/api/todos";
 import { CreateListDialog } from "./create-list-dialog";
@@ -161,7 +162,7 @@ export function TodoListSidebar({ onNavigate }: TodoListSidebarProps = {}) {
           Completed
         </Link>
 
-        <div className="mx-3 my-1.5 h-px bg-border" />
+        <Separator mx="$3" my="$1.5" />
 
         <div className="flex items-center justify-between px-3 py-1.5">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">

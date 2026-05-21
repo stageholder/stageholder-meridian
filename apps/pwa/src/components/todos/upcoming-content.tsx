@@ -3,12 +3,7 @@ import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
 import { useAnimatedTodoList } from "@/lib/hooks/use-animated-todo-list";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { Button, Calendar, Popover } from "@stageholder/ui";
 import { format, addDays } from "date-fns";
 import { parseDateLocal } from "@/lib/date";
 import type { DateRange } from "react-day-picker";
@@ -166,8 +161,12 @@ export function UpcomingContent() {
         ))}
 
         {/* Custom date picker */}
-        <Popover open={customOpen} onOpenChange={setCustomOpen}>
-          <PopoverTrigger asChild>
+        <Popover
+          open={customOpen}
+          onOpenChange={setCustomOpen}
+          placement="bottom-start"
+        >
+          <Popover.Trigger asChild>
             <button
               type="button"
               className={cn(
@@ -195,28 +194,44 @@ export function UpcomingContent() {
               </svg>
               {filterLabel || "Custom"}
             </button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-auto p-2">
+          </Popover.Trigger>
+          <Popover.Content className="w-auto p-2">
             {hasCustomRange && (
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">
                   {customRange?.to ? "Range selected" : "Pick end date"}
                 </span>
-                <button
+                <Button
+                  intent="outline"
+                  size="sm"
                   type="button"
-                  onClick={clearCustomRange}
-                  className="rounded-full border border-border px-2.5 py-0.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                  onPress={clearCustomRange}
                 >
                   Clear
-                </button>
+                </Button>
               </div>
             )}
             <Calendar
               mode="range"
-              selected={customRange}
-              onSelect={handleCustomRange}
-              defaultMonth={customRange?.from || addDays(new Date(), 1)}
-              disabled={(date) => {
+              // Kit's range shape is `{ start, end }`. We translate at the
+              // boundary so the local `DateRange { from, to }` state can
+              // stay unchanged (lots of downstream consumers of customRange).
+              value={
+                customRange
+                  ? {
+                      start: customRange.from ?? null,
+                      end: customRange.to ?? null,
+                    }
+                  : null
+              }
+              onChange={(range) =>
+                handleCustomRange({
+                  from: range.start ?? undefined,
+                  to: range.end ?? undefined,
+                })
+              }
+              initialMonth={customRange?.from || addDays(new Date(), 1)}
+              isDateDisabled={(date) => {
                 const d = new Date(date);
                 d.setHours(0, 0, 0, 0);
                 const now = new Date();
@@ -224,7 +239,7 @@ export function UpcomingContent() {
                 return d < now;
               }}
             />
-          </PopoverContent>
+          </Popover.Content>
         </Popover>
       </div>
 

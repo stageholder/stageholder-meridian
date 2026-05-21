@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Trash2 } from "lucide-react";
+import { IconButton } from "@stageholder/ui";
 import { cn } from "@/lib/utils";
 import { parseDateLocal } from "@/lib/date";
 import { useUpdateTodo, useDeleteTodo } from "@/lib/api/todos";
@@ -228,27 +230,16 @@ export function TodoItem({
           )}
         </div>
 
-        <button
-          onClick={handleDelete}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+        <IconButton
+          variant="ghost"
+          size="sm"
+          intent="danger"
+          onPress={handleDelete}
           aria-label="Delete todo"
+          className="opacity-0 transition-opacity group-hover:opacity-100"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M3 6h18" />
-            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-          </svg>
-        </button>
+          <Trash2 className="size-3.5" />
+        </IconButton>
       </div>
 
       <TodoDetailDialog

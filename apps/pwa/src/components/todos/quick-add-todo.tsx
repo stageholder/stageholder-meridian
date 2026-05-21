@@ -1,12 +1,8 @@
 import { useRef, useState, useEffect, useCallback } from "react";
+import { Pencil } from "lucide-react";
 import { useCreateTodo, useTodoLists } from "@/lib/api/todos";
 import { CreateTodoDialog } from "./create-todo-dialog";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { Button, Calendar, Input, Popover } from "@stageholder/ui";
 import { toast } from "sonner";
 import { format, addDays, nextMonday } from "date-fns";
 import { parseDateLocal } from "@/lib/date";
@@ -231,21 +227,27 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                 handleSubmit();
               }}
             >
-              <input
+              <Input
                 ref={inputRef}
-                type="text"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChangeText={setTitle}
                 placeholder="Todo title..."
-                className="w-full bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none"
+                unstyled
+                width="100%"
+                bg="transparent"
+                fontSize="$3"
+                fontWeight="500"
+                color="$color"
+                placeholderTextColor="$mutedForeground"
+                focusVisibleStyle={{ outlineWidth: 0 }}
               />
             </form>
 
             {/* Metadata chips row — same style as TodoItem */}
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
               {/* Priority */}
-              <Popover>
-                <PopoverTrigger asChild>
+              <Popover placement="bottom-start">
+                <Popover.Trigger asChild>
                   <button
                     type="button"
                     className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -279,8 +281,8 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                       </span>
                     )}
                   </button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-36 p-1">
+                </Popover.Trigger>
+                <Popover.Content className="w-36 p-1">
                   {PRIORITIES.map((p) => (
                     <button
                       key={p.value}
@@ -299,12 +301,12 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                       {p.label}
                     </button>
                   ))}
-                </PopoverContent>
+                </Popover.Content>
               </Popover>
 
               {/* Do Date */}
-              <Popover>
-                <PopoverTrigger asChild>
+              <Popover placement="bottom-start">
+                <Popover.Trigger asChild>
                   <button
                     type="button"
                     className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -352,8 +354,8 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                       </span>
                     )}
                   </button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-auto p-2">
+                </Popover.Trigger>
+                <Popover.Content className="w-auto p-2">
                   <div className="flex flex-wrap gap-1 pb-2">
                     {[
                       { label: "Today", date: new Date() },
@@ -390,18 +392,18 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                   </div>
                   <Calendar
                     mode="single"
-                    selected={doDate ? parseDateLocal(doDate) : undefined}
-                    onSelect={(date) =>
+                    value={doDate ? parseDateLocal(doDate) : null}
+                    onChange={(date) =>
                       setDoDate(date ? format(date, "yyyy-MM-dd") : "")
                     }
-                    defaultMonth={doDate ? parseDateLocal(doDate) : undefined}
+                    initialMonth={doDate ? parseDateLocal(doDate) : undefined}
                   />
-                </PopoverContent>
+                </Popover.Content>
               </Popover>
 
               {/* Due Date */}
-              <Popover>
-                <PopoverTrigger asChild>
+              <Popover placement="bottom-start">
+                <Popover.Trigger asChild>
                   <button
                     type="button"
                     className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -469,8 +471,8 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                       </span>
                     )}
                   </button>
-                </PopoverTrigger>
-                <PopoverContent align="start" className="w-auto p-2">
+                </Popover.Trigger>
+                <Popover.Content className="w-auto p-2">
                   <div className="flex flex-wrap gap-1 pb-2">
                     {[
                       { label: "Today", date: new Date() },
@@ -507,19 +509,19 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                   </div>
                   <Calendar
                     mode="single"
-                    selected={dueDate ? parseDateLocal(dueDate) : undefined}
-                    onSelect={(date) =>
+                    value={dueDate ? parseDateLocal(dueDate) : null}
+                    onChange={(date) =>
                       setDueDate(date ? format(date, "yyyy-MM-dd") : "")
                     }
-                    defaultMonth={dueDate ? parseDateLocal(dueDate) : undefined}
+                    initialMonth={dueDate ? parseDateLocal(dueDate) : undefined}
                   />
-                </PopoverContent>
+                </Popover.Content>
               </Popover>
 
               {/* List selector */}
               {lists && lists.length > 1 && (
-                <Popover>
-                  <PopoverTrigger asChild>
+                <Popover placement="bottom-start">
+                  <Popover.Trigger asChild>
                     <button
                       type="button"
                       className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-muted-foreground hover:border-foreground/30 hover:text-foreground transition-colors"
@@ -553,8 +555,8 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                       )}
                       {selectedList?.name || "List"}
                     </button>
-                  </PopoverTrigger>
-                  <PopoverContent align="start" className="w-44 p-1">
+                  </Popover.Trigger>
+                  <Popover.Content className="w-44 p-1">
                     {lists.map((list) => (
                       <button
                         key={list.id}
@@ -590,7 +592,7 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                         {list.name}
                       </button>
                     ))}
-                  </PopoverContent>
+                  </Popover.Content>
                 </Popover>
               )}
             </div>
@@ -606,37 +608,27 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
               className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
               title="Open full editor"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z" />
-              </svg>
+              <Pencil className="size-3" />
               More
             </button>
-            <button
+            <Button
+              intent="ghost"
+              size="sm"
               type="button"
-              onClick={handleCancel}
-              className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+              onPress={handleCancel}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
+              size="sm"
               type="button"
-              onClick={handleSubmit}
+              onPress={handleSubmit}
               disabled={!title.trim() || createTodo.isPending}
-              className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              loading={createTodo.isPending}
+              loadingText="Adding…"
             >
-              {createTodo.isPending ? "Adding..." : "Add"}
-            </button>
+              Add
+            </Button>
           </div>
         </div>
       </div>

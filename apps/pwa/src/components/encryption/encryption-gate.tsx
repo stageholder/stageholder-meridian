@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Button } from "@stageholder/ui";
 import { useEncryptionStore } from "@/lib/crypto/encryption-store";
 import { PassphrasePrompt } from "./passphrase-prompt";
 import { PassphraseSetupDialog } from "./passphrase-setup-dialog";
@@ -61,18 +62,12 @@ function SetupBanner({ onSetup }: { onSetup: () => void }) {
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
-          <button
-            onClick={() => setDismissed(true)}
-            className="text-xs text-muted-foreground hover:text-foreground"
-          >
+          <Button intent="ghost" size="sm" onPress={() => setDismissed(true)}>
             Later
-          </button>
-          <button
-            onClick={onSetup}
-            className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-          >
+          </Button>
+          <Button size="sm" onPress={onSetup}>
             Set Up
-          </button>
+          </Button>
         </div>
       </div>
     </div>

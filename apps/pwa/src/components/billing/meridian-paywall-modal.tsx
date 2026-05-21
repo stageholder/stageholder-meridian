@@ -1,4 +1,4 @@
-import * as Dialog from "@radix-ui/react-dialog";
+import { Button, Dialog } from "@stageholder/ui";
 import { useCanManageBilling } from "@stageholder/sdk/spa";
 import type { PaywallReason } from "@stageholder/sdk/core";
 import { ArrowUpRight } from "lucide-react";
@@ -45,9 +45,16 @@ export function MeridianPaywallModal({
   });
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
+        {/* `unstyled` on Overlay + Content tells Tamagui to skip the
+            kit's default styled config (default fade-in scale, default
+            card surface, default boxShadow) so meridian's bespoke
+            Tailwind classes own the surface entirely. data-state
+            attributes for tw-animate-css still flow from Radix
+            underneath. */}
         <Dialog.Overlay
+          unstyled
           className={cn(
             "fixed inset-0 z-50 bg-foreground/35 backdrop-blur-md",
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
@@ -55,6 +62,7 @@ export function MeridianPaywallModal({
           )}
         />
         <Dialog.Content
+          unstyled
           className={cn(
             "fixed z-50 overflow-hidden bg-card text-card-foreground shadow-2xl",
             // Mobile bottom-sheet flush with bottom; desktop centered card.
@@ -207,23 +215,16 @@ export function MeridianPaywallModal({
                   </a>
                 )}
                 <Dialog.Close asChild>
-                  <button
-                    type="button"
-                    className={cn(
-                      "block w-full rounded-full px-5 py-2 text-center",
-                      "text-[13px] text-muted-foreground",
-                      "transition-colors hover:text-foreground",
-                    )}
-                  >
+                  <Button intent="ghost" type="button" className="w-full">
                     Maybe later
-                  </button>
+                  </Button>
                 </Dialog.Close>
               </div>
             </div>
           </div>
         </Dialog.Content>
       </Dialog.Portal>
-    </Dialog.Root>
+    </Dialog>
   );
 }
 

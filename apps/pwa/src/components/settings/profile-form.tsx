@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useProfile, useUpdateProfile } from "@stageholder/sdk/spa";
+import { Button, Input, Label } from "@stageholder/ui";
 import { TimezoneSelect } from "@/components/ui/timezone-select";
 
 /**
@@ -44,39 +45,24 @@ export function ProfileForm() {
   return (
     <form onSubmit={save} className="space-y-6">
       <div className="space-y-2">
-        <label
-          htmlFor="profile-name"
-          className="text-sm font-medium text-foreground"
-        >
-          Display name
-        </label>
-        <input
-          id="profile-name"
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        />
+        <Label htmlFor="profile-name">Display name</Label>
+        <Input id="profile-name" value={name} onChangeText={setName} />
       </div>
 
       <div className="space-y-2">
-        <label
-          htmlFor="profile-timezone"
-          className="text-sm font-medium text-foreground"
-        >
-          Timezone
-        </label>
+        <Label htmlFor="profile-timezone">Timezone</Label>
         <TimezoneSelect value={timezone} onValueChange={setTimezone} />
       </div>
 
       <div className="flex items-center gap-3">
-        <button
+        <Button
           type="submit"
           disabled={update.isPending}
-          className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-50"
+          loading={update.isPending}
+          loadingText="Saving…"
         >
-          {update.isPending ? "Saving…" : "Save changes"}
-        </button>
+          Save changes
+        </Button>
         {update.isError && (
           <span className="text-xs text-destructive">
             Save failed. {update.error?.message}

@@ -6,15 +6,20 @@ import { ArrowLeft, Trash2, X } from "lucide-react";
 import { JournalEditor } from "@/components/journal/journal-editor";
 import { TagInput } from "@/components/journal/tag-input";
 import {
+  AlertDialog,
+  Button,
+  IconButton,
+  Input,
   Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 import { useJournal, useDeleteJournal } from "@/lib/api/journals";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { useAutosave } from "@/lib/hooks/use-autosave";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import type { JournalContent } from "@repo/core/types";
 
 export const Route = createFileRoute("/_app/journal/$id")({
   component: JournalEntryPage,
@@ -36,14 +41,23 @@ function JournalEntryPage() {
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
   const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
+  // Dual-format content during Phase 2: legacy entries arrive as HTML
+  // strings, new entries as TipTap JSON objects. JournalEditor accepts
+  // both on input and always emits JSON, so by the time autosave fires
+  // we're writing JSON regardless of the source format.
+  const [content, setContent] = useState<JournalContent>("");
   const [mood, setMood] = useState<number | undefined>(undefined);
   const [tags, setTags] = useState<string[]>([]);
   const [initialized, setInitialized] = useState(false);
-  const lastSavedRef = useRef({
+  const lastSavedRef = useRef<{
+    title: string;
+    content: JournalContent;
+    mood: number | undefined;
+    tags: string[];
+  }>({
     title: "",
     content: "",
-    mood: undefined as number | undefined,
+    mood: undefined,
     tags: [] as string[],
   });
   const journalDateRef = useRef("");
@@ -70,13 +84,15 @@ function JournalEntryPage() {
     }
   }, [journal, initialized]);
 
-  // Autosave when user changes something — compare against last saved, not fetched journal
+  // Autosave when user changes something — compare against last saved,
+  // not fetched journal. Content comparison uses JSON.stringify to handle
+  // both string (legacy HTML) and object (TipTap JSON) shapes uniformly.
   useEffect(() => {
     if (!initialized) return;
     const last = lastSavedRef.current;
     if (
       title === last.title &&
-      content === last.content &&
+      JSON.stringify(content) === JSON.stringify(last.content) &&
       mood === last.mood &&
       JSON.stringify(tags) === JSON.stringify(last.tags)
     )
@@ -92,9 +108,9 @@ function JournalEntryPage() {
     scheduleSave(saveData);
   }, [initialized, title, content, mood, tags, scheduleSave]);
 
-  function handleDelete() {
-    if (!window.confirm("Are you sure you want to delete this entry?")) return;
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
+  function confirmDelete() {
     deleteJournal.mutate(id, {
       onSuccess: () => {
         toast.success("Journal entry deleted");
@@ -104,6 +120,7 @@ function JournalEntryPage() {
         toast.error("Failed to delete journal entry");
       },
     });
+    setDeleteOpen(false);
   }
 
   if (isLoading) {
@@ -123,8 +140,17 @@ function JournalEntryPage() {
   const dateLabel = format(parseDateLocal(journal.date), "MMM d, yyyy");
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <div className="shrink-0 overflow-hidden p-4 pb-0">
+    // 3-pane layout (app sidebar + journal list + editor) means the
+    // editor *pane* fills the available column — no artificial max-width.
+    // Single-pane-editor patterns (centered max-w-720) don't fit here;
+    // they'd create "column-in-a-column" with awkward right-side empty
+    // space. Reference: Bear, Notion's page editor, Day One — all fill
+    // the editor pane in their multi-pane layouts.
+    //
+    // Padding is via Tamagui spacing tokens ($6 ≈ 24px horizontal,
+    // breathing room on both sides).
+    <YStack flex={1} height="100%" overflow="hidden">
+      <YStack shrink={0} px="$4" pt="$4" overflow="hidden">
         {!isDesktop && (
           <div className="mb-6">
             <button
@@ -139,20 +165,34 @@ function JournalEntryPage() {
 
         {/* Title + delete */}
         <div className="mb-3 flex items-center gap-2">
-          <input
-            type="text"
+          {/* `paddingHorizontal={0}` strips the kit Input's internal
+              horizontal inset that survives `unstyled`. Keeps the title
+              text aligned with the pills row below. */}
+          <Input
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChangeText={setTitle}
             placeholder="Untitled"
-            className="block min-w-0 flex-1 bg-transparent text-2xl font-bold text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
+            unstyled
+            flex={1}
+            minWidth={0}
+            paddingHorizontal={0}
+            bg="transparent"
+            fontSize={24}
+            fontWeight="700"
+            color="$color"
+            placeholderTextColor="$mutedForeground"
+            focusVisibleStyle={{ outlineWidth: 0 }}
           />
-          <button
-            onClick={handleDelete}
-            className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          <IconButton
+            variant="ghost"
+            size="sm"
+            intent="danger"
+            onPress={() => setDeleteOpen(true)}
+            aria-label="Delete entry"
             title="Delete entry"
           >
             <Trash2 className="size-4" />
-          </button>
+          </IconButton>
         </div>
 
         {/* Metadata pills row */}
@@ -179,8 +219,8 @@ function JournalEntryPage() {
           </span>
 
           {/* Mood pill */}
-          <Popover>
-            <PopoverTrigger asChild>
+          <Popover placement="bottom-start">
+            <Popover.Trigger asChild>
               <button
                 type="button"
                 className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -197,8 +237,8 @@ function JournalEntryPage() {
                   </span>
                 )}
               </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-auto p-1">
+            </Popover.Trigger>
+            <Popover.Content className="w-auto p-1">
               <div className="flex items-center gap-1">
                 {moods.map((m) => (
                   <button
@@ -217,7 +257,7 @@ function JournalEntryPage() {
                   </button>
                 ))}
               </div>
-            </PopoverContent>
+            </Popover.Content>
           </Popover>
 
           {/* Tag pills */}
@@ -240,7 +280,7 @@ function JournalEntryPage() {
           {/* Add tag pill */}
           <TagInput tags={tags} onChange={setTags} inline />
         </div>
-      </div>
+      </YStack>
 
       {initialized && (
         <JournalEditor
@@ -251,6 +291,33 @@ function JournalEntryPage() {
           saveStatus={status}
         />
       )}
-    </div>
+
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        disableRemoveScroll
+      >
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay />
+          <AlertDialog.Content>
+            <AlertDialog.Title>Delete this entry?</AlertDialog.Title>
+            <AlertDialog.Description>
+              This journal entry will be permanently removed. This cannot be
+              undone.
+            </AlertDialog.Description>
+            <XStack gap="$2" justify="flex-end" mt="$4">
+              <AlertDialog.Cancel asChild>
+                <Button intent="outline">Cancel</Button>
+              </AlertDialog.Cancel>
+              <AlertDialog.Action asChild>
+                <Button intent="destructive" onPress={confirmDelete}>
+                  Delete
+                </Button>
+              </AlertDialog.Action>
+            </XStack>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog>
+    </YStack>
   );
 }

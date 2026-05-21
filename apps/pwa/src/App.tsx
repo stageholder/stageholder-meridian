@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
-import { ThemeProvider } from "next-themes";
+import { useEffect, useRef, type ReactNode } from "react";
+import { ThemeProvider, useTheme as useNextTheme } from "next-themes";
 import { RouterProvider } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StageholderSpaProvider, useOrg, useUser } from "@stageholder/sdk/spa";
 import { Toaster } from "sonner";
+import { TamaguiProvider, Theme } from "tamagui";
 import { router } from "./router";
 import { spaConfig } from "./lib/spa-config";
 import { useMeridianUserMeta } from "./lib/me-query";
@@ -14,6 +15,7 @@ import {
 import { PaywallListener } from "@/components/paywall-listener";
 import { EncryptionStoreInitializer } from "@/components/providers/encryption-store-initializer";
 import { LogProvider } from "@/components/shared/log-provider";
+import tamaguiConfig from "../tamagui.config";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -108,42 +110,72 @@ function InnerApp() {
   );
 }
 
+/**
+ * Bridges `next-themes` to Tamagui. next-themes controls the `class`
+ * on `<html>` (which Tailwind v4's `.dark` selector reads); we mirror
+ * that into Tamagui's `<Theme>` wrapper so kit components render with
+ * the matching palette. Both systems run from the same source of
+ * truth (next-themes' state), so the toggle stays authoritative for
+ * Tailwind and Tamagui together during the migration window.
+ *
+ * Why this lives inside `<ThemeProvider>`: `useNextTheme()` must be
+ * called inside the provider that owns its context, and the bridge
+ * needs to read `resolvedTheme` on every render to stay in sync.
+ */
+function TamaguiBridge({ children }: { children: ReactNode }) {
+  const { resolvedTheme } = useNextTheme();
+  // `resolvedTheme` is `undefined` on the first render before
+  // next-themes hydrates from localStorage. Falling back to "light"
+  // keeps the very first paint stable; the re-render after hydration
+  // flips to the persisted mode without a visual flash because
+  // Tailwind's `.dark` class transitions on the same frame.
+  const mode: "light" | "dark" = resolvedTheme === "dark" ? "dark" : "light";
+
+  return (
+    <TamaguiProvider config={tamaguiConfig} defaultTheme={mode}>
+      <Theme name={mode}>{children}</Theme>
+    </TamaguiProvider>
+  );
+}
+
 export function App() {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <QueryClientProvider client={queryClient}>
-        <StageholderSpaProvider
-          productSlug="meridian"
-          config={{ ...spaConfig, renderPaywall: false }}
-        >
-          {/*
-           * PaywallListener: bridges Meridian's `meridian:paywall` window
-           * event (dispatched by ServiceWrapper on 402 responses from the
-           * Meridian API) into the SDK's `usePaywall()` controller, and
-           * paints the bespoke `<MeridianPaywallModal>`. We pass
-           * `renderPaywall: false` to the provider so the SDK's default
-           * modal stays unmounted — Meridian ships its own.
-           *
-           * The SDK's auto-paywall (403 `PLAN_UPGRADE_REQUIRED`) covers
-           * Hub-side gating done through SDK hooks; this listener covers
-           * the Meridian API's own 402 paywall responses.
-           *
-           * EncryptionStoreInitializer: hydrates journal-encryption store
-           * from OIDC `sub` once authenticated; drops queued offline
-           * mutations from any previously signed-in user.
-           *
-           * LogProvider: installs the platform logger's global error capture.
-           */}
-          <PaywallListener>
-            <EncryptionStoreInitializer>
-              <LogProvider>
-                <InnerApp />
-              </LogProvider>
-            </EncryptionStoreInitializer>
-          </PaywallListener>
-          <Toaster />
-        </StageholderSpaProvider>
-      </QueryClientProvider>
+      <TamaguiBridge>
+        <QueryClientProvider client={queryClient}>
+          <StageholderSpaProvider
+            productSlug="meridian"
+            config={{ ...spaConfig, renderPaywall: false }}
+          >
+            {/*
+             * PaywallListener: bridges Meridian's `meridian:paywall` window
+             * event (dispatched by ServiceWrapper on 402 responses from the
+             * Meridian API) into the SDK's `usePaywall()` controller, and
+             * paints the bespoke `<MeridianPaywallModal>`. We pass
+             * `renderPaywall: false` to the provider so the SDK's default
+             * modal stays unmounted — Meridian ships its own.
+             *
+             * The SDK's auto-paywall (403 `PLAN_UPGRADE_REQUIRED`) covers
+             * Hub-side gating done through SDK hooks; this listener covers
+             * the Meridian API's own 402 paywall responses.
+             *
+             * EncryptionStoreInitializer: hydrates journal-encryption store
+             * from OIDC `sub` once authenticated; drops queued offline
+             * mutations from any previously signed-in user.
+             *
+             * LogProvider: installs the platform logger's global error capture.
+             */}
+            <PaywallListener>
+              <EncryptionStoreInitializer>
+                <LogProvider>
+                  <InnerApp />
+                </LogProvider>
+              </EncryptionStoreInitializer>
+            </PaywallListener>
+            <Toaster />
+          </StageholderSpaProvider>
+        </QueryClientProvider>
+      </TamaguiBridge>
     </ThemeProvider>
   );
 }

@@ -1,7 +1,6 @@
-import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ExternalLink, ArrowRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Button, SizableText, Tabs } from "@stageholder/ui";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { TargetsSettings } from "@/components/settings/targets-settings";
 
@@ -13,14 +12,12 @@ const tabs = [
   { id: "account", label: "Account" },
 ] as const;
 
-type TabId = (typeof tabs)[number]["id"];
-
 export const Route = createFileRoute("/_app/settings/")({
   component: SettingsPage,
 });
 
 function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<TabId>("profile");
+  const navigate = useNavigate();
 
   return (
     <div className="space-y-6 p-4">
@@ -31,65 +28,64 @@ function SettingsPage() {
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-border">
-        <nav className="scrollbar-hide flex gap-4 overflow-x-auto sm:gap-6">
+      {/* Tabs — `variant="underline"` matches the page-level navigation
+          pattern (Linear / Notion / GitHub style) the previous custom
+          button row was emulating. Kit's pill variant is for dense
+          contained UIs, not page-level chrome. */}
+      <Tabs defaultValue="profile" orientation="horizontal" variant="underline">
+        <Tabs.List>
           {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "border-b-2 pb-3 text-sm font-medium transition-colors",
-                activeTab === tab.id
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {tab.label}
-            </button>
+            <Tabs.Tab key={tab.id} value={tab.id}>
+              <SizableText>{tab.label}</SizableText>
+            </Tabs.Tab>
           ))}
-        </nav>
-      </div>
+        </Tabs.List>
 
-      {/* Tab Content */}
-      <div className="max-w-2xl">
-        {activeTab === "profile" && <ProfileForm />}
-        {activeTab === "targets" && <TargetsSettings />}
-        {activeTab === "account" && (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Your billing and subscription live in-app. Password, MFA,
-              connected accounts, sessions, and account deletion are managed on
-              Stageholder.
-            </p>
-            <div className="flex flex-col gap-2">
-              <Link
-                to="/settings/billing"
-                className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
-              >
-                Billing &amp; subscription
-                <ArrowRight className="ml-auto size-3.5 opacity-70" />
-              </Link>
-              <Link
-                to="/settings/billing/upgrade"
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                Upgrade plan
-                <ArrowRight className="ml-auto size-3.5 opacity-70" />
-              </Link>
-              <a
-                href={`${HUB_URL}/account`}
-                target="_blank"
-                rel="noopener"
-                className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
-              >
-                Security &amp; sign-in on Stageholder
-                <ExternalLink className="ml-auto size-3.5 opacity-70" />
-              </a>
+        <div className="max-w-2xl">
+          <Tabs.Content value="profile">
+            <ProfileForm />
+          </Tabs.Content>
+          <Tabs.Content value="targets">
+            <TargetsSettings />
+          </Tabs.Content>
+          <Tabs.Content value="account">
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Your billing and subscription live in-app. Password, MFA,
+                connected accounts, sessions, and account deletion are managed
+                on Stageholder.
+              </p>
+              <div className="flex flex-col gap-2">
+                <Button
+                  intent="outline"
+                  iconAfter={<ArrowRight className="size-3.5 opacity-70" />}
+                  onPress={() => void navigate({ to: "/settings/billing" })}
+                >
+                  Billing &amp; subscription
+                </Button>
+                <Button
+                  iconAfter={<ArrowRight className="size-3.5 opacity-70" />}
+                  onPress={() =>
+                    void navigate({ to: "/settings/billing/upgrade" })
+                  }
+                >
+                  Upgrade plan
+                </Button>
+                <Button
+                  tag="a"
+                  href={`${HUB_URL}/account`}
+                  target="_blank"
+                  rel="noopener"
+                  intent="outline"
+                  iconAfter={<ExternalLink className="size-3.5 opacity-70" />}
+                >
+                  Security &amp; sign-in on Stageholder
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          </Tabs.Content>
+        </div>
+      </Tabs>
     </div>
   );
 }

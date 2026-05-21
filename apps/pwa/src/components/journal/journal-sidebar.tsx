@@ -1,17 +1,10 @@
 import { useState, useMemo } from "react";
-import { Link } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { useJournals, useJournalsPaginated } from "@/lib/api/journals";
 import { JournalList } from "@/components/journal/journal-list";
 import { DatePicker } from "@/components/ui/date-picker";
 import type { Journal } from "@repo/core/types";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Button, Select } from "@stageholder/ui";
 
 const moodOptions = [
   { value: 0, label: "All Moods" },
@@ -27,6 +20,7 @@ interface JournalSidebarProps {
 }
 
 export function JournalSidebar({ activeId }: JournalSidebarProps) {
+  const navigate = useNavigate();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [moodFilter, setMoodFilter] = useState(0);
@@ -73,12 +67,12 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
               Your thoughts and reflections
             </p>
           </div>
-          <Link
-            to="/journal/new"
-            className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+          <Button
+            size="sm"
+            onPress={() => void navigate({ to: "/journal/new" })}
           >
             New Journal
-          </Link>
+          </Button>
         </div>
 
         {/* Filters */}
@@ -105,28 +99,27 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
             value={String(moodFilter)}
             onValueChange={(value) => setMoodFilter(Number(value))}
           >
-            <SelectTrigger className="h-7 w-auto rounded-lg border-border bg-background px-2 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
+            <Select.Trigger className="h-7 w-auto rounded-lg border-border bg-background px-2 text-xs" />
+            <Select.Content>
               {moodOptions.map((opt) => (
-                <SelectItem key={opt.value} value={String(opt.value)}>
+                <Select.Item key={opt.value} value={String(opt.value)}>
                   {opt.label}
-                </SelectItem>
+                </Select.Item>
               ))}
-            </SelectContent>
+            </Select.Content>
           </Select>
           {(startDate || endDate || moodFilter !== 0) && (
-            <button
-              onClick={() => {
+            <Button
+              intent="ghost"
+              size="sm"
+              onPress={() => {
                 setStartDate("");
                 setEndDate("");
                 setMoodFilter(0);
               }}
-              className="text-xs text-muted-foreground hover:text-foreground"
             >
               Clear
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -140,20 +133,16 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
         />
         {!hasDateFilter && paginatedQuery.hasNextPage && (
           <div className="mt-2 flex justify-center">
-            <button
-              onClick={() => paginatedQuery.fetchNextPage()}
+            <Button
+              intent="ghost"
+              size="sm"
+              onPress={() => paginatedQuery.fetchNextPage()}
               disabled={paginatedQuery.isFetchingNextPage}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+              loading={paginatedQuery.isFetchingNextPage}
+              loadingText="Loading…"
             >
-              {paginatedQuery.isFetchingNextPage ? (
-                <>
-                  <Loader2 className="size-3 animate-spin" />
-                  Loading...
-                </>
-              ) : (
-                "Load more"
-              )}
-            </button>
+              Load more
+            </Button>
           </div>
         )}
       </div>

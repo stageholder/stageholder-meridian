@@ -1,4 +1,5 @@
 import { registerPayloadTransform } from "@repo/offline/sync/mutation-queue";
+import type { JournalContent } from "@repo/core/types";
 import { useEncryptionStore } from "./encryption-store";
 import { encryptJournalPayload } from "./journal-crypto";
 
@@ -21,10 +22,14 @@ export function registerJournalEncryptionTransform(): void {
       "data" in raw && typeof raw.data === "object" && raw.data !== null;
     const fields = isUpdate ? (raw.data as Record<string, unknown>) : raw;
 
+    // content is dual-format during the Phase 2 migration window —
+    // legacy mutations may carry an HTML string, post-migration ones
+    // carry a TipTap JSON object. encryptJournalPayload dispatches on
+    // type and handles both shapes.
     const encrypted = await encryptJournalPayload(
       {
         title: (fields.title as string) || "",
-        content: (fields.content as string) || "",
+        content: (fields.content as JournalContent | undefined) ?? "",
         tags: (fields.tags as string[]) || [],
         mood: fields.mood as number | undefined,
         date: fields.date as string | undefined,

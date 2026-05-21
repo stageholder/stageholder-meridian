@@ -5,16 +5,13 @@ import { parseDateLocal } from "@/lib/date";
 import { ArrowLeft, X } from "lucide-react";
 import { JournalEditor } from "@/components/journal/journal-editor";
 import { TagInput } from "@/components/journal/tag-input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { Calendar, Input, Popover, YStack } from "@stageholder/ui";
 import { useJournals } from "@/lib/api/journals";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { useAutosave } from "@/lib/hooks/use-autosave";
 import { cn } from "@/lib/utils";
+import type { JournalContent } from "@repo/core/types";
+import { countWordsFromContent } from "@repo/core/utils/text";
 
 type NewJournalSearch = {
   date?: string;
@@ -62,7 +59,9 @@ function NewJournalPage() {
   const { date: dateParam } = Route.useSearch();
   const today = format(new Date(), "yyyy-MM-dd");
   const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
+  // New journals always start as JSON content — there's no legacy HTML
+  // for a fresh entry. Type matches the editor's onChange signature.
+  const [content, setContent] = useState<JournalContent>("");
   const [mood, setMood] = useState<number | undefined>(undefined);
   const [tags, setTags] = useState<string[]>([]);
   const [date, setDate] = useState(dateParam || today);
@@ -86,19 +85,32 @@ function NewJournalPage() {
     onCreated: onCreatedRef.current,
   });
 
-  const lastSavedRef = useRef({
+  const lastSavedRef = useRef<{
+    title: string;
+    content: JournalContent;
+    mood: number | undefined;
+    tags: string[];
+    date: string;
+  }>({
     title: "",
     content: "",
-    mood: undefined as number | undefined,
+    mood: undefined,
     tags: [] as string[],
     date: "",
   });
 
-  // Autosave when user changes something
+  // Autosave when user changes something. Content is dual-format during
+  // the Phase 2 window — string (legacy HTML) or object (TipTap JSON) —
+  // so the "is this entry empty?" check goes through
+  // `countWordsFromContent` (returns 0 for both `""` and the empty
+  // TipTap doc `{type:"doc",content:[{type:"paragraph"}]}`), and the
+  // "has the content changed?" check uses JSON.stringify for shape-
+  // agnostic equality (primitive `===` never matches between two JSON
+  // object instances, even when their content is identical).
   useEffect(() => {
     if (
       !title.trim() &&
-      !content.trim() &&
+      countWordsFromContent(content) === 0 &&
       mood === undefined &&
       tags.length === 0
     )
@@ -106,7 +118,7 @@ function NewJournalPage() {
     const last = lastSavedRef.current;
     if (
       effectiveTitle === last.title &&
-      content === last.content &&
+      JSON.stringify(content) === JSON.stringify(last.content) &&
       mood === last.mood &&
       JSON.stringify(tags) === JSON.stringify(last.tags) &&
       date === last.date
@@ -117,8 +129,13 @@ function NewJournalPage() {
   }, [effectiveTitle, content, mood, tags, date, scheduleSave, title]);
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="shrink-0 p-4 pb-0">
+    // 3-pane editor pane: fills the available column with Tamagui-token
+    // padding for breathing room. No artificial max-width — that's a
+    // single-pane editor pattern (iA Writer / Substack standalone) and
+    // doesn't fit our 3-pane workspace layout. See $id.tsx for the
+    // full design reasoning.
+    <YStack flex={1} height="100%">
+      <YStack shrink={0} px="$4" pt="$4">
         {!isDesktop && (
           <div className="mb-6">
             <button
@@ -131,20 +148,31 @@ function NewJournalPage() {
           </div>
         )}
 
-        {/* Title */}
-        <input
-          type="text"
+        {/* Title — `paddingHorizontal={0}` strips the kit Input's internal
+            horizontal inset that survives `unstyled`. Without it, the
+            title text starts further inside than the pills row below,
+            making the column edge look uneven. */}
+        <Input
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChangeText={setTitle}
           placeholder={formatDefaultTitle(date)}
-          className="mb-3 block w-full bg-transparent text-2xl font-bold text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
+          unstyled
+          width="100%"
+          marginBottom="$3"
+          paddingHorizontal={0}
+          bg="transparent"
+          fontSize={24}
+          fontWeight="700"
+          color="$color"
+          placeholderTextColor="$mutedForeground"
+          focusVisibleStyle={{ outlineWidth: 0 }}
         />
 
         {/* Metadata pills row */}
         <div className="mb-4 flex flex-wrap items-center gap-2">
           {/* Date pill */}
-          <Popover>
-            <PopoverTrigger asChild>
+          <Popover placement="bottom-start">
+            <Popover.Trigger asChild>
               <button
                 type="button"
                 className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -174,8 +202,8 @@ function NewJournalPage() {
                   {dateInfo.label}
                 </span>
               </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-auto p-2">
+            </Popover.Trigger>
+            <Popover.Content className="w-auto p-2">
               <div className="flex flex-wrap gap-1 pb-2">
                 {[
                   { label: "Today", date: new Date() },
@@ -203,18 +231,18 @@ function NewJournalPage() {
               </div>
               <Calendar
                 mode="single"
-                selected={parseDateLocal(date)}
-                onSelect={(d) => {
+                value={parseDateLocal(date)}
+                onChange={(d) => {
                   if (d) setDate(format(d, "yyyy-MM-dd"));
                 }}
-                defaultMonth={parseDateLocal(date)}
+                initialMonth={parseDateLocal(date)}
               />
-            </PopoverContent>
+            </Popover.Content>
           </Popover>
 
           {/* Mood pill */}
-          <Popover>
-            <PopoverTrigger asChild>
+          <Popover placement="bottom-start">
+            <Popover.Trigger asChild>
               <button
                 type="button"
                 className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -231,8 +259,8 @@ function NewJournalPage() {
                   </span>
                 )}
               </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-auto p-1">
+            </Popover.Trigger>
+            <Popover.Content className="w-auto p-1">
               <div className="flex items-center gap-1">
                 {moods.map((m) => (
                   <button
@@ -251,7 +279,7 @@ function NewJournalPage() {
                   </button>
                 ))}
               </div>
-            </PopoverContent>
+            </Popover.Content>
           </Popover>
 
           {/* Tag pills */}
@@ -282,7 +310,7 @@ function NewJournalPage() {
             </span>
           )}
         </div>
-      </div>
+      </YStack>
 
       <JournalEditor
         content={content}
@@ -293,6 +321,6 @@ function NewJournalPage() {
         excludeJournalId={journalId ?? undefined}
         saveStatus={status}
       />
-    </div>
+    </YStack>
   );
 }

@@ -1,5 +1,5 @@
 import { CheckSquare, Heart, BookOpen, Target } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Button, Text, ToggleGroup, YStack } from "@stageholder/ui";
 
 const GOALS = [
   {
@@ -37,14 +37,6 @@ export function GoalsStep({
   onGoalsChange: (goals: string[]) => void;
   onContinue: () => void;
 }) {
-  function toggleGoal(id: string) {
-    onGoalsChange(
-      selectedGoals.includes(id)
-        ? selectedGoals.filter((g) => g !== id)
-        : [...selectedGoals, id],
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -57,44 +49,38 @@ export function GoalsStep({
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      {/* Kit ToggleGroup cards variant — multi-select. Default 2 cols at
+          >= sm matches the previous custom 2x2 grid; mobile collapses to
+          1 col automatically. Active state uses kit's $primary +
+          $primaryMuted chrome (no per-goal color identity, matching the
+          previous "all goals share primary" pattern). */}
+      <ToggleGroup
+        variant="cards"
+        type="multiple"
+        value={selectedGoals}
+        onValueChange={onGoalsChange}
+      >
         {GOALS.map((goal) => {
-          const selected = selectedGoals.includes(goal.id);
           const Icon = goal.icon;
           return (
-            <button
-              key={goal.id}
-              onClick={() => toggleGoal(goal.id)}
-              className={cn(
-                "flex flex-col items-center gap-2 rounded-lg border-2 p-4 text-center transition-colors",
-                selected
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/30",
-              )}
-            >
-              <Icon
-                className={cn(
-                  "size-6",
-                  selected ? "text-primary" : "text-muted-foreground",
-                )}
-              />
-              <span className="text-sm font-medium text-foreground">
-                {goal.label}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {goal.description}
-              </span>
-            </button>
+            <ToggleGroup.Item key={goal.id} value={goal.id}>
+              <YStack items="center" gap="$2">
+                <Icon className="size-6 text-muted-foreground" />
+                <Text fontSize="$3" fontWeight="500" color="$color">
+                  {goal.label}
+                </Text>
+                <Text fontSize="$2" color="$mutedForeground">
+                  {goal.description}
+                </Text>
+              </YStack>
+            </ToggleGroup.Item>
           );
         })}
-      </div>
+      </ToggleGroup>
 
-      <button
-        onClick={onContinue}
-        className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-      >
+      <Button className="w-full" onPress={onContinue}>
         Continue
-      </button>
+      </Button>
     </div>
   );
 }

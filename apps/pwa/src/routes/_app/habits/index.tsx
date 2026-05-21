@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
+import { Plus, Target } from "lucide-react";
+import { Button, EmptyState } from "@stageholder/ui";
 import { useHabits } from "@/lib/api/habits";
 import { HabitCard } from "@/components/habits/habit-card";
 import { CreateHabitDialog } from "@/components/habits/create-habit-dialog";
@@ -28,26 +30,12 @@ function HabitsPage() {
             Track your daily habits and build streaks.
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateDialog(true)}
-          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        <Button
+          icon={<Plus size={16} />}
+          onPress={() => setShowCreateDialog(true)}
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M5 12h14" />
-            <path d="M12 5v14" />
-          </svg>
           New Habit
-        </button>
+        </Button>
       </div>
 
       {/* Date selector */}
@@ -119,11 +107,15 @@ function HabitsPage() {
           ))}
         </div>
       ) : (
-        <div className="py-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            No habits yet. Create one to start tracking your progress.
-          </p>
-        </div>
+        <EmptyState>
+          <EmptyState.IconSlot>
+            <Target className="size-5 text-muted-foreground" />
+          </EmptyState.IconSlot>
+          <EmptyState.Title>No habits yet</EmptyState.Title>
+          <EmptyState.Description>
+            Create one to start tracking your progress.
+          </EmptyState.Description>
+        </EmptyState>
       )}
 
       <CreateHabitDialog

@@ -53,10 +53,24 @@
     "react-day-picker": "^9.14.0"
   },
   "resolutions": {
-    "@tamagui/core": "^2.0.0-rc.41",
-    "@tamagui/web": "^2.0.0-rc.41",
-    "tamagui": "^2.0.0-rc.41",
+    "@tamagui/core": "2.0.0-rc.42",
+    "@tamagui/web": "2.0.0-rc.42",
+    "@tamagui/react-native-web-lite": "2.0.0-rc.42",
+    "tamagui": "2.0.0-rc.42",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2"
+  },
+  "overrides": {
+    "tamagui": "2.0.0-rc.42",
+    "@tamagui/core": "2.0.0-rc.42",
+    "@tamagui/web": "2.0.0-rc.42",
+    "@tamagui/config": "2.0.0-rc.42",
+    "@tamagui/animations-css": "2.0.0-rc.42",
+    "@tamagui/lucide-icons-2": "2.0.0-rc.42",
+    "@tamagui/toast": "2.0.0-rc.42",
+    "@tamagui/vite-plugin": "2.0.0-rc.42",
+    "@tamagui/babel-plugin": "2.0.0-rc.42",
+    "@tamagui/react-native-web-lite": "2.0.0-rc.42",
+    "react-native-web": "0.21.2"
   }
 }

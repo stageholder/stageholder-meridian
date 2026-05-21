@@ -19,6 +19,7 @@ import {
   SkipForward,
   Undo2,
 } from "lucide-react";
+import { AlertDialog, Button, XStack } from "@stageholder/ui";
 import { cn } from "@/lib/utils";
 import { EditHabitSheet } from "@/components/habits/edit-habit-sheet";
 import {
@@ -324,9 +325,9 @@ function HabitDetailPage() {
     );
   }
 
-  function handleDelete() {
-    if (!window.confirm(`Delete "${habit?.name}"? This cannot be undone.`))
-      return;
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  function confirmDelete() {
     deleteHabit.mutate(id, {
       onSuccess: () => {
         toast.success("Habit deleted");
@@ -334,6 +335,7 @@ function HabitDetailPage() {
       },
       onError: () => toast.error("Failed to delete habit"),
     });
+    setDeleteOpen(false);
   }
 
   if (isLoading) {
@@ -382,18 +384,12 @@ function HabitDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setEditOpen(true)}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
-          >
+          <Button intent="outline" onPress={() => setEditOpen(true)}>
             Edit
-          </button>
-          <button
-            onClick={handleDelete}
-            className="rounded-lg border border-destructive/30 px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
-          >
+          </Button>
+          <Button intent="destructive" onPress={() => setDeleteOpen(true)}>
             Delete
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -667,8 +663,11 @@ function HabitDetailPage() {
                     ) : (
                       <>
                         {selIsToday && !selHasEntry && selScheduled && (
-                          <button
-                            onClick={() => {
+                          <Button
+                            intent="outline"
+                            size="sm"
+                            icon={<SkipForward className="size-3" />}
+                            onPress={() => {
                               skipEntryMutation.mutate(
                                 {
                                   habitId: habit.id,
@@ -684,19 +683,19 @@ function HabitDetailPage() {
                               );
                             }}
                             disabled={isMutating}
-                            className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
                           >
-                            <SkipForward className="size-3" />
                             Skip
-                          </button>
+                          </Button>
                         )}
-                        <button
-                          onClick={() => handleDateCheckIn(selectedDate)}
+                        <Button
+                          size="sm"
+                          onPress={() => handleDateCheckIn(selectedDate)}
                           disabled={isMutating}
-                          className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                          loading={isMutating}
+                          loadingText="…"
                         >
-                          {isMutating ? "..." : "Record"}
-                        </button>
+                          Record
+                        </Button>
                       </>
                     )}
                   </div>
@@ -781,6 +780,35 @@ function HabitDetailPage() {
         open={editOpen}
         onOpenChange={setEditOpen}
       />
+
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        disableRemoveScroll
+      >
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay />
+          <AlertDialog.Content>
+            <AlertDialog.Title>
+              Delete &ldquo;{habit.name}&rdquo;?
+            </AlertDialog.Title>
+            <AlertDialog.Description>
+              This cannot be undone. All check-ins for this habit will be
+              permanently removed.
+            </AlertDialog.Description>
+            <XStack gap="$2" justify="flex-end" mt="$4">
+              <AlertDialog.Cancel asChild>
+                <Button intent="outline">Cancel</Button>
+              </AlertDialog.Cancel>
+              <AlertDialog.Action asChild>
+                <Button intent="destructive" onPress={confirmDelete}>
+                  Delete
+                </Button>
+              </AlertDialog.Action>
+            </XStack>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog>
     </div>
   );
 }

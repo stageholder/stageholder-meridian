@@ -12,7 +12,7 @@ import { JourneyTierMap } from "@/components/light/journey-tier-map";
 import { JourneyStats } from "@/components/light/journey-stats";
 import { JourneyFeed } from "@/components/light/journey-feed";
 import { JourneyLightChart } from "@/components/light/journey-light-chart";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@stageholder/ui";
 
 export const Route = createFileRoute("/_app/journey")({
   component: JourneyPage,
@@ -77,12 +77,12 @@ function JourneyPage() {
 
       {/* Light Earned Chart */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Light Earned</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <Card.Header>
+          <Card.Title className="text-sm">Light Earned</Card.Title>
+        </Card.Header>
+        <Card.Body>
           <JourneyLightChart />
-        </CardContent>
+        </Card.Body>
       </Card>
 
       {/* Tier Map */}
@@ -95,12 +95,12 @@ function JourneyPage() {
 
       {/* Recent Light Feed */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Recent Light</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <Card.Header>
+          <Card.Title className="text-sm">Recent Light</Card.Title>
+        </Card.Header>
+        <Card.Body>
           <JourneyFeed />
-        </CardContent>
+        </Card.Body>
       </Card>
 
       {levelUpTier && (

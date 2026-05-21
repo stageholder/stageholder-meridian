@@ -1,3 +1,5 @@
+import { Button } from "@stageholder/ui";
+
 export function WelcomeStep({
   name,
   onContinue,
@@ -16,12 +18,9 @@ export function WelcomeStep({
           and more. Let&apos;s get you set up in just a few steps.
         </p>
       </div>
-      <button
-        onClick={onContinue}
-        className="rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-      >
+      <Button size="lg" onPress={onContinue}>
         Get Started
-      </button>
+      </Button>
     </div>
   );
 }

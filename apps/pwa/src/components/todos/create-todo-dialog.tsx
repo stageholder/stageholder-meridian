@@ -2,13 +2,7 @@ import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCreateTodo, useTodoLists } from "@/lib/api/todos";
 import { DatePicker } from "@/components/ui/date-picker";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Button, Input, Label, Select, TextArea } from "@stageholder/ui";
 import { toast } from "sonner";
 import { format, addDays, nextMonday } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -123,12 +117,13 @@ export function CreateTodoDialog({
                   value={selectedListId || defaultListId}
                   onValueChange={setSelectedListId}
                 >
-                  <SelectTrigger className="w-full rounded-lg border-border bg-background">
-                    <SelectValue placeholder="Select list" />
-                  </SelectTrigger>
-                  <SelectContent>
+                  <Select.Trigger
+                    placeholder="Select list"
+                    className="w-full rounded-lg border-border bg-background"
+                  />
+                  <Select.Content>
                     {lists.map((list) => (
-                      <SelectItem key={list.id} value={list.id}>
+                      <Select.Item key={list.id} value={list.id}>
                         <span className="flex items-center gap-2">
                           <span className="flex h-3 w-3 shrink-0 items-center justify-center">
                             {list.isDefault ? (
@@ -156,48 +151,42 @@ export function CreateTodoDialog({
                               />
                             )}
                           </span>
-                          {list.name}
+                          {/* Kit's Select.Item only auto-wraps string/number
+                              children in ItemText. For JSX children (icon
+                              + label), include ItemText explicitly so the
+                              trigger's value-display still shows the list
+                              name when this option is selected. */}
+                          <Select.ItemText>{list.name}</Select.ItemText>
                         </span>
-                      </SelectItem>
+                      </Select.Item>
                     ))}
-                  </SelectContent>
+                  </Select.Content>
                 </Select>
               </div>
             </div>
           )}
 
           <div>
-            <label
-              htmlFor="todo-title"
-              className="block text-sm font-medium text-foreground"
-            >
-              Title
-            </label>
-            <input
+            <Label htmlFor="todo-title">Title</Label>
+            <Input
               id="todo-title"
-              type="text"
+              className="mt-1"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChangeText={setTitle}
               placeholder="What needs to be done?"
-              className="mt-1 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               autoFocus
             />
           </div>
 
           <div>
-            <label
-              htmlFor="todo-description"
-              className="block text-sm font-medium text-foreground"
-            >
-              Description
-            </label>
-            <textarea
+            <Label htmlFor="todo-description">Description</Label>
+            <TextArea
               id="todo-description"
+              className="mt-1"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChangeText={setDescription}
               placeholder="Add details..."
               rows={3}
-              className="mt-1 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
 
@@ -207,36 +196,37 @@ export function CreateTodoDialog({
             </label>
             <div className="mt-1">
               <Select value={priority} onValueChange={setPriority}>
-                <SelectTrigger className="w-full rounded-lg border-border bg-background">
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="low">
+                <Select.Trigger
+                  placeholder="None"
+                  className="w-full rounded-lg border-border bg-background"
+                />
+                <Select.Content>
+                  <Select.Item value="none">None</Select.Item>
+                  <Select.Item value="low">
                     <span className="flex items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-blue-500" />
-                      Low
+                      <Select.ItemText>Low</Select.ItemText>
                     </span>
-                  </SelectItem>
-                  <SelectItem value="medium">
+                  </Select.Item>
+                  <Select.Item value="medium">
                     <span className="flex items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-yellow-500" />
-                      Medium
+                      <Select.ItemText>Medium</Select.ItemText>
                     </span>
-                  </SelectItem>
-                  <SelectItem value="high">
+                  </Select.Item>
+                  <Select.Item value="high">
                     <span className="flex items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-orange-500" />
-                      High
+                      <Select.ItemText>High</Select.ItemText>
                     </span>
-                  </SelectItem>
-                  <SelectItem value="urgent">
+                  </Select.Item>
+                  <Select.Item value="urgent">
                     <span className="flex items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-red-500" />
-                      Urgent
+                      <Select.ItemText>Urgent</Select.ItemText>
                     </span>
-                  </SelectItem>
-                </SelectContent>
+                  </Select.Item>
+                </Select.Content>
               </Select>
             </div>
           </div>
@@ -324,20 +314,21 @@ export function CreateTodoDialog({
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <button
+            <Button
+              intent="outline"
               type="button"
-              onClick={() => onOpenChange(false)}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
+              onPress={() => onOpenChange(false)}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={!title.trim() || createTodo.isPending}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              loading={createTodo.isPending}
+              loadingText="Creating…"
             >
-              {createTodo.isPending ? "Creating..." : "Create"}
-            </button>
+              Create
+            </Button>
           </div>
         </form>
       </div>

@@ -3,18 +3,13 @@ import { useUpdateHabit } from "@/lib/api/habits";
 import { toast } from "sonner";
 import type { Habit } from "@repo/core/types";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import {
+  Button,
+  Drawer,
+  Input,
+  Label,
   Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  TextArea,
+} from "@stageholder/ui";
 import { EmojiPicker } from "@/components/ui/emoji-picker";
 
 interface EditHabitSheetProps {
@@ -106,202 +101,182 @@ export function EditHabitSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="overflow-y-auto"
-        onPointerDownOutside={(e) => {
-          const target = e.target as Element;
-          if (target.closest('[data-slot="popover-content"]')) {
-            e.preventDefault();
-          }
-        }}
-        onInteractOutside={(e) => {
-          const target = e.target as Element;
-          if (target.closest('[data-slot="popover-content"]')) {
-            e.preventDefault();
-          }
-        }}
-      >
-        <SheetHeader>
-          <SheetTitle>Edit Habit</SheetTitle>
-        </SheetHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 px-4 pb-4">
-          <div className="flex gap-2">
-            <div>
-              <label className="block text-sm font-medium text-foreground">
-                Icon
-              </label>
-              <div className="mt-1">
-                <EmojiPicker value={icon} onChange={setIcon} />
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <Drawer.Portal>
+        <Drawer.Overlay />
+        <Drawer.Content
+          side="right"
+          className="overflow-y-auto"
+          onPointerDownOutside={(e: {
+            target: EventTarget | null;
+            preventDefault: () => void;
+          }) => {
+            const target = e.target as Element;
+            if (target.closest('[data-slot="popover-content"]')) {
+              e.preventDefault();
+            }
+          }}
+          onInteractOutside={(e: {
+            target: EventTarget | null;
+            preventDefault: () => void;
+          }) => {
+            const target = e.target as Element;
+            if (target.closest('[data-slot="popover-content"]')) {
+              e.preventDefault();
+            }
+          }}
+        >
+          <div className="p-4">
+            <Drawer.Title>Edit Habit</Drawer.Title>
+          </div>
+          <form onSubmit={handleSubmit} className="space-y-4 px-4 pb-4">
+            <div className="flex gap-2">
+              <div>
+                <label className="block text-sm font-medium text-foreground">
+                  Icon
+                </label>
+                <div className="mt-1">
+                  <EmojiPicker value={icon} onChange={setIcon} />
+                </div>
               </div>
-            </div>
-            <div className="flex-1">
-              <label
-                htmlFor="edit-habit-name"
-                className="block text-sm font-medium text-foreground"
-              >
-                Name
-              </label>
-              <input
-                id="edit-habit-name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                autoFocus
-              />
-            </div>
-          </div>
-
-          <div>
-            <label
-              htmlFor="edit-habit-desc"
-              className="block text-sm font-medium text-foreground"
-            >
-              Description
-            </label>
-            <textarea
-              id="edit-habit-desc"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Optional details"
-              rows={2}
-              className="mt-1 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label
-                htmlFor="edit-habit-freq"
-                className="block text-sm font-medium text-foreground"
-              >
-                Frequency
-              </label>
-              <Select
-                value={frequency}
-                onValueChange={(value) => {
-                  setFrequency(value as Habit["frequency"]);
-                  if (value === "daily") setScheduledDays([]);
-                }}
-              >
-                <SelectTrigger className="mt-1 w-full rounded-lg border-border bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Specific days</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="w-24">
-              <label
-                htmlFor="edit-habit-target"
-                className="block text-sm font-medium text-foreground"
-              >
-                Target
-              </label>
-              <input
-                id="edit-habit-target"
-                type="number"
-                min="1"
-                value={targetCount}
-                onChange={(e) => setTargetCount(Number(e.target.value))}
-                className="mt-1 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
-            <div className="flex-1">
-              <label
-                htmlFor="edit-habit-unit"
-                className="block text-sm font-medium text-foreground"
-              >
-                Unit
-              </label>
-              <input
-                id="edit-habit-unit"
-                type="text"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                placeholder="e.g. minutes"
-                className="mt-1 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
-          </div>
-
-          {frequency === "weekly" && (
-            <div>
-              <label className="block text-sm font-medium text-foreground">
-                Days
-              </label>
-              <div className="mt-2 flex gap-1.5">
-                {DAY_OPTIONS.map((day) => {
-                  const active = scheduledDays.includes(day.value);
-                  return (
-                    <button
-                      key={day.value}
-                      type="button"
-                      onClick={() =>
-                        setScheduledDays(
-                          active
-                            ? scheduledDays.filter((d) => d !== day.value)
-                            : [...scheduledDays, day.value].sort(),
-                        )
-                      }
-                      className={`flex h-9 w-9 items-center justify-center rounded-lg text-xs font-medium transition-all ${
-                        active
-                          ? "bg-primary text-primary-foreground"
-                          : "border border-border text-muted-foreground hover:bg-accent"
-                      }`}
-                    >
-                      {day.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-foreground">
-              Color
-            </label>
-            <div className="mt-2 flex gap-2">
-              {colorOptions.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setColor(opt.value)}
-                  className={`h-7 w-7 rounded-full border-2 transition-all ${
-                    color === opt.value
-                      ? "border-foreground scale-110"
-                      : "border-transparent"
-                  }`}
-                  style={{ backgroundColor: opt.value }}
-                  aria-label={opt.label}
+              <div className="flex-1">
+                <Label htmlFor="edit-habit-name">Name</Label>
+                <Input
+                  id="edit-habit-name"
+                  className="mt-1"
+                  value={name}
+                  onChangeText={setName}
+                  autoFocus
                 />
-              ))}
+              </div>
             </div>
-          </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!name.trim() || updateHabit.isPending}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {updateHabit.isPending ? "Saving..." : "Save"}
-            </button>
-          </div>
-        </form>
-      </SheetContent>
-    </Sheet>
+            <div>
+              <Label htmlFor="edit-habit-desc">Description</Label>
+              <TextArea
+                id="edit-habit-desc"
+                className="mt-1"
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Optional details"
+                rows={2}
+              />
+            </div>
+
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <Label htmlFor="edit-habit-freq">Frequency</Label>
+                <Select
+                  value={frequency}
+                  onValueChange={(value) => {
+                    setFrequency(value as Habit["frequency"]);
+                    if (value === "daily") setScheduledDays([]);
+                  }}
+                >
+                  <Select.Trigger className="mt-1 w-full rounded-lg border-border bg-background" />
+                  <Select.Content>
+                    <Select.Item value="daily">Daily</Select.Item>
+                    <Select.Item value="weekly">Specific days</Select.Item>
+                  </Select.Content>
+                </Select>
+              </div>
+              <div className="w-24">
+                <Label htmlFor="edit-habit-target">Target</Label>
+                <Input
+                  id="edit-habit-target"
+                  className="mt-1"
+                  keyboardType="number-pad"
+                  value={String(targetCount)}
+                  onChangeText={(text) => setTargetCount(Number(text) || 1)}
+                />
+              </div>
+              <div className="flex-1">
+                <Label htmlFor="edit-habit-unit">Unit</Label>
+                <Input
+                  id="edit-habit-unit"
+                  className="mt-1"
+                  value={unit}
+                  onChangeText={setUnit}
+                  placeholder="e.g. minutes"
+                />
+              </div>
+            </div>
+
+            {frequency === "weekly" && (
+              <div>
+                <label className="block text-sm font-medium text-foreground">
+                  Days
+                </label>
+                <div className="mt-2 flex gap-1.5">
+                  {DAY_OPTIONS.map((day) => {
+                    const active = scheduledDays.includes(day.value);
+                    return (
+                      <button
+                        key={day.value}
+                        type="button"
+                        onClick={() =>
+                          setScheduledDays(
+                            active
+                              ? scheduledDays.filter((d) => d !== day.value)
+                              : [...scheduledDays, day.value].sort(),
+                          )
+                        }
+                        className={`flex h-9 w-9 items-center justify-center rounded-lg text-xs font-medium transition-all ${
+                          active
+                            ? "bg-primary text-primary-foreground"
+                            : "border border-border text-muted-foreground hover:bg-accent"
+                        }`}
+                      >
+                        {day.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-foreground">
+                Color
+              </label>
+              <div className="mt-2 flex gap-2">
+                {colorOptions.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setColor(opt.value)}
+                    className={`h-7 w-7 rounded-full border-2 transition-all ${
+                      color === opt.value
+                        ? "border-foreground scale-110"
+                        : "border-transparent"
+                    }`}
+                    style={{ backgroundColor: opt.value }}
+                    aria-label={opt.label}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                intent="outline"
+                type="button"
+                onPress={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={!name.trim() || updateHabit.isPending}
+                loading={updateHabit.isPending}
+                loadingText="Saving…"
+              >
+                Save
+              </Button>
+            </div>
+          </form>
+        </Drawer.Content>
+      </Drawer.Portal>
+    </Drawer>
   );
 }

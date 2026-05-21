@@ -8,58 +8,58 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import apiClient from "@/lib/api-client";
-import { Button } from "@/components/ui/button";
 import {
+  Button,
   Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Sidebar,
+  Text,
+  TextArea,
+  ToggleGroup,
+  YStack,
+  useSidebar,
+} from "@stageholder/ui";
 
 type FeedbackType = "bug" | "feature" | "general";
 
+// Per-type icon color is the semantic cue — Bug = red (error language),
+// Feature = amber (suggestion / warmth), General = blue (neutral talk).
+// Kept on the icon even when the card is inactive, since the color *is*
+// the type identifier.
 const feedbackTypes: {
   value: FeedbackType;
   label: string;
   icon: typeof Bug;
-  description: string;
-  color: string;
-  activeBg: string;
-  activeBorder: string;
+  iconColor: string;
 }[] = [
   {
     value: "general",
     label: "General",
     icon: MessageCircle,
-    description: "Share your thoughts",
-    color: "text-blue-500",
-    activeBg: "bg-blue-500/10",
-    activeBorder: "border-blue-500/40",
+    iconColor: "text-blue-500",
   },
   {
     value: "bug",
     label: "Bug",
     icon: Bug,
-    description: "Something's broken",
-    color: "text-red-500",
-    activeBg: "bg-red-500/10",
-    activeBorder: "border-red-500/40",
+    iconColor: "text-red-500",
   },
   {
     value: "feature",
     label: "Feature",
     icon: Lightbulb,
-    description: "Suggest a feature",
-    color: "text-amber-500",
-    activeBg: "bg-amber-500/10",
-    activeBorder: "border-amber-500/40",
+    iconColor: "text-amber-500",
   },
 ];
 
-export function FeedbackButton({ onNavigate }: { onNavigate?: () => void }) {
+export function FeedbackButton() {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<FeedbackType>("general");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Sidebar context is always available here because FeedbackButton lives
+  // exclusively inside <Sidebar.Footer> within the app shell. If we ever
+  // need this component outside a Sidebar, swap to a guarded version.
+  const { setOpenMobile, isMobile } = useSidebar();
 
   async function handleSubmit() {
     if (!message.trim()) return;
@@ -70,7 +70,9 @@ export function FeedbackButton({ onNavigate }: { onNavigate?: () => void }) {
       setMessage("");
       setType("general");
       setOpen(false);
-      onNavigate?.();
+      // Close the mobile drawer after a successful submission so the user
+      // lands back on whatever screen they were on. No-op on desktop.
+      if (isMobile) setOpenMobile(false);
     } catch {
       toast.error("Failed to send feedback. Please try again.");
     } finally {
@@ -79,58 +81,56 @@ export function FeedbackButton({ onNavigate }: { onNavigate?: () => void }) {
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground">
-          <MessageSquarePlus className="size-4" />
+    <Popover open={open} onOpenChange={setOpen} placement="right-end">
+      <Popover.Trigger asChild>
+        <Sidebar.MenuButton
+          icon={
+            <MessageSquarePlus className="size-4 text-sidebar-foreground" />
+          }
+        >
           Feedback
-        </button>
-      </PopoverTrigger>
-      <PopoverContent side="right" align="end" className="w-80 p-0">
+        </Sidebar.MenuButton>
+      </Popover.Trigger>
+      <Popover.Content className="w-80 p-0">
         <div className="p-4">
           <p className="text-sm font-semibold">How can we improve?</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             We&apos;d love to hear from you
           </p>
 
-          {/* Type selector — card style */}
-          <div className="mt-3 grid grid-cols-3 gap-2">
+          {/* Type selector — kit ToggleGroup cards, single-select.
+              Three cards in a row, so `columns={3}` overrides the default
+              2-col grid. Card chrome (border/bg/hover/active) comes from
+              the kit; we keep the per-type icon color so users still
+              identify types by color even when inactive. */}
+          <ToggleGroup
+            variant="cards"
+            type="single"
+            columns={3}
+            value={type}
+            onValueChange={(v) => v && setType(v as FeedbackType)}
+            mt="$3"
+          >
             {feedbackTypes.map((ft) => {
               const Icon = ft.icon;
-              const isActive = type === ft.value;
               return (
-                <button
-                  key={ft.value}
-                  onClick={() => setType(ft.value)}
-                  className={`group flex flex-col items-center gap-1.5 rounded-lg border p-2.5 text-center transition-all ${
-                    isActive
-                      ? `${ft.activeBg} ${ft.activeBorder}`
-                      : "border-border/60 hover:border-border hover:bg-muted/50"
-                  }`}
-                >
-                  <Icon
-                    className={`size-4 transition-colors ${
-                      isActive
-                        ? ft.color
-                        : "text-muted-foreground group-hover:text-foreground/70"
-                    }`}
-                  />
-                  <span
-                    className={`text-[11px] font-medium leading-tight ${
-                      isActive ? "text-foreground" : "text-muted-foreground"
-                    }`}
-                  >
-                    {ft.label}
-                  </span>
-                </button>
+                <ToggleGroup.Item key={ft.value} value={ft.value}>
+                  <YStack items="center" gap="$1.5">
+                    <Icon className={`size-4 ${ft.iconColor}`} />
+                    <Text fontSize={11} fontWeight="500" color="$color">
+                      {ft.label}
+                    </Text>
+                  </YStack>
+                </ToggleGroup.Item>
               );
             })}
-          </div>
+          </ToggleGroup>
 
           {/* Message */}
-          <textarea
+          <TextArea
+            className="mt-3"
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChangeText={setMessage}
             placeholder={
               type === "bug"
                 ? "What happened? What did you expect?"
@@ -139,20 +139,21 @@ export function FeedbackButton({ onNavigate }: { onNavigate?: () => void }) {
                   : "Tell us what you think..."
             }
             rows={3}
-            className="mt-3 w-full resize-none rounded-lg border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring"
           />
 
           <Button
             size="sm"
+            icon={<Send className="size-3.5" />}
             className="mt-2.5 w-full gap-2"
             disabled={!message.trim() || submitting}
-            onClick={handleSubmit}
+            loading={submitting}
+            loadingText="Sending…"
+            onPress={handleSubmit}
           >
-            <Send className="size-3.5" />
-            {submitting ? "Sending..." : "Send Feedback"}
+            Send Feedback
           </Button>
         </div>
-      </PopoverContent>
+      </Popover.Content>
     </Popover>
   );
 }

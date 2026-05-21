@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { Button } from "@stageholder/ui";
 
 export const Route = createFileRoute("/_auth/goodbye")({
   component: GoodbyePage,
@@ -27,17 +28,14 @@ function GoodbyePage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-6">
-      <div className="max-w-md text-center">
+      <div className="flex max-w-md flex-col items-center text-center">
         <h1 className="text-xl font-semibold tracking-tight">Signed out</h1>
         <p className="mt-3 text-sm text-muted-foreground">
           You&rsquo;ve been signed out of Meridian. See you next time.
         </p>
-        <a
-          href="/auth/login"
-          className="mt-6 inline-flex h-10 items-center rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
+        <Button tag="a" href="/auth/login" className="mt-6">
           Sign in again
-        </a>
+        </Button>
       </div>
     </div>
   );

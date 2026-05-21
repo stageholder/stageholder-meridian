@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useEncryptionStore } from "@/lib/crypto/encryption-store";
-import { Button } from "@/components/ui/button";
+import { Button, Input } from "@stageholder/ui";
 import { Lock } from "lucide-react";
 
 export function PassphrasePrompt() {
@@ -35,26 +35,26 @@ export function PassphrasePrompt() {
           </p>
         </div>
         <div className="space-y-3">
-          <input
-            type="password"
+          <Input
+            width="100%"
+            secureTextEntry
             value={passphrase}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setPassphrase(e.target.value)
-            }
+            onChangeText={setPassphrase}
             placeholder="Encryption passphrase"
-            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) =>
-              e.key === "Enter" && handleUnlock()
-            }
+            onKeyPress={(e: { nativeEvent: { key: string } }) => {
+              if (e.nativeEvent.key === "Enter") void handleUnlock();
+            }}
             autoFocus
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button
-            onClick={handleUnlock}
+            onPress={handleUnlock}
             disabled={loading || !passphrase}
+            loading={loading}
+            loadingText="Unlocking…"
             className="w-full"
           >
-            {loading ? "Unlocking..." : "Unlock"}
+            Unlock
           </Button>
         </div>
       </div>

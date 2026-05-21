@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Check } from "lucide-react";
+import { Button } from "@stageholder/ui";
 
 export function CompleteStep({ onFinish }: { onFinish: () => Promise<void> }) {
   const [loading, setLoading] = useState(false);
@@ -36,13 +37,15 @@ export function CompleteStep({ onFinish }: { onFinish: () => Promise<void> }) {
           {error}
         </p>
       )}
-      <button
-        onClick={handleFinish}
+      <Button
+        size="lg"
+        onPress={handleFinish}
         disabled={loading}
-        className="rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+        loading={loading}
+        loadingText="Saving…"
       >
-        {loading ? "Saving..." : "Go to Dashboard"}
-      </button>
+        Go to Dashboard
+      </Button>
     </div>
   );
 }

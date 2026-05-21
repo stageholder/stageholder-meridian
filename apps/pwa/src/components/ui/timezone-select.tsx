@@ -1,10 +1,6 @@
 import { useState, useMemo } from "react";
 import { ChevronDownIcon } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover } from "@stageholder/ui";
 import { cn } from "@/lib/utils";
 
 interface TimezoneSelectProps {
@@ -30,8 +26,8 @@ export function TimezoneSelect({
   }, [timezones, search]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <Popover open={open} onOpenChange={setOpen} placement="bottom-start">
+      <Popover.Trigger asChild>
         <button
           type="button"
           className={cn(
@@ -42,11 +38,8 @@ export function TimezoneSelect({
           <span className="truncate">{value || "Select timezone..."}</span>
           <ChevronDownIcon className="size-4 shrink-0 opacity-50" />
         </button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] p-0"
-        align="start"
-      >
+      </Popover.Trigger>
+      <Popover.Content className="w-[var(--radix-popover-trigger-width)] p-0">
         <div className="border-b border-border px-3 py-2">
           <input
             type="text"
@@ -83,7 +76,7 @@ export function TimezoneSelect({
             ))
           )}
         </div>
-      </PopoverContent>
+      </Popover.Content>
     </Popover>
   );
 }

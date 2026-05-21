@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document } from "mongoose";
+import { Document, Schema as MongooseSchema } from "mongoose";
 import { randomUUID } from "crypto";
 
 export type JournalDocument = JournalModel & Document<string>;
@@ -18,7 +18,18 @@ export type JournalDocument = JournalModel & Document<string>;
 export class JournalModel {
   @Prop({ type: String, default: () => randomUUID() }) _id: string;
   @Prop({ type: String, required: true, trim: true }) title: string;
-  @Prop({ type: String, default: "" }) content: string;
+  // `content` was string-only (HTML) before the Phase 2 migration. As of the
+  // dual-format window it's `Mixed` so each row carries either an HTML
+  // string (legacy) or a TipTap JSON object (new). Mongoose stores both
+  // shapes without translation. Discriminator at read time: `typeof
+  // doc.content === "string"` → legacy HTML, else JSON.
+  //
+  // Once the lazy backfill window closes (no string rows remain), we can
+  // narrow back to a structured sub-schema or keep Mixed for forward
+  // extensibility (mentions, embeds, custom nodes carry their own attrs).
+  @Prop({ type: MongooseSchema.Types.Mixed, default: "" }) content:
+    | string
+    | Record<string, unknown>;
   @Prop({ type: Number }) mood: number;
   @Prop({ type: [String], default: [] }) tags: string[];
   @Prop({ type: String, required: true, index: true }) userSub: string;

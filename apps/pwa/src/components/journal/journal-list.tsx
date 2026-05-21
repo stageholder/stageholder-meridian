@@ -4,7 +4,33 @@ import { format, isToday, isYesterday, isThisWeek, isThisYear } from "date-fns";
 import { cn } from "@/lib/utils";
 import { parseDateLocal } from "@/lib/date";
 import { MoodDisplay } from "./mood-picker";
-import type { Journal } from "@repo/core/types";
+import type { Journal, JournalContent } from "@repo/core/types";
+
+/**
+ * Extract plain-text preview from journal content. Dispatches on the
+ * Phase-2 dual-format shape:
+ *   - string (legacy HTML) → strip tags
+ *   - object (TipTap JSON) → walk the tree, concatenate text nodes
+ *
+ * Kept inline rather than reaching for the kit's RichTextRenderer
+ * because we want plain text for the truncated preview, not formatted
+ * inline HTML. (For full-document read-only render — e.g. printable
+ * journal export — RichTextRenderer is the right choice.)
+ */
+function extractPlainPreview(content: JournalContent): string {
+  if (typeof content === "string") return content.replace(/<[^>]*>/g, "");
+  return collectText(content);
+}
+
+function collectText(node: unknown): string {
+  if (node === null || typeof node !== "object") return "";
+  const n = node as { text?: unknown; content?: unknown };
+  if (typeof n.text === "string") return n.text + " ";
+  if (!Array.isArray(n.content)) return "";
+  let out = "";
+  for (const child of n.content) out += collectText(child);
+  return out;
+}
 
 interface JournalListProps {
   journals: Journal[];
@@ -73,7 +99,7 @@ export function JournalList({
                 parseDateLocal(journal.date),
                 "EEE, MMM d",
               );
-              const plainText = journal.content.replace(/<[^>]*>/g, "");
+              const plainText = extractPlainPreview(journal.content);
               const preview =
                 plainText.length > 120
                   ? plainText.slice(0, 120) + "..."

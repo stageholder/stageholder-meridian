@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { X } from "lucide-react";
 import {
   useUpdateTodo,
   useDeleteTodo,
@@ -6,6 +7,7 @@ import {
   useUpdateSubtask,
   useRemoveSubtask,
 } from "@/lib/api/todos";
+import { Button, IconButton, Input } from "@stageholder/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -275,27 +277,14 @@ export function TodoDetailDialog({
               </span>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent"
+          <IconButton
+            variant="ghost"
+            size="sm"
+            onPress={() => onOpenChange(false)}
             aria-label="Close"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="18" x2="6" y1="6" y2="18" />
-              <line x1="6" x2="18" y1="6" y2="18" />
-            </svg>
-          </button>
+            <X className="size-4" />
+          </IconButton>
         </div>
 
         {/* Body — two columns */}
@@ -338,23 +327,24 @@ export function TodoDetailDialog({
                     className="w-full resize-none rounded-md border border-border bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   />
                   <div className="mt-1.5 flex items-center gap-2">
-                    <button
+                    <Button
+                      size="sm"
                       type="button"
-                      onClick={handleSaveDescription}
-                      className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                      onPress={handleSaveDescription}
                     >
                       Save
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      intent="ghost"
+                      size="sm"
                       type="button"
-                      onClick={() => {
+                      onPress={() => {
                         setDescDraft(todo.description ?? "");
                         setEditingDesc(false);
                       }}
-                      className="rounded-md px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-accent"
                     >
                       Cancel
-                    </button>
+                    </Button>
                     <span className="ml-auto text-[10px] text-muted-foreground">
                       Cmd+Enter to save
                     </span>
@@ -491,12 +481,11 @@ export function TodoDetailDialog({
                   );
                 }}
               >
-                <input
-                  type="text"
+                <Input
                   value={newSubtaskTitle}
-                  onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                  onChangeText={setNewSubtaskTitle}
                   placeholder="Add subtask..."
-                  className="w-full rounded-md border border-border bg-transparent px-3 py-1.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  size="$3"
                 />
               </form>
             </div>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useCreateTodoList } from "@/lib/api/todos";
 import { toast } from "sonner";
+import { Button, Input, Label } from "@stageholder/ui";
 
 const colorOptions = [
   { value: "#ef4444", label: "Red" },
@@ -58,19 +59,13 @@ export function CreateListDialog({
         <h2 className="text-lg font-semibold text-foreground">New List</h2>
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
-            <label
-              htmlFor="list-name"
-              className="block text-sm font-medium text-foreground"
-            >
-              Name
-            </label>
-            <input
+            <Label htmlFor="list-name">Name</Label>
+            <Input
               id="list-name"
-              type="text"
+              className="mt-1"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChangeText={setName}
               placeholder="My List"
-              className="mt-1 block w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               autoFocus
             />
           </div>
@@ -98,20 +93,21 @@ export function CreateListDialog({
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <button
+            <Button
+              intent="outline"
               type="button"
-              onClick={() => onOpenChange(false)}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
+              onPress={() => onOpenChange(false)}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={!name.trim() || createList.isPending}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              loading={createList.isPending}
+              loadingText="Creating…"
             >
-              {createList.isPending ? "Creating..." : "Create"}
-            </button>
+              Create
+            </Button>
           </div>
         </form>
       </div>

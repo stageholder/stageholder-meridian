@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { format, subDays, startOfWeek, addDays } from "date-fns";
 import { Link } from "@tanstack/react-router";
-import { MoreHorizontal, SkipForward, Undo2 } from "lucide-react";
+import { Check, MoreHorizontal, SkipForward, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HabitProgress } from "./habit-progress";
 import { EditHabitSheet } from "./edit-habit-sheet";
@@ -20,11 +20,12 @@ import {
   entryCompletionRatio,
 } from "@/lib/habits/entry-resolution";
 import {
+  AlertDialog,
+  Button,
   DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  IconButton,
+  XStack,
+} from "@stageholder/ui";
 
 interface HabitCardProps {
   habit: Habit;
@@ -167,14 +168,14 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
     );
   }
 
-  function handleDelete() {
-    if (!window.confirm(`Delete "${habit.name}"? This cannot be undone.`))
-      return;
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
+  function confirmDelete() {
     deleteHabit.mutate(habit.id, {
       onSuccess: () => toast.success(`"${habit.name}" deleted`),
       onError: () => toast.error("Failed to delete habit"),
     });
+    setDeleteOpen(false);
   }
 
   const isPending =
@@ -214,25 +215,22 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
             </div>
           </Link>
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                aria-label="Habit options"
-              >
+            <DropdownMenu.Trigger asChild>
+              <IconButton variant="ghost" size="sm" aria-label="Habit options">
                 <MoreHorizontal className="size-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setEditOpen(true)}>
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleDelete}
-                className="text-destructive focus:text-destructive"
+              </IconButton>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content>
+              <DropdownMenu.Item onPress={() => setEditOpen(true)}>
+                <DropdownMenu.Label>Edit</DropdownMenu.Label>
+              </DropdownMenu.Item>
+              <DropdownMenu.Item
+                intent="danger"
+                onPress={() => setDeleteOpen(true)}
               >
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
+                <DropdownMenu.Label>Delete</DropdownMenu.Label>
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
           </DropdownMenu>
         </div>
 
@@ -337,14 +335,16 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
           </span>
           <div className="flex items-center gap-1.5">
             {activeDateValue > 0 && !isSkipped && (
-              <button
-                onClick={handleUndo}
+              <IconButton
+                variant="outline"
+                size="sm"
+                onPress={handleUndo}
                 disabled={isPending}
-                className="flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-xs text-muted-foreground transition-all hover:bg-accent hover:text-foreground disabled:opacity-50"
                 title="Undo last check-in"
+                aria-label="Undo last check-in"
               >
                 <Undo2 className="size-3" />
-              </button>
+              </IconButton>
             )}
             {isSkipped ? (
               <span className="flex items-center gap-1 rounded-lg bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground">
@@ -355,55 +355,45 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
               <span className="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground">
                 Rest day
               </span>
+            ) : isComplete ? (
+              <span
+                className={cn(
+                  "flex items-center gap-1.5 rounded-lg bg-green-100 px-3 py-1.5 text-xs font-medium text-green-700 transition-transform dark:bg-green-900/30 dark:text-green-400",
+                  bouncing && "scale-110",
+                )}
+              >
+                <Check className="size-3.5" />
+                Complete
+              </span>
             ) : (
               <>
-                {!isComplete && !activeDateEntry && isScheduledOnActiveDate && (
-                  <button
-                    onClick={handleSkip}
+                {!activeDateEntry && isScheduledOnActiveDate && (
+                  <Button
+                    intent="outline"
+                    size="sm"
+                    icon={<SkipForward className="size-3" />}
+                    onPress={handleSkip}
                     disabled={isPending}
-                    className="flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-xs text-muted-foreground transition-all hover:bg-accent hover:text-foreground disabled:opacity-50"
                     title="Skip today"
                   >
-                    <SkipForward className="size-3" />
                     Skip
-                  </button>
+                  </Button>
                 )}
-                <button
-                  onClick={handleCheckIn}
-                  disabled={isComplete || isPending}
+                <Button
+                  size="sm"
+                  onPress={handleCheckIn}
+                  disabled={isPending}
+                  loading={isPending}
+                  loadingText="Checking…"
                   className={cn(
-                    "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
+                    "transition-transform",
                     bouncing && "scale-110",
-                    isComplete
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                      : "bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50",
                   )}
                 >
-                  {isComplete ? (
-                    <>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                      Complete
-                    </>
-                  ) : isPending ? (
-                    "Checking..."
-                  ) : habit.targetCount > 1 ? (
-                    `${activeDateValue}/${habit.targetCount}`
-                  ) : (
-                    "Check In"
-                  )}
-                </button>
+                  {habit.targetCount > 1
+                    ? `${activeDateValue}/${habit.targetCount}`
+                    : "Check In"}
+                </Button>
               </>
             )}
           </div>
@@ -415,6 +405,37 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
         open={editOpen}
         onOpenChange={setEditOpen}
       />
+
+      {/* Destructive confirm — replaces the previous window.confirm() so the
+          modal lives inside meridian's design language. */}
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        disableRemoveScroll
+      >
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay />
+          <AlertDialog.Content>
+            <AlertDialog.Title>
+              Delete &ldquo;{habit.name}&rdquo;?
+            </AlertDialog.Title>
+            <AlertDialog.Description>
+              This cannot be undone. All check-ins for this habit will be
+              permanently removed.
+            </AlertDialog.Description>
+            <XStack gap="$2" justify="flex-end" mt="$4">
+              <AlertDialog.Cancel asChild>
+                <Button intent="outline">Cancel</Button>
+              </AlertDialog.Cancel>
+              <AlertDialog.Action asChild>
+                <Button intent="destructive" onPress={confirmDelete}>
+                  Delete
+                </Button>
+              </AlertDialog.Action>
+            </XStack>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog>
     </>
   );
 }

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useTheme } from "next-themes";
 import {
@@ -13,22 +14,31 @@ import {
   Moon,
   Sun,
 } from "lucide-react";
-import {
-  CommandDialog,
-  CommandInput,
-  CommandList,
-  CommandEmpty,
-  CommandGroup,
-  CommandSeparator,
-  CommandItem,
-  CommandShortcut,
-} from "@/components/ui/command";
+import { CommandMenu, type CommandItem } from "@stageholder/ui";
 
 interface CommandPaletteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onOpenShortcuts: () => void;
   onCreateTodo: () => void;
+}
+
+/**
+ * Trigger a "quick add todo" event on the todos page, navigating there
+ * first if needed. Replaces the inline closure in the old cmdk version.
+ */
+function triggerQuickAddTodo(navigate: ReturnType<typeof useNavigate>) {
+  const onTodosPage =
+    window.location.pathname === "/todos" ||
+    window.location.pathname.startsWith("/todos/");
+  if (onTodosPage) {
+    window.dispatchEvent(new CustomEvent("meridian:quick-add-todo"));
+  } else {
+    navigate({ to: "/todos" });
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("meridian:quick-add-todo"));
+    }, 300);
+  }
 }
 
 export function CommandPalette({
@@ -40,140 +50,130 @@ export function CommandPalette({
   const navigate = useNavigate();
   const { setTheme, theme } = useTheme();
 
-  function runAction(fn: () => void) {
-    onOpenChange(false);
-    fn();
-  }
+  // Build the item list inside useMemo so it re-derives when `theme`
+  // changes (the Toggle Theme item's icon flips between Sun/Moon and
+  // its onSelect target flips accordingly).
+  const items = useMemo<CommandItem[]>(
+    () => [
+      // ─── Navigation ─────────────────────────────────────────────
+      {
+        id: "nav-dashboard",
+        group: "Navigation",
+        label: "Dashboard",
+        icon: <Home className="size-4" />,
+        keywords: ["home", "overview"],
+        shortcut: "G D",
+        onSelect: () => navigate({ to: "/" }),
+      },
+      {
+        id: "nav-calendar",
+        group: "Navigation",
+        label: "Calendar",
+        icon: <CalendarDays className="size-4" />,
+        keywords: ["schedule", "events"],
+        shortcut: "G C",
+        onSelect: () => navigate({ to: "/calendar" }),
+      },
+      {
+        id: "nav-todos",
+        group: "Navigation",
+        label: "Todos",
+        icon: <CheckSquare className="size-4" />,
+        keywords: ["tasks", "checklist"],
+        shortcut: "G T",
+        onSelect: () => navigate({ to: "/todos" }),
+      },
+      {
+        id: "nav-habits",
+        group: "Navigation",
+        label: "Habits",
+        icon: <Target className="size-4" />,
+        keywords: ["routines", "tracker"],
+        shortcut: "G H",
+        onSelect: () => navigate({ to: "/habits" }),
+      },
+      {
+        id: "nav-journal",
+        group: "Navigation",
+        label: "Journal",
+        icon: <BookOpen className="size-4" />,
+        keywords: ["diary", "notes"],
+        shortcut: "G J",
+        onSelect: () => navigate({ to: "/journal" }),
+      },
+      {
+        id: "nav-settings",
+        group: "Navigation",
+        label: "Settings",
+        icon: <Settings className="size-4" />,
+        keywords: ["preferences", "config"],
+        shortcut: "G S",
+        onSelect: () => navigate({ to: "/settings" }),
+      },
+
+      // ─── Actions ────────────────────────────────────────────────
+      {
+        id: "action-new-todo",
+        group: "Actions",
+        label: "New Todo",
+        icon: <Plus className="size-4" />,
+        keywords: ["add task", "create task", "new task"],
+        shortcut: "N",
+        onSelect: () => triggerQuickAddTodo(navigate),
+      },
+      {
+        id: "action-new-todo-detail",
+        group: "Actions",
+        label: "New Todo (detail)",
+        icon: <FileEdit className="size-4" />,
+        keywords: ["create task detail", "full todo"],
+        shortcut: "⇧ N",
+        onSelect: onCreateTodo,
+      },
+      {
+        id: "action-new-journal",
+        group: "Actions",
+        label: "New Journal Entry",
+        icon: <BookOpen className="size-4" />,
+        keywords: ["diary entry", "write"],
+        onSelect: () => navigate({ to: "/journal" }),
+      },
+
+      // ─── General ────────────────────────────────────────────────
+      {
+        id: "general-shortcuts",
+        group: "General",
+        label: "Keyboard Shortcuts",
+        icon: <Keyboard className="size-4" />,
+        keywords: ["keys", "hotkeys", "bindings"],
+        shortcut: "?",
+        onSelect: onOpenShortcuts,
+      },
+      {
+        id: "general-theme",
+        group: "General",
+        label: "Toggle Theme",
+        // Icon flips with current theme. Memo dep on `theme` ensures
+        // the items array re-derives when the user changes mode.
+        icon:
+          theme === "dark" ? (
+            <Sun className="size-4" />
+          ) : (
+            <Moon className="size-4" />
+          ),
+        keywords: ["dark mode", "light mode", "appearance"],
+        onSelect: () => setTheme(theme === "dark" ? "light" : "dark"),
+      },
+    ],
+    [navigate, theme, setTheme, onCreateTodo, onOpenShortcuts],
+  );
 
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput placeholder="Type a command or search..." />
-      <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
-
-        <CommandGroup heading="Navigation">
-          <CommandItem
-            keywords={["home", "overview"]}
-            onSelect={() => runAction(() => navigate({ to: "/" }))}
-          >
-            <Home className="size-4" />
-            Dashboard
-            <CommandShortcut>G D</CommandShortcut>
-          </CommandItem>
-          <CommandItem
-            keywords={["schedule", "events"]}
-            onSelect={() => runAction(() => navigate({ to: "/calendar" }))}
-          >
-            <CalendarDays className="size-4" />
-            Calendar
-            <CommandShortcut>G C</CommandShortcut>
-          </CommandItem>
-          <CommandItem
-            keywords={["tasks", "checklist"]}
-            onSelect={() => runAction(() => navigate({ to: "/todos" }))}
-          >
-            <CheckSquare className="size-4" />
-            Todos
-            <CommandShortcut>G T</CommandShortcut>
-          </CommandItem>
-          <CommandItem
-            keywords={["routines", "tracker"]}
-            onSelect={() => runAction(() => navigate({ to: "/habits" }))}
-          >
-            <Target className="size-4" />
-            Habits
-            <CommandShortcut>G H</CommandShortcut>
-          </CommandItem>
-          <CommandItem
-            keywords={["diary", "notes"]}
-            onSelect={() => runAction(() => navigate({ to: "/journal" }))}
-          >
-            <BookOpen className="size-4" />
-            Journal
-            <CommandShortcut>G J</CommandShortcut>
-          </CommandItem>
-          <CommandItem
-            keywords={["preferences", "config"]}
-            onSelect={() => runAction(() => navigate({ to: "/settings" }))}
-          >
-            <Settings className="size-4" />
-            Settings
-            <CommandShortcut>G S</CommandShortcut>
-          </CommandItem>
-        </CommandGroup>
-
-        <CommandSeparator />
-
-        <CommandGroup heading="Actions">
-          <CommandItem
-            keywords={["add task", "create task", "new task"]}
-            onSelect={() =>
-              runAction(() => {
-                const onTodosPage =
-                  window.location.pathname === "/todos" ||
-                  window.location.pathname.startsWith("/todos/");
-                if (onTodosPage) {
-                  window.dispatchEvent(
-                    new CustomEvent("meridian:quick-add-todo"),
-                  );
-                } else {
-                  navigate({ to: "/todos" });
-                  setTimeout(() => {
-                    window.dispatchEvent(
-                      new CustomEvent("meridian:quick-add-todo"),
-                    );
-                  }, 300);
-                }
-              })
-            }
-          >
-            <Plus className="size-4" />
-            New Todo
-            <CommandShortcut>N</CommandShortcut>
-          </CommandItem>
-          <CommandItem
-            keywords={["create task detail", "full todo"]}
-            onSelect={() => runAction(onCreateTodo)}
-          >
-            <FileEdit className="size-4" />
-            New Todo (detail)
-            <CommandShortcut>⇧ N</CommandShortcut>
-          </CommandItem>
-          <CommandItem
-            keywords={["diary entry", "write"]}
-            onSelect={() => runAction(() => navigate({ to: "/journal" }))}
-          >
-            <BookOpen className="size-4" />
-            New Journal Entry
-          </CommandItem>
-        </CommandGroup>
-
-        <CommandSeparator />
-
-        <CommandGroup heading="General">
-          <CommandItem
-            keywords={["keys", "hotkeys", "bindings"]}
-            onSelect={() => runAction(onOpenShortcuts)}
-          >
-            <Keyboard className="size-4" />
-            Keyboard Shortcuts
-            <CommandShortcut>?</CommandShortcut>
-          </CommandItem>
-          <CommandItem
-            keywords={["dark mode", "light mode", "appearance"]}
-            onSelect={() =>
-              runAction(() => setTheme(theme === "dark" ? "light" : "dark"))
-            }
-          >
-            {theme === "dark" ? (
-              <Sun className="size-4" />
-            ) : (
-              <Moon className="size-4" />
-            )}
-            Toggle Theme
-          </CommandItem>
-        </CommandGroup>
-      </CommandList>
-    </CommandDialog>
+    <CommandMenu
+      open={open}
+      onOpenChange={onOpenChange}
+      items={items}
+      placeholder="Type a command or search..."
+    />
   );
 }

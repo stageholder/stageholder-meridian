@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from "react";
+import { Button } from "@stageholder/ui";
 import { logger } from "@repo/core/platform/logger";
 
 interface Props {
@@ -34,12 +35,9 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="text-sm text-muted-foreground">
               Something went wrong.
             </p>
-            <button
-              onClick={() => this.setState({ hasError: false })}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
+            <Button onPress={() => this.setState({ hasError: false })}>
               Try again
-            </button>
+            </Button>
           </div>
         )
       );

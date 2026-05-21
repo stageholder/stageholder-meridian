@@ -2,11 +2,7 @@ import { format } from "date-fns";
 import { CheckSquare, BookOpen, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useActivityRings } from "@/lib/hooks/use-activity-rings";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover } from "@stageholder/ui";
 
 function CircleProgress({
   percent,
@@ -32,11 +28,14 @@ function CircleProgress({
 
   return (
     <div
-      className={cn(
-        "relative inline-flex items-center justify-center",
-        className,
-      )}
-      style={{ width: size, height: size }}
+      className={cn("relative", className)}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: size,
+        height: size,
+      }}
     >
       <svg
         className="absolute inset-0 -rotate-90"
@@ -83,10 +82,17 @@ export function DailyTargetRings() {
   const journalComplete = data.journal >= 100;
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
+    <Popover placement="bottom-end">
+      <Popover.Trigger asChild>
         <button
-          className="flex items-center gap-1 rounded-md px-1 py-1 transition-colors hover:bg-accent"
+          type="button"
+          className="rounded-md px-1 py-1 transition-colors hover:bg-accent"
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+          }}
           aria-label="View daily targets"
         >
           <CircleProgress
@@ -132,8 +138,8 @@ export function DailyTargetRings() {
             />
           </CircleProgress>
         </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-52 p-3">
+      </Popover.Trigger>
+      <Popover.Content className="w-52 p-3">
         <p className="mb-2 text-xs font-semibold text-foreground">
           Daily Targets
         </p>
@@ -220,7 +226,7 @@ export function DailyTargetRings() {
             </span>
           </div>
         </div>
-      </PopoverContent>
+      </Popover.Content>
     </Popover>
   );
 }

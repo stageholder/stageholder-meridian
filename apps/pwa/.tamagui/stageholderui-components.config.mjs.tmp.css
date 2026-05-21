@@ -1,0 +1,187 @@
+/* node_modules/@stageholder/ui/dist/esm/components/RichTextEditor.css */
+.sh-rte-content {
+  outline: none;
+  padding: 20px 28px;
+  color: var(--color);
+  font-family: var(--font-body, system-ui, -apple-system, "Segoe UI", sans-serif);
+  font-size: 16px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.sh-rte-content .is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--mutedForeground);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+.sh-rte-content > * + * {
+  margin-top: 0.75em;
+}
+.sh-rte-content h1,
+.sh-rte-content h2,
+.sh-rte-content h3,
+.sh-rte-content h4,
+.sh-rte-content h5,
+.sh-rte-content h6 {
+  font-family: var(--font-heading, var(--font-body));
+  font-weight: 700;
+  color: var(--color);
+  line-height: 1.25;
+}
+.sh-rte-content h1 {
+  font-size: 2em;
+  margin-top: 1.4em;
+}
+.sh-rte-content h2 {
+  font-size: 1.5em;
+  margin-top: 1.4em;
+}
+.sh-rte-content h3 {
+  font-size: 1.25em;
+  margin-top: 1.3em;
+}
+.sh-rte-content h4 {
+  font-size: 1.1em;
+  margin-top: 1.2em;
+}
+.sh-rte-content h5,
+.sh-rte-content h6 {
+  font-size: 1em;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-top: 1.2em;
+}
+.sh-rte-content > :first-child {
+  margin-top: 0;
+}
+.sh-rte-content p {
+  margin: 0;
+}
+.sh-rte-content strong {
+  font-weight: 700;
+}
+.sh-rte-content em {
+  font-style: italic;
+}
+.sh-rte-content s,
+.sh-rte-content strike {
+  text-decoration: line-through;
+}
+.sh-rte-content u {
+  text-decoration: underline;
+}
+.sh-rte-content code:not(pre code) {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace);
+  font-size: 0.9em;
+  background: var(--secondary);
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  color: var(--color);
+}
+.sh-rte-content a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.sh-rte-content a:hover {
+  color: var(--primaryHover);
+}
+.sh-rte-content ul,
+.sh-rte-content ol {
+  padding-left: 1.5em;
+  margin: 0;
+}
+.sh-rte-content ul {
+  list-style: disc;
+}
+.sh-rte-content ol {
+  list-style: decimal;
+}
+.sh-rte-content li {
+  margin: 0.25em 0;
+}
+.sh-rte-content li > p {
+  margin: 0;
+}
+.sh-rte-content li::marker {
+  color: var(--mutedForeground);
+}
+.sh-rte-content li ul,
+.sh-rte-content li ol {
+  margin-top: 0.25em;
+  padding-left: 1.25em;
+}
+.sh-rte-content blockquote {
+  border-left: 3px solid var(--primary);
+  margin: 0;
+  padding: 0.25em 0 0.25em 1em;
+  color: var(--color);
+  font-style: italic;
+  background:
+    linear-gradient(
+      to right,
+      var(--primaryMuted),
+      transparent 80%);
+  border-radius: 0 4px 4px 0;
+}
+.sh-rte-content blockquote > * + * {
+  margin-top: 0.5em;
+}
+.sh-rte-content pre {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace);
+  font-size: 0.9em;
+  line-height: 1.5;
+  background: var(--secondary);
+  color: var(--color);
+  border: 1px solid var(--borderColor);
+  border-radius: 6px;
+  padding: 0.85em 1em;
+  overflow-x: auto;
+  white-space: pre;
+}
+.sh-rte-content pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-size: 1em;
+}
+.sh-rte-content hr {
+  border: 0;
+  border-top: 1px solid var(--borderColor);
+  margin: 1.5em 0;
+}
+.sh-rte-content mark {
+  background: var(--primaryMuted);
+  color: var(--color);
+  border-radius: 2px;
+  padding: 0 2px;
+}
+.sh-rte-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  display: block;
+  margin: 0.5em 0;
+}
+.sh-rte-content img.ProseMirror-selectednode {
+  outline: 2px solid var(--primary);
+}
+.sh-rte-content ::selection {
+  background: var(--primaryMuted);
+}
+.sh-rte-content sub,
+.sh-rte-content sup {
+  font-size: 0.75em;
+  line-height: 0;
+}
+.sh-rte-content sup {
+  vertical-align: super;
+}
+.sh-rte-content sub {
+  vertical-align: sub;
+}

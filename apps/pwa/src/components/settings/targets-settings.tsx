@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { Button, Label, NumberInput } from "@stageholder/ui";
 import { useUserLight, useUpdateTargets } from "@/lib/api/light";
 import { cn } from "@/lib/utils";
 
@@ -46,48 +47,25 @@ export function TargetsSettings() {
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Todo Target */}
       <div>
-        <label className="block text-sm font-medium text-foreground">
-          Daily todo completion target
-        </label>
+        <Label>Daily todo completion target</Label>
         <p className="mt-0.5 text-xs text-muted-foreground">
           How many todos you aim to complete each day.
         </p>
         <div className="mt-2 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setTodoTarget(Math.max(1, todoTarget - 1))}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted"
-          >
-            -
-          </button>
-          <input
-            type="number"
+          <NumberInput
+            value={todoTarget}
+            onChange={setTodoTarget}
             min={1}
             max={50}
-            value={todoTarget}
-            onChange={(e) =>
-              setTodoTarget(
-                Math.min(50, Math.max(1, parseInt(e.target.value) || 1)),
-              )
-            }
-            className="h-9 w-16 rounded-lg border border-border bg-background px-2 text-center text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            step={1}
           />
-          <button
-            type="button"
-            onClick={() => setTodoTarget(Math.min(50, todoTarget + 1))}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-foreground hover:bg-muted"
-          >
-            +
-          </button>
           <span className="text-sm text-muted-foreground">todos / day</span>
         </div>
       </div>
 
       {/* Journal Target */}
       <div>
-        <label className="block text-sm font-medium text-foreground">
-          Daily word count target
-        </label>
+        <Label>Daily word count target</Label>
         <p className="mt-0.5 text-xs text-muted-foreground">
           How many words you aim to write in your journal each day.
         </p>
@@ -109,29 +87,25 @@ export function TargetsSettings() {
           ))}
         </div>
         <div className="mt-2 flex items-center gap-2">
-          <input
-            type="number"
+          <NumberInput
+            value={journalTarget}
+            onChange={setJournalTarget}
             min={10}
             max={5000}
-            value={journalTarget}
-            onChange={(e) =>
-              setJournalTarget(
-                Math.min(5000, Math.max(10, parseInt(e.target.value) || 10)),
-              )
-            }
-            className="h-9 w-24 rounded-lg border border-border bg-background px-2 text-center text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            step={25}
           />
           <span className="text-sm text-muted-foreground">words / day</span>
         </div>
       </div>
 
-      <button
+      <Button
         type="submit"
         disabled={updateTargets.isPending}
-        className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+        loading={updateTargets.isPending}
+        loadingText="Saving…"
       >
-        {updateTargets.isPending ? "Saving..." : "Save Changes"}
-      </button>
+        Save Changes
+      </Button>
     </form>
   );
 }

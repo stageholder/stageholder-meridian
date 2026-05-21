@@ -1,12 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardAction,
-} from "@/components/ui/card";
+import { Card } from "@stageholder/ui";
 
 interface BentoCardProps {
   children: React.ReactNode;
@@ -31,9 +25,9 @@ export function BentoCard({
       style={{ animationDelay: `${index * 75}ms` }}
     >
       {(title || action) && (
-        <CardHeader>
+        <Card.Header>
           {title && (
-            <CardTitle className="text-sm">
+            <Card.Title className="text-sm">
               {href ? (
                 <Link to={href} className="hover:underline">
                   {title}
@@ -41,12 +35,12 @@ export function BentoCard({
               ) : (
                 title
               )}
-            </CardTitle>
+            </Card.Title>
           )}
-          {action && <CardAction>{action}</CardAction>}
-        </CardHeader>
+          {action && <Card.Action>{action}</Card.Action>}
+        </Card.Header>
       )}
-      <CardContent>{children}</CardContent>
+      <Card.Body>{children}</Card.Body>
     </Card>
   );
 }

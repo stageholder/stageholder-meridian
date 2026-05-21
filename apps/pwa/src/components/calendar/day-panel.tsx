@@ -2,6 +2,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { Plus, BookOpen } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { Button } from "@stageholder/ui";
 import { cn } from "@/lib/utils";
 import { useUpdateTodo, useTodoLists } from "@/lib/api/todos";
 import { CreateTodoDialog } from "@/components/todos/create-todo-dialog";
@@ -9,7 +10,7 @@ import { TodoDetailDialog } from "@/components/todos/todo-detail-dialog";
 import type { CalendarDayData } from "@/lib/api/calendar";
 import { ActivityRingsVisual } from "@/components/activity-rings";
 import { computeActivityRings } from "@/components/activity-rings";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import type { Habit, Todo } from "@repo/core/types";
 import { useAllTodos } from "@/lib/api/todos";
 
@@ -51,6 +52,7 @@ interface DayPanelProps {
 }
 
 export function DayPanel({ date, dayData, habits }: DayPanelProps) {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const updateTodo = useUpdateTodo();
   const { data: lists } = useTodoLists();
@@ -247,21 +249,24 @@ export function DayPanel({ date, dayData, habits }: DayPanelProps) {
 
       {/* Quick Actions */}
       <div className="mt-5 flex gap-2">
-        <button
-          onClick={() => setShowCreateTodo(true)}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent"
+        <Button
+          intent="outline"
+          size="sm"
+          icon={<Plus className="h-3.5 w-3.5" />}
+          onPress={() => setShowCreateTodo(true)}
         >
-          <Plus className="h-3.5 w-3.5" />
           Add Todo
-        </button>
-        <Link
-          to="/journal/new"
-          search={{ date: dateStr }}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent"
+        </Button>
+        <Button
+          intent="outline"
+          size="sm"
+          icon={<BookOpen className="h-3.5 w-3.5" />}
+          onPress={() =>
+            void navigate({ to: "/journal/new", search: { date: dateStr } })
+          }
         >
-          <BookOpen className="h-3.5 w-3.5" />
           New Journal
-        </Link>
+        </Button>
       </div>
 
       {defaultList && (

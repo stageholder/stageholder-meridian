@@ -18,7 +18,11 @@
       "Read(//Users/garda_dafi/Project/stageholder-identity/apps/web/app/**)",
       "Read(//Users/garda_dafi/Project/stageholder-identity/apps/web/**)",
       "Read(//Users/garda_dafi/Project/stageholder-identity/apps/**)",
-      "Skill(superpowers:executing-plans)"
+      "Skill(superpowers:executing-plans)",
+      "Read(//Users/garda_dafi/Project/stageholder-ui/apps/docs/app/**)",
+      "Read(//Users/garda_dafi/Project/stageholder-ui/apps/docs/components/**)",
+      "Read(//Users/garda_dafi/Project/stageholder-ui/**)",
+      "Read(//Users/garda_dafi/Project/stageholder-ui/packages/**)"
     ]
   },
   "enabledPlugins": {

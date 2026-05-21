@@ -1,11 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { Dialog } from "@stageholder/ui";
 
 interface ShortcutsDialogProps {
   open: boolean;
@@ -63,55 +57,59 @@ export function ShortcutsDialog({ open, onOpenChange }: ShortcutsDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Keyboard Shortcuts</DialogTitle>
-          <DialogDescription>
-            Navigate and take actions quickly with these shortcuts.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="mt-2 space-y-4">
-          {shortcutGroups.map((group) => (
-            <div key={group.heading}>
-              <h3 className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                {group.heading}
-              </h3>
-              <div className="space-y-1">
-                {group.items.map((item) => {
-                  const keys = isMac && item.macKeys ? item.macKeys : item.keys;
-                  return (
-                    <div
-                      key={item.description}
-                      className="flex items-center justify-between rounded-md px-2 py-1.5"
-                    >
-                      <span className="text-sm text-foreground">
-                        {item.description}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        {keys.map((key, i) => (
-                          <span
-                            key={i}
-                            className="inline-flex items-center gap-1"
-                          >
-                            <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1.5 font-mono text-[11px] font-medium text-muted-foreground">
-                              {key}
-                            </kbd>
-                            {i < keys.length - 1 && keys.length > 1 && (
-                              <span className="text-[9px] text-muted-foreground/50">
-                                {group.heading === "Navigation" ? "→" : "+"}
-                              </span>
-                            )}
-                          </span>
-                        ))}
+      <Dialog.Portal>
+        <Dialog.Overlay />
+        <Dialog.Content className="max-w-md">
+          <div className="space-y-1">
+            <Dialog.Title>Keyboard Shortcuts</Dialog.Title>
+            <Dialog.Description>
+              Navigate and take actions quickly with these shortcuts.
+            </Dialog.Description>
+          </div>
+          <div className="mt-2 space-y-4">
+            {shortcutGroups.map((group) => (
+              <div key={group.heading}>
+                <h3 className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  {group.heading}
+                </h3>
+                <div className="space-y-1">
+                  {group.items.map((item) => {
+                    const keys =
+                      isMac && item.macKeys ? item.macKeys : item.keys;
+                    return (
+                      <div
+                        key={item.description}
+                        className="flex items-center justify-between rounded-md px-2 py-1.5"
+                      >
+                        <span className="text-sm text-foreground">
+                          {item.description}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {keys.map((key, i) => (
+                            <span
+                              key={i}
+                              className="inline-flex items-center gap-1"
+                            >
+                              <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1.5 font-mono text-[11px] font-medium text-muted-foreground">
+                                {key}
+                              </kbd>
+                              {i < keys.length - 1 && keys.length > 1 && (
+                                <span className="text-[9px] text-muted-foreground/50">
+                                  {group.heading === "Navigation" ? "→" : "+"}
+                                </span>
+                              )}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </DialogContent>
+            ))}
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
     </Dialog>
   );
 }

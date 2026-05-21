@@ -1,12 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 import { useSubscription } from "@stageholder/sdk/spa";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip } from "@stageholder/ui";
 import { cn } from "@/lib/utils";
 
 /**
@@ -46,71 +41,70 @@ export function TrialPill({
   const shortLabel = daysRemaining !== null ? `${daysRemaining}d` : "Trial";
 
   return (
-    <TooltipProvider delayDuration={250}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Link
-            to={upgradeHref}
-            aria-label={`${longLabel} in trial — manage subscription`}
+    <Tooltip delay={250} placement="bottom-end">
+      <Tooltip.Trigger asChild>
+        <Link
+          to={upgradeHref}
+          aria-label={`${longLabel} in trial — manage subscription`}
+          className={cn(
+            "group relative inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5",
+            "text-[11px] font-medium tracking-tight",
+            "transition-colors duration-200",
+            urgent
+              ? "border-rose-500/35 bg-rose-500/10 text-rose-700 hover:border-rose-500/60 hover:bg-rose-500/15 dark:text-rose-300"
+              : "border-amber-500/35 bg-amber-500/10 text-amber-800 hover:border-amber-500/60 hover:bg-amber-500/15 dark:text-amber-200",
+          )}
+        >
+          <Sparkles
             className={cn(
-              "group relative inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5",
-              "text-[11px] font-medium tracking-tight",
-              "transition-colors duration-200",
-              urgent
-                ? "border-rose-500/35 bg-rose-500/10 text-rose-700 hover:border-rose-500/60 hover:bg-rose-500/15 dark:text-rose-300"
-                : "border-amber-500/35 bg-amber-500/10 text-amber-800 hover:border-amber-500/60 hover:bg-amber-500/15 dark:text-amber-200",
+              "size-3 shrink-0 transition-transform duration-300",
+              urgent && "animate-pulse",
+              "group-hover:rotate-12",
             )}
-          >
-            <Sparkles
-              className={cn(
-                "size-3 shrink-0 transition-transform duration-300",
-                urgent && "animate-pulse",
-                "group-hover:rotate-12",
-              )}
-              strokeWidth={2}
-              aria-hidden
-            />
-            <span className="font-mono tabular-nums leading-none">
-              <span className="hidden sm:inline">{longLabel}</span>
-              <span className="sm:hidden">{shortLabel}</span>
-            </span>
-            <span
-              aria-hidden
-              className="mx-0.5 hidden h-3 w-px bg-current opacity-30 sm:inline-block"
-            />
-            {/* "Manage" rather than "Upgrade": the trialed plan can already
+            strokeWidth={2}
+            aria-hidden
+          />
+          <span className="font-mono tabular-nums leading-none">
+            <span className="hidden sm:inline">{longLabel}</span>
+            <span className="sm:hidden">{shortLabel}</span>
+          </span>
+          <span
+            aria-hidden
+            className="mx-0.5 hidden h-3 w-px bg-current opacity-30 sm:inline-block"
+          />
+          {/* "Manage" rather than "Upgrade": the trialed plan can already
                 be the top tier, so there's nothing to upgrade *to*. The
                 destination /upgrade page handles plan switches AND trial
                 management uniformly, so this verb covers both cases without
                 misleading top-tier trialers. */}
-            <span
-              aria-hidden
-              className={cn(
-                "hidden font-semibold uppercase tracking-[0.08em] sm:inline",
-                "transition-transform duration-200 group-hover:translate-x-0.5",
-              )}
-            >
-              Manage
+          <span
+            aria-hidden
+            className={cn(
+              "hidden font-semibold uppercase tracking-[0.08em] sm:inline",
+              "transition-transform duration-200 group-hover:translate-x-0.5",
+            )}
+          >
+            Manage
+          </span>
+        </Link>
+      </Tooltip.Trigger>
+      <Tooltip.Content maxW={320}>
+        <Tooltip.Arrow />
+        {endsAtLabel ? (
+          <div className="flex flex-col gap-0.5">
+            <span>
+              Free trial of{" "}
+              <span className="font-semibold">{sub.planName}</span>
             </span>
-          </Link>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" align="end" className="max-w-xs">
-          {endsAtLabel ? (
-            <div className="flex flex-col gap-0.5">
-              <span>
-                Free trial of{" "}
-                <span className="font-semibold">{sub.planName}</span>
-              </span>
-              <span className="opacity-70">
-                Ends {endsAtLabel} · Click to manage
-              </span>
-            </div>
-          ) : (
-            <span>Trial in progress — click to manage</span>
-          )}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+            <span className="opacity-70">
+              Ends {endsAtLabel} · Click to manage
+            </span>
+          </div>
+        ) : (
+          <span>Trial in progress — click to manage</span>
+        )}
+      </Tooltip.Content>
+    </Tooltip>
   );
 }
 
