@@ -732,6 +732,18 @@ label[for] {
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* Square calendar cells.
+   The kit <EventCalendar> fixes each day cell's height per density preset
+   (comfortable = 110px) while the width is flex (container/7), so cells read
+   as rectangles. Scoped under .meridian-cal-square we drop the fixed height
+   and force a 1:1 aspect ratio, so cells stay square at any container width.
+   The two-class selector outranks the kit's single-class atomic height rule. */
+.meridian-cal-square .is_StageholderEventCalendarCell {
+  height: auto !important;
+  min-height: 0 !important;
+  aspect-ratio: 1 / 1;
+}
+
 /* PWA standalone safe areas for notched devices */
 @supports (padding: env(safe-area-inset-top)) {
   .safe-area-top {

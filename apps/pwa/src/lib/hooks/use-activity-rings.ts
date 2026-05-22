@@ -1,10 +1,60 @@
 import { useMemo } from "react";
+import type { ActivityRing } from "@stageholder/ui";
 import type { CalendarDayData } from "@/lib/api/calendar";
 import { useCalendarData } from "@/lib/api/calendar";
 import { useHabits } from "@/lib/api/habits";
 import { useUserLight } from "@/lib/api/light";
 import { countScheduledHabitsForDate } from "@/lib/habits/entry-resolution";
-import type { ActivityRingsData } from "@/components/activity-rings/activity-rings-visual";
+
+/** Per-day completion (0–100) for the three Meridian activity rings. */
+export interface ActivityRingsData {
+  todo: number;
+  habit: number;
+  journal: number;
+}
+
+/**
+ * Meridian's standard category colors — theme-aware CSS vars, shared by the
+ * calendar rings, the day panel, and the daily-target header rings. Passed
+ * straight through to the kit `<ActivityRings>` as raw SVG stroke colors.
+ *   todo = red · habit = orange · journal = yellow
+ */
+export const RING_CATEGORY = {
+  todo: { color: "var(--ring-todo)", track: "var(--ring-todo-track)" },
+  habit: { color: "var(--ring-habit)", track: "var(--ring-habit-track)" },
+  journal: { color: "var(--ring-journal)", track: "var(--ring-journal-track)" },
+} as const;
+
+/**
+ * Maps computed completion to the kit `<ActivityRings>` ring config. Order is
+ * outer→inner: journal, habit, todo (the kit renders rings[0] outermost),
+ * preserving the prior Meridian ring stacking.
+ */
+export function activityRingsConfig(data: ActivityRingsData): ActivityRing[] {
+  return [
+    {
+      value: data.journal,
+      max: 100,
+      color: RING_CATEGORY.journal.color,
+      trackColor: RING_CATEGORY.journal.track,
+      label: "Journal",
+    },
+    {
+      value: data.habit,
+      max: 100,
+      color: RING_CATEGORY.habit.color,
+      trackColor: RING_CATEGORY.habit.track,
+      label: "Habits",
+    },
+    {
+      value: data.todo,
+      max: 100,
+      color: RING_CATEGORY.todo.color,
+      trackColor: RING_CATEGORY.todo.track,
+      label: "Todos",
+    },
+  ];
+}
 
 interface Targets {
   todoDaily: number;
