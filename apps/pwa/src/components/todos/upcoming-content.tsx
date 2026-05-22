@@ -2,8 +2,8 @@ import { useState } from "react";
 import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
-import { useAnimatedTodoList } from "@/lib/hooks/use-animated-todo-list";
 import {
+  AnimatePresence,
   Button,
   Calendar,
   Popover,
@@ -14,6 +14,7 @@ import {
 } from "@stageholder/ui";
 import { format, addDays } from "date-fns";
 import { parseDateLocal } from "@/lib/date";
+import { TodoListSkeleton } from "./todo-list-skeleton";
 import type { DateRange } from "react-day-picker";
 import type { Todo, TodoList } from "@repo/core/types";
 
@@ -82,11 +83,8 @@ export function UpcomingContent() {
     return true;
   });
 
-  const { visibleTodos: animatedUpcoming, completingIds } =
-    useAnimatedTodoList(upcomingTodos);
-
   const groupedByDate = new Map<string, Todo[]>();
-  for (const todo of animatedUpcoming) {
+  for (const todo of upcomingTodos) {
     const date = getEarliestDate(todo, today);
     const group = groupedByDate.get(date) || [];
     group.push(todo);
@@ -279,9 +277,7 @@ export function UpcomingContent() {
       {defaultList && <QuickAddTodo listId={defaultList.id} />}
 
       {isLoading ? (
-        <Text mt="$3" fontSize="$3" color="$mutedForeground">
-          Loading todos...
-        </Text>
+        <TodoListSkeleton />
       ) : (
         <YStack mt="$3" gap="$6">
           {sortedDates.map((date) => {
@@ -321,15 +317,16 @@ export function UpcomingContent() {
                             {list?.name || "Unknown List"}
                           </Text>
                         </XStack>
-                        <YStack gap="$2">
-                          {listTodos.map((todo) => (
-                            <TodoItem
-                              key={todo.id}
-                              todo={todo}
-                              listId={listId}
-                              isCompleting={completingIds.has(todo.id)}
-                            />
-                          ))}
+                        <YStack gap="$0.5">
+                          <AnimatePresence>
+                            {listTodos.map((todo) => (
+                              <TodoItem
+                                key={todo.id}
+                                todo={todo}
+                                listId={listId}
+                              />
+                            ))}
+                          </AnimatePresence>
                         </YStack>
                       </YStack>
                     );

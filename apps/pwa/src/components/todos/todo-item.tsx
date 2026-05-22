@@ -4,7 +4,6 @@ import { IconButton, Text, View, XStack, YStack } from "@stageholder/ui";
 import { parseDateLocal } from "@/lib/date";
 import { useUpdateTodo, useDeleteTodo } from "@/lib/api/todos";
 import { TodoDetailDialog } from "./todo-detail-dialog";
-import { EmberBurst } from "./ember-burst";
 import type { Todo } from "@repo/core/types";
 
 // Priority badge intent tokens. The shadcn version used per-color
@@ -20,23 +19,73 @@ const priorityConfig = {
   none: { label: "", bg: "$muted", color: "$mutedForeground" },
 } as const;
 
-// The vivid completion-flash orange has no kit token; it lives only on the
-// transient check animation, so it's applied via the `style` escape hatch.
-const COMPLETING_EMBER = "oklch(0.72 0.22 40)";
+// Warm "ignite & burn" palette. Hex (not oklch / CSS vars) so the colors
+// resolve on web AND native. The whole completion effect is built from
+// animated Tamagui Views, so it reproduces identically on both platforms.
+const EMBER = "#f97316";
+const SPARK = "#fb923c";
+// Kept short so the row vanishes the instant the ignite + sparks finish —
+// no dead pause before removal.
+const BURN_MS = 440;
+
+const SPARKS: { left: string; delay: number }[] = [
+  { left: "18%", delay: 0 },
+  { left: "34%", delay: 45 },
+  { left: "50%", delay: 20 },
+  { left: "66%", delay: 55 },
+  { left: "82%", delay: 30 },
+];
+
+// Overlay that plays while a todo is "burning": a brief warm flash + sparks
+// rising off the row. Pure Tamagui Views animated via enterStyle → the same
+// on web (CSS driver) and native (Reanimated).
+function CompletionBurn() {
+  return (
+    <>
+      <View
+        position="absolute"
+        t={0}
+        l={0}
+        r={0}
+        b={0}
+        z={1}
+        rounded="$md"
+        style={{ backgroundColor: EMBER }}
+        opacity={0}
+        transition="medium"
+        enterStyle={{ opacity: 0.22 }}
+        pointerEvents="none"
+      />
+      {SPARKS.map((s, i) => (
+        <View
+          key={i}
+          position="absolute"
+          b={8}
+          z={2}
+          width={5}
+          height={5}
+          rounded={9999}
+          style={{ backgroundColor: SPARK, left: s.left }}
+          y={-22}
+          opacity={0}
+          transition={["medium", { delay: s.delay }] as never}
+          enterStyle={{ y: 0, opacity: 1 }}
+          pointerEvents="none"
+        />
+      ))}
+    </>
+  );
+}
 
 interface TodoItemProps {
   todo: Todo;
   listId: string;
-  /** When true, the item plays the check + exit animation (driven by parent) */
-  isCompleting?: boolean;
 }
 
-export function TodoItem({
-  todo,
-  listId,
-  isCompleting = false,
-}: TodoItemProps) {
+export function TodoItem({ todo, listId }: TodoItemProps) {
   const [detailOpen, setDetailOpen] = useState(false);
+  const [burning, setBurning] = useState(false);
+  const [gone, setGone] = useState(false);
   const updateTodo = useUpdateTodo();
   const deleteTodo = useDeleteTodo();
   const isDone = todo.status === "done";
@@ -46,11 +95,20 @@ export function TodoItem({
 
   function handleToggle(e: { stopPropagation: () => void }) {
     e.stopPropagation();
-    updateTodo.mutate({
-      listId,
-      todoId: todo.id,
-      data: { status: isDone ? "todo" : "done" },
-    });
+    if (isDone) {
+      // Un-complete: flip back immediately, no burn.
+      updateTodo.mutate({ listId, todoId: todo.id, data: { status: "todo" } });
+      return;
+    }
+    if (burning) return;
+    // Play the ignite + burn first, THEN commit ("animate, then API").
+    setBurning(true);
+    window.setTimeout(() => {
+      // Burn finished → drop the row immediately (don't wait on the mutation
+      // round-trip or a second exit animation), then commit in the background.
+      setGone(true);
+      updateTodo.mutate({ listId, todoId: todo.id, data: { status: "done" } });
+    }, BURN_MS);
   }
 
   function handleDelete(e: { stopPropagation: () => void }) {
@@ -75,28 +133,32 @@ export function TodoItem({
   const isOverdue =
     todo.dueDate && !isDone && parseDateLocal(todo.dueDate) < new Date();
 
+  // Burn already played → remove the row the instant it ends, so the list
+  // closes immediately (no lingering while the mutation/exit settles).
+  if (gone) return null;
+
   return (
     <>
       <XStack
         group
-        onPress={() => !isCompleting && setDetailOpen(true)}
+        onPress={() => !burning && setDetailOpen(true)}
         cursor="pointer"
         items="center"
         gap="$3"
-        rounded="$lg"
-        borderWidth={1}
-        borderColor="$borderColor"
-        bg="$card"
-        px="$4"
-        py="$3"
-        transition="quick"
-        hoverStyle={{ bg: "$accent" }}
-        // allowlist: todo-item-completing — bespoke incinerate keyframe (no token equivalent)
-        className={isCompleting ? "todo-item-completing" : undefined}
+        rounded="$md"
+        px="$2.5"
+        py="$2"
+        position="relative"
+        // Cross-platform enter + exit (delete / un-complete) via AnimatePresence
+        // in the list views. Completion plays the burn below, then commits.
+        transition={{ default: "quick", exit: "medium" }}
+        enterStyle={{ opacity: 0, y: 6 }}
+        exitStyle={{ opacity: 0, scale: 0.94 }}
+        hoverStyle={burning ? undefined : { bg: "$accent" }}
         role="button"
         aria-label="Open todo details"
       >
-        <View position="relative" shrink={0}>
+        <View shrink={0} position="relative">
           <View
             onPress={handleToggle}
             width={20}
@@ -106,51 +168,66 @@ export function TodoItem({
             rounded={9999}
             borderWidth={2}
             transition="quick"
-            // allowlist: todo-check-pop — bespoke check-pop keyframe (no token equivalent)
-            className={isCompleting ? "todo-check-pop" : undefined}
             borderColor={isDone ? "$primary" : "$mutedForeground"}
             bg={isDone ? "$primary" : "transparent"}
-            // Completion flash: vivid ember has no token, applied via style.
+            // Burning ignites the box warm (hex → resolves on web + native).
             style={
-              isCompleting
-                ? {
-                    borderColor: COMPLETING_EMBER,
-                    backgroundColor: COMPLETING_EMBER,
-                  }
+              burning
+                ? { borderColor: EMBER, backgroundColor: EMBER }
                 : undefined
             }
             hoverStyle={
-              !isCompleting && !isDone ? { borderColor: "$primary" } : undefined
+              !isDone && !burning ? { borderColor: "$primary" } : undefined
             }
             role="checkbox"
-            aria-checked={isDone || isCompleting}
+            aria-checked={isDone || burning}
             aria-label={isDone ? "Mark as incomplete" : "Mark as complete"}
           >
-            {(isDone || isCompleting) && (
-              // currentColor for the check stroke comes from this Text's color.
-              <Text color="$primaryForeground" lineHeight={0}>
-                <svg
-                  // allowlist: todo-check-draw — bespoke check-draw keyframe (no token equivalent)
-                  className={isCompleting ? "todo-check-draw" : ""}
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              </Text>
+            {(isDone || burning) && (
+              // Checkmark pops in (Tamagui spring); currentColor → stroke.
+              <View
+                transition="bouncy"
+                enterStyle={burning ? { scale: 0, opacity: 0 } : undefined}
+              >
+                <Text color="$primaryForeground" lineHeight={0}>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </Text>
+              </View>
             )}
           </View>
-          {/* allowlist: todo-check-ring — bespoke check-ring keyframe (no token equivalent) */}
-          {isCompleting && <span className="todo-check-ring" />}
-          <EmberBurst active={isCompleting} />
+          {burning && (
+            // Confirming ring pulse — expands + fades on ignite.
+            <View
+              position="absolute"
+              t={-3}
+              l={-3}
+              r={-3}
+              b={-3}
+              rounded={9999}
+              borderWidth={2}
+              style={{ borderColor: EMBER }}
+              scale={2}
+              opacity={0}
+              transition="medium"
+              enterStyle={{ scale: 0.6, opacity: 0.7 }}
+              pointerEvents="none"
+            />
+          )}
         </View>
+
+        {burning && <CompletionBurn />}
 
         <YStack flex={1} minW={0}>
           <Text
@@ -176,7 +253,7 @@ export function TodoItem({
             formattedDoDate ||
             (todo.subtasks && todo.subtasks.length > 0)) && (
             <XStack mt="$1.5" flexWrap="wrap" items="center" gap="$2">
-              {priority.label && (
+              {priority.label ? (
                 <Text
                   bg={priority.bg}
                   color={priority.color}
@@ -188,7 +265,7 @@ export function TodoItem({
                 >
                   {priority.label}
                 </Text>
-              )}
+              ) : null}
               {formattedDueDate && (
                 <XStack items="center" gap="$1">
                   <Text

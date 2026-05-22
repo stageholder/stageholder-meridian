@@ -1,9 +1,16 @@
 import { CheckSquare } from "lucide-react";
-import { EmptyState, Text, View, XStack, YStack } from "@stageholder/ui";
+import {
+  AnimatePresence,
+  EmptyState,
+  Text,
+  View,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
 import { useTodos } from "@/lib/api/todos";
-import { useAnimatedTodoList } from "@/lib/hooks/use-animated-todo-list";
+import { TodoListSkeleton } from "./todo-list-skeleton";
 import type { Todo } from "@repo/core/types";
 
 interface TodoListContentProps {
@@ -22,7 +29,6 @@ export function TodoListContent({
   const { data: todos, isLoading } = useTodos(listId);
 
   const pendingTodos = todos?.filter((t: Todo) => t.status !== "done") || [];
-  const { visibleTodos, completingIds } = useAnimatedTodoList(pendingTodos);
 
   return (
     <>
@@ -48,19 +54,14 @@ export function TodoListContent({
       <QuickAddTodo listId={listId} />
 
       {isLoading ? (
-        <Text mt="$3" fontSize="$3" color="$mutedForeground">
-          Loading todos...
-        </Text>
+        <TodoListSkeleton />
       ) : (
-        <YStack mt="$3" gap="$2">
-          {visibleTodos.map((todo: Todo) => (
-            <TodoItem
-              key={todo.id}
-              todo={todo}
-              listId={listId}
-              isCompleting={completingIds.has(todo.id)}
-            />
-          ))}
+        <YStack mt="$3" gap="$0.5">
+          <AnimatePresence>
+            {pendingTodos.map((todo: Todo) => (
+              <TodoItem key={todo.id} todo={todo} listId={listId} />
+            ))}
+          </AnimatePresence>
           {pendingTodos.length === 0 && (
             <EmptyState>
               <EmptyState.IconSlot>

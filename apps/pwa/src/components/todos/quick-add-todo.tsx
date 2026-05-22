@@ -451,7 +451,7 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                         </XStack>
                       );
                     })}
-                    {doDate && (
+                    {doDate ? (
                       <XStack
                         onPress={() => setDoDate("")}
                         cursor="pointer"
@@ -470,7 +470,7 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                           Clear
                         </Text>
                       </XStack>
-                    )}
+                    ) : null}
                   </XStack>
                   <Calendar
                     mode="single"
@@ -611,7 +611,7 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                         </XStack>
                       );
                     })}
-                    {dueDate && (
+                    {dueDate ? (
                       <XStack
                         onPress={() => setDueDate("")}
                         cursor="pointer"
@@ -630,7 +630,7 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                           Clear
                         </Text>
                       </XStack>
-                    )}
+                    ) : null}
                   </XStack>
                   <Calendar
                     mode="single"

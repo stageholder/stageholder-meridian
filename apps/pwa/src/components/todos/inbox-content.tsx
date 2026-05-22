@@ -1,9 +1,16 @@
 import { Inbox } from "lucide-react";
-import { EmptyState, Text, View, XStack, YStack } from "@stageholder/ui";
+import {
+  AnimatePresence,
+  EmptyState,
+  Text,
+  View,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
-import { useAnimatedTodoList } from "@/lib/hooks/use-animated-todo-list";
+import { TodoListSkeleton } from "./todo-list-skeleton";
 import type { Todo, TodoList } from "@repo/core/types";
 
 export function InboxContent() {
@@ -27,11 +34,10 @@ export function InboxContent() {
   }
 
   const pendingTodos = (todos || []).filter((t) => t.status !== "done");
-  const { visibleTodos, completingIds } = useAnimatedTodoList(pendingTodos);
 
-  // Group visible todos (including exiting ones) by list
+  // Group pending todos by list
   const groupedByList = new Map<string, Todo[]>();
-  for (const todo of visibleTodos) {
+  for (const todo of pendingTodos) {
     const group = groupedByList.get(todo.listId) || [];
     group.push(todo);
     groupedByList.set(todo.listId, group);
@@ -62,9 +68,7 @@ export function InboxContent() {
       {defaultList && <QuickAddTodo listId={defaultList.id} />}
 
       {isLoading ? (
-        <Text mt="$3" fontSize="$3" color="$mutedForeground">
-          Loading todos...
-        </Text>
+        <TodoListSkeleton />
       ) : isError ? (
         <Text mt="$3" fontSize="$3" color="$destructive">
           Failed to load todos. Please try refreshing the page.
@@ -90,15 +94,12 @@ export function InboxContent() {
                     ({listTodos.length})
                   </Text>
                 </XStack>
-                <YStack gap="$2">
-                  {listTodos.map((todo) => (
-                    <TodoItem
-                      key={todo.id}
-                      todo={todo}
-                      listId={listId}
-                      isCompleting={completingIds.has(todo.id)}
-                    />
-                  ))}
+                <YStack gap="$0.5">
+                  <AnimatePresence>
+                    {listTodos.map((todo) => (
+                      <TodoItem key={todo.id} todo={todo} listId={listId} />
+                    ))}
+                  </AnimatePresence>
                 </YStack>
               </YStack>
             );

@@ -1,6 +1,7 @@
-import { Text, View, XStack, YStack } from "@stageholder/ui";
+import { AnimatePresence, Text, View, XStack, YStack } from "@stageholder/ui";
 import { TodoItem } from "./todo-item";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
+import { TodoListSkeleton } from "./todo-list-skeleton";
 import type { Todo, TodoList } from "@repo/core/types";
 
 export function CompletedContent() {
@@ -50,9 +51,7 @@ export function CompletedContent() {
       </YStack>
 
       {isLoading ? (
-        <Text mt="$3" fontSize="$3" color="$mutedForeground">
-          Loading todos...
-        </Text>
+        <TodoListSkeleton />
       ) : (
         <YStack mt="$3" gap="$6">
           {[...groupedByDate.entries()].map(([date, dateTodos]) => {
@@ -91,14 +90,16 @@ export function CompletedContent() {
                             {list?.name || "Unknown List"}
                           </Text>
                         </XStack>
-                        <YStack gap="$2">
-                          {listTodos.map((todo) => (
-                            <TodoItem
-                              key={todo.id}
-                              todo={todo}
-                              listId={listId}
-                            />
-                          ))}
+                        <YStack gap="$0.5">
+                          <AnimatePresence>
+                            {listTodos.map((todo) => (
+                              <TodoItem
+                                key={todo.id}
+                                todo={todo}
+                                listId={listId}
+                              />
+                            ))}
+                          </AnimatePresence>
                         </YStack>
                       </YStack>
                     );
