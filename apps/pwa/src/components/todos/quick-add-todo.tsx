@@ -2,44 +2,44 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { Pencil } from "lucide-react";
 import { useCreateTodo, useTodoLists } from "@/lib/api/todos";
 import { CreateTodoDialog } from "./create-todo-dialog";
-import { Button, Calendar, Input, Popover } from "@stageholder/ui";
+import {
+  Button,
+  Calendar,
+  Input,
+  Popover,
+  Text,
+  View,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 import { toast } from "sonner";
 import { format, addDays, nextMonday } from "date-fns";
 import { parseDateLocal } from "@/lib/date";
-import { cn } from "@/lib/utils";
 
 interface QuickAddTodoProps {
   listId: string;
 }
 
+// Priority dot swatches — fixed brand hex (blue/yellow/orange/red-500),
+// decorative per-priority indicators with no kit token equivalent.
 const PRIORITIES = [
-  { value: "none", label: "None", color: "" },
-  { value: "low", label: "Low", color: "bg-blue-500" },
-  { value: "medium", label: "Medium", color: "bg-yellow-500" },
-  { value: "high", label: "High", color: "bg-orange-500" },
-  { value: "urgent", label: "Urgent", color: "bg-red-500" },
+  { value: "none", label: "None", color: null },
+  { value: "low", label: "Low", color: "#3b82f6" },
+  { value: "medium", label: "Medium", color: "#eab308" },
+  { value: "high", label: "High", color: "#f97316" },
+  { value: "urgent", label: "Urgent", color: "#ef4444" },
 ] as const;
 
-const PRIORITY_BADGE: Record<string, { label: string; className: string }> = {
-  urgent: {
-    label: "Urgent",
-    className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  },
-  high: {
-    label: "High",
-    className:
-      "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-  },
-  medium: {
-    label: "Medium",
-    className:
-      "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-  },
-  low: {
-    label: "Low",
-    className:
-      "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  },
+// Priority badge intent tokens — urgent→destructive, high/medium→warning,
+// low→primary (azure). Mirrors todo-item.tsx.
+const PRIORITY_BADGE: Record<
+  string,
+  { label: string; bg: string; color: string }
+> = {
+  urgent: { label: "Urgent", bg: "$destructiveMuted", color: "$destructive" },
+  high: { label: "High", bg: "$warningMuted", color: "$warning" },
+  medium: { label: "Medium", bg: "$warningMuted", color: "$warning" },
+  low: { label: "Low", bg: "$primaryMuted", color: "$primary" },
 };
 
 function getToday() {
@@ -55,7 +55,6 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
   const [priority, setPriority] = useState("none");
   const [selectedListId, setSelectedListId] = useState(listId);
   const inputRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const createTodo = useCreateTodo();
   const { data: lists } = useTodoLists();
 
@@ -154,21 +153,21 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
         if (doDate < today)
           return {
             label: format(parseDateLocal(doDate), "MMM d"),
-            color: "text-red-600 dark:text-red-400",
+            color: "$destructive",
           };
         if (doDate === today)
           return {
             label: "Today",
-            color: "text-green-600 dark:text-green-400",
+            color: "$success",
           };
         if (doDate === tomorrow)
           return {
             label: "Tomorrow",
-            color: "text-amber-600 dark:text-amber-400",
+            color: "$warning",
           };
         return {
           label: format(parseDateLocal(doDate), "MMM d"),
-          color: "text-blue-600 dark:text-blue-400",
+          color: "$info",
         };
       })()
     : null;
@@ -185,10 +184,22 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
 
   if (!isEditing) {
     return (
-      <button
-        type="button"
-        onClick={handleActivate}
-        className="flex w-full items-center gap-2 rounded-lg border border-dashed border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+      <XStack
+        onPress={handleActivate}
+        cursor="pointer"
+        width="100%"
+        items="center"
+        gap="$2"
+        rounded="$lg"
+        borderWidth={1}
+        borderStyle="dashed"
+        borderColor="$borderColor"
+        px="$3"
+        py="$2"
+        color="$mutedForeground"
+        transition="quick"
+        hoverStyle={{ borderColor: "$primary", color: "$color" }}
+        role="button"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -204,22 +215,34 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
           <path d="M5 12h14" />
           <path d="M12 5v14" />
         </svg>
-        Add a todo...
-      </button>
+        <Text fontSize="$3">Add a todo...</Text>
+      </XStack>
     );
   }
 
   return (
     <>
-      <div
-        ref={containerRef}
-        className="rounded-lg border border-border bg-card px-4 py-3"
+      <View
+        rounded="$lg"
+        borderWidth={1}
+        borderColor="$borderColor"
+        bg="$card"
+        px="$4"
+        py="$3"
       >
-        <div className="flex items-start gap-3">
+        <XStack items="flex-start" gap="$3">
           {/* Checkbox placeholder */}
-          <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-muted-foreground/30" />
+          <View
+            mt="$0.5"
+            width={20}
+            height={20}
+            shrink={0}
+            rounded={9999}
+            borderWidth={2}
+            borderColor="$mutedForeground"
+          />
 
-          <div className="flex-1 min-w-0">
+          <YStack flex={1} minW={0}>
             {/* Title input */}
             <form
               onSubmit={(e) => {
@@ -244,25 +267,36 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
             </form>
 
             {/* Metadata chips row — same style as TodoItem */}
-            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <XStack mt="$1.5" flexWrap="wrap" items="center" gap="$2">
               {/* Priority */}
               <Popover placement="bottom-start">
                 <Popover.Trigger asChild>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
+                  <XStack cursor="pointer" items="center" gap="$1">
                     {PRIORITY_BADGE[priority] ? (
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
-                          PRIORITY_BADGE[priority].className,
-                        )}
+                      <Text
+                        bg={PRIORITY_BADGE[priority].bg}
+                        color={PRIORITY_BADGE[priority].color}
+                        rounded={9999}
+                        px="$2"
+                        py="$0.5"
+                        fontSize="$1"
+                        fontWeight="500"
                       >
                         {PRIORITY_BADGE[priority].label}
-                      </span>
+                      </Text>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-muted-foreground hover:border-foreground/30">
+                      <XStack
+                        items="center"
+                        gap="$1"
+                        rounded={9999}
+                        borderWidth={1}
+                        borderStyle="dashed"
+                        borderColor="$borderColor"
+                        px="$2"
+                        py="$0.5"
+                        color="$mutedForeground"
+                        hoverStyle={{ borderColor: "$mutedForeground" }}
+                      >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           width="10"
@@ -277,29 +311,47 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                           <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
                           <line x1="4" x2="4" y1="22" y2="15" />
                         </svg>
-                        Priority
-                      </span>
+                        <Text fontSize="$1" color="$mutedForeground">
+                          Priority
+                        </Text>
+                      </XStack>
                     )}
-                  </button>
+                  </XStack>
                 </Popover.Trigger>
-                <Popover.Content className="w-36 p-1">
+                <Popover.Content width={144} p="$1">
                   {PRIORITIES.map((p) => (
-                    <button
+                    <XStack
                       key={p.value}
-                      type="button"
-                      onClick={() => setPriority(p.value)}
-                      className={cn(
-                        "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs transition-colors hover:bg-accent",
-                        priority === p.value && "bg-accent font-medium",
-                      )}
+                      onPress={() => setPriority(p.value)}
+                      cursor="pointer"
+                      width="100%"
+                      items="center"
+                      gap="$2"
+                      rounded="$sm"
+                      px="$2"
+                      py="$1.5"
+                      transition="quick"
+                      bg={priority === p.value ? "$accent" : "transparent"}
+                      hoverStyle={{ bg: "$accent" }}
                     >
                       {p.color ? (
-                        <span className={cn("h-2 w-2 rounded-full", p.color)} />
+                        <View
+                          width={8}
+                          height={8}
+                          rounded={9999}
+                          style={{ backgroundColor: p.color }}
+                        />
                       ) : (
-                        <span className="h-2 w-2" />
+                        <View width={8} height={8} />
                       )}
-                      {p.label}
-                    </button>
+                      <Text
+                        fontSize="$1"
+                        fontWeight={priority === p.value ? "500" : "400"}
+                        color="$color"
+                      >
+                        {p.label}
+                      </Text>
+                    </XStack>
                   ))}
                 </Popover.Content>
               </Popover>
@@ -307,17 +359,9 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
               {/* Do Date */}
               <Popover placement="bottom-start">
                 <Popover.Trigger asChild>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
+                  <XStack cursor="pointer" items="center" gap="$1">
                     {doDateInfo ? (
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1",
-                          doDateInfo.color,
-                        )}
-                      >
+                      <XStack items="center" gap="$1" color={doDateInfo.color}>
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           width="12"
@@ -332,10 +376,23 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                           <circle cx="12" cy="12" r="10" />
                           <polyline points="12 6 12 12 16 14" />
                         </svg>
-                        {doDateInfo.label}
-                      </span>
+                        <Text fontSize="$1" color={doDateInfo.color}>
+                          {doDateInfo.label}
+                        </Text>
+                      </XStack>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 hover:border-foreground/30">
+                      <XStack
+                        items="center"
+                        gap="$1"
+                        rounded={9999}
+                        borderWidth={1}
+                        borderStyle="dashed"
+                        borderColor="$borderColor"
+                        px="$2"
+                        py="$0.5"
+                        color="$mutedForeground"
+                        hoverStyle={{ borderColor: "$mutedForeground" }}
+                      >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           width="10"
@@ -350,13 +407,15 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                           <circle cx="12" cy="12" r="10" />
                           <polyline points="12 6 12 12 16 14" />
                         </svg>
-                        Do date
-                      </span>
+                        <Text fontSize="$1" color="$mutedForeground">
+                          Do date
+                        </Text>
+                      </XStack>
                     )}
-                  </button>
+                  </XStack>
                 </Popover.Trigger>
-                <Popover.Content className="w-auto p-2">
-                  <div className="flex flex-wrap gap-1 pb-2">
+                <Popover.Content width="auto">
+                  <XStack flexWrap="wrap" gap="$1" pb="$2">
                     {[
                       { label: "Today", date: new Date() },
                       { label: "Tomorrow", date: addDays(new Date(), 1) },
@@ -365,31 +424,54 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                       const iso = format(shortcut.date, "yyyy-MM-dd");
                       const isActive = doDate === iso;
                       return (
-                        <button
+                        <XStack
                           key={shortcut.label}
-                          type="button"
-                          onClick={() => setDoDate(isActive ? "" : iso)}
-                          className={cn(
-                            "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
-                            isActive
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
-                          )}
+                          onPress={() => setDoDate(isActive ? "" : iso)}
+                          cursor="pointer"
+                          rounded={9999}
+                          borderWidth={1}
+                          px="$2.5"
+                          py="$0.5"
+                          transition="quick"
+                          borderColor={isActive ? "$primary" : "$borderColor"}
+                          bg={isActive ? "$primary" : "transparent"}
+                          hoverStyle={isActive ? undefined : { bg: "$accent" }}
                         >
-                          {shortcut.label}
-                        </button>
+                          <Text
+                            fontSize="$1"
+                            fontWeight="500"
+                            color={
+                              isActive
+                                ? "$primaryForeground"
+                                : "$mutedForeground"
+                            }
+                          >
+                            {shortcut.label}
+                          </Text>
+                        </XStack>
                       );
                     })}
                     {doDate && (
-                      <button
-                        type="button"
-                        onClick={() => setDoDate("")}
-                        className="rounded-full border border-border px-2.5 py-0.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                      <XStack
+                        onPress={() => setDoDate("")}
+                        cursor="pointer"
+                        rounded={9999}
+                        borderWidth={1}
+                        borderColor="$borderColor"
+                        px="$2.5"
+                        py="$0.5"
+                        hoverStyle={{ bg: "$accent" }}
                       >
-                        Clear
-                      </button>
+                        <Text
+                          fontSize="$1"
+                          fontWeight="500"
+                          color="$mutedForeground"
+                        >
+                          Clear
+                        </Text>
+                      </XStack>
                     )}
-                  </div>
+                  </XStack>
                   <Calendar
                     mode="single"
                     value={doDate ? parseDateLocal(doDate) : null}
@@ -404,18 +486,16 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
               {/* Due Date */}
               <Popover placement="bottom-start">
                 <Popover.Trigger asChild>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
+                  <XStack cursor="pointer" items="center" gap="$1">
                     {formattedDueDate ? (
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1",
+                      <XStack
+                        items="center"
+                        gap="$1"
+                        color={
                           dueDate && dueDate < getToday()
-                            ? "text-red-600 dark:text-red-400"
-                            : "",
-                        )}
+                            ? "$destructive"
+                            : "$mutedForeground"
+                        }
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -440,10 +520,30 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                           <line x1="8" x2="8" y1="2" y2="6" />
                           <line x1="3" x2="21" y1="10" y2="10" />
                         </svg>
-                        {formattedDueDate}
-                      </span>
+                        <Text
+                          fontSize="$1"
+                          color={
+                            dueDate && dueDate < getToday()
+                              ? "$destructive"
+                              : "$mutedForeground"
+                          }
+                        >
+                          {formattedDueDate}
+                        </Text>
+                      </XStack>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 hover:border-foreground/30">
+                      <XStack
+                        items="center"
+                        gap="$1"
+                        rounded={9999}
+                        borderWidth={1}
+                        borderStyle="dashed"
+                        borderColor="$borderColor"
+                        px="$2"
+                        py="$0.5"
+                        color="$mutedForeground"
+                        hoverStyle={{ borderColor: "$mutedForeground" }}
+                      >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           width="10"
@@ -467,13 +567,15 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                           <line x1="8" x2="8" y1="2" y2="6" />
                           <line x1="3" x2="21" y1="10" y2="10" />
                         </svg>
-                        Due date
-                      </span>
+                        <Text fontSize="$1" color="$mutedForeground">
+                          Due date
+                        </Text>
+                      </XStack>
                     )}
-                  </button>
+                  </XStack>
                 </Popover.Trigger>
-                <Popover.Content className="w-auto p-2">
-                  <div className="flex flex-wrap gap-1 pb-2">
+                <Popover.Content width="auto">
+                  <XStack flexWrap="wrap" gap="$1" pb="$2">
                     {[
                       { label: "Today", date: new Date() },
                       { label: "Tomorrow", date: addDays(new Date(), 1) },
@@ -482,31 +584,54 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                       const iso = format(shortcut.date, "yyyy-MM-dd");
                       const isActive = dueDate === iso;
                       return (
-                        <button
+                        <XStack
                           key={shortcut.label}
-                          type="button"
-                          onClick={() => setDueDate(isActive ? "" : iso)}
-                          className={cn(
-                            "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
-                            isActive
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
-                          )}
+                          onPress={() => setDueDate(isActive ? "" : iso)}
+                          cursor="pointer"
+                          rounded={9999}
+                          borderWidth={1}
+                          px="$2.5"
+                          py="$0.5"
+                          transition="quick"
+                          borderColor={isActive ? "$primary" : "$borderColor"}
+                          bg={isActive ? "$primary" : "transparent"}
+                          hoverStyle={isActive ? undefined : { bg: "$accent" }}
                         >
-                          {shortcut.label}
-                        </button>
+                          <Text
+                            fontSize="$1"
+                            fontWeight="500"
+                            color={
+                              isActive
+                                ? "$primaryForeground"
+                                : "$mutedForeground"
+                            }
+                          >
+                            {shortcut.label}
+                          </Text>
+                        </XStack>
                       );
                     })}
                     {dueDate && (
-                      <button
-                        type="button"
-                        onClick={() => setDueDate("")}
-                        className="rounded-full border border-border px-2.5 py-0.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                      <XStack
+                        onPress={() => setDueDate("")}
+                        cursor="pointer"
+                        rounded={9999}
+                        borderWidth={1}
+                        borderColor="$borderColor"
+                        px="$2.5"
+                        py="$0.5"
+                        hoverStyle={{ bg: "$accent" }}
                       >
-                        Clear
-                      </button>
+                        <Text
+                          fontSize="$1"
+                          fontWeight="500"
+                          color="$mutedForeground"
+                        >
+                          Clear
+                        </Text>
+                      </XStack>
                     )}
-                  </div>
+                  </XStack>
                   <Calendar
                     mode="single"
                     value={dueDate ? parseDateLocal(dueDate) : null}
@@ -522,13 +647,27 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
               {lists && lists.length > 1 && (
                 <Popover placement="bottom-start">
                   <Popover.Trigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-muted-foreground hover:border-foreground/30 hover:text-foreground transition-colors"
+                    <XStack
+                      cursor="pointer"
+                      items="center"
+                      gap="$1"
+                      rounded={9999}
+                      borderWidth={1}
+                      borderStyle="dashed"
+                      borderColor="$borderColor"
+                      px="$2"
+                      py="$0.5"
+                      color="$mutedForeground"
+                      hoverStyle={{
+                        borderColor: "$mutedForeground",
+                        color: "$color",
+                      }}
                     >
                       {selectedList && !selectedList.isDefault ? (
-                        <span
-                          className="h-2 w-2 rounded-full"
+                        <View
+                          width={8}
+                          height={8}
+                          rounded={9999}
                           style={{
                             backgroundColor: selectedList.color || "#6b7280",
                           }}
@@ -553,64 +692,90 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                           <line x1="3" x2="3.01" y1="18" y2="18" />
                         </svg>
                       )}
-                      {selectedList?.name || "List"}
-                    </button>
+                      <Text fontSize="$1">{selectedList?.name || "List"}</Text>
+                    </XStack>
                   </Popover.Trigger>
-                  <Popover.Content className="w-44 p-1">
+                  <Popover.Content width={176} p="$1">
                     {lists.map((list) => (
-                      <button
+                      <XStack
                         key={list.id}
-                        type="button"
-                        onClick={() => setSelectedListId(list.id)}
-                        className={cn(
-                          "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs transition-colors hover:bg-accent",
-                          selectedListId === list.id && "bg-accent font-medium",
-                        )}
+                        onPress={() => setSelectedListId(list.id)}
+                        cursor="pointer"
+                        width="100%"
+                        items="center"
+                        gap="$2"
+                        rounded="$sm"
+                        px="$2"
+                        py="$1.5"
+                        transition="quick"
+                        bg={
+                          selectedListId === list.id ? "$accent" : "transparent"
+                        }
+                        hoverStyle={{ bg: "$accent" }}
                       >
                         {list.isDefault ? (
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="10"
-                            height="10"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="text-primary"
-                          >
-                            <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
-                            <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
-                          </svg>
+                          <Text color="$primary">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="10"
+                              height="10"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+                              <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+                            </svg>
+                          </Text>
                         ) : (
-                          <span
-                            className="h-2 w-2 rounded-full"
-                            style={{ backgroundColor: list.color || "#6b7280" }}
+                          <View
+                            width={8}
+                            height={8}
+                            rounded={9999}
+                            style={{
+                              backgroundColor: list.color || "#6b7280",
+                            }}
                           />
                         )}
-                        {list.name}
-                      </button>
+                        <Text
+                          fontSize="$1"
+                          fontWeight={
+                            selectedListId === list.id ? "500" : "400"
+                          }
+                          color="$color"
+                        >
+                          {list.name}
+                        </Text>
+                      </XStack>
                     ))}
                   </Popover.Content>
                 </Popover>
               )}
-            </div>
-          </div>
+            </XStack>
+          </YStack>
 
           {/* Action buttons */}
-          <div className="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              onClick={() => {
+          <XStack shrink={0} items="center" gap="$1">
+            <XStack
+              onPress={() => {
                 if (!justActivated) setShowFullDialog(true);
               }}
-              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+              cursor="pointer"
+              items="center"
+              gap="$1"
+              rounded="$md"
+              px="$2"
+              py="$1"
+              color="$mutedForeground"
+              hoverStyle={{ bg: "$accent", color: "$color" }}
               title="Open full editor"
             >
-              <Pencil className="size-3" />
-              More
-            </button>
+              <Pencil size={12} />
+              <Text fontSize="$1">More</Text>
+            </XStack>
             <Button
               intent="ghost"
               size="sm"
@@ -629,9 +794,9 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
             >
               Add
             </Button>
-          </div>
-        </div>
-      </div>
+          </XStack>
+        </XStack>
+      </View>
 
       <CreateTodoDialog
         open={showFullDialog}

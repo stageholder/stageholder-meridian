@@ -14,7 +14,6 @@ import {
 } from "@stageholder/sdk/spa";
 import { BillingError } from "@stageholder/sdk/core";
 import { OrbitIllustration } from "./orbit-illustration";
-import { cn } from "@/lib/utils";
 import {
   ArrowUpRight,
   AlertCircle,
@@ -23,12 +22,22 @@ import {
   ExternalLink,
   Sparkles,
 } from "lucide-react";
+import {
+  Button,
+  H3,
+  Paragraph,
+  Separator,
+  Text,
+  View,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 
 /**
  * Single pricing-tier card. Editorial layout: vertical "Plan / 01" gutter
  * mark, large display-serif plan name, mono price, abstract orbital
  * illustration tied to the tier. The featured plan rises out of the
- * baseline grid via {@link className} prop on the parent.
+ * baseline grid via {@link className} prop on the parent (CSS-grid placement).
  *
  * Renders without using the SDK's `<PlanCard>` — proves the SDK's headless
  * surface (`usePricing`, `useStartCheckout`, `useCanManageBilling`) is
@@ -209,118 +218,183 @@ export function PlanTierCard({
         : `Get ${plan.displayName}`;
 
   return (
-    <article
-      className={cn(
-        "group relative flex flex-col overflow-hidden",
-        "rounded-[28px] border border-border/70 bg-card/85 backdrop-blur-sm",
-        "px-7 pb-7 pt-8 transition-all duration-500",
-        "hover:border-foreground/30 hover:shadow-[0_30px_70px_-40px_color-mix(in_oklch,var(--foreground)_30%,transparent)]",
-        plan.isFeatured &&
-          "border-foreground/30 shadow-[0_24px_60px_-30px_color-mix(in_oklch,var(--foreground)_25%,transparent)]",
-        className,
-      )}
+    <YStack
+      tag="article"
+      group
+      position="relative"
+      overflow="hidden"
+      rounded={28}
+      borderWidth={1}
+      // Featured card gets a stronger resting border; both lift to a near-
+      // foreground border on hover. The bespoke drop-shadows had no token —
+      // dropped, the border emphasis carries the "this rises" intent.
+      // FLAG: featured/hover box-shadows removed.
+      borderColor={plan.isFeatured ? "$color" : "$borderColor"}
+      bg="$card"
+      px="$7"
+      pt="$8"
+      pb="$7"
+      transition="medium"
+      hoverStyle={{ borderColor: "$color" }}
+      // allowlist: CSS grid-placement classes (col-span-* etc.) forwarded
+      // from the upgrade route — pure CSS-grid placement, no kit token.
+      className={className}
     >
       {/* Featured badge — clear "this is the recommended pick" */}
       {plan.isFeatured && (
-        <div
-          className={cn(
-            "absolute right-7 top-7 inline-flex items-center gap-1.5 rounded-full",
-            "border border-foreground/40 bg-background/90 px-2.5 py-1 text-xs font-medium text-foreground/80",
-          )}
+        <XStack
+          position="absolute"
+          t={28}
+          r={28}
+          z={1}
+          items="center"
+          gap="$1.5"
+          rounded={9999}
+          borderWidth={1}
+          borderColor="$color"
+          bg="$background"
+          px="$2.5"
+          py="$1"
         >
-          <span className="size-1.5 rounded-full bg-foreground/80" />
-          Most popular
-        </div>
+          <View width={6} height={6} rounded={9999} bg="$color" />
+          <Text fontSize="$1" fontWeight="500" color="$color">
+            Most popular
+          </Text>
+        </XStack>
       )}
 
-      {/* Illustration — fills the card top, masked to the rounded corners */}
-      <div
-        className={cn(
-          "relative -mx-7 -mt-8 mb-6 h-44 overflow-hidden border-b border-border/60",
-          "bg-[radial-gradient(ellipse_at_top,_color-mix(in_oklch,var(--foreground)_4%,transparent),_transparent_70%)]",
-        )}
+      {/* Illustration — fills the card top, bleeds past the padding, masked
+          to the rounded corners */}
+      <View
+        position="relative"
+        // Bleed exactly to the card edges: horizontal margin = px token (39),
+        // top margin = pt token (46), so the illustration fills the top.
+        mx={-39}
+        mt={-46}
+        mb="$6"
+        height={176}
+        overflow="hidden"
+        borderBottomWidth={1}
+        borderColor="$borderColor"
+        bg="$muted"
       >
-        <div className="absolute inset-0 flex items-center justify-center">
+        <View
+          position="absolute"
+          t={0}
+          r={0}
+          b={0}
+          l={0}
+          items="center"
+          justify="center"
+        >
           <OrbitIllustration tier={tier} className="h-[180px] w-[180px]" />
-        </div>
-      </div>
+        </View>
+      </View>
 
       {/* Plan name + description */}
-      <header className="space-y-2">
-        <h3
-          className="text-[2rem] leading-[1.05] tracking-tight"
+      <YStack gap="$2">
+        <H3
+          fontSize={32}
+          lineHeight={32 * 1.05}
+          letterSpacing={-0.6}
+          color="$color"
           style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
         >
           {plan.displayName}
-        </h3>
+        </H3>
         {plan.description && (
-          <p className="text-[13px] leading-relaxed text-muted-foreground">
+          <Paragraph fontSize="$2" color="$mutedForeground">
             {plan.description}
-          </p>
+          </Paragraph>
         )}
-      </header>
+      </YStack>
 
       {/* Price block — tabular mono. Hub stores Polar/Stripe minor units;
           formatPlanPrice handles the /100 conversion for both USD and IDR. */}
-      <div className="mt-7 flex items-baseline gap-2">
-        <span
-          className={cn(
-            "font-mono text-5xl font-medium leading-none tracking-tight tabular-nums",
-            "text-foreground",
-          )}
+      <XStack mt="$7" items="baseline" gap="$2">
+        <Text
+          fontFamily="$mono"
+          fontSize={48}
+          fontWeight="500"
+          lineHeight={48}
+          letterSpacing={-1}
+          color="$color"
         >
           {plan.isFreeTier
             ? "Free"
             : price === null
               ? "Custom"
               : formatPlanPrice(price, plan.currency)}
-        </span>
+        </Text>
         {!plan.isFreeTier && price !== null && (
-          <span className="text-sm text-muted-foreground">
+          <Text fontSize="$3" color="$mutedForeground">
             per {cycle === "monthly" ? "month" : "year"}
-          </span>
+          </Text>
         )}
-      </div>
+      </XStack>
       {plan.trialDays && plan.trialDays > 0 && !plan.isFreeTier && (
-        <p className="mt-2 text-xs text-foreground/60">
+        <Text mt="$2" fontSize="$1" color="$mutedForeground">
           {plan.trialDays}-day free trial first. No card today.
-        </p>
+        </Text>
       )}
 
       {/* Hairline */}
-      <div aria-hidden className="my-7 h-px w-full bg-border/80" />
+      <Separator my="$7" />
 
       {/* Bullets */}
-      <ul className="flex flex-1 flex-col gap-3 text-[13px]">
+      <YStack flex={1} gap="$3">
         {bullets.map((b) => (
-          <li key={b} className="flex items-start gap-3 leading-snug">
-            <span
-              aria-hidden
-              className={cn(
-                "mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-full",
-                plan.isFeatured
-                  ? "bg-foreground text-background"
-                  : "bg-foreground/8 text-foreground/75",
-              )}
+          <XStack key={b} items="flex-start" gap="$3">
+            <View
+              mt="$0.5"
+              width={16}
+              height={16}
+              shrink={0}
+              items="center"
+              justify="center"
+              rounded={9999}
+              bg={plan.isFeatured ? "$color" : "$muted"}
             >
-              <Check className="size-2.5" strokeWidth={3.5} />
-            </span>
-            <span className="text-foreground/85">{b}</span>
-          </li>
+              <Text
+                color={plan.isFeatured ? "$background" : "$mutedForeground"}
+                lineHeight={0}
+              >
+                <Check size={10} strokeWidth={3.5} />
+              </Text>
+            </View>
+            <Text flex={1} fontSize="$2" color="$color">
+              {b}
+            </Text>
+          </XStack>
         ))}
-      </ul>
+      </YStack>
 
       {/* Active-org label — only when the user has multiple orgs, so they
           know which workspace gets billed. Single-org users see nothing. */}
       {showActiveOrgLabel && !isCurrent && !plan.isFreeTier && (
-        <p className="mt-6 inline-flex items-center gap-1.5 self-start rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground">
-          <Building2 className="size-3" strokeWidth={2} />
-          Billing {org!.name}
-        </p>
+        <XStack
+          mt="$6"
+          self="flex-start"
+          items="center"
+          gap="$1.5"
+          rounded={9999}
+          borderWidth={1}
+          borderColor="$borderColor"
+          bg="$muted"
+          px="$2.5"
+          py="$1"
+        >
+          <Text color="$mutedForeground" lineHeight={0}>
+            <Building2 size={12} strokeWidth={2} />
+          </Text>
+          <Text fontSize="$1" color="$mutedForeground">
+            Billing {org!.name}
+          </Text>
+        </XStack>
       )}
 
       {/* CTA */}
-      <div className="mt-8">
+      <YStack mt="$8" gap="$3">
         {isCurrent ? (
           sub?.status === "trialing" ? (
             // The plan being trialed shouldn't dead-end with "Your current
@@ -342,35 +416,72 @@ export function PlanTierCard({
         ) : !canManage ? (
           <DisabledChip>Ask your admin to upgrade</DisabledChip>
         ) : (
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={() =>
-              void (hasPolarSubscription ? changePlan() : startCheckout())
+          <XStack
+            group="btn"
+            role="button"
+            aria-disabled={isPending}
+            cursor={isPending ? "default" : "pointer"}
+            onPress={() =>
+              void (isPending
+                ? undefined
+                : hasPolarSubscription
+                  ? changePlan()
+                  : startCheckout())
             }
-            className={cn(
-              "group/btn relative inline-flex h-12 w-full items-center justify-between overflow-hidden rounded-full px-5",
-              "text-sm font-medium",
-              "transition-all duration-300",
-              plan.isFeatured
-                ? "bg-foreground text-background hover:opacity-90"
-                : "bg-background border border-foreground/80 text-foreground hover:bg-foreground hover:text-background",
-              "disabled:pointer-events-none disabled:opacity-50",
-            )}
+            height={48}
+            width="100%"
+            items="center"
+            justify="space-between"
+            overflow="hidden"
+            rounded={9999}
+            px="$5"
+            opacity={isPending ? 0.5 : 1}
+            transition="medium"
+            borderWidth={plan.isFeatured ? 0 : 1}
+            borderColor="$color"
+            bg={plan.isFeatured ? "$color" : "$background"}
+            hoverStyle={plan.isFeatured ? { opacity: 0.9 } : { bg: "$color" }}
           >
-            <span className="z-10">{ctaLabel}</span>
-            <span className="z-10 inline-flex size-7 items-center justify-center rounded-full border border-current/30 transition-transform duration-300 group-hover/btn:translate-x-1">
-              <ArrowUpRight className="size-3.5" strokeWidth={2} />
-            </span>
-          </button>
+            <Text
+              fontSize="$3"
+              fontWeight="500"
+              color={plan.isFeatured ? "$background" : "$color"}
+              $group-btn-hover={
+                plan.isFeatured ? undefined : { color: "$background" }
+              }
+            >
+              {ctaLabel}
+            </Text>
+            <View
+              width={28}
+              height={28}
+              items="center"
+              justify="center"
+              rounded={9999}
+              borderWidth={1}
+              borderColor="$borderColor"
+              transition="medium"
+              $group-btn-hover={{ x: 4 }}
+            >
+              <Text
+                color={plan.isFeatured ? "$background" : "$color"}
+                lineHeight={0}
+                $group-btn-hover={
+                  plan.isFeatured ? undefined : { color: "$background" }
+                }
+              >
+                <ArrowUpRight size={14} strokeWidth={2} />
+              </Text>
+            </View>
+          </XStack>
         )}
 
         {/* Inline error surface — driven by structured BillingError codes
             from Hub. Reasons get specific, actionable copy; everything else
             falls back to the raw message so the failure isn't silent. */}
         {errorState && <CheckoutErrorBanner error={errorState} />}
-      </div>
-    </article>
+      </YStack>
+    </YStack>
   );
 }
 
@@ -388,19 +499,31 @@ function CheckoutErrorBanner({
   // for end-user UI, plus a follow-up `action` for cases the user can fix.
   const copy = explainBillingError(error.code);
 
+  // Whole banner adopts the destructive sub-theme so the danger tint +
+  // foreground resolve from one place instead of hardcoding rose-* per key.
   return (
-    <div
+    <YStack
+      theme="destructive"
       role="alert"
-      className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200"
+      mt="$3"
+      rounded={16}
+      borderWidth={1}
+      borderColor="$destructive"
+      bg="$destructiveMuted"
+      p="$3"
     >
-      <div className="flex items-start gap-2">
-        <AlertCircle className="mt-0.5 size-3.5 shrink-0" strokeWidth={2} />
-        <div className="space-y-2">
-          <p className="leading-relaxed">{copy?.message ?? error.message}</p>
+      <XStack items="flex-start" gap="$2">
+        <Text mt="$0.5" color="$destructive" lineHeight={0} shrink={0}>
+          <AlertCircle size={14} strokeWidth={2} />
+        </Text>
+        <YStack gap="$2">
+          <Text fontSize="$1" color="$destructive">
+            {copy?.message ?? error.message}
+          </Text>
           {copy?.action}
-        </div>
-      </div>
-    </div>
+        </YStack>
+      </XStack>
+    </YStack>
   );
 }
 
@@ -416,11 +539,22 @@ function explainBillingError(code: string | null): ErrorCopy | null {
         message:
           "Your billing email's domain doesn't accept mail, so the payment provider can't send you a receipt. Update it before continuing.",
         action: (
-          <Link
-            to="/settings/billing"
-            className="inline-flex h-7 items-center rounded-full border border-rose-300 bg-white px-2.5 text-[11px] font-medium text-rose-900 hover:bg-rose-50 dark:border-rose-700 dark:bg-rose-950/50 dark:text-rose-100 dark:hover:bg-rose-900/40"
-          >
-            Update billing email
+          <Link to="/settings/billing" style={{ textDecoration: "none" }}>
+            <XStack
+              height={28}
+              items="center"
+              rounded={9999}
+              borderWidth={1}
+              borderColor="$destructive"
+              bg="$background"
+              px="$2.5"
+              transition="quick"
+              hoverStyle={{ bg: "$destructiveMuted" }}
+            >
+              <Text fontSize="$1" fontWeight="500" color="$destructive">
+                Update billing email
+              </Text>
+            </XStack>
           </Link>
         ),
       };
@@ -459,10 +593,23 @@ function explainBillingError(code: string | null): ErrorCopy | null {
 
 function CurrentBadge() {
   return (
-    <div className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border border-dashed border-foreground/30 bg-foreground/4 text-sm font-medium text-foreground/70">
-      <span className="size-1.5 rounded-full bg-foreground/70" />
-      Your current plan
-    </div>
+    <XStack
+      height={48}
+      width="100%"
+      items="center"
+      justify="center"
+      gap="$2"
+      rounded={9999}
+      borderWidth={1}
+      borderStyle="dashed"
+      borderColor="$borderColor"
+      bg="$muted"
+    >
+      <View width={6} height={6} rounded={9999} bg="$mutedForeground" />
+      <Text fontSize="$3" fontWeight="500" color="$mutedForeground">
+        Your current plan
+      </Text>
+    </XStack>
   );
 }
 
@@ -483,43 +630,78 @@ function TrialingActions({
   pending: boolean;
 }) {
   return (
-    <div className="space-y-2">
-      <div className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 text-sm font-medium text-amber-800 dark:border-amber-400/40 dark:bg-amber-400/10 dark:text-amber-200">
-        <Sparkles className="size-3.5" strokeWidth={2} />
-        Currently trialing this plan
-      </div>
-      <button
-        type="button"
+    <YStack gap="$2">
+      <XStack
+        height={48}
+        width="100%"
+        items="center"
+        justify="center"
+        gap="$2"
+        rounded={9999}
+        borderWidth={1}
+        borderColor="$warning"
+        bg="$warningMuted"
+      >
+        <Text color="$warning" lineHeight={0}>
+          <Sparkles size={14} strokeWidth={2} />
+        </Text>
+        <Text fontSize="$3" fontWeight="500" color="$warning">
+          Currently trialing this plan
+        </Text>
+      </XStack>
+      <Button
+        intent="ghost"
+        size="sm"
         disabled={pending}
-        onClick={onManage}
-        className={cn(
-          "inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-full",
-          "text-xs font-medium text-foreground/70 transition-colors hover:text-foreground",
-          "disabled:pointer-events-none disabled:opacity-50",
-        )}
+        onPress={onManage}
+        iconAfter={<ExternalLink size={12} strokeWidth={2} />}
       >
         {pending ? "Opening…" : "Manage subscription"}
-        <ExternalLink className="size-3" strokeWidth={2} />
-      </button>
-    </div>
+      </Button>
+    </YStack>
   );
 }
 
 function DisabledChip({ children }: { children: React.ReactNode }) {
   return (
-    <div className="inline-flex h-12 w-full items-center justify-center rounded-full border border-border bg-muted/40 text-sm font-medium text-muted-foreground">
-      {children}
-    </div>
+    <XStack
+      height={48}
+      width="100%"
+      items="center"
+      justify="center"
+      rounded={9999}
+      borderWidth={1}
+      borderColor="$borderColor"
+      bg="$muted"
+    >
+      <Text fontSize="$3" fontWeight="500" color="$mutedForeground">
+        {children}
+      </Text>
+    </XStack>
   );
 }
 
 function ContactSalesLink() {
+  // External mailto — a native <a> wrapping the styled XStack keeps it a
+  // real navigable link (kit Button is not an anchor).
   return (
-    <a
-      href="mailto:hello@meridian.app"
-      className="inline-flex h-12 w-full items-center justify-center rounded-full border border-foreground/80 bg-background text-sm font-medium text-foreground transition-colors hover:bg-foreground hover:text-background"
-    >
-      Contact sales
+    <a href="mailto:hello@meridian.app" style={{ textDecoration: "none" }}>
+      <XStack
+        height={48}
+        width="100%"
+        items="center"
+        justify="center"
+        rounded={9999}
+        borderWidth={1}
+        borderColor="$color"
+        bg="$background"
+        transition="quick"
+        hoverStyle={{ bg: "$color" }}
+      >
+        <Text fontSize="$3" fontWeight="500" color="$color">
+          Contact sales
+        </Text>
+      </XStack>
     </a>
   );
 }

@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { Text, XStack, YStack } from "@stageholder/ui";
 import { useJournals } from "@/lib/api/journals";
 import { useEncryptionStore } from "@/lib/crypto/encryption-store";
 import { MoodDisplay } from "@/components/journal/mood-picker";
@@ -27,19 +28,35 @@ export function RecentJournals({
       index={index}
       className={className}
       action={
-        <Link to="/journal" className="text-xs text-primary hover:underline">
-          View all
+        <Link to="/journal" style={{ textDecoration: "none" }}>
+          <Text
+            fontSize="$1"
+            color="$primary"
+            hoverStyle={{ textDecorationLine: "underline" }}
+          >
+            View all
+          </Text>
         </Link>
       }
     >
       {isLocked ? (
-        <p className="text-xs text-muted-foreground">
+        <Text fontSize="$1" color="$mutedForeground">
           Unlock your journal to see recent entries.
-        </p>
+        </Text>
       ) : isLoading ? (
-        <p className="text-xs text-muted-foreground">Loading...</p>
+        <Text fontSize="$1" color="$mutedForeground">
+          Loading...
+        </Text>
       ) : recentJournals.length > 0 ? (
-        <div className="flex gap-3 overflow-x-auto pb-1 snap-x">
+        // Horizontal snap-scroller. scroll-snap (snap-x/snap-start) + x-only
+        // overflow have no Tamagui token — kept via className/style hatch;
+        // layout/spacing moved to props.
+        <XStack
+          gap="$3"
+          pb="$1"
+          className="snap-x"
+          style={{ overflowX: "auto" }}
+        >
           {recentJournals.map((journal: Journal) => {
             const dateStr = parseDateLocal(journal.date).toLocaleDateString(
               "en-US",
@@ -54,28 +71,49 @@ export function RecentJournals({
                 key={journal.id}
                 to="/journal/$id"
                 params={{ id: journal.id }}
-                className="flex min-w-[160px] shrink-0 snap-start flex-col gap-1.5 rounded-lg border border-border bg-muted/50 p-3 transition-colors hover:bg-accent/50"
+                style={{ textDecoration: "none" }}
+                className="snap-start"
               >
-                <div className="flex items-center gap-1.5">
-                  <MoodDisplay mood={journal.mood} />
-                  <span className="text-xs text-muted-foreground">
-                    {dateStr}
-                  </span>
-                </div>
-                <span className="line-clamp-2 text-sm font-medium text-foreground">
-                  {journal.title}
-                </span>
-                {journal.wordCount > 0 && (
-                  <span className="text-[10px] text-muted-foreground">
-                    {journal.wordCount} words
-                  </span>
-                )}
+                <YStack
+                  minW={160}
+                  shrink={0}
+                  gap="$1.5"
+                  rounded="$lg"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  bg="$muted"
+                  p="$3"
+                  transition="quick"
+                  hoverStyle={{ bg: "$accent" }}
+                >
+                  <XStack items="center" gap="$1.5">
+                    <MoodDisplay mood={journal.mood} />
+                    <Text fontSize="$1" color="$mutedForeground">
+                      {dateStr}
+                    </Text>
+                  </XStack>
+                  <Text
+                    numberOfLines={2}
+                    fontSize="$3"
+                    fontWeight="500"
+                    color="$color"
+                  >
+                    {journal.title}
+                  </Text>
+                  {journal.wordCount > 0 && (
+                    <Text fontSize={10} color="$mutedForeground">
+                      {journal.wordCount} words
+                    </Text>
+                  )}
+                </YStack>
               </Link>
             );
           })}
-        </div>
+        </XStack>
       ) : (
-        <p className="text-xs text-muted-foreground">No journal entries yet.</p>
+        <Text fontSize="$1" color="$mutedForeground">
+          No journal entries yet.
+        </Text>
       )}
     </BentoCard>
   );

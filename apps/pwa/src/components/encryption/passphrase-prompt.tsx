@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useEncryptionStore } from "@/lib/crypto/encryption-store";
-import { Button, Input } from "@stageholder/ui";
+import { Button, H2, Input, Text, View, XStack, YStack } from "@stageholder/ui";
 import { Lock } from "lucide-react";
 
 export function PassphrasePrompt() {
@@ -23,18 +23,30 @@ export function PassphrasePrompt() {
   }
 
   return (
-    <div className="flex h-full items-center justify-center p-8">
-      <div className="w-full max-w-sm space-y-6 text-center">
-        <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-muted">
-          <Lock className="size-8 text-muted-foreground" />
-        </div>
-        <div>
-          <h2 className="text-lg font-semibold">Journal Locked</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+    <XStack height="100%" items="center" justify="center" p="$8">
+      <YStack width="100%" maxW={384} gap="$6">
+        <View
+          self="center"
+          width={64}
+          height={64}
+          items="center"
+          justify="center"
+          rounded={9999}
+          bg="$muted"
+        >
+          <Text color="$mutedForeground" lineHeight={0}>
+            <Lock size={32} />
+          </Text>
+        </View>
+        <YStack>
+          <H2 fontSize="$6" fontWeight="600" color="$color" text="center">
+            Journal Locked
+          </H2>
+          <Text mt="$1" fontSize="$3" color="$mutedForeground" text="center">
             Enter your encryption passphrase to access your journal entries.
-          </p>
-        </div>
-        <div className="space-y-3">
+          </Text>
+        </YStack>
+        <YStack gap="$3">
           <Input
             width="100%"
             secureTextEntry
@@ -46,18 +58,22 @@ export function PassphrasePrompt() {
             }}
             autoFocus
           />
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <Text fontSize="$3" color="$destructive" text="center">
+              {error}
+            </Text>
+          )}
           <Button
+            width="100%"
             onPress={handleUnlock}
             disabled={loading || !passphrase}
             loading={loading}
             loadingText="Unlocking…"
-            className="w-full"
           >
             Unlock
           </Button>
-        </div>
-      </div>
-    </div>
+        </YStack>
+      </YStack>
+    </XStack>
   );
 }

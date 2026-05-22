@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { Text, View, XStack, YStack } from "@stageholder/ui";
 import { useUser } from "@/hooks/use-user";
-import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api-client";
 import { WelcomeStep } from "@/components/onboarding/welcome-step";
 import { ProfileStep } from "@/components/onboarding/profile-step";
@@ -106,52 +106,74 @@ function OnboardingPage() {
     // Centered, constrained shell so onboarding doesn't stretch edge-to-edge
     // on wide viewports. The _auth zone has no parent layout (it's the
     // unauth lane), so this page owns its own viewport chrome.
-    <div className="flex min-h-screen items-center justify-center px-6 py-12">
-      <div className="w-full max-w-xl space-y-8">
+    <YStack
+      minH={"100vh" as never}
+      items="center"
+      justify="center"
+      px="$6"
+      py="$8"
+    >
+      <YStack width="100%" maxW={576} gap="$6">
         {/* Progress dots */}
-        <div className="flex items-center justify-center gap-2">
+        <XStack items="center" justify="center" gap="$2">
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-            <div
+            <View
               key={i}
-              className={cn(
-                "size-2 rounded-full transition-colors",
-                i === step
-                  ? "bg-primary"
-                  : i < step
-                    ? "bg-primary/40"
-                    : "bg-muted-foreground/20",
-              )}
+              height={7}
+              width={7}
+              rounded={9999}
+              transition="quick"
+              // active dot brand, completed dot muted-brand, upcoming faint
+              bg={
+                i === step ? "$primary" : i < step ? "$primaryMuted" : "$muted"
+              }
             />
           ))}
-        </div>
+        </XStack>
 
         {/* Step content */}
-        <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
+        <YStack
+          rounded="$6"
+          borderWidth={1}
+          borderColor="$borderColor"
+          bg="$card"
+          p="$6"
+          // allowlist: soft drop shadow — no kit token equivalent
+          className="shadow-sm"
+        >
           {stepComponent}
-        </div>
+        </YStack>
 
         {/* Navigation */}
-        <div className="flex items-center justify-between">
-          <div>
+        <XStack items="center" justify="space-between">
+          <View>
             {step > 0 && step < lastStep && (
-              <button
-                onClick={() => setStep(step - 1)}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              <Text
+                tag="button"
+                fontSize="$3"
+                color="$mutedForeground"
+                transition="quick"
+                hoverStyle={{ color: "$color" }}
+                onPress={() => setStep(step - 1)}
               >
                 Back
-              </button>
+              </Text>
             )}
-          </div>
+          </View>
           {step < lastStep && (
-            <button
-              onClick={handleSkip}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            <Text
+              tag="button"
+              fontSize="$3"
+              color="$mutedForeground"
+              transition="quick"
+              hoverStyle={{ color: "$color" }}
+              onPress={handleSkip}
             >
               Skip setup
-            </button>
+            </Text>
           )}
-        </div>
-      </div>
-    </div>
+        </XStack>
+      </YStack>
+    </YStack>
   );
 }

@@ -1,8 +1,14 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Button, Label, NumberInput } from "@stageholder/ui";
+import {
+  Button,
+  Label,
+  NumberInput,
+  Text,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 import { useUserLight, useUpdateTargets } from "@/lib/api/light";
-import { cn } from "@/lib/utils";
 
 const JOURNAL_PRESETS = [
   { label: "Quick", value: 50 },
@@ -39,73 +45,94 @@ export function TargetsSettings() {
 
   if (isLoading) {
     return (
-      <div className="text-sm text-muted-foreground">Loading targets...</div>
+      <Text fontSize="$3" color="$mutedForeground">
+        Loading targets...
+      </Text>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Todo Target */}
-      <div>
-        <Label>Daily todo completion target</Label>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          How many todos you aim to complete each day.
-        </p>
-        <div className="mt-2 flex items-center gap-2">
-          <NumberInput
-            value={todoTarget}
-            onChange={setTodoTarget}
-            min={1}
-            max={50}
-            step={1}
-          />
-          <span className="text-sm text-muted-foreground">todos / day</span>
-        </div>
-      </div>
+    <form onSubmit={handleSubmit}>
+      <YStack gap="$6">
+        {/* Todo Target */}
+        <YStack>
+          <Label>Daily todo completion target</Label>
+          <Text mt="$0.5" fontSize="$1" color="$mutedForeground">
+            How many todos you aim to complete each day.
+          </Text>
+          <XStack mt="$2" items="center" gap="$2">
+            <NumberInput
+              value={todoTarget}
+              onChange={setTodoTarget}
+              min={1}
+              max={50}
+              step={1}
+            />
+            <Text fontSize="$3" color="$mutedForeground">
+              todos / day
+            </Text>
+          </XStack>
+        </YStack>
 
-      {/* Journal Target */}
-      <div>
-        <Label>Daily word count target</Label>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          How many words you aim to write in your journal each day.
-        </p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {JOURNAL_PRESETS.map((preset) => (
-            <button
-              key={preset.value}
-              type="button"
-              onClick={() => setJournalTarget(preset.value)}
-              className={cn(
-                "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
-                journalTarget === preset.value
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border bg-background text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {preset.label} ({preset.value})
-            </button>
-          ))}
-        </div>
-        <div className="mt-2 flex items-center gap-2">
-          <NumberInput
-            value={journalTarget}
-            onChange={setJournalTarget}
-            min={10}
-            max={5000}
-            step={25}
-          />
-          <span className="text-sm text-muted-foreground">words / day</span>
-        </div>
-      </div>
+        {/* Journal Target */}
+        <YStack>
+          <Label>Daily word count target</Label>
+          <Text mt="$0.5" fontSize="$1" color="$mutedForeground">
+            How many words you aim to write in your journal each day.
+          </Text>
+          <XStack mt="$2" flexWrap="wrap" gap="$2">
+            {JOURNAL_PRESETS.map((preset) => {
+              const active = journalTarget === preset.value;
+              return (
+                <XStack
+                  key={preset.value}
+                  tag="button"
+                  type="button"
+                  onPress={() => setJournalTarget(preset.value)}
+                  cursor="pointer"
+                  rounded="$lg"
+                  borderWidth={1}
+                  px="$3"
+                  py="$1.5"
+                  borderColor={active ? "$primary" : "$borderColor"}
+                  bg={active ? "$primaryMuted" : "$background"}
+                  transition="quick"
+                  hoverStyle={active ? undefined : { bg: "$accent" }}
+                >
+                  <Text
+                    fontSize="$3"
+                    fontWeight="500"
+                    color={active ? "$primary" : "$mutedForeground"}
+                  >
+                    {preset.label} ({preset.value})
+                  </Text>
+                </XStack>
+              );
+            })}
+          </XStack>
+          <XStack mt="$2" items="center" gap="$2">
+            <NumberInput
+              value={journalTarget}
+              onChange={setJournalTarget}
+              min={10}
+              max={5000}
+              step={25}
+            />
+            <Text fontSize="$3" color="$mutedForeground">
+              words / day
+            </Text>
+          </XStack>
+        </YStack>
 
-      <Button
-        type="submit"
-        disabled={updateTargets.isPending}
-        loading={updateTargets.isPending}
-        loadingText="Saving…"
-      >
-        Save Changes
-      </Button>
+        <Button
+          type="submit"
+          disabled={updateTargets.isPending}
+          loading={updateTargets.isPending}
+          loadingText="Saving…"
+        >
+          Save Changes
+        </Button>
+      </YStack>
     </form>
   );
 }

@@ -11,38 +11,41 @@ import {
   Flame,
   CircleDot,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Text, View, XStack, YStack } from "@stageholder/ui";
 
+// Per-action accent colors. These decorative hues (blue/orange/emerald/amber/
+// red/purple) have no kit token — they're event-category accents, so the icon
+// color rides the style escape hatch (`as const` keeps the literal types).
 const ACTION_CONFIG: Record<
   string,
-  { label: string; icon: typeof Star; color: string }
+  { label: string; icon: typeof Star; color?: string }
 > = {
   todo_complete: {
     label: "Completed todo",
     icon: CheckCircle2,
-    color: "text-blue-500",
+    color: "#3b82f6",
   },
-  todo_create: { label: "Todo created", icon: Plus, color: "text-blue-400" },
+  todo_create: { label: "Todo created", icon: Plus, color: "#60a5fa" },
   habit_checkin: {
     label: "Habit check-in",
     icon: Target,
-    color: "text-orange-500",
+    color: "#f97316",
   },
   journal_entry: {
     label: "Journal entry",
     icon: BookOpen,
-    color: "text-emerald-500",
+    color: "#10b981",
   },
-  perfect_day: { label: "Perfect Day", icon: Star, color: "text-amber-500" },
+  perfect_day: { label: "Perfect Day", icon: Star, color: "#f59e0b" },
   ring_streak_bonus: {
     label: "Streak milestone",
     icon: Flame,
-    color: "text-red-500",
+    color: "#ef4444",
   },
   ring_completion_bonus: {
     label: "Ring completed",
     icon: CircleDot,
-    color: "text-purple-500",
+    color: "#a855f7",
   },
 };
 
@@ -54,15 +57,19 @@ export function JourneyFeed() {
   const { data: events, isLoading } = useLightEvents(limit, 0);
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading events...</p>;
+    return (
+      <Text fontSize="$3" color="$mutedForeground">
+        Loading events...
+      </Text>
+    );
   }
 
   if (!events || events.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <Text fontSize="$3" color="$mutedForeground">
         No Light events yet. Complete tasks, check in habits, or write journal
         entries to earn Light.
-      </p>
+      </Text>
     );
   }
 
@@ -80,61 +87,115 @@ export function JourneyFeed() {
   const hasMore = events.length >= limit;
 
   return (
-    <div className="space-y-4">
+    <YStack gap="$4">
       {sortedDates.map((dateKey) => {
         const dayEvents = grouped[dateKey]!;
         const dayTotal = dayEvents.reduce((sum, e) => sum + e.totalLight, 0);
 
         return (
-          <div key={dateKey}>
-            <div className="flex items-center justify-between border-b border-border pb-1.5">
-              <span className="text-sm font-medium text-foreground">
+          <YStack key={dateKey}>
+            <XStack
+              items="center"
+              justify="space-between"
+              borderBottomWidth={1}
+              borderColor="$borderColor"
+              pb="$1.5"
+            >
+              <Text fontSize="$3" fontWeight="500" color="$color">
                 {format(parseDateLocal(dateKey), "MMM d, yyyy")}
-              </span>
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 tabular-nums dark:bg-amber-900/30 dark:text-amber-400">
-                +{dayTotal} Light
-              </span>
-            </div>
+              </Text>
+              {/* Amber "+N Light" pill — decorative gold tint with no token. */}
+              <View
+                rounded={9999}
+                px="$2"
+                py={2}
+                style={{ backgroundColor: "rgba(251, 191, 36, 0.18)" }}
+              >
+                <Text
+                  fontSize="$1"
+                  fontWeight="600"
+                  style={{
+                    color: "#b45309",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  +{dayTotal} Light
+                </Text>
+              </View>
+            </XStack>
 
-            <div className="mt-2 space-y-1.5">
+            <YStack mt="$2" gap="$1.5">
               {dayEvents.map((event) => {
                 const config = ACTION_CONFIG[event.action] ?? {
                   label: event.action,
                   icon: Star,
-                  color: "text-muted-foreground",
+                  color: undefined,
                 };
                 const Icon = config.icon;
 
                 return (
-                  <div
+                  <XStack
                     key={event.id}
-                    className="flex items-center gap-2.5 rounded-lg px-1 py-1 text-sm"
+                    items="center"
+                    gap="$2.5"
+                    rounded="$lg"
+                    px="$1"
+                    py="$1"
                   >
-                    <Icon className={cn("size-3.5 shrink-0", config.color)} />
-                    <span className="flex-1 text-foreground">
+                    {/* Tinted category icon (style hatch for non-token hues);
+                        falls back to the muted-foreground token. */}
+                    <Text
+                      shrink={0}
+                      lineHeight={0}
+                      color={config.color ? undefined : "$mutedForeground"}
+                      style={config.color ? { color: config.color } : undefined}
+                    >
+                      <Icon size={14} />
+                    </Text>
+                    <Text flex={1} fontSize="$3" color="$color">
                       {config.label}
-                    </span>
-                    <span className="shrink-0 tabular-nums text-muted-foreground">
+                    </Text>
+                    <Text
+                      shrink={0}
+                      fontSize="$3"
+                      color="$mutedForeground"
+                      style={{ fontVariantNumeric: "tabular-nums" }}
+                    >
                       {event.baseLight} x {event.multiplier} ={" "}
-                      <span className="font-medium text-foreground">
+                      <Text fontSize="$3" fontWeight="500" color="$color">
                         {event.totalLight}
-                      </span>
-                    </span>
-                  </div>
+                      </Text>
+                    </Text>
+                  </XStack>
                 );
               })}
-            </div>
-          </div>
+            </YStack>
+          </YStack>
         );
       })}
       {hasMore && (
-        <button
-          onClick={() => setLimit((l) => l + LOAD_MORE)}
-          className="w-full rounded-lg border border-border py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        <View
+          tag="button"
+          group
+          width="100%"
+          rounded="$lg"
+          borderWidth={1}
+          borderColor="$borderColor"
+          py="$2"
+          items="center"
+          transition="quick"
+          hoverStyle={{ bg: "$accent" }}
+          onPress={() => setLimit((l) => l + LOAD_MORE)}
         >
-          Show more
-        </button>
+          <Text
+            fontSize="$3"
+            color="$mutedForeground"
+            $group-hover={{ color: "$color" }}
+          >
+            Show more
+          </Text>
+        </View>
       )}
-    </div>
+    </YStack>
   );
 }

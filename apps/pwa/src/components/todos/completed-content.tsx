@@ -1,3 +1,4 @@
+import { Text, View, XStack, YStack } from "@stageholder/ui";
 import { TodoItem } from "./todo-item";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
 import type { Todo, TodoList } from "@repo/core/types";
@@ -39,19 +40,21 @@ export function CompletedContent() {
 
   return (
     <>
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-foreground">Completed</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+      <YStack mb="$6">
+        <Text fontSize="$7" fontWeight="700" color="$color">
+          Completed
+        </Text>
+        <Text mt="$1" fontSize="$3" color="$mutedForeground">
           {completedTodos.length} completed in the past 7 days
-        </p>
-      </div>
+        </Text>
+      </YStack>
 
       {isLoading ? (
-        <div className="mt-3 text-sm text-muted-foreground">
+        <Text mt="$3" fontSize="$3" color="$mutedForeground">
           Loading todos...
-        </div>
+        </Text>
       ) : (
-        <div className="mt-3 space-y-6">
+        <YStack mt="$3" gap="$6">
           {[...groupedByDate.entries()].map(([date, dateTodos]) => {
             // Sub-group by list
             const byList = new Map<string, Todo[]>();
@@ -62,27 +65,33 @@ export function CompletedContent() {
             }
 
             return (
-              <div key={date}>
-                <h2 className="mb-3 text-sm font-semibold text-foreground">
+              <YStack key={date}>
+                <Text mb="$3" fontSize="$3" fontWeight="600" color="$color">
                   {date}
-                </h2>
-                <div className="space-y-4 pl-1">
+                </Text>
+                <YStack gap="$4" pl="$1.5">
                   {[...byList.entries()].map(([listId, listTodos]) => {
                     const list = listMap.get(listId);
                     return (
-                      <div key={listId}>
-                        <div className="mb-2 flex items-center gap-2">
-                          <span
-                            className="inline-block h-3 w-3 rounded-full"
+                      <YStack key={listId}>
+                        <XStack mb="$2" items="center" gap="$2">
+                          <View
+                            width={12}
+                            height={12}
+                            rounded={9999}
                             style={{
                               backgroundColor: list?.color || "#6b7280",
                             }}
                           />
-                          <span className="text-xs font-medium text-muted-foreground">
+                          <Text
+                            fontSize="$1"
+                            fontWeight="500"
+                            color="$mutedForeground"
+                          >
                             {list?.name || "Unknown List"}
-                          </span>
-                        </div>
-                        <div className="space-y-2">
+                          </Text>
+                        </XStack>
+                        <YStack gap="$2">
                           {listTodos.map((todo) => (
                             <TodoItem
                               key={todo.id}
@@ -90,23 +99,23 @@ export function CompletedContent() {
                               listId={listId}
                             />
                           ))}
-                        </div>
-                      </div>
+                        </YStack>
+                      </YStack>
                     );
                   })}
-                </div>
-              </div>
+                </YStack>
+              </YStack>
             );
           })}
 
           {completedTodos.length === 0 && (
-            <div className="py-12 text-center">
-              <p className="text-sm text-muted-foreground">
+            <YStack py="$8" items="center">
+              <Text fontSize="$3" color="$mutedForeground" text="center">
                 No completed todos in the past 7 days.
-              </p>
-            </div>
+              </Text>
+            </YStack>
           )}
-        </div>
+        </YStack>
       )}
     </>
   );

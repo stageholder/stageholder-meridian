@@ -1,5 +1,5 @@
 import { CheckSquare } from "lucide-react";
-import { EmptyState } from "@stageholder/ui";
+import { EmptyState, Text, View, XStack, YStack } from "@stageholder/ui";
 import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
 import { useTodos } from "@/lib/api/todos";
@@ -26,31 +26,33 @@ export function TodoListContent({
 
   return (
     <>
-      <div className="mb-6">
-        <div className="flex items-center gap-3">
-          {showColorDot && listColor && (
-            <span
-              className="inline-block h-4 w-4 rounded-full"
-              style={{ backgroundColor: listColor }}
-            />
-          )}
-          <div>
-            <h1 className="text-xl font-bold text-foreground">{listName}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {pendingTodos.length} todo{pendingTodos.length !== 1 ? "s" : ""}
-            </p>
-          </div>
-        </div>
-      </div>
+      <XStack mb="$6" items="center" gap="$3">
+        {showColorDot && listColor && (
+          <View
+            width={16}
+            height={16}
+            rounded={9999}
+            style={{ backgroundColor: listColor }}
+          />
+        )}
+        <YStack>
+          <Text fontSize="$7" fontWeight="700" color="$color">
+            {listName}
+          </Text>
+          <Text mt="$1" fontSize="$3" color="$mutedForeground">
+            {pendingTodos.length} todo{pendingTodos.length !== 1 ? "s" : ""}
+          </Text>
+        </YStack>
+      </XStack>
 
       <QuickAddTodo listId={listId} />
 
       {isLoading ? (
-        <div className="mt-3 text-sm text-muted-foreground">
+        <Text mt="$3" fontSize="$3" color="$mutedForeground">
           Loading todos...
-        </div>
+        </Text>
       ) : (
-        <div className="mt-3 space-y-2">
+        <YStack mt="$3" gap="$2">
           {visibleTodos.map((todo: Todo) => (
             <TodoItem
               key={todo.id}
@@ -62,13 +64,15 @@ export function TodoListContent({
           {pendingTodos.length === 0 && (
             <EmptyState>
               <EmptyState.IconSlot>
-                <CheckSquare className="size-5 text-muted-foreground" />
+                <Text color="$mutedForeground">
+                  <CheckSquare size={20} />
+                </Text>
               </EmptyState.IconSlot>
               <EmptyState.Title>No todos yet</EmptyState.Title>
               <EmptyState.Description>Add one above!</EmptyState.Description>
             </EmptyState>
           )}
-        </div>
+        </YStack>
       )}
     </>
   );

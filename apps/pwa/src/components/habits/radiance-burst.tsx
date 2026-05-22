@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { View } from "@stageholder/ui";
 
 const RADIANCE_COLORS = [
   "oklch(0.88 0.20 75)", // warm amber
@@ -82,8 +83,16 @@ export function RadianceBurst({ active, color }: RadianceBurstProps) {
   if (!active) return null;
 
   return (
-    <div
-      className="pointer-events-none absolute inset-0 z-10"
+    // Particle-viz wrapper only: the rays/sparks below stay as raw spans with
+    // CSS-var-driven inline styles + bespoke keyframe classes (no token equiv).
+    <View
+      position="absolute"
+      t={0}
+      r={0}
+      b={0}
+      l={0}
+      z={10}
+      pointerEvents="none"
       aria-hidden="true"
       style={{ overflow: "visible" }}
     >
@@ -135,6 +144,6 @@ export function RadianceBurst({ active, color }: RadianceBurstProps) {
           }}
         />
       ))}
-    </div>
+    </View>
   );
 }

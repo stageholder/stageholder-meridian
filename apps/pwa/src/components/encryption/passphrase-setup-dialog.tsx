@@ -1,6 +1,16 @@
 import { useState } from "react";
 import { useEncryptionStore } from "@/lib/crypto/encryption-store";
-import { Button, Checkbox, Dialog, Input, Label } from "@stageholder/ui";
+import {
+  Button,
+  Checkbox,
+  Dialog,
+  Grid,
+  Input,
+  Label,
+  Text,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 import { toast } from "sonner";
 import { Shield, Copy, Check } from "lucide-react";
 
@@ -81,7 +91,7 @@ export function PassphraseSetupDialog({
       <Dialog.Portal>
         <Dialog.Overlay />
         <Dialog.Content
-          className="sm:max-w-md"
+          maxW={448}
           onInteractOutside={(e) => e.preventDefault()}
         >
           {step === "create" ? (
@@ -91,20 +101,22 @@ export function PassphraseSetupDialog({
                 flex+gap. Tamagui's Dialog.Title renders as an inline-ish
                 Text on web — putting Description as its sibling caused
                 the two to render on the same line. Splitting the icon
-                out makes the wrapping <div>s the block-level boundaries. */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Shield className="size-5" />
+                out makes the wrapping stacks the block-level boundaries. */}
+              <YStack gap="$2">
+                <XStack items="center" gap="$2">
+                  <Text color="$cardForeground" lineHeight={0}>
+                    <Shield size={20} />
+                  </Text>
                   <Dialog.Title>Set Up Journal Encryption</Dialog.Title>
-                </div>
+                </XStack>
                 <Dialog.Description>
                   Create an encryption passphrase to protect your journal
                   entries. This is separate from your login password. Even we
                   cannot read your encrypted journals.
                 </Dialog.Description>
-              </div>
-              <div className="space-y-4 pt-2">
-                <div className="space-y-2">
+              </YStack>
+              <YStack gap="$4" pt="$2">
+                <YStack gap="$2">
                   <Label htmlFor="passphrase">Encryption Passphrase</Label>
                   <Input
                     id="passphrase"
@@ -114,8 +126,8 @@ export function PassphraseSetupDialog({
                     onChangeText={setPassphrase}
                     placeholder="Enter a strong passphrase"
                   />
-                </div>
-                <div className="space-y-2">
+                </YStack>
+                <YStack gap="$2">
                   <Label htmlFor="confirm">Confirm Passphrase</Label>
                   <Input
                     id="confirm"
@@ -128,8 +140,12 @@ export function PassphraseSetupDialog({
                       if (e.nativeEvent.key === "Enter") void handleSetup();
                     }}
                   />
-                </div>
-                {error && <p className="text-sm text-destructive">{error}</p>}
+                </YStack>
+                {error && (
+                  <Text fontSize="$3" color="$destructive">
+                    {error}
+                  </Text>
+                )}
                 {/* Dialog-footer convention: right-aligned actions, primary
                   on the far right, dismissive (Cancel) ghost-styled on the
                   left of the pair. Both content-sized.
@@ -140,7 +156,7 @@ export function PassphraseSetupDialog({
                   a clearer UX than a silently-disabled button that gives
                   no feedback. We only disable during the in-flight save
                   to prevent double-submit. */}
-                <div className="flex justify-end gap-2">
+                <XStack justify="flex-end" gap="$2">
                   <Button intent="ghost" onPress={handleCancel}>
                     Cancel
                   </Button>
@@ -152,59 +168,63 @@ export function PassphraseSetupDialog({
                   >
                     Set Up Encryption
                   </Button>
-                </div>
-              </div>
+                </XStack>
+              </YStack>
             </>
           ) : (
             <>
-              <div className="space-y-2">
+              <YStack gap="$2">
                 <Dialog.Title>Save Your Recovery Codes</Dialog.Title>
                 <Dialog.Description>
                   If you forget your passphrase, these codes are the only way to
                   recover access to your journals. Store them somewhere safe.
                 </Dialog.Description>
-              </div>
-              <div className="space-y-4 pt-2">
-                <div className="grid grid-cols-2 gap-2 rounded-lg border bg-muted/50 p-4 font-mono text-sm">
+              </YStack>
+              <YStack gap="$4" pt="$2">
+                <Grid
+                  columns={2}
+                  gap="$2"
+                  rounded="$lg"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  bg="$muted"
+                  p="$4"
+                >
                   {recoveryCodes.map((code, i) => (
-                    <div key={i} className="text-center">
+                    <Text
+                      key={i}
+                      fontFamily="$mono"
+                      fontSize="$3"
+                      color="$color"
+                      text="center"
+                    >
                       {code}
-                    </div>
+                    </Text>
                   ))}
-                </div>
+                </Grid>
                 <Button
                   intent="outline"
-                  icon={
-                    copied ? (
-                      <Check className="size-4" />
-                    ) : (
-                      <Copy className="size-4" />
-                    )
-                  }
+                  width="100%"
+                  icon={copied ? <Check size={16} /> : <Copy size={16} />}
                   onPress={handleCopy}
-                  className="w-full"
                 >
                   {copied ? "Copied!" : "Copy to Clipboard"}
                 </Button>
-                <Label className="flex items-center gap-2 text-sm">
+                <Label flexDirection="row" items="center" gap="$2" size="$3">
                   <Checkbox
                     checked={saved}
                     onCheckedChange={(v) => setSaved(v === true)}
                   >
                     <Checkbox.Indicator>
-                      <Check className="size-3" />
+                      <Check size={12} />
                     </Checkbox.Indicator>
                   </Checkbox>
                   I have saved these recovery codes
                 </Label>
-                <Button
-                  onPress={handleDone}
-                  disabled={!saved}
-                  className="w-full"
-                >
+                <Button onPress={handleDone} disabled={!saved} width="100%">
                   Done
                 </Button>
-              </div>
+              </YStack>
             </>
           )}
         </Dialog.Content>

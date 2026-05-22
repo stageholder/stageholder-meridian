@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { Text, View, XStack } from "@stageholder/ui";
 
 const moods = [
   { value: 1, label: "Terrible", emoji: "\u{1F622}" },
@@ -15,25 +15,32 @@ interface MoodPickerProps {
 
 export function MoodPicker({ value, onChange }: MoodPickerProps) {
   return (
-    <div className="flex items-center gap-2">
-      {moods.map((mood) => (
-        <button
-          key={mood.value}
-          type="button"
-          onClick={() => onChange(mood.value)}
-          className={cn(
-            "flex h-10 w-10 items-center justify-center rounded-lg border-2 text-xl transition-colors",
-            value === mood.value
-              ? "border-primary bg-primary/10"
-              : "border-transparent hover:bg-accent",
-          )}
-          title={mood.label}
-          aria-label={mood.label}
-        >
-          {mood.emoji}
-        </button>
-      ))}
-    </div>
+    <XStack items="center" gap="$2">
+      {moods.map((mood) => {
+        const selected = value === mood.value;
+        return (
+          <View
+            key={mood.value}
+            onPress={() => onChange(mood.value)}
+            height={40}
+            width={40}
+            items="center"
+            justify="center"
+            rounded="$lg"
+            borderWidth={2}
+            transition="quick"
+            borderColor={selected ? "$primary" : "transparent"}
+            bg={selected ? "$primaryMuted" : "transparent"}
+            hoverStyle={selected ? undefined : { bg: "$accent" }}
+            title={mood.label}
+            role="button"
+            aria-label={mood.label}
+          >
+            <Text fontSize="$7">{mood.emoji}</Text>
+          </View>
+        );
+      })}
+    </XStack>
   );
 }
 
@@ -43,8 +50,8 @@ export function MoodDisplay({ mood }: { mood?: number }) {
   if (!moodData) return null;
 
   return (
-    <span title={moodData.label} className="text-lg">
+    <Text fontSize="$6" title={moodData.label}>
       {moodData.emoji}
-    </span>
+    </Text>
   );
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check } from "lucide-react";
-import { Button } from "@stageholder/ui";
+import { Button, Paragraph, Text, XStack, YStack } from "@stageholder/ui";
 
 export function CompleteStep({ onFinish }: { onFinish: () => Promise<void> }) {
   const [loading, setLoading] = useState(false);
@@ -19,24 +19,37 @@ export function CompleteStep({ onFinish }: { onFinish: () => Promise<void> }) {
   }
 
   return (
-    <div className="flex flex-col items-center text-center space-y-6">
-      <div className="flex size-16 items-center justify-center rounded-full bg-primary/10">
-        <Check className="size-8 text-primary" />
-      </div>
-      <div className="space-y-2">
-        <h2 className="text-2xl font-bold text-foreground">
+    <YStack items="center" gap="$6">
+      {/* Check badge: 64px circle, $primaryMuted bg (= bg-primary/10) */}
+      <XStack
+        width={64}
+        height={64}
+        items="center"
+        justify="center"
+        rounded={9999}
+        bg="$primaryMuted"
+      >
+        <Text color="$primary">
+          <Check size={32} />
+        </Text>
+      </XStack>
+
+      <YStack gap="$2" items="center">
+        <Text fontSize="$8" fontWeight="700" color="$color" text="center">
           You&apos;re all set!
-        </h2>
-        <p className="text-muted-foreground">
+        </Text>
+        <Paragraph fontSize="$3" color="$mutedForeground" text="center">
           You&apos;re ready to go. Start building habits, tracking tasks, and
           journaling your journey.
-        </p>
-      </div>
+        </Paragraph>
+      </YStack>
+
       {error && (
-        <p className="text-sm text-destructive" role="alert">
+        <Text fontSize="$3" color="$destructive" role="alert">
           {error}
-        </p>
+        </Text>
       )}
+
       <Button
         size="lg"
         onPress={handleFinish}
@@ -46,6 +59,6 @@ export function CompleteStep({ onFinish }: { onFinish: () => Promise<void> }) {
       >
         Go to Dashboard
       </Button>
-    </div>
+    </YStack>
   );
 }

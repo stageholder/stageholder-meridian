@@ -1,4 +1,4 @@
-import { Button } from "@stageholder/ui";
+import { Button, H2, Paragraph, YStack } from "@stageholder/ui";
 
 export function WelcomeStep({
   name,
@@ -8,19 +8,19 @@ export function WelcomeStep({
   onContinue: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center text-center space-y-6">
-      <div className="space-y-2">
-        <h2 className="text-2xl font-bold text-foreground">
+    <YStack items="center" gap="$6">
+      <YStack gap="$2" items="center">
+        <H2 fontSize="$8" fontWeight="700" color="$color" text="center">
           Welcome to Meridian, {name.split(" ")[0]}!
-        </h2>
-        <p className="text-muted-foreground">
+        </H2>
+        <Paragraph fontSize="$3" color="$mutedForeground" text="center">
           Your personal productivity companion for tasks, habits, journaling,
           and more. Let&apos;s get you set up in just a few steps.
-        </p>
-      </div>
+        </Paragraph>
+      </YStack>
       <Button size="lg" onPress={onContinue}>
         Get Started
       </Button>
-    </div>
+    </YStack>
   );
 }

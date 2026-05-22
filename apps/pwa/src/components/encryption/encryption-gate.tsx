@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button } from "@stageholder/ui";
+import { Button, Text, XStack, YStack } from "@stageholder/ui";
 import { useEncryptionStore } from "@/lib/crypto/encryption-store";
 import { PassphrasePrompt } from "./passphrase-prompt";
 import { PassphraseSetupDialog } from "./passphrase-setup-dialog";
@@ -17,9 +17,11 @@ export function EncryptionGate({ children }: { children: React.ReactNode }) {
 
   if (isLoading || !checked) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-sm text-muted-foreground">Loading...</div>
-      </div>
+      <XStack height="100%" items="center" justify="center">
+        <Text fontSize="$3" color="$mutedForeground">
+          Loading...
+        </Text>
+      </XStack>
     );
   }
 
@@ -52,24 +54,40 @@ function SetupBanner({ onSetup }: { onSetup: () => void }) {
   if (dismissed) return null;
 
   return (
-    <div className="fixed bottom-4 left-1/2 z-50 w-full max-w-md -translate-x-1/2 rounded-lg border bg-background p-4 shadow-lg">
-      <div className="flex items-start gap-3">
-        <div className="flex-1">
-          <p className="text-sm font-medium">Protect your journal</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
+    <YStack
+      position={"fixed" as never}
+      b="$3.5"
+      left="50%"
+      x="-50%"
+      z={50}
+      width="100%"
+      maxW={448}
+      rounded="$lg"
+      borderWidth={1}
+      borderColor="$borderColor"
+      bg="$background"
+      p="$4"
+      boxShadow="0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05)"
+    >
+      <XStack items="flex-start" gap="$3">
+        <YStack flex={1}>
+          <Text fontSize="$3" fontWeight="500" color="$color">
+            Protect your journal
+          </Text>
+          <Text mt="$0.5" fontSize="$1" color="$mutedForeground">
             Set up end-to-end encryption so only you can read your journal
             entries.
-          </p>
-        </div>
-        <div className="flex shrink-0 gap-2">
+          </Text>
+        </YStack>
+        <XStack shrink={0} gap="$2">
           <Button intent="ghost" size="sm" onPress={() => setDismissed(true)}>
             Later
           </Button>
           <Button size="sm" onPress={onSetup}>
             Set Up
           </Button>
-        </div>
-      </div>
-    </div>
+        </XStack>
+      </XStack>
+    </YStack>
   );
 }

@@ -1,5 +1,10 @@
 export type { TodoList, Todo } from "./todo";
-export type { Journal, JournalStatDay, JournalStats } from "./journal";
+export type {
+  Journal,
+  JournalContent,
+  JournalStatDay,
+  JournalStats,
+} from "./journal";
 export type { Habit, HabitEntry } from "./habit";
 export type { Tag } from "./tag";
 export type { Activity } from "./activity";

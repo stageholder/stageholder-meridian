@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Text, View, YStack } from "@stageholder/ui";
 import { StarVisual } from "./star-visual";
 import { LIGHT_TIERS } from "@repo/core/types/light";
 
@@ -20,24 +21,56 @@ export function LevelUpCelebration({
   }, [onDismiss]);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex cursor-pointer items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
-      onClick={onDismiss}
+    // Mount fade converted to native enter animation (animate-in fade-in
+    // duration-300 → enterStyle opacity + transition="medium"). The dark
+    // scrim (bg-black/60) has no token (intentionally theme-independent), so
+    // it rides the style hatch; backdrop-blur-sm is kept as an allowlist class
+    // (frosted glass, no token equivalent). position:fixed is web-only and
+    // omitted from Tamagui's type, so it's cast `as never` (see kit Header).
+    <View
+      position={"fixed" as never}
+      t={0}
+      r={0}
+      b={0}
+      l={0}
+      z={50}
+      cursor="pointer"
+      items="center"
+      justify="center"
+      enterStyle={{ opacity: 0 }}
+      transition="medium"
+      style={{ backgroundColor: "rgba(0, 0, 0, 0.6)" }}
+      // allowlist: backdrop-blur-sm — frosted scrim, no token equivalent
+      className="backdrop-blur-sm"
       role="button"
       tabIndex={0}
+      onPress={onDismiss}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") onDismiss();
       }}
     >
-      <div className="flex flex-col items-center gap-6 text-center">
+      <YStack items="center" gap="$6">
         <StarVisual tier={tier} size="xl" animate />
-        <div className="space-y-2">
-          <h2 className="text-2xl font-bold text-white">
+        <YStack gap="$2" items="center">
+          {/* White-on-scrim text is intentionally theme-independent — no token,
+              so the color rides the style escape hatch. */}
+          <Text
+            fontSize="$8"
+            fontWeight="700"
+            text="center"
+            style={{ color: "#ffffff" }}
+          >
             You&apos;ve become a {tierTitle}
-          </h2>
-          <p className="text-sm text-white/60">Tap to dismiss</p>
-        </div>
-      </div>
-    </div>
+          </Text>
+          <Text
+            fontSize="$3"
+            text="center"
+            style={{ color: "rgba(255, 255, 255, 0.6)" }}
+          >
+            Tap to dismiss
+          </Text>
+        </YStack>
+      </YStack>
+    </View>
   );
 }

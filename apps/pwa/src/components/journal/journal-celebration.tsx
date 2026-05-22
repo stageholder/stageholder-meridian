@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Text, View, XStack } from "@stageholder/ui";
 
 const SPARK_COLORS = [
   "oklch(0.88 0.18 85)", // bright gold
@@ -129,10 +130,16 @@ export function JournalCelebration({ trigger }: JournalCelebrationProps) {
   const allEmbers = [...embers, ...embers2];
 
   return (
-    <div
-      className="pointer-events-none absolute inset-0 z-20"
+    <View
+      pointerEvents="none"
+      position="absolute"
+      t={0}
+      r={0}
+      b={0}
+      l={0}
+      z={20}
+      overflow="hidden"
       aria-hidden="true"
-      style={{ overflow: "hidden" }}
     >
       {/* Golden flash overlay */}
       <div className="journal-celebration-flash absolute inset-0" />
@@ -185,23 +192,30 @@ export function JournalCelebration({ trigger }: JournalCelebrationProps) {
 
       {/* Target reached banner — anchored to top, no text overlap */}
       {showBanner && (
-        <div className="absolute inset-x-0 top-3 flex justify-center">
-          <div
-            className="journal-celebration-banner rounded-full px-5 py-1.5 backdrop-blur-sm"
+        <XStack position="absolute" l={0} r={0} t={12} justify="center">
+          {/* allowlist: journal-celebration-banner — bespoke celebration keyframe;
+              backdrop-blur + oklch tint have no token equivalent (CSS-var/effect viz) */}
+          <View
+            className="journal-celebration-banner backdrop-blur-sm"
+            rounded={9999}
+            px="$5"
+            py="$1.5"
             style={{
               background: "oklch(0.82 0.22 75 / 0.12)",
               border: "1px solid oklch(0.82 0.22 75 / 0.2)",
             }}
           >
-            <span
-              className="text-sm font-semibold"
+            {/* Brand-adjacent celebration gold has no token — style escape hatch. */}
+            <Text
+              fontSize="$3"
+              fontWeight="600"
               style={{ color: "oklch(0.75 0.20 65)" }}
             >
               Target Reached!
-            </span>
-          </div>
-        </div>
+            </Text>
+          </View>
+        </XStack>
       )}
-    </div>
+    </View>
   );
 }

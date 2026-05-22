@@ -7,41 +7,31 @@ import {
   useUpdateSubtask,
   useRemoveSubtask,
 } from "@/lib/api/todos";
-import { Button, IconButton, Input } from "@stageholder/ui";
-import { DatePicker } from "@/components/ui/date-picker";
+import {
+  Button,
+  DatePicker,
+  IconButton,
+  Input,
+  Separator,
+  Text,
+  View,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
+import { format } from "date-fns";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import { parseDateLocal } from "@/lib/date";
 import type { Todo } from "@repo/core/types";
 
-const priorityConfig: Record<
-  string,
-  { label: string; dotClass: string; badgeClass: string }
-> = {
-  urgent: {
-    label: "Urgent",
-    dotClass: "bg-red-500",
-    badgeClass: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-  },
-  high: {
-    label: "High",
-    dotClass: "bg-orange-500",
-    badgeClass:
-      "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-  },
-  medium: {
-    label: "Medium",
-    dotClass: "bg-yellow-500",
-    badgeClass:
-      "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-  },
-  low: {
-    label: "Low",
-    dotClass: "bg-blue-500",
-    badgeClass:
-      "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  },
-  none: { label: "None", dotClass: "bg-muted-foreground/40", badgeClass: "" },
+// Priority dot colors — fixed brand swatches matching the shadcn palette
+// (red/orange/yellow/blue-500). Decorative indicators kept as inline hex
+// (no kit token for arbitrary swatches); `none` uses the muted token.
+const priorityConfig: Record<string, { label: string; dot: string | null }> = {
+  urgent: { label: "Urgent", dot: "#ef4444" },
+  high: { label: "High", dot: "#f97316" },
+  medium: { label: "Medium", dot: "#eab308" },
+  low: { label: "Low", dot: "#3b82f6" },
+  none: { label: "None", dot: null },
 };
 
 const priorityOptions = ["urgent", "high", "medium", "low", "none"] as const;
@@ -162,9 +152,6 @@ export function TodoDetailDialog({
     );
   }
 
-  const isOverdue =
-    todo.dueDate && !isDone && parseDateLocal(todo.dueDate) < new Date();
-
   const formattedCreatedAt = new Date(todo.createdAt).toLocaleDateString(
     "en-US",
     {
@@ -186,27 +173,67 @@ export function TodoDetailDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="fixed inset-0 bg-black/50"
-        onClick={() => onOpenChange(false)}
+    <View
+      position={"fixed" as never}
+      t={0}
+      b={0}
+      l={0}
+      r={0}
+      z={50}
+      items="center"
+      justify="center"
+    >
+      <View
+        position={"fixed" as never}
+        t={0}
+        b={0}
+        l={0}
+        r={0}
+        // load-bearing modal dimming — translucent black, no token equivalent
+        bg="rgba(0,0,0,0.5)"
+        onPress={() => onOpenChange(false)}
       />
-      <div
+      <YStack
         role="dialog"
         aria-modal="true"
-        className="relative z-50 mx-4 w-full max-w-2xl rounded-xl border border-border bg-card shadow-lg max-h-[90vh] overflow-y-auto"
+        position="relative"
+        z={50}
+        mx="$4"
+        width="100%"
+        maxW={672}
+        maxH={"90vh" as never}
+        overflowY={"auto" as never}
+        rounded="$6"
+        borderWidth={1}
+        borderColor="$borderColor"
+        bg="$card"
+        boxShadow="0 16px 48px rgba(0,0,0,0.45)"
       >
         {/* Header */}
-        <div className="flex items-start gap-3 border-b border-border p-5">
-          <button
-            type="button"
-            onClick={handleToggleStatus}
-            className={cn(
-              "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-              isDone
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-muted-foreground/40 hover:border-primary",
-            )}
+        <XStack
+          items="flex-start"
+          gap="$3"
+          borderBottomWidth={1}
+          borderColor="$borderColor"
+          p="$5"
+        >
+          <View
+            onPress={handleToggleStatus}
+            mt="$0.5"
+            width={20}
+            height={20}
+            shrink={0}
+            items="center"
+            justify="center"
+            rounded={9999}
+            borderWidth={2}
+            transition="quick"
+            borderColor={isDone ? "$primary" : "$mutedForeground"}
+            bg={isDone ? "$primary" : "transparent"}
+            color={isDone ? "$primaryForeground" : "$color"}
+            hoverStyle={isDone ? undefined : { borderColor: "$primary" }}
+            role="checkbox"
+            aria-checked={isDone}
             aria-label={isDone ? "Mark as incomplete" : "Mark as complete"}
           >
             {isDone && (
@@ -224,8 +251,8 @@ export function TodoDetailDialog({
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             )}
-          </button>
-          <div className="flex-1 min-w-0">
+          </View>
+          <YStack flex={1} minW={0}>
             {editingTitle ? (
               <input
                 ref={titleRef}
@@ -246,19 +273,25 @@ export function TodoDetailDialog({
                 className="w-full bg-transparent text-base font-semibold text-foreground outline-none border-b-2 border-primary pb-0.5"
               />
             ) : (
-              <h2
-                onClick={() => setEditingTitle(true)}
-                className={cn(
-                  "text-base font-semibold text-foreground cursor-pointer rounded px-1 -mx-1 hover:bg-accent/50 transition-colors",
-                  isDone && "line-through text-muted-foreground",
-                )}
+              <Text
+                onPress={() => setEditingTitle(true)}
+                fontSize="$5"
+                fontWeight="600"
+                color={isDone ? "$mutedForeground" : "$color"}
+                textDecorationLine={isDone ? "line-through" : "none"}
+                cursor="pointer"
+                rounded="$2"
+                px="$1"
+                mx={-4}
+                transition="quick"
+                hoverStyle={{ bg: "$accent" }}
                 title="Click to edit title"
               >
                 {titleDraft}
-              </h2>
+              </Text>
             )}
             {isDone && (
-              <span className="mt-1 inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+              <XStack mt="$1" items="center" gap="$1" color="$success">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="12"
@@ -273,42 +306,64 @@ export function TodoDetailDialog({
                   <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                   <polyline points="22 4 12 14.01 9 11.01" />
                 </svg>
-                Completed
-              </span>
+                <Text fontSize="$1" color="$success">
+                  Completed
+                </Text>
+              </XStack>
             )}
-          </div>
+          </YStack>
           <IconButton
             variant="ghost"
             size="sm"
             onPress={() => onOpenChange(false)}
             aria-label="Close"
           >
-            <X className="size-4" />
+            <X size={16} />
           </IconButton>
-        </div>
+        </XStack>
 
         {/* Body — two columns */}
-        <div className="flex flex-col divide-y divide-border md:flex-row md:divide-x md:divide-y-0">
+        <YStack $md={{ flexDirection: "row" }}>
           {/* Left column: Description & Subtasks */}
-          <div className="flex-1 space-y-4 p-5 min-w-0">
+          <YStack
+            flex={1}
+            gap="$4"
+            p="$5"
+            minW={0}
+            borderBottomWidth={1}
+            borderColor="$borderColor"
+            $md={{
+              borderBottomWidth: 0,
+              borderRightWidth: 1,
+            }}
+          >
             {/* Description (editable) */}
-            <div>
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <YStack>
+              <XStack items="center" justify="space-between">
+                <Text
+                  fontSize="$1"
+                  fontWeight="500"
+                  letterSpacing={0.5}
+                  color="$mutedForeground"
+                  textTransform="uppercase"
+                >
                   Description
-                </p>
+                </Text>
                 {!editingDesc && (
-                  <button
-                    type="button"
-                    onClick={() => setEditingDesc(true)}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  <Text
+                    onPress={() => setEditingDesc(true)}
+                    cursor="pointer"
+                    fontSize="$1"
+                    color="$mutedForeground"
+                    transition="quick"
+                    hoverStyle={{ color: "$color" }}
                   >
                     {todo.description ? "Edit" : "Add"}
-                  </button>
+                  </Text>
                 )}
-              </div>
+              </XStack>
               {editingDesc ? (
-                <div className="mt-1.5">
+                <YStack mt="$1.5">
                   <textarea
                     ref={descRef}
                     value={descDraft}
@@ -326,7 +381,7 @@ export function TodoDetailDialog({
                     rows={3}
                     className="w-full resize-none rounded-md border border-border bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   />
-                  <div className="mt-1.5 flex items-center gap-2">
+                  <XStack mt="$1.5" items="center" gap="$2">
                     <Button
                       size="sm"
                       type="button"
@@ -345,50 +400,81 @@ export function TodoDetailDialog({
                     >
                       Cancel
                     </Button>
-                    <span className="ml-auto text-[10px] text-muted-foreground">
+                    <Text ml="auto" fontSize={10} color="$mutedForeground">
                       Cmd+Enter to save
-                    </span>
-                  </div>
-                </div>
+                    </Text>
+                  </XStack>
+                </YStack>
               ) : todo.description ? (
-                <p
-                  className="mt-1.5 whitespace-pre-wrap text-sm text-foreground cursor-pointer rounded-md px-2 py-1.5 -mx-2 hover:bg-accent/50 transition-colors"
-                  onClick={() => setEditingDesc(true)}
+                <Text
+                  onPress={() => setEditingDesc(true)}
+                  mt="$1.5"
+                  fontSize="$3"
+                  color="$color"
+                  cursor="pointer"
+                  rounded="$md"
+                  px="$2"
+                  py="$1.5"
+                  mx={-8}
+                  transition="quick"
+                  hoverStyle={{ bg: "$accent" }}
+                  style={{ whiteSpace: "pre-wrap" }}
                 >
                   {todo.description}
-                </p>
+                </Text>
               ) : (
-                <p
-                  className="mt-1.5 text-sm italic text-muted-foreground cursor-pointer rounded-md px-2 py-1.5 -mx-2 hover:bg-accent/50 transition-colors"
-                  onClick={() => setEditingDesc(true)}
+                <Text
+                  onPress={() => setEditingDesc(true)}
+                  mt="$1.5"
+                  fontSize="$3"
+                  fontStyle="italic"
+                  color="$mutedForeground"
+                  cursor="pointer"
+                  rounded="$md"
+                  px="$2"
+                  py="$1.5"
+                  mx={-8}
+                  transition="quick"
+                  hoverStyle={{ bg: "$accent" }}
                 >
                   Click to add a description...
-                </p>
+                </Text>
               )}
-            </div>
+            </YStack>
 
             {/* Subtasks */}
-            <div>
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <YStack>
+              <XStack items="center" justify="space-between">
+                <Text
+                  fontSize="$1"
+                  fontWeight="500"
+                  letterSpacing={0.5}
+                  color="$mutedForeground"
+                  textTransform="uppercase"
+                >
                   Subtasks
                   {todo.subtasks &&
                     todo.subtasks.length > 0 &&
                     ` ${todo.subtasks.filter((s) => s.status === "done").length}/${todo.subtasks.length}`}
-                </p>
-              </div>
+                </Text>
+              </XStack>
               {todo.subtasks && todo.subtasks.length > 0 && (
-                <div className="mt-2 space-y-1">
+                <YStack mt="$2" gap="$0.5">
                   {[...todo.subtasks]
                     .sort((a, b) => a.order - b.order)
                     .map((subtask) => (
-                      <div
+                      <XStack
                         key={subtask.id}
-                        className="group/subtask flex items-center gap-2 rounded-md px-1 py-1 hover:bg-accent/50"
+                        group
+                        items="center"
+                        gap="$2"
+                        rounded="$md"
+                        px="$1"
+                        py="$1"
+                        hoverStyle={{ bg: "$accent" }}
                       >
-                        <button
-                          type="button"
-                          onClick={() =>
+                        <View
+                          onPress={() =>
                             updateSubtask.mutate({
                               listId,
                               todoId: todo.id,
@@ -399,12 +485,36 @@ export function TodoDetailDialog({
                               },
                             })
                           }
-                          className={cn(
-                            "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
+                          width={16}
+                          height={16}
+                          shrink={0}
+                          items="center"
+                          justify="center"
+                          rounded="$2"
+                          borderWidth={1}
+                          transition="quick"
+                          borderColor={
                             subtask.status === "done"
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-muted-foreground/40 hover:border-primary",
-                          )}
+                              ? "$primary"
+                              : "$mutedForeground"
+                          }
+                          bg={
+                            subtask.status === "done"
+                              ? "$primary"
+                              : "transparent"
+                          }
+                          color={
+                            subtask.status === "done"
+                              ? "$primaryForeground"
+                              : "$color"
+                          }
+                          hoverStyle={
+                            subtask.status === "done"
+                              ? undefined
+                              : { borderColor: "$primary" }
+                          }
+                          role="checkbox"
+                          aria-checked={subtask.status === "done"}
                           aria-label={
                             subtask.status === "done"
                               ? "Mark subtask incomplete"
@@ -426,27 +536,44 @@ export function TodoDetailDialog({
                               <polyline points="20 6 9 17 4 12" />
                             </svg>
                           )}
-                        </button>
-                        <span
-                          className={cn(
-                            "flex-1 text-sm",
-                            subtask.status === "done" &&
-                              "line-through text-muted-foreground",
-                          )}
+                        </View>
+                        <Text
+                          flex={1}
+                          fontSize="$3"
+                          color={
+                            subtask.status === "done"
+                              ? "$mutedForeground"
+                              : "$color"
+                          }
+                          textDecorationLine={
+                            subtask.status === "done" ? "line-through" : "none"
+                          }
                         >
                           {subtask.title}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
+                        </Text>
+                        <View
+                          onPress={() =>
                             removeSubtask.mutate({
                               listId,
                               todoId: todo.id,
                               subtaskId: subtask.id,
                             })
                           }
-                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover/subtask:opacity-100"
+                          width={20}
+                          height={20}
+                          shrink={0}
+                          items="center"
+                          justify="center"
+                          rounded="$2"
+                          color="$mutedForeground"
+                          cursor="pointer"
+                          transition="quick"
+                          hoverStyle={{ color: "$destructive" }}
+                          opacity={1}
+                          $md={{ opacity: 0 }}
+                          $group-hover={{ opacity: 1 }}
                           aria-label="Delete subtask"
+                          role="button"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -462,13 +589,13 @@ export function TodoDetailDialog({
                             <line x1="18" x2="6" y1="6" y2="18" />
                             <line x1="6" x2="18" y1="6" y2="18" />
                           </svg>
-                        </button>
-                      </div>
+                        </View>
+                      </XStack>
                     ))}
-                </div>
+                </YStack>
               )}
               <form
-                className="mt-2"
+                style={{ marginTop: 7 }}
                 onSubmit={(e) => {
                   e.preventDefault();
                   const title = newSubtaskTitle.trim();
@@ -488,150 +615,255 @@ export function TodoDetailDialog({
                   size="$3"
                 />
               </form>
-            </div>
-          </div>
+            </YStack>
+          </YStack>
 
           {/* Right column: Task details (interactive) */}
-          <div className="w-full space-y-1 p-3 md:w-60 md:shrink-0">
+          <YStack
+            width="100%"
+            gap="$1"
+            p="$3"
+            $md={{ width: 240, flexShrink: 0 }}
+          >
             {/* Priority */}
-            <div ref={priorityRef} className="relative">
-              <p className="px-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                Priority
-              </p>
-              <button
-                type="button"
-                onClick={() => setPriorityOpen(!priorityOpen)}
-                className="mt-0.5 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
+            {/* DOM ref drives click-outside (.contains); Tamagui forwards the
+                real node on web, so cast past the TamaguiElement ref type. */}
+            <View ref={priorityRef as never} position="relative">
+              <Text
+                px="$2"
+                fontSize={10}
+                fontWeight="500"
+                letterSpacing={0.5}
+                color="$mutedForeground"
+                textTransform="uppercase"
               >
-                <span
-                  className={cn("h-2.5 w-2.5 rounded-full", priority.dotClass)}
-                />
-                <span>{priority.label}</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="ml-auto text-muted-foreground"
-                >
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
-              </button>
+                Priority
+              </Text>
+              <XStack
+                onPress={() => setPriorityOpen(!priorityOpen)}
+                cursor="pointer"
+                mt="$0.5"
+                width="100%"
+                items="center"
+                gap="$2"
+                rounded="$md"
+                px="$2"
+                py="$1.5"
+                transition="quick"
+                hoverStyle={{ bg: "$accent" }}
+              >
+                {priority.dot ? (
+                  <View
+                    width={10}
+                    height={10}
+                    rounded={9999}
+                    style={{ backgroundColor: priority.dot }}
+                  />
+                ) : (
+                  <View
+                    width={10}
+                    height={10}
+                    rounded={9999}
+                    bg="$mutedForeground"
+                  />
+                )}
+                <Text fontSize="$3" color="$color">
+                  {priority.label}
+                </Text>
+                <View ml="auto" color="$mutedForeground">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </View>
+              </XStack>
               {priorityOpen && (
-                <div className="absolute left-0 right-0 z-10 mt-1 rounded-lg border border-border bg-popover p-1 shadow-md">
+                <YStack
+                  position="absolute"
+                  l={0}
+                  r={0}
+                  z={10}
+                  mt="$1"
+                  rounded="$lg"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  bg="$popover"
+                  p="$1"
+                  boxShadow="0 8px 24px rgba(0,0,0,0.18)"
+                >
                   {priorityOptions.map((key) => {
                     const p = priorityConfig[key]!;
                     return (
-                      <button
+                      <XStack
                         key={key}
-                        type="button"
-                        onClick={() => {
+                        onPress={() => {
                           handleUpdateField({ priority: key });
                           setPriorityOpen(false);
                         }}
-                        className={cn(
-                          "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-accent",
-                          todo.priority === key && "bg-accent",
-                        )}
+                        cursor="pointer"
+                        width="100%"
+                        items="center"
+                        gap="$2"
+                        rounded="$md"
+                        px="$2"
+                        py="$1.5"
+                        transition="quick"
+                        bg={todo.priority === key ? "$accent" : "transparent"}
+                        hoverStyle={{ bg: "$accent" }}
                       >
-                        <span
-                          className={cn("h-2.5 w-2.5 rounded-full", p.dotClass)}
-                        />
-                        <span>{p.label}</span>
-                        {todo.priority === key && (
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="12"
-                            height="12"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="ml-auto text-primary"
-                          >
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
+                        {p.dot ? (
+                          <View
+                            width={10}
+                            height={10}
+                            rounded={9999}
+                            style={{ backgroundColor: p.dot }}
+                          />
+                        ) : (
+                          <View
+                            width={10}
+                            height={10}
+                            rounded={9999}
+                            bg="$mutedForeground"
+                          />
                         )}
-                      </button>
+                        <Text fontSize="$3" color="$color">
+                          {p.label}
+                        </Text>
+                        {todo.priority === key && (
+                          <View ml="auto" color="$primary">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          </View>
+                        )}
+                      </XStack>
                     );
                   })}
-                </div>
+                </YStack>
               )}
-            </div>
+            </View>
 
-            <div className="!mt-3 border-t border-border" />
+            <Separator mt="$3" />
 
             {/* Due Date */}
-            <div>
-              <p className="px-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <YStack>
+              <Text
+                px="$2"
+                fontSize={10}
+                fontWeight="500"
+                letterSpacing={0.5}
+                color="$mutedForeground"
+                textTransform="uppercase"
+              >
                 Due Date
-              </p>
-              <div className="mt-0.5 px-1">
+              </Text>
+              <View mt="$0.5" px="$1">
                 <DatePicker
-                  value={todo.dueDate ?? ""}
-                  onChange={(value) =>
-                    handleUpdateField({ dueDate: value || null })
+                  value={todo.dueDate ? parseDateLocal(todo.dueDate) : null}
+                  onChange={(d) =>
+                    handleUpdateField({
+                      dueDate: d ? format(d, "yyyy-MM-dd") : null,
+                    })
                   }
                   placeholder="Set due date"
-                  clearable
-                  className={cn(
-                    "h-8 w-full text-xs",
-                    isOverdue &&
-                      "border-red-500/50 text-red-600 dark:text-red-400",
-                  )}
+                  showClear
                 />
-              </div>
-            </div>
+              </View>
+            </YStack>
 
             {/* Do Date */}
-            <div>
-              <p className="px-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <YStack>
+              <Text
+                px="$2"
+                fontSize={10}
+                fontWeight="500"
+                letterSpacing={0.5}
+                color="$mutedForeground"
+                textTransform="uppercase"
+              >
                 Do Date
-              </p>
-              <div className="mt-0.5 px-1">
+              </Text>
+              <View mt="$0.5" px="$1">
                 <DatePicker
-                  value={todo.doDate ?? ""}
-                  onChange={(value) =>
-                    handleUpdateField({ doDate: value || null })
+                  value={todo.doDate ? parseDateLocal(todo.doDate) : null}
+                  onChange={(d) =>
+                    handleUpdateField({
+                      doDate: d ? format(d, "yyyy-MM-dd") : null,
+                    })
                   }
                   placeholder="Set do date"
-                  clearable
-                  className="h-8 w-full text-xs"
+                  showClear
                 />
-              </div>
-            </div>
+              </View>
+            </YStack>
 
             {/* Timestamps & Delete */}
-            <div className="!mt-3 space-y-2 border-t border-border pt-3">
-              <div className="flex items-center justify-between px-2">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <Separator mt="$3" />
+            <YStack mt="$3" gap="$2">
+              <XStack items="center" justify="space-between" px="$2">
+                <Text
+                  fontSize={10}
+                  fontWeight="500"
+                  letterSpacing={0.5}
+                  color="$mutedForeground"
+                  textTransform="uppercase"
+                >
                   Created
-                </span>
-                <span className="text-xs text-muted-foreground">
+                </Text>
+                <Text fontSize="$1" color="$mutedForeground">
                   {formattedCreatedAt}
-                </span>
-              </div>
-              <div className="flex items-center justify-between px-2">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                </Text>
+              </XStack>
+              <XStack items="center" justify="space-between" px="$2">
+                <Text
+                  fontSize={10}
+                  fontWeight="500"
+                  letterSpacing={0.5}
+                  color="$mutedForeground"
+                  textTransform="uppercase"
+                >
                   Updated
-                </span>
-                <span className="text-xs text-muted-foreground">
+                </Text>
+                <Text fontSize="$1" color="$mutedForeground">
                   {formattedUpdatedAt}
-                </span>
-              </div>
-            </div>
+                </Text>
+              </XStack>
+            </YStack>
 
-            <button
-              type="button"
-              onClick={handleDelete}
-              className="!mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+            <XStack
+              onPress={handleDelete}
+              cursor="pointer"
+              mt="$3"
+              width="100%"
+              items="center"
+              justify="center"
+              gap="$1.5"
+              rounded="$lg"
+              px="$3"
+              py="$1.5"
+              transition="quick"
+              color="$destructive"
+              hoverStyle={{ bg: "$destructiveMuted" }}
+              role="button"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -648,11 +880,13 @@ export function TodoDetailDialog({
                 <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
                 <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
               </svg>
-              Delete
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+              <Text fontSize="$1" fontWeight="500" color="$destructive">
+                Delete
+              </Text>
+            </XStack>
+          </YStack>
+        </YStack>
+      </YStack>
+    </View>
   );
 }

@@ -3,7 +3,7 @@ import { generateJSON } from "@tiptap/html";
 import type { JSONContent } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Placeholder } from "@tiptap/extensions";
-import { RichTextEditor, Text, XStack, YStack } from "@stageholder/ui";
+import { RichTextEditor, Text, YStack } from "@stageholder/ui";
 import { countWordsFromContent } from "@repo/core/utils/text";
 import type { JournalContent } from "@repo/core/types";
 import { useUserLight } from "@/lib/api/light";
@@ -201,7 +201,7 @@ export function JournalEditor({
     ) : null;
 
   return (
-    <div className="relative flex flex-1 flex-col overflow-hidden">
+    <YStack position="relative" flex={1} overflow="hidden">
       {/* Celebration overlay — covers the entire editor */}
       <JournalCelebration trigger={celebrationTrigger} />
 
@@ -249,7 +249,7 @@ export function JournalEditor({
           toolbarSlot={headerCluster}
         />
       </YStack>
-    </div>
+    </YStack>
   );
 }
 

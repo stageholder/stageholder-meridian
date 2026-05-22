@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import { Flame } from "lucide-react";
+import { H1, Paragraph, Text, XStack, YStack } from "@stageholder/ui";
 import { useUser } from "@/hooks/use-user";
 import { useUserLight } from "@/lib/api/light";
 
@@ -20,22 +21,43 @@ export function GreetingBar() {
   const streak = userLight?.perfectDayStreak ?? 0;
 
   return (
-    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+    <YStack
+      gap="$1"
+      $sm={{ flexDirection: "row", items: "center", justify: "space-between" }}
+    >
+      <YStack>
+        <H1 fontSize="$8" fontWeight="700" letterSpacing={-0.5} color="$color">
           {greeting}
           {user?.name ? `, ${user.name.split(" ")[0]}` : ""}
-        </h1>
-        <p className="text-sm text-muted-foreground">{dateStr}</p>
-      </div>
+        </H1>
+        <Paragraph fontSize="$3" color="$mutedForeground">
+          {dateStr}
+        </Paragraph>
+      </YStack>
       {streak > 0 && (
-        <div className="flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-          <Flame className="h-4 w-4" />
-          <span className="text-sm font-semibold tabular-nums">
+        // Streak pill: amber/warning surface → kit warning tokens
+        // ($warningMuted tint + $warning text), theme-aware in both modes.
+        <XStack
+          items="center"
+          gap="$1.5"
+          rounded={9999}
+          bg="$warningMuted"
+          px="$3"
+          py="$1.5"
+        >
+          <Text color="$warning" lineHeight={0}>
+            <Flame size={16} />
+          </Text>
+          <Text
+            fontSize="$3"
+            fontWeight="600"
+            color="$warning"
+            style={{ fontVariant: ["tabular-nums"] }}
+          >
             {streak} day streak
-          </span>
-        </div>
+          </Text>
+        </XStack>
       )}
-    </div>
+    </YStack>
   );
 }

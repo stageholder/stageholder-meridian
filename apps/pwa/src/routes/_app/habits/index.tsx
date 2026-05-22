@@ -2,11 +2,21 @@ import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { Plus, Target } from "lucide-react";
-import { Button, EmptyState } from "@stageholder/ui";
+import {
+  Button,
+  DatePicker,
+  EmptyState,
+  H1,
+  Paragraph,
+  Text,
+  View,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 import { useHabits } from "@/lib/api/habits";
 import { HabitCard } from "@/components/habits/habit-card";
 import { CreateHabitDialog } from "@/components/habits/create-habit-dialog";
-import { DatePicker } from "@/components/ui/date-picker";
+import { parseDateLocal } from "@/lib/date";
 import type { Habit } from "@repo/core/types";
 
 export const Route = createFileRoute("/_app/habits/")({
@@ -22,82 +32,156 @@ function HabitsPage() {
   const isViewingToday = selectedDate === todayStr;
 
   return (
-    <div className="space-y-6 p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Habits</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+    <YStack gap="$6" p="$4">
+      <XStack items="center" justify="space-between">
+        <YStack>
+          <H1 fontSize="$8" fontWeight="700" color="$color">
+            Habits
+          </H1>
+          <Paragraph mt="$0.5" fontSize="$3" color="$mutedForeground">
             Track your daily habits and build streaks.
-          </p>
-        </div>
+          </Paragraph>
+        </YStack>
         <Button
           icon={<Plus size={16} />}
           onPress={() => setShowCreateDialog(true)}
         >
           New Habit
         </Button>
-      </div>
+      </XStack>
 
       {/* Date selector */}
-      <div className="flex items-center gap-3">
+      <XStack items="center" gap="$3">
         <DatePicker
-          value={selectedDate}
-          onChange={(v) => setSelectedDate(v || todayStr)}
+          value={selectedDate ? parseDateLocal(selectedDate) : null}
+          onChange={(d) =>
+            setSelectedDate(d ? format(d, "yyyy-MM-dd") : todayStr)
+          }
           placeholder="Select date"
-          clearable={false}
-          maxDate={new Date()}
-          className="w-auto"
+          isDateDisabled={(d) => d > new Date()}
         />
         {!isViewingToday && (
-          <button
-            onClick={() => setSelectedDate(todayStr)}
-            className="rounded-md px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10"
+          <Text
+            tag="button"
+            rounded="$md"
+            px="$3"
+            py="$1.5"
+            fontSize="$1"
+            fontWeight="500"
+            color="$primary"
+            hoverStyle={{ bg: "$primaryMuted" }}
+            onPress={() => setSelectedDate(todayStr)}
           >
             Back to today
-          </button>
+          </Text>
         )}
         {!isViewingToday && (
-          <span className="text-xs text-muted-foreground">
+          <Text fontSize="$1" color="$mutedForeground">
             Viewing:{" "}
             {format(new Date(selectedDate + "T00:00:00"), "EEEE, MMM d, yyyy")}
-          </span>
+          </Text>
         )}
-      </div>
+      </XStack>
 
       {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <View
+          display="grid"
+          gap="$4"
+          gridTemplateColumns={"1fr" as never}
+          $sm={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" as never }}
+          $lg={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" as never }}
+        >
           {[1, 2, 3].map((i) => (
-            <div
+            <YStack
               key={i}
-              className="rounded-xl border border-border bg-card p-5"
+              rounded="$6"
+              borderWidth={1}
+              borderColor="$borderColor"
+              bg="$card"
+              p="$5"
             >
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 animate-pulse rounded-lg bg-muted" />
-                <div className="space-y-2">
-                  <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-                  <div className="h-3 w-32 animate-pulse rounded bg-muted" />
-                </div>
-              </div>
-              <div className="mt-4 space-y-2">
-                <div className="h-2 w-full animate-pulse rounded-full bg-muted" />
-              </div>
-              <div className="mt-3 flex justify-between">
+              <XStack items="center" gap="$3">
+                {/* allowlist: animate-pulse keyframe (Tailwind/globals) */}
+                <View
+                  height={40}
+                  width={40}
+                  rounded="$lg"
+                  bg="$muted"
+                  className="animate-pulse"
+                />
+                <YStack gap="$2">
+                  <View
+                    height={16}
+                    width={96}
+                    rounded="$sm"
+                    bg="$muted"
+                    className="animate-pulse"
+                  />
+                  <View
+                    height={13}
+                    width={128}
+                    rounded="$sm"
+                    bg="$muted"
+                    className="animate-pulse"
+                  />
+                </YStack>
+              </XStack>
+              <YStack mt="$4" gap="$2">
+                <View
+                  height={8}
+                  width="100%"
+                  rounded={9999}
+                  bg="$muted"
+                  className="animate-pulse"
+                />
+              </YStack>
+              <XStack mt="$3" justify="space-between">
                 {[1, 2, 3, 4, 5, 6, 7].map((d) => (
-                  <div key={d} className="flex flex-col items-center gap-1">
-                    <div className="h-2.5 w-2.5 animate-pulse rounded bg-muted" />
-                    <div className="h-3.5 w-3.5 animate-pulse rounded-full bg-muted" />
-                  </div>
+                  <YStack key={d} items="center" gap="$1">
+                    <View
+                      height={10}
+                      width={10}
+                      rounded="$sm"
+                      bg="$muted"
+                      className="animate-pulse"
+                    />
+                    <View
+                      height={14}
+                      width={14}
+                      rounded={9999}
+                      bg="$muted"
+                      className="animate-pulse"
+                    />
+                  </YStack>
                 ))}
-              </div>
-              <div className="mt-4 flex items-center justify-between">
-                <div className="h-3 w-16 animate-pulse rounded bg-muted" />
-                <div className="h-7 w-16 animate-pulse rounded-lg bg-muted" />
-              </div>
-            </div>
+              </XStack>
+              <XStack mt="$4" items="center" justify="space-between">
+                <View
+                  height={13}
+                  width={64}
+                  rounded="$sm"
+                  bg="$muted"
+                  className="animate-pulse"
+                />
+                <View
+                  height={28}
+                  width={64}
+                  rounded="$lg"
+                  bg="$muted"
+                  className="animate-pulse"
+                />
+              </XStack>
+            </YStack>
           ))}
-        </div>
+        </View>
       ) : habits && habits.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <View
+          display="grid"
+          gap="$4"
+          gridTemplateColumns={"1fr" as never}
+          $sm={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" as never }}
+          $lg={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" as never }}
+        >
           {habits.map((habit: Habit) => (
             <HabitCard
               key={habit.id}
@@ -105,11 +189,11 @@ function HabitsPage() {
               selectedDate={isViewingToday ? undefined : selectedDate}
             />
           ))}
-        </div>
+        </View>
       ) : (
         <EmptyState>
           <EmptyState.IconSlot>
-            <Target className="size-5 text-muted-foreground" />
+            <Target size={20} />
           </EmptyState.IconSlot>
           <EmptyState.Title>No habits yet</EmptyState.Title>
           <EmptyState.Description>
@@ -122,6 +206,6 @@ function HabitsPage() {
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
       />
-    </div>
+    </YStack>
   );
 }

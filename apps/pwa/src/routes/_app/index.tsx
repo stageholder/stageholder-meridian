@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { format } from "date-fns";
+import { View } from "@stageholder/ui";
 import { ActivityRings } from "@/components/activity-rings";
 import { useUserLight } from "@/lib/api/light";
 import { LevelProgress } from "@/components/light/level-progress";
@@ -23,15 +24,29 @@ function DashboardPage() {
   const { levelUpTier, dismiss } = useLevelUp(userLight);
 
   return (
-    <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 lg:grid-cols-12 lg:p-6">
+    <View
+      display="grid"
+      gap="$4"
+      p="$4"
+      gridTemplateColumns={"1fr" as never}
+      $md={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" as never }}
+      $lg={{
+        gridTemplateColumns: "repeat(12, minmax(0, 1fr))" as never,
+        p: "$5",
+      }}
+    >
       {/* Row 1: Greeting */}
-      <div className="col-span-full animate-[bento-enter_0.4s_ease-out_both]">
+      {/* allowlist: bento-enter keyframe (globals.css); col-span-full = CSS grid placement (no token equivalent) */}
+      <View className="col-span-full animate-[bento-enter_0.4s_ease-out_both]">
         <GreetingBar />
-      </div>
+      </View>
 
       {/* Row 2: Activity Rings + Level | Weekly Activity Chart */}
       <BentoCard index={1} className="md:col-span-1 lg:col-span-5">
-        <Link to="/journey" className="block">
+        <Link
+          to="/journey"
+          style={{ display: "block", textDecoration: "none" }}
+        >
           <ActivityRings date={today} size="xl" showLabels bare />
           {userLight && (
             <LevelProgress userLight={userLight} className="mt-4" />
@@ -63,6 +78,6 @@ function DashboardPage() {
       {levelUpTier && (
         <LevelUpCelebration tier={levelUpTier} onDismiss={dismiss} />
       )}
-    </div>
+    </View>
   );
 }

@@ -1,11 +1,7 @@
-import { cn } from "@/lib/utils";
 import { Flame } from "lucide-react";
+import { Text, View, XStack, YStack } from "@stageholder/ui";
 import type { UserLight } from "@repo/core/types/light";
-import {
-  getNextTier,
-  getTierProgress,
-  LIGHT_TIERS,
-} from "@repo/core/types/light";
+import { getNextTier, getTierProgress } from "@repo/core/types/light";
 
 interface LevelProgressProps {
   userLight: UserLight;
@@ -25,47 +21,69 @@ export function LevelProgress({ userLight, className }: LevelProgressProps) {
   const nextTier = getNextTier(currentTier);
   const progress = getTierProgress(totalLight, currentTier);
 
-  const currentTierData = LIGHT_TIERS[currentTier - 1];
-  const lightInTier = totalLight - (currentTierData?.lightRequired ?? 0);
-  const tierRange = nextTier
-    ? nextTier.lightRequired - (currentTierData?.lightRequired ?? 0)
-    : 0;
-
   return (
-    <div className={cn("w-full space-y-2", className)}>
+    // `className` is forwarded so the route's layout classes (mt-*/w-full)
+    // still apply until Batch 2 converts those callers.
+    <YStack width="100%" gap="$2" className={className}>
       {/* Top row: current title — next title */}
-      <div className="flex items-center justify-between text-sm">
-        <span className="font-semibold text-foreground">{currentTitle}</span>
+      <XStack items="center" justify="space-between">
+        <Text fontSize="$3" fontWeight="600" color="$color">
+          {currentTitle}
+        </Text>
         {nextTier && (
-          <span className="text-muted-foreground">{nextTier.title}</span>
+          <Text fontSize="$3" color="$mutedForeground">
+            {nextTier.title}
+          </Text>
         )}
-      </div>
+      </XStack>
 
-      {/* Progress bar */}
-      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-400 transition-all duration-500"
-          style={{ width: `${progress}%` }}
+      {/* Progress bar — gold gradient fill has no kit token, so the track
+          uses $muted and the fill rides the style escape hatch. */}
+      <View
+        height={8}
+        width="100%"
+        overflow="hidden"
+        rounded={9999}
+        bg="$muted"
+      >
+        <View
+          height="100%"
+          rounded={9999}
+          transition="slow"
+          width={`${progress}%`}
+          style={{
+            background: "linear-gradient(to right, #f59e0b, #fbbf24)",
+          }}
         />
-      </div>
+      </View>
 
       {/* Bottom row: light count — streak */}
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span className="tabular-nums">
+      <XStack items="center" justify="space-between">
+        <Text
+          fontSize="$1"
+          color="$mutedForeground"
+          style={{ fontVariantNumeric: "tabular-nums" }}
+        >
           {nextTier
             ? `${totalLight.toLocaleString()} / ${nextTier.lightRequired.toLocaleString()} Light`
             : `${totalLight.toLocaleString()} Light (Max)`}
-        </span>
+        </Text>
         {perfectDayStreak > 0 && (
-          <span className="flex items-center gap-1">
-            <Flame className="h-3 w-3 text-amber-500" />
-            <span className="tabular-nums">
+          <XStack items="center" gap="$1">
+            <Text lineHeight={0} style={{ color: "#f59e0b" }}>
+              <Flame size={12} />
+            </Text>
+            <Text
+              fontSize="$1"
+              color="$mutedForeground"
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
               {getMultiplierDisplay(perfectDayStreak)} streak {perfectDayStreak}
               d
-            </span>
-          </span>
+            </Text>
+          </XStack>
         )}
-      </div>
-    </div>
+      </XStack>
+    </YStack>
   );
 }

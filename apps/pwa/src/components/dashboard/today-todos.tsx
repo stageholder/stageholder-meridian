@@ -1,18 +1,22 @@
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { Text, View, XStack, YStack } from "@stageholder/ui";
 import { parseDateLocal } from "@/lib/date";
 import { useAllTodos, useUpdateTodo } from "@/lib/api/todos";
 import { useTodoStats } from "@/lib/hooks/use-todo-stats";
 import { BentoCard } from "./bento-card";
 import type { Todo } from "@repo/core/types";
 
-const PRIORITY_COLORS: Record<string, string> = {
-  urgent: "bg-red-500",
-  high: "bg-orange-500",
-  medium: "bg-yellow-500",
-  low: "bg-blue-400",
-};
+// Priority dot tokens. shadcn used per-color bg-{red/orange/yellow/blue};
+// mapped onto the kit intent palette (urgent→destructive, high/medium→warning
+// amber, low→primary azure) — same mapping as todo-item.tsx. `as const` keeps
+// the values literal so they satisfy strict color-prop typing.
+const PRIORITY_COLORS = {
+  urgent: "$destructive",
+  high: "$warning",
+  medium: "$warning",
+  low: "$primary",
+} as const;
 
 export function TodayTodos({
   index = 0,
@@ -51,72 +55,110 @@ export function TodayTodos({
       index={index}
       className={className}
       action={
-        <div className="flex items-center gap-2">
+        <XStack items="center" gap="$2">
           {total > 0 && (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+            <Text
+              rounded={9999}
+              bg="$muted"
+              px="$2"
+              py="$0.5"
+              fontSize="$1"
+              fontWeight="500"
+              color="$mutedForeground"
+            >
               {todayTodos.length} due
-            </span>
+            </Text>
           )}
-          <Link to="/todos" className="text-xs text-primary hover:underline">
-            View all
+          <Link to="/todos" style={{ textDecoration: "none" }}>
+            <Text
+              fontSize="$1"
+              color="$primary"
+              hoverStyle={{ textDecorationLine: "underline" }}
+            >
+              View all
+            </Text>
           </Link>
-        </div>
+        </XStack>
       }
     >
       {total > 0 && (
-        <div className="mb-3 flex items-center gap-2">
-          <div className="h-1.5 flex-1 rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
+        <XStack mb="$3" items="center" gap="$2">
+          <View height={6} flex={1} rounded={9999} bg="$muted">
+            <View
+              height="100%"
+              rounded={9999}
+              bg="$primary"
+              transition="medium"
               style={{ width: `${percentage}%` }}
             />
-          </div>
-          <span className="text-xs text-muted-foreground tabular-nums">
+          </View>
+          <Text
+            fontSize="$1"
+            color="$mutedForeground"
+            style={{ fontVariant: ["tabular-nums"] }}
+          >
             {percentage}%
-          </span>
-        </div>
+          </Text>
+        </XStack>
       )}
 
-      <div className="space-y-2">
+      <YStack gap="$2">
         {isLoading ? (
-          <p className="text-xs text-muted-foreground">Loading...</p>
+          <Text fontSize="$1" color="$mutedForeground">
+            Loading...
+          </Text>
         ) : todayTodos.length > 0 ? (
           todayTodos.slice(0, 5).map((todo: Todo) => {
             const isOverdue = todo.dueDate
               ? parseDateLocal(todo.dueDate) < parseDateLocal(today)
               : false;
+            const priorityColor =
+              todo.priority &&
+              PRIORITY_COLORS[todo.priority as keyof typeof PRIORITY_COLORS];
             return (
-              <div key={todo.id} className="flex items-center gap-3">
-                <button
-                  onClick={() => handleToggle(todo)}
-                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 border-muted-foreground/40 hover:border-primary"
+              <XStack key={todo.id} items="center" gap="$3">
+                <View
+                  onPress={() => handleToggle(todo)}
+                  height={16}
+                  width={16}
+                  shrink={0}
+                  items="center"
+                  justify="center"
+                  rounded={9999}
+                  borderWidth={2}
+                  borderColor="$mutedForeground"
+                  cursor="pointer"
+                  transition="quick"
+                  hoverStyle={{ borderColor: "$primary" }}
+                  role="checkbox"
                   aria-label="Mark as complete"
                 />
-                {todo.priority && PRIORITY_COLORS[todo.priority] && (
-                  <span
-                    className={cn(
-                      "h-2 w-2 shrink-0 rounded-full",
-                      PRIORITY_COLORS[todo.priority],
-                    )}
+                {priorityColor && (
+                  <View
+                    height={8}
+                    width={8}
+                    shrink={0}
+                    rounded={9999}
+                    bg={priorityColor}
                   />
                 )}
-                <span className="flex-1 truncate text-sm text-foreground">
+                <Text flex={1} numberOfLines={1} fontSize="$3" color="$color">
                   {todo.title}
-                </span>
+                </Text>
                 {isOverdue && (
-                  <span className="text-xs text-red-600 dark:text-red-400">
+                  <Text fontSize="$1" color="$destructive">
                     Overdue
-                  </span>
+                  </Text>
                 )}
-              </div>
+              </XStack>
             );
           })
         ) : (
-          <p className="text-xs text-muted-foreground">
+          <Text fontSize="$1" color="$mutedForeground">
             No todos due today. You&apos;re all caught up!
-          </p>
+          </Text>
         )}
-      </div>
+      </YStack>
     </BentoCard>
   );
 }

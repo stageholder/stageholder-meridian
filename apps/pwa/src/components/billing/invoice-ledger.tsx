@@ -5,7 +5,16 @@ import {
   useStageholder,
 } from "@stageholder/sdk/spa";
 import { Download, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import {
+  Button,
+  H2,
+  Paragraph,
+  Skeleton,
+  Text,
+  View,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 
 /**
  * Invoice list rendered as a vintage logbook. Mono header row, hairline
@@ -27,32 +36,50 @@ export function InvoiceLedger({
   const { data, isLoading, isError } = useInvoices(orgId);
 
   return (
-    <section
-      className={cn(
-        "relative rounded-[32px] border border-border/70 bg-card/85 backdrop-blur-sm",
-        "p-8 md:p-10",
-        "billing-reveal billing-stagger-3",
-      )}
+    <View
+      tag="section"
+      position="relative"
+      rounded={32}
+      borderWidth={1}
+      borderColor="$borderColor"
+      bg="$card"
+      p="$6"
+      $md={{ p: "$7" }}
+      // allowlist: billing-reveal / billing-stagger-3 — staggered section
+      // reveal keyframe shared across the billing dashboard (no token equiv).
+      className="billing-reveal billing-stagger-3"
     >
       {/* Header */}
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-border/70 pb-5">
-        <div className="space-y-1">
-          <h2
-            className="text-2xl tracking-tight"
+      <XStack
+        tag="header"
+        mb="$6"
+        flexWrap="wrap"
+        items="flex-end"
+        justify="space-between"
+        gap="$3"
+        borderBottomWidth={1}
+        borderColor="$borderColor"
+        pb="$3"
+      >
+        <YStack gap="$1">
+          <H2
+            fontSize="$8"
+            letterSpacing={-0.5}
+            // Display serif lives only as a CSS var (no kit font token).
             style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
           >
             Invoices
-          </h2>
-          <p className="text-sm text-muted-foreground">
+          </H2>
+          <Text fontSize="$3" color="$mutedForeground">
             All past charges and downloadable receipts.
-          </p>
-        </div>
+          </Text>
+        </YStack>
         {(data?.length ?? 0) > 0 && (
-          <p className="text-xs text-muted-foreground">
+          <Text fontSize="$1" color="$mutedForeground">
             {data?.length} {data?.length === 1 ? "invoice" : "invoices"}
-          </p>
+          </Text>
         )}
-      </header>
+      </XStack>
 
       {/* Body branches */}
       {!canManage && state.status === "authenticated" ? (
@@ -70,41 +97,87 @@ export function InvoiceLedger({
       ) : !data || data.length === 0 ? (
         <EmptyLedger changePlanHref={changePlanHref} />
       ) : (
-        <ol className="space-y-0">
-          <li className="grid grid-cols-[1fr_1fr_1fr_auto] gap-6 border-b border-border/60 pb-3 text-xs font-medium text-muted-foreground">
-            <span>Date</span>
-            <span>Reason</span>
-            <span>Amount</span>
-            <span className="justify-self-end">Receipt</span>
-          </li>
-          {data.map((inv) => (
-            <li
-              key={inv.id}
-              className={cn(
-                "grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-6",
-                "border-b border-border/40 py-4",
-                "transition-colors hover:bg-foreground/3",
-              )}
+        <YStack>
+          <XStack
+            gap="$5"
+            borderBottomWidth={1}
+            borderColor="$borderColor"
+            pb="$3"
+          >
+            <Text
+              flex={1}
+              fontSize="$1"
+              fontWeight="500"
+              color="$mutedForeground"
             >
-              <span className="font-mono text-[12px] tabular-nums text-foreground">
+              Date
+            </Text>
+            <Text
+              flex={1}
+              fontSize="$1"
+              fontWeight="500"
+              color="$mutedForeground"
+            >
+              Reason
+            </Text>
+            <Text
+              flex={1}
+              fontSize="$1"
+              fontWeight="500"
+              color="$mutedForeground"
+            >
+              Amount
+            </Text>
+            <Text
+              fontSize="$1"
+              fontWeight="500"
+              color="$mutedForeground"
+              text="right"
+            >
+              Receipt
+            </Text>
+          </XStack>
+          {data.map((inv) => (
+            <XStack
+              key={inv.id}
+              items="center"
+              gap="$5"
+              borderBottomWidth={1}
+              borderColor="$borderColor"
+              py="$4"
+              transition="quick"
+              hoverStyle={{ bg: "$accent" }}
+            >
+              <Text flex={1} fontFamily="$mono" fontSize="$1" color="$color">
                 {new Date(inv.createdAt).toLocaleDateString(undefined, {
                   day: "2-digit",
                   month: "short",
                   year: "numeric",
                 })}
-              </span>
-              <span className="text-[13px] capitalize text-foreground/85">
+              </Text>
+              <Text
+                flex={1}
+                fontSize="$3"
+                color="$color"
+                textTransform="capitalize"
+              >
                 {humanReason(inv.billingReason)}
-              </span>
-              <span className="font-mono text-[14px] font-medium tabular-nums text-foreground">
+              </Text>
+              <Text
+                flex={1}
+                fontFamily="$mono"
+                fontSize="$3"
+                fontWeight="500"
+                color="$color"
+              >
                 {inv.totalFormatted}
-              </span>
+              </Text>
               <DownloadButton orgId={orgId} orderId={inv.id} />
-            </li>
+            </XStack>
           ))}
-        </ol>
+        </YStack>
       )}
-    </section>
+    </View>
   );
 }
 
@@ -123,10 +196,19 @@ function DownloadButton({
 }) {
   const [pending, setPending] = useState(false);
   return (
-    <button
-      type="button"
+    <Button
+      intent="outline"
+      size="sm"
       disabled={!orgId || pending}
-      onClick={async () => {
+      icon={
+        pending ? (
+          // allowlist: animate-spin — loading spinner, no token equivalent
+          <Loader2 className="animate-spin" size={14} strokeWidth={2} />
+        ) : (
+          <Download size={14} strokeWidth={2} />
+        )
+      }
+      onPress={async () => {
         if (!orgId) return;
         setPending(true);
         try {
@@ -144,78 +226,91 @@ function DownloadButton({
           setPending(false);
         }
       }}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border border-border/80 px-3 py-1.5 text-xs font-medium text-foreground/80",
-        "transition-colors hover:border-foreground/80 hover:bg-foreground hover:text-background",
-        "disabled:pointer-events-none disabled:opacity-50",
-      )}
     >
-      {pending ? (
-        <Loader2 className="size-3.5 animate-spin" strokeWidth={2} />
-      ) : (
-        <Download className="size-3.5" strokeWidth={2} />
-      )}
       Download
-    </button>
+    </Button>
   );
 }
 
 function NoticePanel({ headline, body }: { headline: string; body: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border/80 bg-muted/20 p-6">
-      <p
-        className="text-base tracking-tight"
+    <YStack
+      rounded={16}
+      borderWidth={1}
+      borderStyle="dashed"
+      borderColor="$borderColor"
+      bg="$muted"
+      p="$6"
+    >
+      <Text
+        fontSize="$5"
+        letterSpacing={-0.3}
         style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
       >
         {headline}
-      </p>
-      <p className="mt-2 max-w-md text-[13px] leading-relaxed text-muted-foreground">
+      </Text>
+      <Paragraph mt="$2" maxW={448} fontSize="$3" color="$mutedForeground">
         {body}
-      </p>
-    </div>
+      </Paragraph>
+    </YStack>
   );
 }
 
 function EmptyLedger({ changePlanHref }: { changePlanHref: string }) {
   return (
-    <div className="grid items-center gap-6 rounded-2xl border border-dashed border-border/80 bg-background/40 p-8 sm:grid-cols-[1fr_auto]">
-      <div>
-        <p
-          className="text-lg tracking-tight"
+    <XStack
+      flexWrap="wrap"
+      items="center"
+      justify="space-between"
+      gap="$6"
+      rounded={16}
+      borderWidth={1}
+      borderStyle="dashed"
+      borderColor="$borderColor"
+      bg="$background"
+      p="$7"
+    >
+      <YStack flex={1} minW={240}>
+        <Text
+          fontSize="$6"
+          letterSpacing={-0.3}
           style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
         >
           No invoices yet
-        </p>
-        <p className="mt-1.5 max-w-md text-[13px] leading-relaxed text-muted-foreground">
+        </Text>
+        <Paragraph mt="$1.5" maxW={448} fontSize="$3" color="$mutedForeground">
           You&rsquo;re on the Free plan. Once you upgrade, every invoice will
           appear here as a downloadable PDF.
-        </p>
-      </div>
-      <a
-        href={changePlanHref}
-        className="inline-flex h-11 items-center justify-center rounded-full bg-foreground px-5 text-sm font-medium text-background transition-opacity hover:opacity-90"
-      >
-        See plans
+        </Paragraph>
+      </YStack>
+      {/* External-style anchor wrapping a kit Button: the route is owned by
+          the host page; an <a> keeps it a real navigable link. */}
+      <a href={changePlanHref} style={{ textDecoration: "none" }}>
+        <Button>See plans</Button>
       </a>
-    </div>
+    </XStack>
   );
 }
 
 function LedgerSkeleton() {
   return (
-    <div className="space-y-3">
+    <YStack gap="$3">
       {Array.from({ length: 3 }).map((_, i) => (
-        <div
+        <XStack
           key={i}
-          className="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-6 border-b border-border/40 py-4"
+          items="center"
+          gap="$5"
+          borderBottomWidth={1}
+          borderColor="$borderColor"
+          py="$4"
         >
-          <div className="h-3 w-24 animate-pulse rounded-full bg-border/70" />
-          <div className="h-3 w-32 animate-pulse rounded-full bg-border/70" />
-          <div className="h-3 w-16 animate-pulse rounded-full bg-border/70" />
-          <div className="h-7 w-24 animate-pulse rounded-full bg-border/70" />
-        </div>
+          <Skeleton flex={1} height={12} rounded={9999} />
+          <Skeleton flex={1} height={12} rounded={9999} />
+          <Skeleton flex={1} height={12} rounded={9999} />
+          <Skeleton width={96} height={28} rounded={9999} />
+        </XStack>
       ))}
-    </div>
+    </YStack>
   );
 }
 

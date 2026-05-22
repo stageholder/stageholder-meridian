@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
+import { H1, Paragraph, Text, View, XStack, YStack } from "@stageholder/ui";
 import { CurrentPlanHero } from "@/components/billing/current-plan-hero";
 import { InvoiceLedger } from "@/components/billing/invoice-ledger";
 
@@ -18,52 +19,92 @@ export const Route = createFileRoute("/_app/settings/billing/")({
 
 function BillingPage() {
   return (
-    <div className="billing-paper relative min-h-screen bg-background">
-      <div className="relative z-10 mx-auto max-w-5xl px-4 py-10 md:py-14">
+    // allowlist: billing-paper texture (globals.css keyframe/bg, no token equivalent)
+    <View
+      position="relative"
+      minH={"100vh" as never}
+      bg="$background"
+      className="billing-paper"
+    >
+      <YStack
+        position="relative"
+        z={10}
+        mx="auto"
+        maxW={1024}
+        px="$4"
+        py="$7"
+        $md={{ py: "$9" }}
+      >
         {/* Back link */}
-        <div className="mb-10">
-          <Link
-            to="/settings"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" />
-            Back to settings
+        <View mb="$7">
+          <Link to="/settings" style={{ textDecoration: "none" }}>
+            <XStack
+              items="center"
+              gap="$1.5"
+              fontSize="$3"
+              color="$mutedForeground"
+              transition="quick"
+              hoverStyle={{ color: "$color" }}
+            >
+              <ArrowLeft size={16} />
+              Back to settings
+            </XStack>
           </Link>
-        </div>
+        </View>
 
         {/* Page header */}
-        <header className="mb-10 flex flex-wrap items-baseline justify-between gap-4">
-          <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.32em] text-foreground/55">
+        <XStack
+          tag="header"
+          mb="$7"
+          flexWrap="wrap"
+          items="baseline"
+          justify="space-between"
+          gap="$4"
+        >
+          <View>
+            {/* allowlist: editorial mono kicker — letter-spacing + foreground tint (no token equivalent) */}
+            <Paragraph className="font-mono text-[11px] uppercase tracking-[0.32em] text-foreground/55">
               Billing
-            </p>
-            <h1
+            </Paragraph>
+            {/* allowlist: display-font + responsive size — driven by CSS var, no kit token */}
+            <H1
               className="mt-2 text-4xl tracking-tight md:text-5xl"
               style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
             >
               Your subscription
-            </h1>
-          </div>
-          <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
+            </H1>
+          </View>
+          <Paragraph maxW={320} fontSize="$3" color="$mutedForeground">
             Manage your plan, payment method, and invoices.
-          </p>
-        </header>
+          </Paragraph>
+        </XStack>
 
-        <div className="space-y-10">
+        <YStack gap="$7">
           <CurrentPlanHero />
           <InvoiceLedger />
-        </div>
+        </YStack>
 
         {/* Footer mark */}
-        <footer className="mt-16 flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-6">
-          <p className="text-xs text-muted-foreground">
+        {/* allowlist: border-border/60 hairline tint (no token equivalent) */}
+        <XStack
+          tag="footer"
+          mt="$10"
+          flexWrap="wrap"
+          items="center"
+          justify="space-between"
+          gap="$2"
+          borderTopWidth={1}
+          pt="$5"
+          className="border-border/60"
+        >
+          <Text fontSize="$1" color="$mutedForeground">
             Meridian — personal productivity
-          </p>
-          <p className="text-xs text-muted-foreground">
+          </Text>
+          <Text fontSize="$1" color="$mutedForeground">
             Powered by Stageholder
-          </p>
-        </footer>
-      </div>
-    </div>
+          </Text>
+        </XStack>
+      </YStack>
+    </View>
   );
 }

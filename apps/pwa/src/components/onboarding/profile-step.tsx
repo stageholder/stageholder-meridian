@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useProfile, useUpdateProfile } from "@stageholder/sdk/spa";
-import { Button, Input, Label } from "@stageholder/ui";
+import { Button, Input, Label, Paragraph, Text, YStack } from "@stageholder/ui";
 import { TimezoneSelect } from "@/components/ui/timezone-select";
 
 /**
@@ -44,51 +44,48 @@ export function ProfileStep({ onContinue }: { onContinue: () => void }) {
 
   if (isLoading) {
     return (
-      <div className="text-sm text-muted-foreground">Loading profile…</div>
+      <Text fontSize="$3" color="$mutedForeground">
+        Loading profile…
+      </Text>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <h2 className="text-xl font-bold text-foreground">
+    <YStack gap="$6">
+      <YStack gap="$2">
+        <Text fontSize="$7" fontWeight="700" color="$color">
           Confirm your profile
-        </h2>
-        <p className="text-sm text-muted-foreground">
+        </Text>
+        <Paragraph fontSize="$3" color="$mutedForeground">
           Edit your name and timezone here. They sync with your Stageholder
           account and follow you across products.
-        </p>
-      </div>
+        </Paragraph>
+      </YStack>
 
-      <div className="space-y-4">
-        <div>
+      <YStack gap="$4">
+        <YStack gap="$1.5">
           <Label htmlFor="onboard-name">Display name</Label>
           <Input
             id="onboard-name"
-            className="mt-1"
             value={displayName}
             onChangeText={setDisplayName}
           />
-        </div>
+        </YStack>
 
-        <div>
+        <YStack gap="$1.5">
           <Label htmlFor="onboard-tz">Timezone</Label>
-          <TimezoneSelect
-            value={timezone}
-            onValueChange={setTimezone}
-            className="mt-1"
-          />
-        </div>
+          <TimezoneSelect value={timezone} onValueChange={setTimezone} />
+        </YStack>
 
         {error && (
-          <p className="text-xs text-destructive" role="alert">
+          <Text fontSize="$1" color="$destructive" role="alert">
             {error.message}
-          </p>
+          </Text>
         )}
-      </div>
+      </YStack>
 
       <Button
-        className="w-full"
+        width="100%"
         onPress={() => void handleContinue()}
         disabled={!displayName.trim() || isPending}
         loading={isPending}
@@ -96,6 +93,6 @@ export function ProfileStep({ onContinue }: { onContinue: () => void }) {
       >
         Continue
       </Button>
-    </div>
+    </YStack>
   );
 }

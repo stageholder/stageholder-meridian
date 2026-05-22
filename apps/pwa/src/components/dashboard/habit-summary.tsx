@@ -1,12 +1,17 @@
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { Text, View, XStack, YStack } from "@stageholder/ui";
 import { useHabits } from "@/lib/api/habits";
 import { useCalendarData } from "@/lib/api/calendar";
 import { BentoCard } from "./bento-card";
 import type { Habit } from "@repo/core/types";
 import { resolveTargetCount } from "@/lib/habits/entry-resolution";
+
+// In-progress habit bar is a generic orange (shadcn bg-orange-500/400). There's
+// no orange kit token, so it lives on the style escape hatch (the completed
+// state uses the $success token). Mirrors habit-card.tsx's free-form-color hatch.
+const PROGRESS_ORANGE = "#f97316";
 
 export function HabitSummary({
   index = 0,
@@ -53,14 +58,22 @@ export function HabitSummary({
       index={index}
       className={className}
       action={
-        <Link to="/habits" className="text-xs text-primary hover:underline">
-          View all
+        <Link to="/habits" style={{ textDecoration: "none" }}>
+          <Text
+            fontSize="$1"
+            color="$primary"
+            hoverStyle={{ textDecorationLine: "underline" }}
+          >
+            View all
+          </Text>
         </Link>
       }
     >
-      <div className="space-y-3">
+      <YStack gap="$3">
         {isLoading ? (
-          <p className="text-xs text-muted-foreground">Loading...</p>
+          <Text fontSize="$1" color="$mutedForeground">
+            Loading...
+          </Text>
         ) : habits && habits.length > 0 ? (
           habits.slice(0, 5).map((habit: Habit) => {
             const todayDow = new Date().getDay();
@@ -81,80 +94,104 @@ export function HabitSummary({
 
             if (!isScheduledToday) {
               return (
-                <div key={habit.id} className="flex items-center gap-3">
-                  <span className="flex-1 truncate text-sm text-muted-foreground">
+                <XStack key={habit.id} items="center" gap="$3">
+                  <Text
+                    flex={1}
+                    numberOfLines={1}
+                    fontSize="$3"
+                    color="$mutedForeground"
+                  >
                     {habit.name}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground/60">
+                  </Text>
+                  <Text fontSize={10} color="$mutedForeground" opacity={0.6}>
                     Rest day
-                  </span>
-                </div>
+                  </Text>
+                </XStack>
               );
             }
 
             if (isFailed) {
               return (
-                <div key={habit.id} className="flex items-center gap-3">
-                  <span className="flex-1 truncate text-sm text-muted-foreground line-through">
+                <XStack key={habit.id} items="center" gap="$3">
+                  <Text
+                    flex={1}
+                    numberOfLines={1}
+                    fontSize="$3"
+                    color="$mutedForeground"
+                    textDecorationLine="line-through"
+                  >
                     {habit.name}
-                  </span>
-                  <span className="text-[10px] font-medium text-destructive">
+                  </Text>
+                  <Text fontSize={10} fontWeight="500" color="$destructive">
                     ✕ Failed
-                  </span>
-                </div>
+                  </Text>
+                </XStack>
               );
             }
 
             if (isSkipped) {
               return (
-                <div key={habit.id} className="flex items-center gap-3">
-                  <span className="flex-1 truncate text-sm text-muted-foreground">
+                <XStack key={habit.id} items="center" gap="$3">
+                  <Text
+                    flex={1}
+                    numberOfLines={1}
+                    fontSize="$3"
+                    color="$mutedForeground"
+                  >
                     {habit.name}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground/60">
+                  </Text>
+                  <Text fontSize={10} color="$mutedForeground" opacity={0.6}>
                     Skipped
-                  </span>
-                </div>
+                  </Text>
+                </XStack>
               );
             }
 
             return (
-              <div key={habit.id} className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <span
-                    className={cn(
-                      "truncate text-sm",
-                      isComplete
-                        ? "text-muted-foreground line-through"
-                        : "text-foreground",
-                    )}
+              <YStack key={habit.id} gap="$1">
+                <XStack items="center" justify="space-between">
+                  <Text
+                    flex={1}
+                    numberOfLines={1}
+                    fontSize="$3"
+                    color={isComplete ? "$mutedForeground" : "$color"}
+                    textDecorationLine={isComplete ? "line-through" : "none"}
                   >
                     {habit.name}
-                  </span>
-                  <span className="ml-2 shrink-0 text-xs text-muted-foreground tabular-nums">
+                  </Text>
+                  <Text
+                    ml="$2"
+                    shrink={0}
+                    fontSize="$1"
+                    color="$mutedForeground"
+                    style={{ fontVariant: ["tabular-nums"] }}
+                  >
                     {value}/{target}
-                  </span>
-                </div>
-                <div className="h-1.5 w-full rounded-full bg-muted">
-                  <div
-                    className={cn(
-                      "h-full rounded-full transition-all",
-                      isComplete
-                        ? "bg-green-500 dark:bg-green-400"
-                        : "bg-orange-500 dark:bg-orange-400",
-                    )}
-                    style={{ width: `${pct}%` }}
+                  </Text>
+                </XStack>
+                <View height={6} width="100%" rounded={9999} bg="$muted">
+                  <View
+                    height="100%"
+                    rounded={9999}
+                    transition="medium"
+                    bg={isComplete ? "$success" : undefined}
+                    style={{
+                      width: `${pct}%`,
+                      ...(isComplete
+                        ? undefined
+                        : { backgroundColor: PROGRESS_ORANGE }),
+                    }}
                   />
-                </div>
-              </div>
+                </View>
+              </YStack>
             );
           })
         ) : (
-          <p className="text-xs text-muted-foreground">
+          <Text fontSize="$1" color="$mutedForeground">
             No habits to track yet.
-          </p>
+          </Text>
         )}
-      </div>
+      </YStack>
     </BentoCard>
   );
 }

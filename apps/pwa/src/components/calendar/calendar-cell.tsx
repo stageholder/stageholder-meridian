@@ -1,5 +1,5 @@
-import { cn } from "@/lib/utils";
 import { isToday, isSameMonth } from "date-fns";
+import { Text, View, YStack } from "@stageholder/ui";
 import { ActivityRingsVisual } from "@/components/activity-rings";
 import { computeActivityRings } from "@/components/activity-rings";
 import type { CalendarDayData } from "@/lib/api/calendar";
@@ -44,29 +44,53 @@ export function CalendarCell({
     : null;
 
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "flex flex-col items-center gap-0.5 rounded-lg p-1 text-xs transition-colors min-h-[48px] sm:gap-1 sm:p-2 sm:text-sm sm:min-h-[60px]",
-        inMonth ? "text-foreground" : "text-muted-foreground/50",
-        isSelected && "bg-accent ring-1 ring-primary",
-        !isSelected && "hover:bg-accent/50",
-        today && !isSelected && "bg-primary/10",
-      )}
+    <YStack
+      tag="button"
+      type="button"
+      onPress={onClick}
+      cursor="pointer"
+      items="center"
+      gap="$0.5"
+      $sm={{ gap: "$1", p: "$2", minH: 60 }}
+      rounded="$lg"
+      p="$1"
+      minH={48}
+      borderWidth={1}
+      borderColor={isSelected ? "$primary" : "transparent"}
+      bg={isSelected ? "$accent" : today ? "$primaryMuted" : "transparent"}
+      transition="quick"
+      hoverStyle={isSelected ? undefined : { bg: "$accent" }}
     >
-      <span
-        className={cn(
-          "flex h-5 w-5 items-center justify-center rounded-full text-xs font-medium sm:h-7 sm:w-7 sm:text-sm",
-          today && "bg-primary text-primary-foreground",
-        )}
+      <View
+        width={20}
+        height={20}
+        $sm={{ width: 28, height: 28 }}
+        items="center"
+        justify="center"
+        rounded={9999}
+        bg={today ? "$primary" : "transparent"}
       >
-        {date.getDate()}
-      </span>
+        <Text
+          fontSize="$1"
+          $sm={{ fontSize: "$3" }}
+          fontWeight="500"
+          color={
+            today
+              ? "$primaryForeground"
+              : inMonth
+                ? "$color"
+                : "$mutedForeground"
+          }
+          opacity={inMonth || today ? 1 : 0.5}
+        >
+          {date.getDate()}
+        </Text>
+      </View>
       {ringsData ? (
         <ActivityRingsVisual data={ringsData} size="xs" animate={false} />
       ) : (
-        <div className="h-6" />
+        <View height={24} />
       )}
-    </button>
+    </YStack>
   );
 }

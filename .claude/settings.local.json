@@ -22,7 +22,8 @@
       "Read(//Users/garda_dafi/Project/stageholder-ui/apps/docs/app/**)",
       "Read(//Users/garda_dafi/Project/stageholder-ui/apps/docs/components/**)",
       "Read(//Users/garda_dafi/Project/stageholder-ui/**)",
-      "Read(//Users/garda_dafi/Project/stageholder-ui/packages/**)"
+      "Read(//Users/garda_dafi/Project/stageholder-ui/packages/**)",
+      "mcp__ide__getDiagnostics"
     ]
   },
   "enabledPlugins": {

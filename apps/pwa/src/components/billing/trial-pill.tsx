@@ -1,8 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 import { useSubscription } from "@stageholder/sdk/spa";
-import { Tooltip } from "@stageholder/ui";
-import { cn } from "@/lib/utils";
+import { Text, Tooltip, View, XStack, YStack } from "@stageholder/ui";
 
 /**
  * Compact trial countdown for the app header. Replaces the page-width
@@ -40,68 +39,101 @@ export function TrialPill({
       : "Trial";
   const shortLabel = daysRemaining !== null ? `${daysRemaining}d` : "Trial";
 
+  // Intent palette: urgent escalates to destructive (rose), otherwise the
+  // comfortable amber maps onto the kit's warning tokens.
+  const tone = urgent
+    ? { bg: "$destructiveMuted", border: "$destructive", color: "$destructive" }
+    : { bg: "$warningMuted", border: "$warning", color: "$warning" };
+
   return (
     <Tooltip delay={250} placement="bottom-end">
       <Tooltip.Trigger asChild>
         <Link
           to={upgradeHref}
           aria-label={`${longLabel} in trial — manage subscription`}
-          className={cn(
-            "group relative inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5",
-            "text-[11px] font-medium tracking-tight",
-            "transition-colors duration-200",
-            urgent
-              ? "border-rose-500/35 bg-rose-500/10 text-rose-700 hover:border-rose-500/60 hover:bg-rose-500/15 dark:text-rose-300"
-              : "border-amber-500/35 bg-amber-500/10 text-amber-800 hover:border-amber-500/60 hover:bg-amber-500/15 dark:text-amber-200",
-          )}
+          style={{ textDecoration: "none" }}
         >
-          <Sparkles
-            className={cn(
-              "size-3 shrink-0 transition-transform duration-300",
-              urgent && "animate-pulse",
-              "group-hover:rotate-12",
-            )}
-            strokeWidth={2}
-            aria-hidden
-          />
-          <span className="font-mono tabular-nums leading-none">
-            <span className="hidden sm:inline">{longLabel}</span>
-            <span className="sm:hidden">{shortLabel}</span>
-          </span>
-          <span
-            aria-hidden
-            className="mx-0.5 hidden h-3 w-px bg-current opacity-30 sm:inline-block"
-          />
-          {/* "Manage" rather than "Upgrade": the trialed plan can already
+          <XStack
+            group
+            height={28}
+            items="center"
+            gap="$1.5"
+            rounded={9999}
+            borderWidth={1}
+            px="$2.5"
+            transition="quick"
+            bg={tone.bg}
+            borderColor={tone.border}
+            hoverStyle={{ opacity: 0.85 }}
+          >
+            <Text
+              color={tone.color}
+              shrink={0}
+              lineHeight={0}
+              transition="quick"
+              $group-hover={{ rotate: "12deg" }}
+            >
+              <Sparkles
+                // allowlist: animate-pulse — urgent pulse, no token equivalent
+                className={urgent ? "animate-pulse" : undefined}
+                size={12}
+                strokeWidth={2}
+                aria-hidden
+              />
+            </Text>
+            <Text
+              fontFamily="$mono"
+              fontSize="$1"
+              lineHeight={16}
+              color={tone.color}
+            >
+              <Text display="none" $sm={{ display: "inline" }}>
+                {longLabel}
+              </Text>
+              <Text $sm={{ display: "none" }}>{shortLabel}</Text>
+            </Text>
+            <View
+              aria-hidden
+              mx="$0.5"
+              height={12}
+              width={1}
+              display="none"
+              $sm={{ display: "flex" }}
+              opacity={0.3}
+              bg={tone.color}
+            />
+            {/* "Manage" rather than "Upgrade": the trialed plan can already
                 be the top tier, so there's nothing to upgrade *to*. The
                 destination /upgrade page handles plan switches AND trial
                 management uniformly, so this verb covers both cases without
                 misleading top-tier trialers. */}
-          <span
-            aria-hidden
-            className={cn(
-              "hidden font-semibold uppercase tracking-[0.08em] sm:inline",
-              "transition-transform duration-200 group-hover:translate-x-0.5",
-            )}
-          >
-            Manage
-          </span>
+            <Text
+              aria-hidden
+              display="none"
+              $sm={{ display: "inline" }}
+              fontSize="$1"
+              fontWeight="600"
+              letterSpacing={0.9}
+              color={tone.color}
+              transition="quick"
+              $group-hover={{ x: 2 }}
+            >
+              MANAGE
+            </Text>
+          </XStack>
         </Link>
       </Tooltip.Trigger>
       <Tooltip.Content maxW={320}>
         <Tooltip.Arrow />
         {endsAtLabel ? (
-          <div className="flex flex-col gap-0.5">
-            <span>
-              Free trial of{" "}
-              <span className="font-semibold">{sub.planName}</span>
-            </span>
-            <span className="opacity-70">
-              Ends {endsAtLabel} · Click to manage
-            </span>
-          </div>
+          <YStack gap="$0.5">
+            <Text>
+              Free trial of <Text fontWeight="600">{sub.planName}</Text>
+            </Text>
+            <Text opacity={0.7}>Ends {endsAtLabel} · Click to manage</Text>
+          </YStack>
         ) : (
-          <span>Trial in progress — click to manage</span>
+          <Text>Trial in progress — click to manage</Text>
         )}
       </Tooltip.Content>
     </Tooltip>

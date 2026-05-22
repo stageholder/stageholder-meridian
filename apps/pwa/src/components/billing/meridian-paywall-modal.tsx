@@ -1,9 +1,17 @@
-import { Button, Dialog } from "@stageholder/ui";
+import {
+  Button,
+  Dialog,
+  H2,
+  Paragraph,
+  Text,
+  View,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 import { useCanManageBilling } from "@stageholder/sdk/spa";
 import type { PaywallReason } from "@stageholder/sdk/core";
 import { ArrowUpRight } from "lucide-react";
 import { LimitOrbit } from "./limit-orbit";
-import { cn } from "@/lib/utils";
 
 const PRICING_HREF = "/settings/billing/upgrade";
 
@@ -15,16 +23,19 @@ export interface MeridianPaywallModalProps {
 }
 
 /**
- * Meridian's bespoke paywall dialog. Built on Radix Dialog directly — does
- * NOT call into the SDK's `<PaywallModal>`. The state machine (open
- * /close/reason) still flows from SDK's `usePaywall()`; only the
- * presentation is owned by Meridian.
+ * Meridian's bespoke paywall dialog. Built on the kit `Dialog` — does NOT
+ * call into the SDK's `<PaywallModal>`. The state machine (open/close/reason)
+ * still flows from SDK's `usePaywall()`; only the presentation is owned by
+ * Meridian.
  *
- * Reads consistently with the billing dashboard and the upgrade page:
- * editorial gutter mark, Bricolage display headline with italic emphasis,
- * mono ledger, paper-grain backdrop, orbital diagram. The diagram is a
- * diagnostic variant — it lights up the gated pillar (todos / habits /
- * journal) so the user instantly sees which boundary they hit.
+ * The kit `Dialog.Overlay`/`Dialog.Content` already animate enter/exit via
+ * their `transition`/`enterStyle`/`exitStyle`, so the old Radix
+ * `data-[state]:animate-*` classes are gone. Reads consistently with the
+ * billing dashboard and the upgrade page: editorial gutter mark, Bricolage
+ * display headline with italic emphasis, mono ledger, paper-grain backdrop,
+ * orbital diagram. The diagram is a diagnostic variant — it lights up the
+ * gated pillar (todos / habits / journal) so the user instantly sees which
+ * boundary they hit.
  */
 export function MeridianPaywallModal({
   open,
@@ -47,105 +58,133 @@ export function MeridianPaywallModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        {/* `unstyled` on Overlay + Content tells Tamagui to skip the
-            kit's default styled config (default fade-in scale, default
-            card surface, default boxShadow) so meridian's bespoke
-            Tailwind classes own the surface entirely. data-state
-            attributes for tw-animate-css still flow from Radix
-            underneath. */}
-        <Dialog.Overlay
-          unstyled
-          className={cn(
-            "fixed inset-0 z-50 bg-foreground/35 backdrop-blur-md",
-            "data-[state=open]:animate-in data-[state=closed]:animate-out",
-            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-          )}
-        />
+        {/* allowlist: backdrop-blur-md — frosted backdrop is load-bearing for
+            the editorial modal; the kit overlay supplies the base tint +
+            enter/exit animation. */}
+        <Dialog.Overlay className="backdrop-blur-md" />
         <Dialog.Content
-          unstyled
-          className={cn(
-            "fixed z-50 overflow-hidden bg-card text-card-foreground shadow-2xl",
-            // Mobile bottom-sheet flush with bottom; desktop centered card.
-            "inset-x-0 bottom-0 max-h-[94vh] w-full overflow-y-auto rounded-t-[32px] border border-b-0 border-border/70",
-            "sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-none sm:w-full sm:max-w-2xl",
-            "sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[32px] sm:border-b",
-            "data-[state=open]:animate-in data-[state=closed]:animate-out",
-            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-            "max-sm:data-[state=closed]:slide-out-to-bottom max-sm:data-[state=open]:slide-in-from-bottom",
-            "sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
-          )}
+          // Override the kit's default 480 max-width / padding for the wide
+          // two-column paywall. The kit's transition + enter/exit still run.
+          maxW={672}
+          width="100%"
+          p={0}
+          overflow="hidden"
+          rounded={32}
         >
-          {/* Mobile drag handle */}
-          <div
-            aria-hidden
-            className="mx-auto mt-2 h-1 w-10 rounded-full bg-foreground/15 sm:hidden"
-          />
-
-          {/* Paper-grain backdrop scoped to the dialog. Same atmosphere
-              as the billing pages, contained inside the modal so it
-              doesn't leak into anything underneath. */}
-          <div
-            className="relative billing-paper"
-            style={{ backgroundColor: "transparent" }}
-          >
-            <div className="relative z-10 px-7 pb-8 pt-7 sm:px-10 sm:py-10">
+          {/* allowlist: billing-paper — paper-grain texture keyframe scoped to
+              the modal (no token equivalent). */}
+          <View position="relative" className="billing-paper">
+            <View px="$7" pt="$7" pb="$8" $sm={{ px: "$9", py: "$9" }}>
               {/* Top strip */}
-              <div className="mb-7 flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-5">
-                <span className="text-xs font-medium text-muted-foreground">
+              <XStack
+                mb="$7"
+                flexWrap="wrap"
+                items="center"
+                justify="space-between"
+                gap="$3"
+                borderBottomWidth={1}
+                borderColor="$borderColor"
+                pb="$5"
+              >
+                <Text fontSize="$1" fontWeight="500" color="$mutedForeground">
                   Plan limit reached
-                </span>
+                </Text>
                 <PillarBadge pillar={pillar} />
-              </div>
+              </XStack>
 
-              {/* Two-column body — text + ledger on the left, orbital
-                  diagram on the right. The CTAs DON'T live in this grid;
-                  they sit below it spanning the full modal width so the
-                  primary button is the most obvious target on the page. */}
-              <div className="grid gap-8 sm:grid-cols-[1.3fr_1fr] sm:gap-10">
+              {/* Two-column body — text + ledger on the left, orbital diagram
+                  on the right. The CTAs DON'T live in this grid; they sit
+                  below it spanning the full modal width so the primary button
+                  is the most obvious target on the page. */}
+              <XStack
+                flexDirection="column"
+                gap="$8"
+                $sm={{ flexDirection: "row", gap: "$9" }}
+              >
                 {/* Text + ledger column */}
-                <section className="space-y-7">
-                  <div className="space-y-4">
-                    <p className="text-sm font-semibold text-foreground/55">
+                <YStack flex={1} gap="$7" $sm={{ flexGrow: 1.3 }}>
+                  <YStack gap="$4">
+                    <Text
+                      fontSize="$3"
+                      fontWeight="600"
+                      color="$mutedForeground"
+                    >
                       {reason.currentLimit !== undefined
                         ? "You hit a usage limit"
                         : "Upgrade required"}
-                    </p>
+                    </Text>
                     <Dialog.Title asChild>
-                      <h2
-                        className="text-[clamp(1.875rem,4.5vw,2.5rem)] leading-[1.02] tracking-[-0.01em]"
+                      <H2
+                        fontSize={36}
+                        lineHeight={36 * 1.02}
+                        letterSpacing={-0.36}
+                        color="$color"
                         style={{
                           fontFamily: "var(--font-display)",
                           fontWeight: 600,
                         }}
                       >
                         You&rsquo;ve hit your{" "}
-                        <span className="italic" style={{ fontWeight: 500 }}>
+                        <Text fontStyle="italic" fontWeight="500">
                           {featureLabel}
-                        </span>{" "}
+                        </Text>{" "}
                         limit.
-                      </h2>
+                      </H2>
                     </Dialog.Title>
-                    <Dialog.Description className="max-w-md text-[14px] leading-relaxed text-muted-foreground">
-                      {reason.customMessage ??
-                        buildBody(featureLabel, planName, reason.currentLimit)}
+                    <Dialog.Description asChild>
+                      <Paragraph
+                        maxW={448}
+                        fontSize="$3"
+                        color="$mutedForeground"
+                      >
+                        {reason.customMessage ??
+                          buildBody(
+                            featureLabel,
+                            planName,
+                            reason.currentLimit,
+                          )}
+                      </Paragraph>
                     </Dialog.Description>
-                  </div>
+                  </YStack>
 
-                  {/* Mobile-only inline diagram — sits between body and
-                      ledger on small screens so the user gets visual
-                      context without the desktop side-by-side. */}
-                  <div className="sm:hidden">
-                    <div className="relative mx-auto aspect-square w-full max-w-[180px]">
-                      <div className="absolute inset-0 rounded-[20px] bg-background/60 ring-1 ring-border/70" />
-                      <div className="absolute inset-0 p-3">
+                  {/* Mobile-only inline diagram — sits between body and ledger
+                      on small screens so the user gets visual context without
+                      the desktop side-by-side. */}
+                  <View $sm={{ display: "none" }}>
+                    <View
+                      position="relative"
+                      mx="auto"
+                      width="100%"
+                      maxW={180}
+                      style={{ aspectRatio: 1 }}
+                    >
+                      <View
+                        position="absolute"
+                        t={0}
+                        r={0}
+                        b={0}
+                        l={0}
+                        rounded={20}
+                        bg="$background"
+                        opacity={0.6}
+                        borderWidth={1}
+                        borderColor="$borderColor"
+                      />
+                      <View position="absolute" t={0} r={0} b={0} l={0} p="$3">
                         <LimitOrbit highlight={pillar} />
-                      </div>
-                    </div>
-                  </div>
+                      </View>
+                    </View>
+                  </View>
 
                   {/* Plain key/value ledger. Labels are short, values are
                       instantly scannable. */}
-                  <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-t border-border/60 pt-5">
+                  <XStack
+                    flexWrap="wrap"
+                    gap="$4"
+                    borderTopWidth={1}
+                    borderColor="$borderColor"
+                    pt="$5"
+                  >
                     <LedgerCell label="Current plan" value="Free" />
                     <LedgerCell
                       label="Used"
@@ -158,70 +197,131 @@ export function MeridianPaywallModal({
                     />
                     <LedgerCell label="Feature" value={prettyPillar(pillar)} />
                     <LedgerCell label="Recommended" value={planName} />
-                  </dl>
-                </section>
+                  </XStack>
+                </YStack>
 
                 {/* Diagram column (desktop only) */}
-                <aside className="hidden sm:block">
-                  <div className="relative mx-auto aspect-square w-full max-w-[280px]">
-                    <div className="absolute inset-0 rounded-[24px] bg-background/60 ring-1 ring-border/70" />
-                    <div className="absolute inset-0 p-5">
+                <View
+                  tag="aside"
+                  display="none"
+                  $sm={{ display: "flex", flexGrow: 1 }}
+                >
+                  <View
+                    position="relative"
+                    mx="auto"
+                    width="100%"
+                    maxW={280}
+                    style={{ aspectRatio: 1 }}
+                  >
+                    <View
+                      position="absolute"
+                      t={0}
+                      r={0}
+                      b={0}
+                      l={0}
+                      rounded={24}
+                      bg="$background"
+                      opacity={0.6}
+                      borderWidth={1}
+                      borderColor="$borderColor"
+                    />
+                    <View position="absolute" t={0} r={0} b={0} l={0} p="$5">
                       <LimitOrbit highlight={pillar} />
-                    </div>
+                    </View>
                     {(["tl", "tr", "bl", "br"] as const).map((c) => (
                       <CornerTick key={c} corner={c} />
                     ))}
-                  </div>
-                  <p className="mt-4 text-center text-[12px] text-muted-foreground">
+                  </View>
+                  <Paragraph
+                    mt="$4"
+                    fontSize="$1"
+                    color="$mutedForeground"
+                    text="center"
+                  >
                     Your{" "}
-                    <span className="font-medium text-foreground">
+                    <Text fontWeight="500" color="$color">
                       {prettyPillar(pillar).toLowerCase()}
-                    </span>{" "}
+                    </Text>{" "}
                     ring is full
-                  </p>
-                </aside>
-              </div>
+                  </Paragraph>
+                </View>
+              </XStack>
 
               {/* Non-admin notice — full modal width below the body. */}
               {!canManage && (
-                <div
+                <View
                   role="note"
-                  className="mt-8 rounded-2xl border border-dashed border-border/80 bg-muted/30 p-4 text-[13px] leading-relaxed text-muted-foreground"
+                  mt="$8"
+                  rounded={16}
+                  borderWidth={1}
+                  borderStyle="dashed"
+                  borderColor="$borderColor"
+                  bg="$muted"
+                  p="$4"
                 >
-                  Only owners and admins can change the plan. Ask an admin on
-                  your organization to upgrade.
-                </div>
+                  <Paragraph fontSize="$2" color="$mutedForeground">
+                    Only owners and admins can change the plan. Ask an admin on
+                    your organization to upgrade.
+                  </Paragraph>
+                </View>
               )}
 
               {/* Full-width CTAs — pulled out of the grid so the primary
                   button spans the entire modal. Industry-standard
                   upgrade-prompt layout (Linear, Notion, Stripe): one
                   unmistakable primary action, one quiet text-link exit. */}
-              <div className="mt-8 space-y-3">
+              <YStack mt="$8" gap="$3">
                 {canManage && (
+                  // External-style anchor: the upgrade route carries query
+                  // params, so a plain <a> (real link) wraps the styled row.
                   <a
                     href={upgradeHref}
                     onClick={close}
-                    className={cn(
-                      "group/cta flex h-12 w-full items-center justify-between gap-3 rounded-full bg-foreground pl-6 pr-1.5 text-background",
-                      "text-[14px] font-medium",
-                      "transition-opacity hover:opacity-90",
-                    )}
+                    style={{ textDecoration: "none" }}
                   >
-                    <span>Upgrade your plan</span>
-                    <span className="inline-flex size-9 items-center justify-center rounded-full bg-background/15 transition-transform group-hover/cta:translate-x-0.5">
-                      <ArrowUpRight className="size-3.5" strokeWidth={2} />
-                    </span>
+                    <XStack
+                      group="cta"
+                      height={48}
+                      width="100%"
+                      items="center"
+                      justify="space-between"
+                      gap="$3"
+                      rounded={9999}
+                      bg="$color"
+                      pl="$6"
+                      pr="$1.5"
+                      transition="quick"
+                      hoverStyle={{ opacity: 0.9 }}
+                    >
+                      <Text fontSize="$3" fontWeight="500" color="$background">
+                        Upgrade your plan
+                      </Text>
+                      <View
+                        width={36}
+                        height={36}
+                        items="center"
+                        justify="center"
+                        rounded={9999}
+                        bg="$background"
+                        opacity={0.15}
+                        transition="quick"
+                        $group-cta-hover={{ x: 2 }}
+                      >
+                        <Text color="$color" lineHeight={0}>
+                          <ArrowUpRight size={14} strokeWidth={2} />
+                        </Text>
+                      </View>
+                    </XStack>
                   </a>
                 )}
                 <Dialog.Close asChild>
-                  <Button intent="ghost" type="button" className="w-full">
+                  <Button intent="ghost" width="100%">
                     Maybe later
                   </Button>
                 </Dialog.Close>
-              </div>
-            </div>
-          </div>
+              </YStack>
+            </View>
+          </View>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog>
@@ -237,6 +337,8 @@ function PillarBadge({
 }) {
   if (!pillar) return null;
 
+  // The pillar accent is a viz CSS var (--ring-todo/habit/journal) with no
+  // kit token — applied via the style escape hatch on the dot.
   const tone =
     pillar === "todos"
       ? "var(--color-ring-todo, var(--ring-todo))"
@@ -245,19 +347,27 @@ function PillarBadge({
         : "var(--color-ring-journal, var(--ring-journal))";
 
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-2 rounded-full border border-border/80 bg-background/70 px-3 py-1",
-        "text-xs font-medium text-foreground/80",
-      )}
+    <XStack
+      items="center"
+      gap="$2"
+      rounded={9999}
+      borderWidth={1}
+      borderColor="$borderColor"
+      bg="$background"
+      px="$3"
+      py="$1"
     >
-      <span
+      <View
         aria-hidden
-        className="size-1.5 rounded-full"
+        width={6}
+        height={6}
+        rounded={9999}
         style={{ backgroundColor: tone }}
       />
-      {prettyPillar(pillar)}
-    </span>
+      <Text fontSize="$1" fontWeight="500" color="$color">
+        {prettyPillar(pillar)}
+      </Text>
+    </XStack>
   );
 }
 
@@ -271,39 +381,46 @@ function LedgerCell({
   mono?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-1">
-      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
-      <dd
-        className={cn(
-          "text-[15px] font-semibold leading-tight text-foreground",
-          mono && "tabular-nums",
-        )}
+    <YStack flex={1} minW={120} gap="$1">
+      <Text fontSize="$1" fontWeight="500" color="$mutedForeground">
+        {label}
+      </Text>
+      <Text
+        fontSize="$4"
+        fontWeight="600"
+        color="$color"
+        fontFamily={mono ? "$mono" : undefined}
       >
         {value}
-      </dd>
-    </div>
+      </Text>
+    </YStack>
   );
 }
 
 function CornerTick({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) {
-  const pos: Record<typeof corner, string> = {
-    tl: "top-2 left-2",
-    tr: "top-2 right-2",
-    bl: "bottom-2 left-2",
-    br: "bottom-2 right-2",
-  };
+  // Small L-shaped registration ticks at each corner — the two visible edges
+  // depend on which corner.
+  const edges = {
+    tl: { borderLeftWidth: 1, borderTopWidth: 1 },
+    tr: { borderRightWidth: 1, borderTopWidth: 1 },
+    bl: { borderLeftWidth: 1, borderBottomWidth: 1 },
+    br: { borderRightWidth: 1, borderBottomWidth: 1 },
+  } as const;
+  const pos = {
+    tl: { t: 7 as const, l: 7 as const },
+    tr: { t: 7 as const, r: 7 as const },
+    bl: { b: 7 as const, l: 7 as const },
+    br: { b: 7 as const, r: 7 as const },
+  } as const;
   return (
-    <span
+    <View
       aria-hidden
-      className={cn(
-        "absolute size-3",
-        pos[corner],
-        "before:absolute before:inset-0 before:border-foreground/30",
-        corner === "tl" && "before:border-l before:border-t",
-        corner === "tr" && "before:border-r before:border-t",
-        corner === "bl" && "before:border-l before:border-b",
-        corner === "br" && "before:border-r before:border-b",
-      )}
+      position="absolute"
+      width={12}
+      height={12}
+      borderColor="$borderColor"
+      {...pos[corner]}
+      {...edges[corner]}
     />
   );
 }

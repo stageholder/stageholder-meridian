@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Button } from "@stageholder/ui";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Button, H1, Paragraph, YStack } from "@stageholder/ui";
 
 const REASONS: Record<string, string> = {
   state_mismatch: "Sign-in request expired or was tampered with.",
@@ -27,14 +27,21 @@ function AuthErrorPage() {
   const message = from ? `${base} (last attempt: ${from})` : base;
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-6">
-      <div className="flex max-w-md flex-col items-center text-center">
-        <h1 className="text-xl font-semibold tracking-tight">Sign-in failed</h1>
-        <p className="mt-3 text-sm text-muted-foreground">{message}</p>
-        <Button tag="a" href="/auth/login" className="mt-6">
-          Try again
-        </Button>
-      </div>
-    </div>
+    <YStack minH={"100vh" as never} items="center" justify="center" px="$6">
+      <YStack maxW={448} items="center">
+        <H1 fontSize="$7" fontWeight="600" letterSpacing={-0.5} text="center">
+          Sign-in failed
+        </H1>
+        <Paragraph mt="$3" fontSize="$3" color="$mutedForeground" text="center">
+          {message}
+        </Paragraph>
+        <Link
+          to="/auth/login"
+          style={{ textDecoration: "none", marginTop: 24 }}
+        >
+          <Button>Try again</Button>
+        </Link>
+      </YStack>
+    </YStack>
   );
 }

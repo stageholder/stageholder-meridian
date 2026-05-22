@@ -1,5 +1,5 @@
 import { useRef, useEffect } from "react";
-import { cn } from "@/lib/utils";
+import { Text, View, XStack, YStack } from "@stageholder/ui";
 import { StarVisual } from "./star-visual";
 import { LIGHT_TIERS } from "@repo/core/types/light";
 
@@ -22,11 +22,21 @@ export function JourneyTierMap({ currentTier }: JourneyTierMapProps) {
   }, [currentTier]);
 
   return (
-    <div className="relative">
-      <div
-        ref={scrollRef}
-        className="flex gap-3 overflow-x-auto pt-4 pb-3 snap-x scrollbar-none"
-        style={{ scrollbarWidth: "none" }}
+    <View position="relative">
+      {/* Horizontal snap-scroll rail. Snap + hidden-scrollbar have no kit
+          token, so they ride the inline-style escape hatch (allowlist:
+          scrollbar/scroll-snap). The DOM ref drives programmatic scrolling. */}
+      <XStack
+        ref={scrollRef as never}
+        gap="$3"
+        overflow="scroll"
+        pt="$4"
+        pb="$3"
+        style={{
+          overflowX: "auto",
+          scrollSnapType: "x proximity",
+          scrollbarWidth: "none",
+        }}
       >
         {LIGHT_TIERS.map((tier, i) => {
           const isCompleted = tier.tier < currentTier;
@@ -34,52 +44,106 @@ export function JourneyTierMap({ currentTier }: JourneyTierMapProps) {
           const isFuture = tier.tier > currentTier;
 
           return (
-            <div
+            <YStack
               key={tier.tier}
-              ref={isCurrent ? currentRef : undefined}
-              className={cn(
-                "relative flex shrink-0 snap-center flex-col items-center gap-2 rounded-xl border p-4 transition-all",
-                "w-[100px]",
-                isCurrent &&
-                  "border-amber-500/50 bg-amber-500/5 shadow-sm shadow-amber-500/10",
-                isCompleted && "border-border bg-muted/30",
-                isFuture && "border-border/40 opacity-50",
-              )}
+              ref={isCurrent ? (currentRef as never) : undefined}
+              position="relative"
+              shrink={0}
+              items="center"
+              gap="$2"
+              rounded="$lg"
+              borderWidth={1}
+              p="$4"
+              width={100}
+              transition="medium"
+              // Base chrome from kit tokens; the gold "current" highlight and
+              // the faint future border have no token, so they ride the style
+              // override below.
+              borderColor="$borderColor"
+              bg={isCompleted ? "$muted" : "transparent"}
+              opacity={isFuture ? 0.5 : 1}
+              style={{
+                scrollSnapAlign: "center",
+                ...(isCurrent
+                  ? {
+                      borderColor: "rgba(245, 158, 11, 0.5)",
+                      backgroundColor: "rgba(245, 158, 11, 0.05)",
+                      boxShadow: "0 1px 2px rgba(245, 158, 11, 0.1)",
+                    }
+                  : isFuture
+                    ? { borderColor: "rgba(223, 230, 235, 0.4)" }
+                    : null),
+              }}
             >
-              {/* Connector line to next tier */}
+              {/* Connector line to the next tier — geometry, kept as a thin
+                  absolutely-positioned bar (gold when completed). */}
               {i < LIGHT_TIERS.length - 1 && (
-                <div
-                  className={cn(
-                    "absolute right-0 top-1/2 h-px w-3 translate-x-full",
-                    tier.tier < currentTier ? "bg-amber-500/40" : "bg-border",
-                  )}
+                <View
+                  position="absolute"
+                  r={0}
+                  t="50%"
+                  height={1}
+                  width={12}
+                  bg={tier.tier < currentTier ? undefined : "$borderColor"}
+                  style={{
+                    transform: "translateX(100%)",
+                    ...(tier.tier < currentTier
+                      ? { backgroundColor: "rgba(245, 158, 11, 0.4)" }
+                      : null),
+                  }}
                 />
               )}
               <StarVisual tier={tier.tier} size="sm" animate={isCurrent} />
-              <div className="text-center">
-                <p
-                  className={cn(
-                    "text-xs font-semibold",
-                    isCurrent && "text-amber-600 dark:text-amber-400",
-                    isCompleted && "text-foreground",
-                    isFuture && "text-muted-foreground",
-                  )}
+              <YStack items="center">
+                <Text
+                  fontSize="$1"
+                  fontWeight="600"
+                  text="center"
+                  color={
+                    isCompleted
+                      ? "$color"
+                      : isFuture
+                        ? "$mutedForeground"
+                        : "$color"
+                  }
+                  style={isCurrent ? { color: "#d97706" } : undefined}
                 >
                   {tier.title}
-                </p>
-                <p className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
+                </Text>
+                <Text
+                  mt={1}
+                  fontSize={10}
+                  color="$mutedForeground"
+                  text="center"
+                  style={{ fontVariantNumeric: "tabular-nums" }}
+                >
                   {tier.lightRequired.toLocaleString()} Light
-                </p>
-              </div>
+                </Text>
+              </YStack>
               {isCurrent && (
-                <div className="absolute -top-1.5 right-2 rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-bold text-white">
-                  YOU
-                </div>
+                // "YOU" badge — gold marker, no token (style hatch).
+                <View
+                  position="absolute"
+                  t={-6}
+                  r={8}
+                  rounded={9999}
+                  px="$1.5"
+                  py={2}
+                  style={{ backgroundColor: "#f59e0b" }}
+                >
+                  <Text
+                    fontSize={9}
+                    fontWeight="700"
+                    style={{ color: "#ffffff" }}
+                  >
+                    YOU
+                  </Text>
+                </View>
               )}
-            </div>
+            </YStack>
           );
         })}
-      </div>
-    </div>
+      </XStack>
+    </View>
   );
 }

@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import { ChevronDownIcon } from "lucide-react";
-import { Popover } from "@stageholder/ui";
-import { cn } from "@/lib/utils";
+import { Input, Popover, Text, View, XStack, YStack } from "@stageholder/ui";
 
 interface TimezoneSelectProps {
   value: string;
@@ -9,6 +8,10 @@ interface TimezoneSelectProps {
   className?: string;
 }
 
+// Kept as a bespoke Popover (not the kit Combobox): the trigger shows the
+// selected value as a button (not a typeahead input), and the API contract
+// is `onValueChange(tz)` — both consumers (settings/onboarding) rely on it.
+// Only the layout is converted to primitives.
 export function TimezoneSelect({
   value,
   onValueChange,
@@ -28,54 +31,124 @@ export function TimezoneSelect({
   return (
     <Popover open={open} onOpenChange={setOpen} placement="bottom-start">
       <Popover.Trigger asChild>
-        <button
-          type="button"
-          className={cn(
-            "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
-            className,
-          )}
+        <XStack
+          tag="button"
+          height={36}
+          width="100%"
+          items="center"
+          justify="space-between"
+          gap="$2"
+          rounded="$md"
+          borderWidth={1}
+          borderColor="$borderColor"
+          bg="transparent"
+          px="$3"
+          py="$2"
+          focusStyle={{ borderColor: "$outlineColor" }}
+          className={className}
         >
-          <span className="truncate">{value || "Select timezone..."}</span>
-          <ChevronDownIcon className="size-4 shrink-0 opacity-50" />
-        </button>
+          <Text
+            flex={1}
+            text="left"
+            numberOfLines={1}
+            fontSize="$3"
+            color={value ? "$color" : "$mutedForeground"}
+          >
+            {value || "Select timezone..."}
+          </Text>
+          <Text shrink={0} opacity={0.5} lineHeight={0} color="$color">
+            <ChevronDownIcon size={16} />
+          </Text>
+        </XStack>
       </Popover.Trigger>
-      <Popover.Content className="w-[var(--radix-popover-trigger-width)] p-0">
-        <div className="border-b border-border px-3 py-2">
-          <input
-            type="text"
+      {/* Override the kit Content's default padding; match trigger width via
+          Tamagui's popper anchor-width CSS var (minWidth is the native fallback). */}
+      <Popover.Content
+        p={0}
+        {...({
+          minWidth: 220,
+          style: { width: "var(--tamagui-popper-anchor-width)" },
+        } as object)}
+      >
+        <View borderBottomWidth={1} borderColor="$borderColor" px="$3" py="$2">
+          {/* Chromeless search field: transparent bg + no border so it reads
+              as inline text inside the bordered header (matches the original).
+              onChange extraction mirrors the kit Combobox (onChangeText is
+              unreliable on web in this Tamagui version). */}
+          <Input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
             placeholder="Search timezone..."
-            className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+            width="100%"
+            bg="transparent"
+            borderWidth={0}
+            rounded={0}
+            px={0}
+            height="auto"
+            fontSize="$3"
+            color="$color"
             autoFocus
+            onChange={(e) => {
+              const text =
+                (
+                  e as {
+                    target?: { value?: string };
+                    nativeEvent?: { text?: string };
+                  }
+                ).target?.value ??
+                (
+                  e as {
+                    target?: { value?: string };
+                    nativeEvent?: { text?: string };
+                  }
+                ).nativeEvent?.text ??
+                "";
+              setSearch(text);
+            }}
           />
-        </div>
-        <div className="max-h-60 overflow-y-auto p-1">
-          {filtered.length === 0 ? (
-            <p className="px-2 py-4 text-center text-sm text-muted-foreground">
-              No timezone found.
-            </p>
-          ) : (
-            filtered.map((tz) => (
-              <button
-                key={tz}
-                type="button"
-                onClick={() => {
-                  onValueChange(tz);
-                  setOpen(false);
-                  setSearch("");
-                }}
-                className={cn(
-                  "flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground",
-                  value === tz &&
-                    "bg-accent text-accent-foreground font-medium",
-                )}
+        </View>
+        <Popover.ScrollView maxH={240}>
+          <YStack p="$1">
+            {filtered.length === 0 ? (
+              <Text
+                px="$2"
+                py="$4"
+                text="center"
+                fontSize="$3"
+                color="$mutedForeground"
               >
-                {tz}
-              </button>
-            ))
-          )}
-        </div>
+                No timezone found.
+              </Text>
+            ) : (
+              filtered.map((tz) => (
+                <XStack
+                  key={tz}
+                  tag="button"
+                  width="100%"
+                  cursor="pointer"
+                  items="center"
+                  rounded="$sm"
+                  px="$2"
+                  py="$1.5"
+                  bg={value === tz ? "$accent" : "transparent"}
+                  hoverStyle={{ bg: "$accent" }}
+                  onPress={() => {
+                    onValueChange(tz);
+                    setOpen(false);
+                    setSearch("");
+                  }}
+                >
+                  <Text
+                    fontSize="$3"
+                    fontWeight={value === tz ? "500" : "400"}
+                    color={value === tz ? "$accentForeground" : "$color"}
+                  >
+                    {tz}
+                  </Text>
+                </XStack>
+              ))
+            )}
+          </YStack>
+        </Popover.ScrollView>
       </Popover.Content>
     </Popover>
   );

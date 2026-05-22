@@ -5,11 +5,18 @@ import { parseDateLocal } from "@/lib/date";
 import { ArrowLeft, X } from "lucide-react";
 import { JournalEditor } from "@/components/journal/journal-editor";
 import { TagInput } from "@/components/journal/tag-input";
-import { Calendar, Input, Popover, YStack } from "@stageholder/ui";
+import {
+  Calendar,
+  Input,
+  Popover,
+  Text,
+  View,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 import { useJournals } from "@/lib/api/journals";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { useAutosave } from "@/lib/hooks/use-autosave";
-import { cn } from "@/lib/utils";
 import type { JournalContent } from "@repo/core/types";
 import { countWordsFromContent } from "@repo/core/utils/text";
 
@@ -36,21 +43,22 @@ function formatDefaultTitle(isoDate: string): string {
   return format(parseDateLocal(isoDate), "MMMM d, yyyy");
 }
 
+// Semantic date-status colors (today=green, tomorrow=amber, past=red,
+// future=blue). No kit token equivalent — fixed 500-level hexes that read
+// in both light and dark.
 function getDateInfo(dateStr: string) {
   const today = format(new Date(), "yyyy-MM-dd");
   const tomorrow = format(addDays(new Date(), 1), "yyyy-MM-dd");
-  if (dateStr === today)
-    return { label: "Today", color: "text-green-600 dark:text-green-400" };
-  if (dateStr === tomorrow)
-    return { label: "Tomorrow", color: "text-amber-600 dark:text-amber-400" };
+  if (dateStr === today) return { label: "Today", color: "#16a34a" };
+  if (dateStr === tomorrow) return { label: "Tomorrow", color: "#d97706" };
   if (dateStr < today)
     return {
       label: format(parseDateLocal(dateStr), "MMM d"),
-      color: "text-red-600 dark:text-red-400",
+      color: "#dc2626",
     };
   return {
     label: format(parseDateLocal(dateStr), "MMM d"),
-    color: "text-blue-600 dark:text-blue-400",
+    color: "#2563eb",
   };
 }
 
@@ -137,15 +145,20 @@ function NewJournalPage() {
     <YStack flex={1} height="100%">
       <YStack shrink={0} px="$4" pt="$4">
         {!isDesktop && (
-          <div className="mb-6">
-            <button
-              onClick={() => navigate({ to: "/journal" })}
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          <View mb="$5">
+            <XStack
+              tag="button"
+              items="center"
+              gap="$1"
+              fontSize="$3"
+              color="$mutedForeground"
+              hoverStyle={{ color: "$color" }}
+              onPress={() => navigate({ to: "/journal" })}
             >
-              <ArrowLeft className="size-4" />
+              <ArrowLeft size={16} />
               Back
-            </button>
-          </div>
+            </XStack>
+          </View>
         )}
 
         {/* Title — `paddingHorizontal={0}` strips the kit Input's internal
@@ -169,42 +182,40 @@ function NewJournalPage() {
         />
 
         {/* Metadata pills row */}
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+        <XStack mb="$4" flexWrap="wrap" items="center" gap="$2">
           {/* Date pill */}
           <Popover placement="bottom-start">
             <Popover.Trigger asChild>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              <XStack
+                tag="button"
+                items="center"
+                gap="$1"
+                fontSize="$1"
+                transition="quick"
+                // semantic date-status color (no kit token); icon inherits via currentColor
+                color={dateInfo.color}
               >
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1",
-                    dateInfo.color,
-                  )}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="12"
-                    height="12"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-                    <line x1="16" x2="16" y1="2" y2="6" />
-                    <line x1="8" x2="8" y1="2" y2="6" />
-                    <line x1="3" x2="21" y1="10" y2="10" />
-                  </svg>
-                  {dateInfo.label}
-                </span>
-              </button>
+                  <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+                  <line x1="16" x2="16" y1="2" y2="6" />
+                  <line x1="8" x2="8" y1="2" y2="6" />
+                  <line x1="3" x2="21" y1="10" y2="10" />
+                </svg>
+                {dateInfo.label}
+              </XStack>
             </Popover.Trigger>
-            <Popover.Content className="w-auto p-2">
-              <div className="flex flex-wrap gap-1 pb-2">
+            <Popover.Content width="auto" p="$2">
+              <XStack flexWrap="wrap" gap="$1" pb="$2">
                 {[
                   { label: "Today", date: new Date() },
                   { label: "Tomorrow", date: addDays(new Date(), 1) },
@@ -213,22 +224,33 @@ function NewJournalPage() {
                   const iso = format(shortcut.date, "yyyy-MM-dd");
                   const isActive = date === iso;
                   return (
-                    <button
+                    <XStack
                       key={shortcut.label}
-                      type="button"
-                      onClick={() => setDate(iso)}
-                      className={cn(
-                        "rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
+                      tag="button"
+                      rounded={9999}
+                      borderWidth={1}
+                      px="$2.5"
+                      py="$0.5"
+                      fontSize="$1"
+                      fontWeight="500"
+                      transition="quick"
+                      borderColor={isActive ? "$primary" : "$borderColor"}
+                      bg={isActive ? "$primary" : undefined}
+                      color={
+                        isActive ? "$primaryForeground" : "$mutedForeground"
+                      }
+                      hoverStyle={
                         isActive
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
-                      )}
+                          ? undefined
+                          : { bg: "$accent", color: "$color" }
+                      }
+                      onPress={() => setDate(iso)}
                     >
                       {shortcut.label}
-                    </button>
+                    </XStack>
                   );
                 })}
-              </div>
+              </XStack>
               <Calendar
                 mode="single"
                 value={parseDateLocal(date)}
@@ -243,60 +265,87 @@ function NewJournalPage() {
           {/* Mood pill */}
           <Popover placement="bottom-start">
             <Popover.Trigger asChild>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              <XStack
+                tag="button"
+                items="center"
+                gap="$1"
+                fontSize="$1"
+                color="$mutedForeground"
+                transition="quick"
+                hoverStyle={{ color: "$color" }}
               >
                 {currentMood ? (
-                  <span className="inline-flex items-center gap-1">
-                    <span className="text-sm">{currentMood.emoji}</span>
+                  <XStack items="center" gap="$1">
+                    <Text fontSize="$3">{currentMood.emoji}</Text>
                     {currentMood.label}
-                  </span>
+                  </XStack>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 hover:border-foreground/30">
-                    <span className="text-xs">🙂</span>
+                  <XStack
+                    items="center"
+                    gap="$1"
+                    rounded={9999}
+                    borderWidth={1}
+                    borderStyle="dashed"
+                    borderColor="$borderColor"
+                    px="$2"
+                    py="$0.5"
+                  >
+                    <Text fontSize="$1">🙂</Text>
                     Mood
-                  </span>
+                  </XStack>
                 )}
-              </button>
+              </XStack>
             </Popover.Trigger>
-            <Popover.Content className="w-auto p-1">
-              <div className="flex items-center gap-1">
+            <Popover.Content width="auto" p="$1">
+              <XStack items="center" gap="$1">
                 {moods.map((m) => (
-                  <button
+                  <XStack
                     key={m.value}
-                    type="button"
-                    onClick={() =>
+                    tag="button"
+                    items="center"
+                    justify="center"
+                    height={36}
+                    width={36}
+                    rounded="$lg"
+                    fontSize="$6"
+                    transition="quick"
+                    bg={mood === m.value ? "$accent" : undefined}
+                    hoverStyle={{ bg: "$accent" }}
+                    title={m.label}
+                    onPress={() =>
                       setMood(mood === m.value ? undefined : m.value)
                     }
-                    className={cn(
-                      "flex h-9 w-9 items-center justify-center rounded-lg text-lg transition-colors",
-                      mood === m.value ? "bg-accent" : "hover:bg-accent",
-                    )}
-                    title={m.label}
                   >
                     {m.emoji}
-                  </button>
+                  </XStack>
                 ))}
-              </div>
+              </XStack>
             </Popover.Content>
           </Popover>
 
           {/* Tag pills */}
           {tags.map((tag) => (
-            <span
+            <XStack
               key={tag}
-              className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs text-accent-foreground"
+              items="center"
+              gap="$1"
+              rounded={9999}
+              bg="$accent"
+              px="$2"
+              py="$0.5"
+              fontSize="$1"
+              color="$accentForeground"
             >
               {tag}
-              <button
-                type="button"
-                onClick={() => setTags(tags.filter((t) => t !== tag))}
-                className="text-muted-foreground hover:text-foreground"
+              <View
+                tag="button"
+                color="$mutedForeground"
+                hoverStyle={{ color: "$color" }}
+                onPress={() => setTags(tags.filter((t) => t !== tag))}
               >
-                <X className="size-3" />
-              </button>
-            </span>
+                <X size={12} />
+              </View>
+            </XStack>
           ))}
 
           {/* Add tag pill */}
@@ -304,12 +353,13 @@ function NewJournalPage() {
 
           {/* Existing entries warning */}
           {existingEntries && existingEntries.length > 0 && (
-            <span className="text-xs text-amber-600 dark:text-amber-400">
+            // semantic amber warning text (no kit token) — fixed hex for both modes
+            <Text fontSize="$1" color="#d97706">
               · {existingEntries.length} existing{" "}
               {existingEntries.length === 1 ? "entry" : "entries"}
-            </span>
+            </Text>
           )}
-        </div>
+        </XStack>
       </YStack>
 
       <JournalEditor

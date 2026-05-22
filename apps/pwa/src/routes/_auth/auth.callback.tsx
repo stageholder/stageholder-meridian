@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useHandleCallback, useUser } from "@stageholder/sdk/spa";
+import { YStack, Text } from "@stageholder/ui";
 
 export const Route = createFileRoute("/_auth/auth/callback")({
   component: CallbackPage,
@@ -46,8 +47,10 @@ function CallbackPage() {
   }, [error, navigate]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
-      Completing sign-in…
-    </div>
+    <YStack minH={"100vh" as never} items="center" justify="center">
+      <Text fontSize="$3" color="$mutedForeground">
+        Completing sign-in…
+      </Text>
+    </YStack>
   );
 }

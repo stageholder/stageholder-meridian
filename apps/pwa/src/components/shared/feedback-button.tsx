@@ -21,10 +21,11 @@ import {
 
 type FeedbackType = "bug" | "feature" | "general";
 
-// Per-type icon color is the semantic cue — Bug = red (error language),
-// Feature = amber (suggestion / warmth), General = blue (neutral talk).
-// Kept on the icon even when the card is inactive, since the color *is*
-// the type identifier.
+// Per-type icon color is the semantic cue — Bug = destructive (error
+// language), Feature = warning amber (suggestion / warmth), General = info
+// (neutral talk). Kept on the icon even when the card is inactive, since the
+// color *is* the type identifier. The icon inherits the token via
+// `currentColor` from its wrapping <Text color={…}>.
 const feedbackTypes: {
   value: FeedbackType;
   label: string;
@@ -35,19 +36,19 @@ const feedbackTypes: {
     value: "general",
     label: "General",
     icon: MessageCircle,
-    iconColor: "text-blue-500",
+    iconColor: "$info",
   },
   {
     value: "bug",
     label: "Bug",
     icon: Bug,
-    iconColor: "text-red-500",
+    iconColor: "$destructive",
   },
   {
     value: "feature",
     label: "Feature",
     icon: Lightbulb,
-    iconColor: "text-amber-500",
+    iconColor: "$warning",
   },
 ];
 
@@ -83,20 +84,18 @@ export function FeedbackButton() {
   return (
     <Popover open={open} onOpenChange={setOpen} placement="right-end">
       <Popover.Trigger asChild>
-        <Sidebar.MenuButton
-          icon={
-            <MessageSquarePlus className="size-4 text-sidebar-foreground" />
-          }
-        >
+        <Sidebar.MenuButton icon={<MessageSquarePlus size={16} />}>
           Feedback
         </Sidebar.MenuButton>
       </Popover.Trigger>
-      <Popover.Content className="w-80 p-0">
-        <div className="p-4">
-          <p className="text-sm font-semibold">How can we improve?</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
+      <Popover.Content width={320} p={0}>
+        <YStack p="$4">
+          <Text fontSize="$3" fontWeight="600" color="$color">
+            How can we improve?
+          </Text>
+          <Text mt="$0.5" fontSize="$1" color="$mutedForeground">
             We&apos;d love to hear from you
-          </p>
+          </Text>
 
           {/* Type selector — kit ToggleGroup cards, single-select.
               Three cards in a row, so `columns={3}` overrides the default
@@ -116,7 +115,10 @@ export function FeedbackButton() {
               return (
                 <ToggleGroup.Item key={ft.value} value={ft.value}>
                   <YStack items="center" gap="$1.5">
-                    <Icon className={`size-4 ${ft.iconColor}`} />
+                    {/* icon inherits the semantic token via currentColor */}
+                    <Text color={ft.iconColor}>
+                      <Icon size={16} />
+                    </Text>
                     <Text fontSize={11} fontWeight="500" color="$color">
                       {ft.label}
                     </Text>
@@ -128,7 +130,7 @@ export function FeedbackButton() {
 
           {/* Message */}
           <TextArea
-            className="mt-3"
+            mt="$3"
             value={message}
             onChangeText={setMessage}
             placeholder={
@@ -143,8 +145,10 @@ export function FeedbackButton() {
 
           <Button
             size="sm"
-            icon={<Send className="size-3.5" />}
-            className="mt-2.5 w-full gap-2"
+            icon={<Send size={14} />}
+            mt="$2.5"
+            width="100%"
+            gap="$2"
             disabled={!message.trim() || submitting}
             loading={submitting}
             loadingText="Sending…"
@@ -152,7 +156,7 @@ export function FeedbackButton() {
           >
             Send Feedback
           </Button>
-        </div>
+        </YStack>
       </Popover.Content>
     </Popover>
   );

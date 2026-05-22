@@ -1,6 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ExternalLink, ArrowRight } from "lucide-react";
-import { Button, SizableText, Tabs } from "@stageholder/ui";
+import {
+  Button,
+  H1,
+  Paragraph,
+  SizableText,
+  Tabs,
+  View,
+  YStack,
+} from "@stageholder/ui";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { TargetsSettings } from "@/components/settings/targets-settings";
 
@@ -20,13 +28,15 @@ function SettingsPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="space-y-6 p-4">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+    <YStack gap="$6" p="$4">
+      <YStack>
+        <H1 fontSize="$8" fontWeight="700" color="$color">
+          Settings
+        </H1>
+        <Paragraph mt="$0.5" fontSize="$3" color="$mutedForeground">
           Manage your profile and preferences.
-        </p>
-      </div>
+        </Paragraph>
+      </YStack>
 
       {/* Tabs — `variant="underline"` matches the page-level navigation
           pattern (Linear / Notion / GitHub style) the previous custom
@@ -41,7 +51,7 @@ function SettingsPage() {
           ))}
         </Tabs.List>
 
-        <div className="max-w-2xl">
+        <View maxW={672}>
           <Tabs.Content value="profile">
             <ProfileForm />
           </Tabs.Content>
@@ -49,43 +59,46 @@ function SettingsPage() {
             <TargetsSettings />
           </Tabs.Content>
           <Tabs.Content value="account">
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
+            <YStack gap="$4">
+              <Paragraph fontSize="$3" color="$mutedForeground">
                 Your billing and subscription live in-app. Password, MFA,
                 connected accounts, sessions, and account deletion are managed
                 on Stageholder.
-              </p>
-              <div className="flex flex-col gap-2">
+              </Paragraph>
+              <YStack gap="$2">
                 <Button
                   intent="outline"
-                  iconAfter={<ArrowRight className="size-3.5 opacity-70" />}
+                  iconAfter={<ArrowRight size={14} opacity={0.7} />}
                   onPress={() => void navigate({ to: "/settings/billing" })}
                 >
                   Billing &amp; subscription
                 </Button>
                 <Button
-                  iconAfter={<ArrowRight className="size-3.5 opacity-70" />}
+                  iconAfter={<ArrowRight size={14} opacity={0.7} />}
                   onPress={() =>
                     void navigate({ to: "/settings/billing/upgrade" })
                   }
                 >
                   Upgrade plan
                 </Button>
-                <Button
-                  tag="a"
+                <a
                   href={`${HUB_URL}/account`}
                   target="_blank"
                   rel="noopener"
-                  intent="outline"
-                  iconAfter={<ExternalLink className="size-3.5 opacity-70" />}
+                  style={{ textDecoration: "none" }}
                 >
-                  Security &amp; sign-in on Stageholder
-                </Button>
-              </div>
-            </div>
+                  <Button
+                    intent="outline"
+                    iconAfter={<ExternalLink size={14} opacity={0.7} />}
+                  >
+                    Security &amp; sign-in on Stageholder
+                  </Button>
+                </a>
+              </YStack>
+            </YStack>
           </Tabs.Content>
-        </div>
+        </View>
       </Tabs>
-    </div>
+    </YStack>
   );
 }

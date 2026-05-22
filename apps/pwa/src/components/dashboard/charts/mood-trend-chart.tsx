@@ -1,4 +1,5 @@
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Text, View } from "@stageholder/ui";
 import {
   ChartContainer,
   ChartTooltip,
@@ -16,18 +17,21 @@ export function MoodTrendChart() {
 
   if (isLoading) {
     return (
-      <div className="flex h-[200px] items-center justify-center">
+      <View height={200} items="center" justify="center">
+        {/* allowlist: animate-spin — continuous loading spinner keyframe (no token equivalent) */}
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground/20 border-t-primary" />
-      </div>
+      </View>
     );
   }
 
   const hasData = data.some((d) => d.mood !== null);
   if (!hasData) {
     return (
-      <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
-        Add mood to journal entries to see trends
-      </div>
+      <View height={200} items="center" justify="center">
+        <Text fontSize="$3" color="$mutedForeground">
+          Add mood to journal entries to see trends
+        </Text>
+      </View>
     );
   }
 

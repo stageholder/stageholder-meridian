@@ -9,7 +9,7 @@ import {
 import { CycleToggle } from "@/components/billing/cycle-toggle";
 import { PlanTierCard } from "@/components/billing/plan-tier-card";
 import { ComparisonSheet } from "@/components/billing/comparison-sheet";
-import { cn } from "@/lib/utils";
+import { H1, Paragraph, Text, View, XStack, YStack } from "@stageholder/ui";
 
 /**
  * Meridian's plan-selection page. Built from `usePricing()` and
@@ -34,88 +34,149 @@ function UpgradePage() {
     [plans],
   );
 
+  // Responsive plan-grid template — exact column counts matter, so map the
+  // plan count to a CSS grid template (md+) instead of auto-fit.
+  const planCount = ordered?.length ?? 0;
+  const mdCols =
+    planCount >= 4
+      ? "repeat(2, minmax(0, 1fr))"
+      : `repeat(${Math.max(planCount, 1)}, minmax(0, 1fr))`;
+  const lgCols = planCount >= 4 ? "repeat(4, minmax(0, 1fr))" : undefined;
+
   return (
-    <div className="billing-paper relative min-h-screen bg-background">
-      <div className="relative z-10 mx-auto max-w-6xl px-4 py-10 md:py-16">
+    // allowlist: billing-paper texture (globals.css, no token equivalent)
+    <View
+      position="relative"
+      minH={"100vh" as never}
+      bg="$background"
+      className="billing-paper"
+    >
+      <YStack
+        position="relative"
+        z={10}
+        mx="auto"
+        maxW={1152}
+        px="$4"
+        py="$7"
+        $md={{ py: "$10" }}
+      >
         {/* Back link */}
-        <div className="mb-10">
-          <Link
-            to="/settings/billing"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" />
-            Back to billing
+        <View mb="$7">
+          <Link to="/settings/billing" style={{ textDecoration: "none" }}>
+            <XStack
+              items="center"
+              gap="$1.5"
+              fontSize="$3"
+              color="$mutedForeground"
+              transition="quick"
+              hoverStyle={{ color: "$color" }}
+            >
+              <ArrowLeft size={16} />
+              Back to billing
+            </XStack>
           </Link>
-        </div>
+        </View>
 
         {/* Hero */}
-        <header className="billing-reveal billing-stagger-1 mb-12 grid gap-10 md:grid-cols-[1.6fr_1fr] md:items-end">
-          <div className="space-y-5">
-            <p className="font-mono text-[11px] uppercase tracking-[0.32em] text-foreground/55">
+        {/* allowlist: billing-reveal/stagger keyframes (globals.css) */}
+        <View
+          tag="header"
+          className="billing-reveal billing-stagger-1"
+          mb={48}
+          display="grid"
+          gap="$7"
+          gridTemplateColumns={"1fr" as never}
+          $md={{
+            gridTemplateColumns: "1.6fr 1fr" as never,
+            alignItems: "flex-end",
+          }}
+        >
+          <YStack gap="$4.5">
+            {/* allowlist: editorial mono kicker — letter-spacing + foreground tint */}
+            <Paragraph className="font-mono text-[11px] uppercase tracking-[0.32em] text-foreground/55">
               Plans
-            </p>
-            <h1
-              className={cn(
-                "text-[clamp(2.5rem,7vw,5.5rem)] leading-[0.92] tracking-[-0.02em]",
-              )}
+            </Paragraph>
+            {/* allowlist: display-font + clamp() responsive size (CSS var, no kit token) */}
+            <H1
+              className="text-[clamp(2.5rem,7vw,5.5rem)] leading-[0.92] tracking-[-0.02em]"
               style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
             >
               Choose your plan
-            </h1>
-            <p className="max-w-xl text-base leading-relaxed text-muted-foreground">
+            </H1>
+            <Paragraph maxW={576} fontSize="$5" color="$mutedForeground">
               Same Meridian, different limits. Upgrade or downgrade at any time
               — you can cancel from the billing page.
-            </p>
-          </div>
-          <div className="flex flex-col items-start gap-5 md:items-end">
+            </Paragraph>
+          </YStack>
+          <YStack items="flex-start" gap="$4.5" $md={{ items: "flex-end" }}>
             <CycleToggle
               value={cycle}
               onChange={setCycle}
               yearlyDiscountLabel={yearlyDiscountLabel}
             />
-            <p className="max-w-[260px] text-xs text-muted-foreground md:text-right">
+            <Paragraph
+              maxW={260}
+              fontSize="$1"
+              color="$mutedForeground"
+              $md={{ text: "right" }}
+            >
               Prices shown in your local currency. Taxes included where
               applicable.
-            </p>
-          </div>
-        </header>
+            </Paragraph>
+          </YStack>
+        </View>
 
         {/* Plan grid */}
-        <div className="relative">
+        <View position="relative">
           {/* Background register marks behind the grid */}
-          <div
+          <View
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-1/2 -z-0 hidden -translate-y-1/2 md:block"
+            position="absolute"
+            l={0}
+            r={0}
+            t="50%"
+            z={0}
+            pointerEvents="none"
+            display="none"
+            className="-translate-y-1/2"
+            $md={{ display: "block" }}
           >
-            <div className="mx-auto h-px w-full bg-border/60" />
-          </div>
+            {/* allowlist: foreground-tinted hairline (no token equivalent) */}
+            <View mx="auto" height={1} width="100%" className="bg-border/60" />
+          </View>
 
           {isLoading || !ordered || !features ? (
             <PlanGridSkeleton />
           ) : (
-            <ul
-              className={cn(
-                "relative grid gap-6 md:gap-8",
-                ordered.length === 1 && "md:grid-cols-1",
-                ordered.length === 2 && "md:grid-cols-2",
-                ordered.length === 3 && "md:grid-cols-3",
-                ordered.length >= 4 && "md:grid-cols-2 lg:grid-cols-4",
-              )}
+            <View
+              tag="ul"
+              position="relative"
+              display="grid"
+              gap="$5"
+              gridTemplateColumns={"1fr" as never}
+              $md={{ gap: "$6", gridTemplateColumns: mdCols as never }}
+              $lg={
+                lgCols ? { gridTemplateColumns: lgCols as never } : undefined
+              }
             >
               {ordered.map((plan, i) => {
                 const isCurrent = sub?.plan === plan.slug;
                 return (
-                  <li
+                  <View
                     key={plan.id}
-                    className={cn(
+                    tag="li"
+                    // allowlist: billing-reveal/stagger keyframes; md:-translate-y-6
+                    // featured-plan lift (CSS transform, no token equivalent)
+                    className={[
                       "billing-reveal",
                       i === 0 && "billing-stagger-2",
                       i === 1 && "billing-stagger-3",
                       i === 2 && "billing-stagger-4",
                       i === 3 && "billing-stagger-5",
-                      // Featured plan rises out of the baseline grid
                       plan.isFeatured && "md:-translate-y-6",
-                    )}
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
                   >
                     <PlanTierCard
                       plan={plan}
@@ -124,32 +185,51 @@ function UpgradePage() {
                       isCurrent={isCurrent}
                       className="h-full"
                     />
-                  </li>
+                  </View>
                 );
               })}
-            </ul>
+            </View>
           )}
-        </div>
+        </View>
 
         {/* Comparison sheet */}
         {!isLoading && ordered && features && features.length > 0 && (
-          <div className="billing-reveal billing-stagger-6 mt-24">
+          // allowlist: billing-reveal/stagger keyframes (globals.css)
+          <View className="billing-reveal billing-stagger-6" mt={96}>
             <ComparisonSheet plans={ordered} features={features} />
-          </div>
+          </View>
         )}
 
         {/* Closing mark */}
-        <footer className="mt-20 flex flex-wrap items-baseline justify-between gap-4 border-t border-border/60 pt-6">
-          <p className="text-base font-medium">Questions about your plan?</p>
-          <a
+        {/* allowlist: border-border/60 hairline tint (no token equivalent) */}
+        <XStack
+          tag="footer"
+          mt={80}
+          flexWrap="wrap"
+          items="baseline"
+          justify="space-between"
+          gap="$4"
+          borderTopWidth={1}
+          pt="$5"
+          className="border-border/60"
+        >
+          <Text fontSize="$5" fontWeight="500">
+            Questions about your plan?
+          </Text>
+          {/* allowlist: hover underline on the mailto link (no token equivalent) */}
+          <Text
+            tag="a"
             href="mailto:hello@meridian.app"
-            className="text-sm font-medium text-foreground underline-offset-4 hover:underline"
+            fontSize="$3"
+            fontWeight="500"
+            color="$color"
+            className="underline-offset-4 hover:underline"
           >
             hello@meridian.app
-          </a>
-        </footer>
-      </div>
-    </div>
+          </Text>
+        </XStack>
+      </YStack>
+    </View>
   );
 }
 
@@ -197,13 +277,27 @@ function bestYearlyDiscountLabel(
 
 function PlanGridSkeleton() {
   return (
-    <ul className="grid gap-6 md:grid-cols-3 md:gap-8">
+    <View
+      tag="ul"
+      display="grid"
+      gap="$5"
+      gridTemplateColumns={"1fr" as never}
+      $md={{
+        gap: "$6",
+        gridTemplateColumns: "repeat(3, minmax(0, 1fr))" as never,
+      }}
+    >
       {Array.from({ length: 3 }).map((_, i) => (
-        <li
+        <View
           key={i}
-          className="h-[520px] animate-pulse rounded-[28px] border border-border/60 bg-card/40"
+          tag="li"
+          height={520}
+          rounded={28}
+          borderWidth={1}
+          // allowlist: animate-pulse keyframe + card/border translucency (no token equivalent)
+          className="animate-pulse border-border/60 bg-card/40"
         />
       ))}
-    </ul>
+    </View>
   );
 }

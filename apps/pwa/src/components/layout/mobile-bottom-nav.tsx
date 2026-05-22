@@ -6,7 +6,7 @@ import {
   Target,
   BookOpen,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { XStack, YStack, Text } from "@stageholder/ui";
 
 const bottomNavItems = [
   { href: "/app", label: "Home", icon: Home },
@@ -20,31 +20,57 @@ export function MobileBottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-sm safe-area-bottom-nav md:hidden">
-      <div className="flex h-14 items-center justify-around">
-        {bottomNavItems.map((item) => {
-          const isActive =
-            item.href === "/app"
-              ? pathname === "/app"
-              : pathname === item.href || pathname.startsWith(item.href + "/");
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              to={item.href}
-              className={cn(
-                "flex flex-col items-center gap-0.5 px-3 py-1.5 text-[10px] font-medium transition-colors",
-                isActive
-                  ? "text-primary"
-                  : "text-muted-foreground active:text-foreground",
-              )}
+    <XStack
+      tag="nav"
+      // Tamagui's position type omits web values; cast as the kit's Header does.
+      position={"fixed" as never}
+      b={0}
+      l={0}
+      r={0}
+      z={40}
+      height={56}
+      items="center"
+      justify="space-around"
+      borderTopWidth={1}
+      borderColor="$borderColor"
+      bg="$background"
+      // allowlist: env safe-area inset + frosted-glass effect (no token equivalent)
+      className="safe-area-bottom-nav backdrop-blur-sm"
+      // responsive: hide at md+ (Tailwind md 768 = Tamagui $md)
+      $md={{ display: "none" }}
+    >
+      {bottomNavItems.map((item) => {
+        const isActive =
+          item.href === "/app"
+            ? pathname === "/app"
+            : pathname === item.href || pathname.startsWith(item.href + "/");
+        const Icon = item.icon;
+        return (
+          <Link
+            key={item.href}
+            to={item.href}
+            style={{ textDecoration: "none" }}
+          >
+            <YStack
+              items="center"
+              justify="center"
+              gap="$0.5"
+              px="$3"
+              py="$1.5"
             >
-              <Icon className="size-5" strokeWidth={isActive ? 2.5 : 2} />
-              {item.label}
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
+              <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+              <Text
+                fontSize={10}
+                fontWeight="500"
+                color={isActive ? "$primary" : "$mutedForeground"}
+                transition="quick"
+              >
+                {item.label}
+              </Text>
+            </YStack>
+          </Link>
+        );
+      })}
+    </XStack>
   );
 }

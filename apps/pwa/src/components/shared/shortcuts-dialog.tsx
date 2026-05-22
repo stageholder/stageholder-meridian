@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Dialog } from "@stageholder/ui";
+import { Dialog, Kbd, Text, XStack, YStack } from "@stageholder/ui";
 
 interface ShortcutsDialogProps {
   open: boolean;
@@ -59,55 +59,80 @@ export function ShortcutsDialog({ open, onOpenChange }: ShortcutsDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay />
-        <Dialog.Content className="max-w-md">
-          <div className="space-y-1">
+        <Dialog.Content maxW={448}>
+          <YStack gap="$1">
             <Dialog.Title>Keyboard Shortcuts</Dialog.Title>
             <Dialog.Description>
               Navigate and take actions quickly with these shortcuts.
             </Dialog.Description>
-          </div>
-          <div className="mt-2 space-y-4">
+          </YStack>
+          <YStack mt="$2" gap="$4">
             {shortcutGroups.map((group) => (
-              <div key={group.heading}>
-                <h3 className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <YStack key={group.heading}>
+                <Text
+                  mb="$2"
+                  fontSize="$1"
+                  fontWeight="500"
+                  color="$mutedForeground"
+                  textTransform="uppercase"
+                  letterSpacing={0.8}
+                >
                   {group.heading}
-                </h3>
-                <div className="space-y-1">
+                </Text>
+                <YStack gap="$1">
                   {group.items.map((item) => {
                     const keys =
                       isMac && item.macKeys ? item.macKeys : item.keys;
                     return (
-                      <div
+                      <XStack
                         key={item.description}
-                        className="flex items-center justify-between rounded-md px-2 py-1.5"
+                        items="center"
+                        justify="space-between"
+                        rounded="$md"
+                        px="$2"
+                        py="$1.5"
                       >
-                        <span className="text-sm text-foreground">
+                        <Text fontSize="$3" color="$color">
                           {item.description}
-                        </span>
-                        <div className="flex items-center gap-1">
+                        </Text>
+                        <XStack items="center" gap="$1">
                           {keys.map((key, i) => (
-                            <span
-                              key={i}
-                              className="inline-flex items-center gap-1"
-                            >
-                              <kbd className="inline-flex h-5 min-w-5 items-center justify-center rounded border border-border bg-muted px-1.5 font-mono text-[11px] font-medium text-muted-foreground">
+                            <XStack key={i} items="center" gap="$1">
+                              <Kbd
+                                minW={20}
+                                rounded="$1"
+                                borderWidth={1}
+                                borderColor="$borderColor"
+                                bg="$muted"
+                                px="$1.5"
+                                py="$0.5"
+                                fontFamily="$mono"
+                                fontSize={11}
+                                fontWeight="500"
+                                color="$mutedForeground"
+                                text="center"
+                              >
                                 {key}
-                              </kbd>
+                              </Kbd>
                               {i < keys.length - 1 && keys.length > 1 && (
-                                <span className="text-[9px] text-muted-foreground/50">
+                                <Text
+                                  fontSize={9}
+                                  color="$mutedForeground"
+                                  opacity={0.5}
+                                >
                                   {group.heading === "Navigation" ? "→" : "+"}
-                                </span>
+                                </Text>
                               )}
-                            </span>
+                            </XStack>
                           ))}
-                        </div>
-                      </div>
+                        </XStack>
+                      </XStack>
                     );
                   })}
-                </div>
-              </div>
+                </YStack>
+              </YStack>
             ))}
-          </div>
+          </YStack>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog>

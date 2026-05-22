@@ -1,10 +1,18 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { format } from "date-fns";
 import { useJournals, useJournalsPaginated } from "@/lib/api/journals";
 import { JournalList } from "@/components/journal/journal-list";
-import { DatePicker } from "@/components/ui/date-picker";
+import { parseDateLocal } from "@/lib/date";
 import type { Journal } from "@repo/core/types";
-import { Button, Select } from "@stageholder/ui";
+import {
+  Button,
+  DatePicker,
+  Select,
+  Text,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 
 const moodOptions = [
   { value: 0, label: "All Moods" },
@@ -57,49 +65,60 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
   }, [journals, moodFilter]);
 
   return (
-    <div className="flex h-full flex-col">
+    <YStack height="100%">
       {/* Header */}
-      <div className="shrink-0 border-b border-border p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">Journal</h2>
-            <p className="text-xs text-muted-foreground">
+      <YStack
+        shrink={0}
+        p="$4"
+        borderBottomWidth={1}
+        borderColor="$borderColor"
+      >
+        <XStack items="center" justify="space-between">
+          <YStack>
+            <Text fontSize="$6" fontWeight="600" color="$color">
+              Journal
+            </Text>
+            <Text fontSize="$1" color="$mutedForeground">
               Your thoughts and reflections
-            </p>
-          </div>
+            </Text>
+          </YStack>
           <Button
             size="sm"
             onPress={() => void navigate({ to: "/journal/new" })}
           >
             New Journal
           </Button>
-        </div>
+        </XStack>
 
         {/* Filters */}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-muted-foreground">From</span>
+        <XStack mt="$3" flexWrap="wrap" items="center" gap="$2">
+          <XStack items="center" gap="$1.5">
+            <Text fontSize="$1" color="$mutedForeground">
+              From
+            </Text>
             <DatePicker
-              value={startDate}
-              onChange={setStartDate}
+              value={startDate ? parseDateLocal(startDate) : null}
+              onChange={(d) => setStartDate(d ? format(d, "yyyy-MM-dd") : "")}
               placeholder="Start"
-              className="w-auto"
+              showClear
             />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-muted-foreground">To</span>
+          </XStack>
+          <XStack items="center" gap="$1.5">
+            <Text fontSize="$1" color="$mutedForeground">
+              To
+            </Text>
             <DatePicker
-              value={endDate}
-              onChange={setEndDate}
+              value={endDate ? parseDateLocal(endDate) : null}
+              onChange={(d) => setEndDate(d ? format(d, "yyyy-MM-dd") : "")}
               placeholder="End"
-              className="w-auto"
+              showClear
             />
-          </div>
+          </XStack>
           <Select
             value={String(moodFilter)}
             onValueChange={(value) => setMoodFilter(Number(value))}
           >
-            <Select.Trigger className="h-7 w-auto rounded-lg border-border bg-background px-2 text-xs" />
+            <Select.Trigger height={28} rounded="$lg" px="$2" fontSize="$1" />
             <Select.Content>
               {moodOptions.map((opt) => (
                 <Select.Item key={opt.value} value={String(opt.value)}>
@@ -121,18 +140,18 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
               Clear
             </Button>
           )}
-        </div>
-      </div>
+        </XStack>
+      </YStack>
 
       {/* Scrollable list */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-3">
+      <YStack flex={1} overflow="scroll" p="$3">
         <JournalList
           journals={filteredJournals}
           isLoading={isLoading}
           activeId={activeId}
         />
         {!hasDateFilter && paginatedQuery.hasNextPage && (
-          <div className="mt-2 flex justify-center">
+          <XStack mt="$2" justify="center">
             <Button
               intent="ghost"
               size="sm"
@@ -143,9 +162,9 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
             >
               Load more
             </Button>
-          </div>
+          </XStack>
         )}
-      </div>
-    </div>
+      </YStack>
+    </YStack>
   );
 }

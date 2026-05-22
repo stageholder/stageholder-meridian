@@ -6,7 +6,7 @@ import {
   CalendarDays,
   Home,
 } from "lucide-react";
-import { Button } from "@stageholder/ui";
+import { Button, Paragraph, Text, XStack, YStack } from "@stageholder/ui";
 
 interface Feature {
   icon: typeof Home;
@@ -73,47 +73,63 @@ export function TourStep({
         );
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <h2 className="text-xl font-bold text-foreground">
+    <YStack gap="$6">
+      <YStack gap="$2">
+        <Text fontSize="$7" fontWeight="700" color="$color">
           Here&apos;s what you can do
-        </h2>
-        <p className="text-sm text-muted-foreground">
+        </Text>
+        <Paragraph fontSize="$3" color="$mutedForeground">
           A quick look at the features tailored for you.
-        </p>
-      </div>
+        </Paragraph>
+      </YStack>
 
-      <div className="space-y-3">
+      <YStack gap="$3">
         {filtered.map((feature, i) => {
           const Icon = feature.icon;
           return (
-            <div
+            <XStack
               key={feature.title}
-              className="flex items-start gap-3 rounded-lg border border-border p-3 animate-in fade-in"
-              style={{
-                animationDelay: `${i * 100}ms`,
-                animationFillMode: "both",
-              }}
+              items="flex-start"
+              gap="$3"
+              rounded="$lg"
+              borderWidth={1}
+              borderColor="$borderColor"
+              p="$3"
+              // Tamagui v2 native staggered mount fade (animations.md): start
+              // transparent, animate to base on mount, delayed per index.
+              enterStyle={{ opacity: 0 }}
+              transition={["medium", { delay: i * 100 }]}
             >
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10">
-                <Icon className="size-4 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">
+              {/* Icon badge: 36px square, $primaryMuted bg (= bg-primary/10) */}
+              <XStack
+                width={36}
+                height={36}
+                shrink={0}
+                items="center"
+                justify="center"
+                rounded="$md"
+                bg="$primaryMuted"
+              >
+                <Text color="$primary">
+                  <Icon size={16} />
+                </Text>
+              </XStack>
+              <YStack>
+                <Text fontSize="$3" fontWeight="500" color="$color">
                   {feature.title}
-                </p>
-                <p className="text-xs text-muted-foreground">
+                </Text>
+                <Text fontSize="$1" color="$mutedForeground">
                   {feature.description}
-                </p>
-              </div>
-            </div>
+                </Text>
+              </YStack>
+            </XStack>
           );
         })}
-      </div>
+      </YStack>
 
-      <Button className="w-full" onPress={onContinue}>
+      <Button width="100%" onPress={onContinue}>
         Continue
       </Button>
-    </div>
+    </YStack>
   );
 }

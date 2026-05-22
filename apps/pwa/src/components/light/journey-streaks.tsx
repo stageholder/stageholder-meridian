@@ -1,16 +1,19 @@
 import { Flame, CheckCircle2, Repeat2, BookOpen } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Text, View, XStack, YStack } from "@stageholder/ui";
 import type { UserLight } from "@repo/core/types/light";
 
 interface JourneyStreaksProps {
   userLight: UserLight;
 }
 
+// `color` here is the decorative accent for the overlaid lucide icon (no kit
+// token — style escape hatch). `ringColor`/`trackColor` are Tailwind stroke
+// classes consumed by the StreakRing SVG (viz coloring, left untouched).
 const streakCards = [
   {
     label: "Perfect Day",
     icon: Flame,
-    color: "text-amber-500",
+    color: "#f59e0b",
     ringColor: "stroke-amber-500",
     trackColor: "stroke-amber-500/15",
     currentKey: "perfectDayStreak" as const,
@@ -20,7 +23,7 @@ const streakCards = [
   {
     label: "Todos",
     icon: CheckCircle2,
-    color: "text-blue-500",
+    color: "#3b82f6",
     ringColor: "stroke-blue-500",
     trackColor: "stroke-blue-500/15",
     currentKey: "todoRingStreak" as const,
@@ -30,7 +33,7 @@ const streakCards = [
   {
     label: "Habits",
     icon: Repeat2,
-    color: "text-orange-500",
+    color: "#f97316",
     ringColor: "stroke-orange-500",
     trackColor: "stroke-orange-500/15",
     currentKey: "habitRingStreak" as const,
@@ -40,7 +43,7 @@ const streakCards = [
   {
     label: "Journal",
     icon: BookOpen,
-    color: "text-emerald-500",
+    color: "#10b981",
     ringColor: "stroke-emerald-500",
     trackColor: "stroke-emerald-500/15",
     currentKey: "journalRingStreak" as const,
@@ -49,6 +52,7 @@ const streakCards = [
   },
 ] as const;
 
+// VIZ leaf — SVG geometry + Tailwind stroke color classes left as-is.
 function StreakRing({
   current,
   max,
@@ -94,40 +98,71 @@ function StreakRing({
 
 export function JourneyStreaks({ userLight }: JourneyStreaksProps) {
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    // Responsive grid: 2 columns, 4 at lg. `Grid`'s `columns` isn't a media-
+    // aware style prop, so the CSS-grid template lives directly on a View with
+    // an `$lg` override (gap maps gap-3 → $3).
+    <View
+      display="grid"
+      gap="$3"
+      style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}
+      $lg={{
+        style: { gridTemplateColumns: "repeat(4, minmax(0, 1fr))" },
+      }}
+    >
       {streakCards.map((card) => {
         const Icon = card.icon;
         const current = userLight[card.currentKey];
         const best = card.bestKey ? userLight[card.bestKey] : null;
 
         return (
-          <div
+          <XStack
             key={card.label}
-            className="flex items-center gap-3 rounded-xl border border-border bg-card p-3"
+            items="center"
+            gap="$3"
+            rounded="$lg"
+            borderWidth={1}
+            borderColor="$borderColor"
+            bg="$card"
+            p="$3"
           >
-            <div className="relative flex items-center justify-center">
+            <View position="relative" items="center" justify="center">
               <StreakRing
                 current={current}
                 max={card.maxDays}
                 ringColor={card.ringColor}
                 trackColor={card.trackColor}
               />
-              <Icon className={cn("absolute size-4", card.color)} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-lg font-bold tabular-nums leading-tight">
+              {/* Centered accent icon — decorative hue via style hatch. */}
+              <Text
+                position="absolute"
+                lineHeight={0}
+                style={{ color: card.color }}
+              >
+                <Icon size={16} />
+              </Text>
+            </View>
+            <YStack minW={0}>
+              <Text
+                fontSize="$6"
+                fontWeight="700"
+                lineHeight={20}
+                color="$color"
+                style={{ fontVariantNumeric: "tabular-nums" }}
+              >
                 {current}d
-              </p>
-              <p className="text-xs text-muted-foreground">{card.label}</p>
+              </Text>
+              <Text fontSize="$1" color="$mutedForeground">
+                {card.label}
+              </Text>
               {best !== null && (
-                <p className="text-[10px] text-muted-foreground">
+                <Text fontSize={10} color="$mutedForeground">
                   Best: {best}d
-                </p>
+                </Text>
               )}
-            </div>
-          </div>
+            </YStack>
+          </XStack>
         );
       })}
-    </div>
+    </View>
   );
 }

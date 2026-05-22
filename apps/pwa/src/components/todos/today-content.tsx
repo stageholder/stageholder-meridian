@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { Text, View, XStack, YStack } from "@stageholder/ui";
 import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
@@ -58,44 +59,48 @@ export function TodayContent() {
 
   return (
     <>
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-foreground">Today</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+      <YStack mb="$6">
+        <Text fontSize="$7" fontWeight="700" color="$color">
+          Today
+        </Text>
+        <Text mt="$1" fontSize="$3" color="$mutedForeground">
           {todayTodos.length} todo{todayTodos.length !== 1 ? "s" : ""} due today
           or overdue
-        </p>
-      </div>
+        </Text>
+      </YStack>
 
       {defaultList && <QuickAddTodo listId={defaultList.id} />}
 
       {isLoading ? (
-        <div className="mt-3 text-sm text-muted-foreground">
+        <Text mt="$3" fontSize="$3" color="$mutedForeground">
           Loading todos...
-        </div>
+        </Text>
       ) : isError ? (
-        <div className="mt-3 text-sm text-destructive">
+        <Text mt="$3" fontSize="$3" color="$destructive">
           Failed to load todos. Please try refreshing the page.
-        </div>
+        </Text>
       ) : (
-        <div className="mt-3 space-y-6">
+        <YStack mt="$3" gap="$6">
           {sortedListIds.map((listId) => {
             const list = listMap.get(listId);
             const listTodos = groupedByList.get(listId) || [];
             return (
-              <div key={listId}>
-                <div className="mb-2 flex items-center gap-2">
-                  <span
-                    className="inline-block h-3 w-3 rounded-full"
+              <YStack key={listId}>
+                <XStack mb="$2" items="center" gap="$2">
+                  <View
+                    width={12}
+                    height={12}
+                    rounded={9999}
                     style={{ backgroundColor: list?.color || "#6b7280" }}
                   />
-                  <h2 className="text-sm font-semibold text-foreground">
+                  <Text fontSize="$3" fontWeight="600" color="$color">
                     {list?.name || "Unknown List"}
-                  </h2>
-                  <span className="text-xs text-muted-foreground">
+                  </Text>
+                  <Text fontSize="$1" color="$mutedForeground">
                     ({listTodos.length})
-                  </span>
-                </div>
-                <div className="space-y-2">
+                  </Text>
+                </XStack>
+                <YStack gap="$2">
                   {listTodos.map((todo) => (
                     <TodoItem
                       key={todo.id}
@@ -104,19 +109,19 @@ export function TodayContent() {
                       isCompleting={completingIds.has(todo.id)}
                     />
                   ))}
-                </div>
-              </div>
+                </YStack>
+              </YStack>
             );
           })}
 
           {todayTodos.length === 0 && (
-            <div className="py-12 text-center">
-              <p className="text-sm text-muted-foreground">
+            <YStack py="$8" items="center">
+              <Text fontSize="$3" color="$mutedForeground" text="center">
                 Nothing due today. You&apos;re all caught up!
-              </p>
-            </div>
+              </Text>
+            </YStack>
           )}
-        </div>
+        </YStack>
       )}
     </>
   );

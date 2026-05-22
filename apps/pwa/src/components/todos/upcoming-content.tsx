@@ -3,11 +3,18 @@ import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
 import { useAnimatedTodoList } from "@/lib/hooks/use-animated-todo-list";
-import { Button, Calendar, Popover } from "@stageholder/ui";
+import {
+  Button,
+  Calendar,
+  Popover,
+  Text,
+  View,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 import { format, addDays } from "date-fns";
 import { parseDateLocal } from "@/lib/date";
 import type { DateRange } from "react-day-picker";
-import { cn } from "@/lib/utils";
 import type { Todo, TodoList } from "@repo/core/types";
 
 const PRESETS = [
@@ -134,31 +141,44 @@ export function UpcomingContent() {
 
   return (
     <>
-      <div className="mb-4">
-        <h1 className="text-xl font-bold text-foreground">Upcoming</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+      <YStack mb="$4">
+        <Text fontSize="$7" fontWeight="700" color="$color">
+          Upcoming
+        </Text>
+        <Text mt="$1" fontSize="$3" color="$mutedForeground">
           {upcomingTodos.length} upcoming todo
           {upcomingTodos.length !== 1 ? "s" : ""}
-        </p>
-      </div>
+        </Text>
+      </YStack>
 
       {/* Filter chips */}
-      <div className="mb-4 flex flex-wrap items-center gap-1.5">
-        {PRESETS.map((preset) => (
-          <button
-            key={preset.days}
-            type="button"
-            onClick={() => handlePreset(preset.days)}
-            className={cn(
-              "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-              isPresetActive(preset.days)
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
-            )}
-          >
-            {preset.label}
-          </button>
-        ))}
+      <XStack mb="$4" flexWrap="wrap" items="center" gap="$1.5">
+        {PRESETS.map((preset) => {
+          const active = isPresetActive(preset.days);
+          return (
+            <XStack
+              key={preset.days}
+              onPress={() => handlePreset(preset.days)}
+              cursor="pointer"
+              rounded={9999}
+              borderWidth={1}
+              px="$3"
+              py="$1"
+              transition="quick"
+              borderColor={active ? "$primary" : "$borderColor"}
+              bg={active ? "$primary" : "transparent"}
+              hoverStyle={active ? undefined : { bg: "$accent" }}
+            >
+              <Text
+                fontSize="$1"
+                fontWeight="500"
+                color={active ? "$primaryForeground" : "$mutedForeground"}
+              >
+                {preset.label}
+              </Text>
+            </XStack>
+          );
+        })}
 
         {/* Custom date picker */}
         <Popover
@@ -167,14 +187,19 @@ export function UpcomingContent() {
           placement="bottom-start"
         >
           <Popover.Trigger asChild>
-            <button
-              type="button"
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                hasCustomRange
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
-              )}
+            <XStack
+              cursor="pointer"
+              items="center"
+              gap="$1"
+              rounded={9999}
+              borderWidth={1}
+              px="$3"
+              py="$1"
+              transition="quick"
+              borderColor={hasCustomRange ? "$primary" : "$borderColor"}
+              bg={hasCustomRange ? "$primary" : "transparent"}
+              color={hasCustomRange ? "$primaryForeground" : "$mutedForeground"}
+              hoverStyle={hasCustomRange ? undefined : { bg: "$accent" }}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -192,15 +217,23 @@ export function UpcomingContent() {
                 <rect width="18" height="18" x="3" y="4" rx="2" />
                 <path d="M3 10h18" />
               </svg>
-              {filterLabel || "Custom"}
-            </button>
+              <Text
+                fontSize="$1"
+                fontWeight="500"
+                color={
+                  hasCustomRange ? "$primaryForeground" : "$mutedForeground"
+                }
+              >
+                {filterLabel || "Custom"}
+              </Text>
+            </XStack>
           </Popover.Trigger>
-          <Popover.Content className="w-auto p-2">
+          <Popover.Content width="auto">
             {hasCustomRange && (
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
+              <XStack mb="$2" items="center" justify="space-between">
+                <Text fontSize="$1" color="$mutedForeground">
                   {customRange?.to ? "Range selected" : "Pick end date"}
-                </span>
+                </Text>
                 <Button
                   intent="outline"
                   size="sm"
@@ -209,7 +242,7 @@ export function UpcomingContent() {
                 >
                   Clear
                 </Button>
-              </div>
+              </XStack>
             )}
             <Calendar
               mode="range"
@@ -241,16 +274,16 @@ export function UpcomingContent() {
             />
           </Popover.Content>
         </Popover>
-      </div>
+      </XStack>
 
       {defaultList && <QuickAddTodo listId={defaultList.id} />}
 
       {isLoading ? (
-        <div className="mt-3 text-sm text-muted-foreground">
+        <Text mt="$3" fontSize="$3" color="$mutedForeground">
           Loading todos...
-        </div>
+        </Text>
       ) : (
-        <div className="mt-3 space-y-6">
+        <YStack mt="$3" gap="$6">
           {sortedDates.map((date) => {
             const dateTodos = groupedByDate.get(date) || [];
             // Sub-group by list within each date
@@ -262,27 +295,33 @@ export function UpcomingContent() {
             }
 
             return (
-              <div key={date}>
-                <h2 className="mb-3 text-sm font-semibold text-foreground">
+              <YStack key={date}>
+                <Text mb="$3" fontSize="$3" fontWeight="600" color="$color">
                   {formatDateLabel(date)}
-                </h2>
-                <div className="space-y-4 pl-1">
+                </Text>
+                <YStack gap="$4" pl="$1.5">
                   {[...byList.entries()].map(([listId, listTodos]) => {
                     const list = listMap.get(listId);
                     return (
-                      <div key={listId}>
-                        <div className="mb-2 flex items-center gap-2">
-                          <span
-                            className="inline-block h-3 w-3 rounded-full"
+                      <YStack key={listId}>
+                        <XStack mb="$2" items="center" gap="$2">
+                          <View
+                            width={12}
+                            height={12}
+                            rounded={9999}
                             style={{
                               backgroundColor: list?.color || "#6b7280",
                             }}
                           />
-                          <span className="text-xs font-medium text-muted-foreground">
+                          <Text
+                            fontSize="$1"
+                            fontWeight="500"
+                            color="$mutedForeground"
+                          >
                             {list?.name || "Unknown List"}
-                          </span>
-                        </div>
-                        <div className="space-y-2">
+                          </Text>
+                        </XStack>
+                        <YStack gap="$2">
                           {listTodos.map((todo) => (
                             <TodoItem
                               key={todo.id}
@@ -291,23 +330,23 @@ export function UpcomingContent() {
                               isCompleting={completingIds.has(todo.id)}
                             />
                           ))}
-                        </div>
-                      </div>
+                        </YStack>
+                      </YStack>
                     );
                   })}
-                </div>
-              </div>
+                </YStack>
+              </YStack>
             );
           })}
 
           {upcomingTodos.length === 0 && (
-            <div className="py-12 text-center">
-              <p className="text-sm text-muted-foreground">
+            <YStack py="$8" items="center">
+              <Text fontSize="$3" color="$mutedForeground" text="center">
                 No upcoming todos scheduled.
-              </p>
-            </div>
+              </Text>
+            </YStack>
           )}
-        </div>
+        </YStack>
       )}
     </>
   );

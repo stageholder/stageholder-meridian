@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { Text, View, YStack } from "@stageholder/ui";
 
 /**
  * Branded atmospheric shell for Meridian's auth-adjacent surfaces —
@@ -23,31 +23,63 @@ export function AuthShell({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-6",
-        className,
-      )}
+    <YStack
+      position="relative"
+      minH={"100vh" as never}
+      items="center"
+      justify="center"
+      overflow="hidden"
+      bg="$background"
+      px="$6"
+      // consumer passthrough (e.g. error/goodbye variants); allowlist-aware
+      className={className}
     >
       {/* Atmospheric background */}
-      <div className="pointer-events-none absolute inset-0">
-        <div
-          className="absolute auth-showcase-grid opacity-40 dark:opacity-20"
+      <View position="absolute" t={0} b={0} l={0} r={0} pointerEvents="none">
+        {/* allowlist: auth-showcase-grid keyframe (globals.css), dark-variant opacity */}
+        <View
+          position="absolute"
+          className="auth-showcase-grid opacity-40 dark:opacity-20"
           style={{ inset: "-40px" }}
         />
-        <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-gradient-to-b from-transparent via-primary/20 to-transparent" />
-        <div className="absolute left-1/2 top-1/2 h-[480px] w-[480px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.04] blur-[100px]" />
-      </div>
+        {/* allowlist: vertical meridian line — CSS gradient, no token equivalent */}
+        <View
+          position="absolute"
+          t={0}
+          height="100%"
+          width={1}
+          l="50%"
+          className="-translate-x-1/2 bg-gradient-to-b from-transparent via-primary/20 to-transparent"
+        />
+        {/* allowlist: primary glow orb — translucency + heavy blur, no token equivalent */}
+        <View
+          position="absolute"
+          t="50%"
+          l="50%"
+          height={480}
+          width={480}
+          rounded={9999}
+          className="-translate-x-1/2 -translate-y-1/2 bg-primary/[0.04] blur-[100px]"
+        />
+      </View>
 
       {/* Content */}
-      <div className="relative z-10 flex max-w-md flex-col items-center text-center">
+      <YStack position="relative" z={10} maxW={448} items="center">
         {children}
-      </div>
+      </YStack>
 
       {/* Brand watermark */}
-      <div className="auth-animate auth-stagger-8 absolute bottom-8 text-xs text-muted-foreground/50">
+      {/* allowlist: auth-animate + auth-stagger-8 keyframes (globals.css) */}
+      <Text
+        position="absolute"
+        b="$6"
+        fontSize="$1"
+        color="$mutedForeground"
+        opacity={0.5}
+        className="auth-animate auth-stagger-8"
+      >
         Meridian
-      </div>
-    </div>
+      </Text>
+    </YStack>
   );
 }

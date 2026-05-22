@@ -12,7 +12,7 @@ import { JourneyTierMap } from "@/components/light/journey-tier-map";
 import { JourneyStats } from "@/components/light/journey-stats";
 import { JourneyFeed } from "@/components/light/journey-feed";
 import { JourneyLightChart } from "@/components/light/journey-light-chart";
-import { Card } from "@stageholder/ui";
+import { Card, H1, H2, Paragraph, View, XStack, YStack } from "@stageholder/ui";
 
 export const Route = createFileRoute("/_app/journey")({
   component: JourneyPage,
@@ -25,55 +25,114 @@ function JourneyPage() {
 
   if (isLoading || !userLight) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground/20 border-t-amber-500" />
-      </div>
+      <XStack minH={"50vh" as never} items="center" justify="center">
+        {/* allowlist: animate-spin keyframe + amber spinner ring (no token equivalent) */}
+        <View
+          height={32}
+          width={32}
+          rounded={9999}
+          borderWidth={2}
+          className="animate-spin border-muted-foreground/20 border-t-amber-500"
+        />
+      </XStack>
     );
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-4 lg:p-6">
+    <YStack mx="auto" maxW={768} gap="$6" p="$4" $lg={{ p: "$5" }}>
       {/* Hero + Today's Progress — two-column on md+ */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <View
+        display="grid"
+        gap="$4"
+        gridTemplateColumns={"1fr" as never}
+        $md={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" as never }}
+      >
         {/* Left: Hero — Star + Title + Progress */}
-        <div className="relative flex flex-col items-center justify-center overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-b from-amber-500/5 to-transparent px-6 pb-6 pt-8">
-          {/* Ambient glow */}
-          <div className="pointer-events-none absolute top-0 left-1/2 h-32 w-64 -translate-x-1/2 rounded-full bg-amber-500/10 blur-3xl" />
+        {/* allowlist: amber gradient surface + border tint (no token equivalent) */}
+        <YStack
+          position="relative"
+          items="center"
+          justify="center"
+          overflow="hidden"
+          rounded="$6"
+          borderWidth={1}
+          px="$5"
+          pb="$5"
+          pt="$6"
+          className="border-amber-500/20 bg-gradient-to-b from-amber-500/5 to-transparent"
+        >
+          {/* allowlist: amber ambient glow — translucency + heavy blur (no token equivalent) */}
+          <View
+            position="absolute"
+            t={0}
+            l="50%"
+            height={128}
+            width={256}
+            rounded={9999}
+            pointerEvents="none"
+            className="-translate-x-1/2 bg-amber-500/10 blur-3xl"
+          />
 
           <StarVisual tier={userLight.currentTier} size="xl" />
-          <h1 className="mt-3 text-2xl font-bold tracking-tight text-foreground">
+          <H1
+            mt="$3"
+            fontSize="$8"
+            fontWeight="700"
+            letterSpacing={-0.5}
+            color="$color"
+          >
             {userLight.currentTitle}
-          </h1>
-          <p className="mt-1 text-sm tabular-nums text-muted-foreground">
+          </H1>
+          <Paragraph mt="$0.5" fontSize="$3" color="$mutedForeground">
             {userLight.totalLight.toLocaleString()} Light earned
-          </p>
+          </Paragraph>
           <LevelProgress userLight={userLight} className="mt-5 w-full" />
-        </div>
+        </YStack>
 
         {/* Right: Today's Progress + Quick Stats */}
-        <div className="flex flex-col gap-4">
-          <div>
-            <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+        <YStack gap="$4">
+          <View>
+            <H2
+              mb="$3"
+              fontSize="$3"
+              fontWeight="600"
+              color="$mutedForeground"
+              textTransform="uppercase"
+              letterSpacing={0.5}
+            >
               Today&apos;s Progress
-            </h2>
+            </H2>
             <ActivityRings date={today} size="lg" showLabels />
-          </div>
+          </View>
           <JourneyStats userLight={userLight} />
-        </div>
-      </div>
+        </YStack>
+      </View>
 
       {/* Tier description — full width below hero */}
-      <p className="text-sm text-muted-foreground text-center leading-relaxed max-w-lg mx-auto">
+      <Paragraph
+        fontSize="$3"
+        color="$mutedForeground"
+        text="center"
+        maxW={512}
+        mx="auto"
+      >
         {LIGHT_TIERS[userLight.currentTier - 1]?.description}
-      </p>
+      </Paragraph>
 
       {/* Streaks */}
-      <section>
-        <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+      <View tag="section">
+        <H2
+          mb="$3"
+          fontSize="$3"
+          fontWeight="600"
+          color="$mutedForeground"
+          textTransform="uppercase"
+          letterSpacing={0.5}
+        >
           Streaks
-        </h2>
+        </H2>
         <JourneyStreaks userLight={userLight} />
-      </section>
+      </View>
 
       {/* Light Earned Chart */}
       <Card>
@@ -86,12 +145,19 @@ function JourneyPage() {
       </Card>
 
       {/* Tier Map */}
-      <section>
-        <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+      <View tag="section">
+        <H2
+          mb="$3"
+          fontSize="$3"
+          fontWeight="600"
+          color="$mutedForeground"
+          textTransform="uppercase"
+          letterSpacing={0.5}
+        >
           Tier Map
-        </h2>
+        </H2>
         <JourneyTierMap currentTier={userLight.currentTier} />
-      </section>
+      </View>
 
       {/* Recent Light Feed */}
       <Card>
@@ -106,6 +172,6 @@ function JourneyPage() {
       {levelUpTier && (
         <LevelUpCelebration tier={levelUpTier} onDismiss={dismiss} />
       )}
-    </div>
+    </YStack>
   );
 }

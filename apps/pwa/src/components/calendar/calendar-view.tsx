@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { format, addMonths, subMonths, startOfMonth } from "date-fns";
+import { Text, XStack, YStack } from "@stageholder/ui";
 import { CalendarHeader } from "./calendar-header";
 import { CalendarGrid } from "./calendar-grid";
 import { DayPanel } from "./day-panel";
@@ -25,7 +26,7 @@ export function CalendarView() {
   }, [selectedDate, calendarData]);
 
   return (
-    <div className="space-y-4">
+    <YStack gap="$4">
       <CalendarHeader
         currentMonth={currentMonth}
         onPrevMonth={() => setCurrentMonth((m) => subMonths(m, 1))}
@@ -37,15 +38,17 @@ export function CalendarView() {
       />
 
       {isLoading ? (
-        <div className="flex h-[400px] items-center justify-center">
-          <p className="text-sm text-muted-foreground">Loading calendar...</p>
-        </div>
+        <XStack height={400} items="center" justify="center">
+          <Text fontSize="$3" color="$mutedForeground">
+            Loading calendar...
+          </Text>
+        </XStack>
       ) : isError ? (
-        <div className="flex h-[400px] items-center justify-center">
-          <p className="text-sm text-destructive">
+        <XStack height={400} items="center" justify="center">
+          <Text fontSize="$3" color="$destructive">
             Failed to load calendar. Please try refreshing the page.
-          </p>
-        </div>
+          </Text>
+        </XStack>
       ) : (
         <CalendarGrid
           currentMonth={currentMonth}
@@ -65,6 +68,6 @@ export function CalendarView() {
           habits={habitsList}
         />
       )}
-    </div>
+    </YStack>
   );
 }

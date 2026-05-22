@@ -1,5 +1,6 @@
 import { useState, type KeyboardEvent } from "react";
 import { X, Tag } from "lucide-react";
+import { Input, Label, Text, View, XStack } from "@stageholder/ui";
 
 interface TagInputProps {
   tags: string[];
@@ -41,66 +42,112 @@ export function TagInput({ tags, onChange, inline }: TagInputProps) {
   if (inline) {
     if (!isOpen) {
       return (
-        <button
-          type="button"
-          onClick={() => setIsOpen(true)}
-          className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-muted-foreground hover:border-foreground/30 hover:text-foreground transition-colors"
+        <XStack
+          onPress={() => setIsOpen(true)}
+          items="center"
+          gap="$1"
+          rounded={9999}
+          borderWidth={1}
+          borderStyle="dashed"
+          borderColor="$borderColor"
+          px="$2"
+          py="$0.5"
+          cursor="pointer"
+          transition="quick"
+          hoverStyle={{ borderColor: "$mutedForeground" }}
+          role="button"
         >
-          <Tag className="size-2.5" />
-          Tag
-        </button>
+          <Text color="$mutedForeground" lineHeight={0}>
+            <Tag size={10} />
+          </Text>
+          <Text fontSize="$1" color="$mutedForeground">
+            Tag
+          </Text>
+        </XStack>
       );
     }
 
     return (
-      <input
-        type="text"
+      <Input
         value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={handleKeyDown}
+        onChangeText={setInput}
+        {...({ onKeyDown: handleKeyDown } as object)}
         onBlur={() => {
           if (input.trim()) addTag(input);
           setIsOpen(false);
         }}
         autoFocus
         placeholder="Add tag..."
-        className="w-20 rounded-full border border-border bg-background px-2 py-0.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+        size="$2"
+        width={80}
+        rounded={9999}
       />
     );
   }
 
   return (
-    <div>
-      <label className="block text-sm font-medium text-foreground">Tags</label>
-      <div className="mt-1 flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2">
+    <View>
+      <Label>Tags</Label>
+      <XStack
+        mt="$1"
+        flexWrap="wrap"
+        items="center"
+        gap="$1.5"
+        rounded="$lg"
+        borderWidth={1}
+        borderColor="$borderColor"
+        bg="$background"
+        px="$3"
+        py="$2"
+      >
         {tags.map((tag) => (
-          <span
+          <XStack
             key={tag}
-            className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs text-accent-foreground"
+            items="center"
+            gap="$1"
+            rounded={9999}
+            bg="$accent"
+            px="$2"
+            py="$0.5"
           >
-            {tag}
-            <button
-              type="button"
-              onClick={() => removeTag(tag)}
-              className="text-muted-foreground hover:text-foreground"
+            <Text fontSize="$1" color="$accentForeground">
+              {tag}
+            </Text>
+            <View
+              onPress={() => removeTag(tag)}
+              cursor="pointer"
+              role="button"
               aria-label={`Remove ${tag}`}
             >
-              <X className="size-3" />
-            </button>
-          </span>
+              <Text
+                color="$mutedForeground"
+                lineHeight={0}
+                hoverStyle={{ color: "$color" }}
+              >
+                <X size={12} />
+              </Text>
+            </View>
+          </XStack>
         ))}
-        <input
-          type="text"
+        <Input
+          flex={1}
+          minW={80}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
+          onChangeText={setInput}
+          {...({ onKeyDown: handleKeyDown } as object)}
           onBlur={() => {
             if (input.trim()) addTag(input);
           }}
           placeholder={tags.length === 0 ? "Add tags..." : ""}
-          className="min-w-[80px] flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+          fontSize="$3"
+          color="$color"
+          bg="transparent"
+          borderWidth={0}
+          px={0}
+          py={0}
+          focusVisibleStyle={{ outlineWidth: 0 }}
         />
-      </div>
-    </div>
+      </XStack>
+    </View>
   );
 }

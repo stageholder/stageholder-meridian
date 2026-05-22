@@ -1,4 +1,5 @@
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Text, View, XStack } from "@stageholder/ui";
 import {
   ChartContainer,
   ChartTooltip,
@@ -16,31 +17,41 @@ export function JourneyLightChart() {
 
   if (isLoading) {
     return (
-      <div className="flex h-[180px] items-center justify-center">
+      <View height={180} items="center" justify="center">
+        {/* allowlist: animate-spin — continuous loading spinner keyframe (no token equivalent) */}
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground/20 border-t-amber-500" />
-      </div>
+      </View>
     );
   }
 
   const hasData = data.some((d) => d.light > 0);
   if (!hasData) {
     return (
-      <div className="flex h-[180px] items-center justify-center text-sm text-muted-foreground">
-        Complete tasks to start earning light
-      </div>
+      <View height={180} items="center" justify="center">
+        <Text fontSize="$3" color="$mutedForeground">
+          Complete tasks to start earning light
+        </Text>
+      </View>
     );
   }
 
   const totalRecent = data.reduce((s, d) => s + d.light, 0);
 
   return (
-    <div>
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">Last 14 days</span>
-        <span className="text-xs font-medium text-amber-600 tabular-nums dark:text-amber-400">
+    <View>
+      <XStack mb="$2" items="center" justify="space-between">
+        <Text fontSize="$1" color="$mutedForeground">
+          Last 14 days
+        </Text>
+        {/* Decorative gold accent for the total — no kit token (style hatch). */}
+        <Text
+          fontSize="$1"
+          fontWeight="500"
+          style={{ color: "#d97706", fontVariantNumeric: "tabular-nums" }}
+        >
           +{totalRecent} Light
-        </span>
-      </div>
+        </Text>
+      </XStack>
       <ChartContainer config={chartConfig} className="h-[180px] w-full">
         <AreaChart data={data}>
           <defs>
@@ -89,6 +100,6 @@ export function JourneyLightChart() {
           />
         </AreaChart>
       </ChartContainer>
-    </div>
+    </View>
   );
 }

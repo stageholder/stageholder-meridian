@@ -3,7 +3,7 @@ import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { ListFilter } from "lucide-react";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { TodoListSidebar } from "@/components/todos/todo-list-sidebar";
-import { Drawer } from "@stageholder/ui";
+import { Drawer, Text, View, XStack, YStack } from "@stageholder/ui";
 
 export const Route = createFileRoute("/_app/todos")({
   component: TodosLayout,
@@ -14,12 +14,18 @@ function TodosLayout() {
   const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
-    <div className="flex h-full">
+    <XStack height="100%">
       {/* Desktop sidebar */}
       {isDesktop && (
-        <div className="h-full w-64 shrink-0 border-r border-border">
+        <View
+          height="100%"
+          width={256}
+          shrink={0}
+          borderRightWidth={1}
+          borderColor="$borderColor"
+        >
           <TodoListSidebar />
-        </div>
+        </View>
       )}
 
       {/* Mobile sheet sidebar */}
@@ -27,7 +33,7 @@ function TodosLayout() {
         <Drawer open={sheetOpen} onOpenChange={setSheetOpen}>
           <Drawer.Portal>
             <Drawer.Overlay />
-            <Drawer.Content side="left" className="w-64 p-0">
+            <Drawer.Content side="left" width={256} p={0}>
               <Drawer.Title className="sr-only">Todo Lists</Drawer.Title>
               <TodoListSidebar onNavigate={() => setSheetOpen(false)} />
             </Drawer.Content>
@@ -36,21 +42,34 @@ function TodosLayout() {
       )}
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col min-h-0">
+      <YStack flex={1} minH={0}>
         {/* Mobile sidebar trigger */}
         {!isDesktop && (
-          <div className="flex h-10 shrink-0 items-center border-b border-border px-4">
-            <button
-              onClick={() => setSheetOpen(true)}
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          <XStack
+            height={40}
+            shrink={0}
+            items="center"
+            borderBottomWidth={1}
+            borderColor="$borderColor"
+            px="$4"
+          >
+            <XStack
+              tag="button"
+              items="center"
+              gap="$2"
+              fontSize="$3"
+              color="$mutedForeground"
+              transition="quick"
+              hoverStyle={{ color: "$color" }}
+              onPress={() => setSheetOpen(true)}
             >
-              <ListFilter className="size-4" />
-              <span>Lists</span>
-            </button>
-          </div>
+              <ListFilter size={16} />
+              <Text>Lists</Text>
+            </XStack>
+          </XStack>
         )}
         <Outlet />
-      </div>
-    </div>
+      </YStack>
+    </XStack>
   );
 }

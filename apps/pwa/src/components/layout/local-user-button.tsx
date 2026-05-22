@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { Avatar, DropdownMenu, Switch, Text } from "@stageholder/ui";
-import { cn } from "@/lib/utils";
+import { Avatar, DropdownMenu, Switch, Text, View } from "@stageholder/ui";
 import { useUser } from "@/hooks/use-user";
 
 /**
@@ -58,13 +57,12 @@ export function LocalUserButton({ menuItems }: LocalUserButtonProps) {
   return (
     <DropdownMenu>
       <DropdownMenu.Trigger asChild>
-        <button
-          type="button"
-          className={cn(
-            "rounded-full transition-opacity hover:opacity-80",
-            "focus-visible:outline-none focus-visible:ring-2",
-            "focus-visible:ring-ring focus-visible:ring-offset-2",
-          )}
+        <View
+          rounded={9999}
+          cursor="pointer"
+          transition="quick"
+          hoverStyle={{ opacity: 0.8 }}
+          focusVisibleStyle={{ outlineWidth: 2, outlineColor: "$outlineColor" }}
           aria-label="User menu"
         >
           <Avatar size="$2" circular>
@@ -86,23 +84,28 @@ export function LocalUserButton({ menuItems }: LocalUserButtonProps) {
               </Text>
             </Avatar.Fallback>
           </Avatar>
-        </button>
+        </View>
       </DropdownMenu.Trigger>
       <DropdownMenu.Content>
         {user && (
           <>
             {/* Header padding mirrors the kit Item's $3 horizontal padding so
                 the name/email block aligns flush with the menu rows below. */}
-            <div className="px-3 py-1.5">
-              <p className="truncate text-sm font-medium text-foreground">
+            <View px="$3" py="$1.5">
+              <Text
+                fontSize="$3"
+                fontWeight="500"
+                color="$color"
+                numberOfLines={1}
+              >
                 {user.name ?? user.email ?? "Signed in"}
-              </p>
+              </Text>
               {user.email && user.name && (
-                <p className="truncate text-xs text-muted-foreground">
+                <Text fontSize="$1" color="$mutedForeground" numberOfLines={1}>
                   {user.email}
-                </p>
+                </Text>
               )}
-            </div>
+            </View>
             <DropdownMenu.Separator />
           </>
         )}

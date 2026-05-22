@@ -8,7 +8,15 @@ import {
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, ExternalLink } from "lucide-react";
 import { OrbitIllustration } from "./orbit-illustration";
-import { cn } from "@/lib/utils";
+import {
+  Button,
+  H1,
+  Skeleton,
+  Text,
+  View,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 
 /**
  * Editorial hero for the billing dashboard. Reads like the cover page of
@@ -53,35 +61,61 @@ export function CurrentPlanHero({
       : "conduct";
 
   return (
-    <section
-      className={cn(
-        "relative overflow-hidden rounded-[32px] border border-border/70",
-        "bg-gradient-to-br from-card via-card to-card/70",
-        "p-8 md:p-10",
-        "billing-reveal billing-stagger-1",
-      )}
+    <View
+      tag="section"
+      position="relative"
+      rounded={32}
+      borderWidth={1}
+      borderColor="$borderColor"
+      // Was a from-card→card/70 diagonal gradient; flattened to the opaque
+      // $card token (no kit gradient token). FLAG: subtle gradient dropped.
+      bg="$card"
+      p="$7"
+      $md={{ p: "$8" }}
+      // allowlist: billing-reveal / billing-stagger-1 — staggered section
+      // reveal keyframe shared across the billing dashboard (no token equiv).
+      className="billing-reveal billing-stagger-1"
     >
       {/* Top-row status strip */}
-      <div className="mb-10 flex items-center gap-3">
+      <XStack mb="$8" items="center" gap="$3">
         <StatusPill status={status} />
-      </div>
+      </XStack>
 
-      <div className="grid gap-10 md:grid-cols-[1.4fr_1fr] md:items-center">
+      <XStack
+        flexDirection="column"
+        gap="$8"
+        $md={{ flexDirection: "row", items: "center" }}
+      >
         {/* Left: plan name + meta + actions */}
-        <div className="space-y-8">
-          <div className="space-y-3">
-            <p className="font-mono text-xs uppercase tracking-[0.24em] text-muted-foreground">
+        <YStack flex={1} gap="$8" $md={{ flexGrow: 1.4 }}>
+          <YStack gap="$3">
+            <Text
+              fontFamily="$mono"
+              fontSize="$1"
+              textTransform="uppercase"
+              letterSpacing={3.4}
+              color="$mutedForeground"
+            >
               Current plan
-            </p>
-            <h1
-              className="text-[clamp(2.75rem,7vw,5rem)] leading-[0.92] tracking-[-0.02em]"
+            </Text>
+            <H1
+              fontSize={64}
+              lineHeight={64 * 0.92}
+              letterSpacing={-1.3}
+              color="$color"
               style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
             >
               {planName}
-            </h1>
-          </div>
+            </H1>
+          </YStack>
 
-          <dl className="grid grid-cols-2 gap-x-8 gap-y-5 border-t border-border/60 pt-6 sm:grid-cols-3">
+          <XStack
+            flexWrap="wrap"
+            gap="$5"
+            borderTopWidth={1}
+            borderColor="$borderColor"
+            pt="$5"
+          >
             <MetaCell
               label="Billing"
               value={
@@ -101,27 +135,51 @@ export function CurrentPlanHero({
               value={state.data.email ?? state.data.name ?? "you"}
               ellipsis
             />
-          </dl>
+          </XStack>
 
-          <div className="flex flex-wrap gap-3 pt-2">
-            <Link
-              to={changePlanHref}
-              className={cn(
-                "group/btn inline-flex h-11 items-center gap-2 rounded-full bg-foreground pl-5 pr-1.5 text-sm font-medium text-background",
-                "transition-opacity hover:opacity-90",
-              )}
-            >
-              {isFree ? "Upgrade your plan" : "Change plan"}
-              <span className="inline-flex size-8 items-center justify-center rounded-full bg-background/15 transition-transform group-hover/btn:translate-x-0.5">
-                <ArrowUpRight className="size-3.5" strokeWidth={2} />
-              </span>
+          <XStack flexWrap="wrap" gap="$3" pt="$2">
+            {/* Route owned by host; keep <Link> for prefetch + middle-click,
+                style + hover live on the inner XStack. */}
+            <Link to={changePlanHref} style={{ textDecoration: "none" }}>
+              <XStack
+                group
+                height={44}
+                items="center"
+                gap="$2"
+                rounded={9999}
+                bg="$color"
+                pl="$5"
+                pr="$1.5"
+                transition="quick"
+                hoverStyle={{ opacity: 0.9 }}
+              >
+                <Text fontSize="$3" fontWeight="500" color="$background">
+                  {isFree ? "Upgrade your plan" : "Change plan"}
+                </Text>
+                <View
+                  width={32}
+                  height={32}
+                  items="center"
+                  justify="center"
+                  rounded={9999}
+                  bg="$background"
+                  opacity={0.15}
+                  transition="quick"
+                  $group-hover={{ x: 2 }}
+                >
+                  <Text color="$color" lineHeight={0}>
+                    <ArrowUpRight size={14} strokeWidth={2} />
+                  </Text>
+                </View>
+              </XStack>
             </Link>
 
             {canManage && !isFree && org && (
-              <button
-                type="button"
+              <Button
+                intent="outline"
                 disabled={portalPending}
-                onClick={() => {
+                iconAfter={<ExternalLink size={14} strokeWidth={2} />}
+                onPress={() => {
                   billingPortal
                     .mutateAsync({
                       orgId: org.id,
@@ -135,56 +193,77 @@ export function CurrentPlanHero({
                       console.error("[meridian] portal failed:", err),
                     );
                 }}
-                className={cn(
-                  "inline-flex h-11 items-center gap-2 rounded-full border border-foreground/80 bg-background px-5 text-sm font-medium text-foreground",
-                  "transition-colors hover:bg-foreground hover:text-background",
-                  "disabled:pointer-events-none disabled:opacity-50",
-                )}
               >
                 {portalPending ? "Opening…" : "Manage payment"}
-                <ExternalLink className="size-3.5" strokeWidth={2} />
-              </button>
+              </Button>
             )}
-          </div>
+          </XStack>
 
           {!canManage && !isFree && (
-            <p className="border-l-2 border-foreground/15 pl-4 text-xs text-muted-foreground">
+            <Text
+              borderLeftWidth={2}
+              borderColor="$borderColor"
+              pl="$4"
+              fontSize="$1"
+              color="$mutedForeground"
+            >
               Only owners and admins can change the plan or update payment
               details. Ask an admin in your organization for changes.
-            </p>
+            </Text>
           )}
-        </div>
+        </YStack>
 
         {/* Right: orbital illustration framed like a printer's plate */}
-        <div className="relative hidden md:block">
-          <div className="relative mx-auto aspect-square w-full max-w-[320px]">
-            <div className="absolute inset-0 rounded-[28px] bg-background/60 ring-1 ring-border/70" />
-            <div className="absolute inset-0 p-6">
-              <OrbitIllustration tier={tier} />
-            </div>
-            {/* corner ticks */}
-            {(["tl", "tr", "bl", "br"] as const).map((c) => (
-              <CornerTick key={c} corner={c} />
-            ))}
-          </div>
-          <p className="mt-4 text-center text-xs text-muted-foreground">
+        <View
+          position="relative"
+          display="none"
+          $md={{ display: "flex", flexGrow: 1 }}
+        >
+          <View position="relative" mx="auto" width="100%" maxW={320}>
+            {/* aspect-square via padding-bottom trick is hard without a token;
+                the inner absolute layers fill an explicit square frame. */}
+            <View style={{ aspectRatio: 1 }}>
+              <View
+                position="absolute"
+                t={0}
+                r={0}
+                b={0}
+                l={0}
+                rounded={28}
+                bg="$background"
+                opacity={0.6}
+                borderWidth={1}
+                borderColor="$borderColor"
+              />
+              <View position="absolute" t={0} r={0} b={0} l={0} p="$6">
+                <OrbitIllustration tier={tier} />
+              </View>
+              {/* corner ticks */}
+              {(["tl", "tr", "bl", "br"] as const).map((c) => (
+                <CornerTick key={c} corner={c} />
+              ))}
+            </View>
+          </View>
+          <Text mt="$4" fontSize="$1" color="$mutedForeground" text="center">
             Your active features
-          </p>
-        </div>
-      </div>
-    </section>
+          </Text>
+        </View>
+      </XStack>
+    </View>
   );
 }
 
 function StatusPill({ status }: { status: string }) {
+  // emerald/amber/rose intents map onto the kit's success/warning/destructive
+  // muted-tint tokens; the dot inherits the same intent color.
   const tone =
     status === "active"
-      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+      ? { bg: "$successMuted", color: "$success" }
       : status === "trialing"
-        ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+        ? { bg: "$warningMuted", color: "$warning" }
         : status === "past_due"
-          ? "bg-rose-500/15 text-rose-700 dark:text-rose-300"
-          : "bg-muted text-muted-foreground";
+          ? { bg: "$destructiveMuted", color: "$destructive" }
+          : { bg: "$muted", color: "$mutedForeground" };
   const label =
     status === "active"
       ? "Active"
@@ -194,15 +273,19 @@ function StatusPill({ status }: { status: string }) {
           ? "Payment due"
           : status;
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium",
-        tone,
-      )}
+    <XStack
+      items="center"
+      gap="$1.5"
+      rounded={9999}
+      px="$3"
+      py="$1"
+      bg={tone.bg}
     >
-      <span className="size-1.5 rounded-full bg-current" />
-      {label}
-    </span>
+      <View width={6} height={6} rounded={9999} bg={tone.color} />
+      <Text fontSize="$1" fontWeight="500" color={tone.color}>
+        {label}
+      </Text>
+    </XStack>
   );
 }
 
@@ -216,57 +299,72 @@ function MetaCell({
   ellipsis?: boolean;
 }) {
   return (
-    <div className="space-y-1">
-      <dt className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+    <YStack flex={1} minW={120} gap="$1">
+      <Text
+        fontFamily="$mono"
+        fontSize={10}
+        textTransform="uppercase"
+        letterSpacing={2.4}
+        color="$mutedForeground"
+      >
         {label}
-      </dt>
-      <dd
-        className={cn(
-          "text-sm font-medium tabular-nums",
-          ellipsis && "truncate",
-        )}
+      </Text>
+      <Text
+        fontSize="$3"
+        fontWeight="500"
+        color="$color"
+        numberOfLines={ellipsis ? 1 : undefined}
       >
         {value}
-      </dd>
-    </div>
+      </Text>
+    </YStack>
   );
 }
 
 function CornerTick({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) {
-  const pos: Record<typeof corner, string> = {
-    tl: "top-2 left-2",
-    tr: "top-2 right-2",
-    bl: "bottom-2 left-2",
-    br: "bottom-2 right-2",
-  };
+  // Small L-shaped registration ticks at each corner. The two visible edges
+  // depend on which corner, drawn as faint borders on a tiny square.
+  const edges = {
+    tl: { borderLeftWidth: 1, borderTopWidth: 1 },
+    tr: { borderRightWidth: 1, borderTopWidth: 1 },
+    bl: { borderLeftWidth: 1, borderBottomWidth: 1 },
+    br: { borderRightWidth: 1, borderBottomWidth: 1 },
+  } as const;
+  const pos = {
+    tl: { t: 7 as const, l: 7 as const },
+    tr: { t: 7 as const, r: 7 as const },
+    bl: { b: 7 as const, l: 7 as const },
+    br: { b: 7 as const, r: 7 as const },
+  } as const;
   return (
-    <span
-      aria-hidden
-      className={cn(
-        "absolute size-3",
-        pos[corner],
-        "before:absolute before:inset-0 before:border-foreground/30",
-        corner === "tl" && "before:border-l before:border-t",
-        corner === "tr" && "before:border-r before:border-t",
-        corner === "bl" && "before:border-l before:border-b",
-        corner === "br" && "before:border-r before:border-b",
-      )}
-    >
-      <span className="absolute inset-0" />
-    </span>
+    <View
+      position="absolute"
+      width={12}
+      height={12}
+      borderColor="$borderColor"
+      {...pos[corner]}
+      {...edges[corner]}
+    />
   );
 }
 
 function HeroSkeleton() {
   return (
-    <section className="rounded-[32px] border border-border/70 bg-card/40 p-10">
-      <div className="h-2 w-32 animate-pulse rounded-full bg-border/80" />
-      <div className="mt-6 h-16 w-2/3 animate-pulse rounded-2xl bg-border/60" />
-      <div className="mt-10 grid grid-cols-3 gap-4">
+    <View
+      tag="section"
+      rounded={32}
+      borderWidth={1}
+      borderColor="$borderColor"
+      bg="$card"
+      p="$7"
+    >
+      <Skeleton height={8} width={128} rounded={9999} />
+      <Skeleton mt="$6" height={64} width="66%" rounded={16} />
+      <XStack mt="$8" gap="$4">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-10 animate-pulse rounded-xl bg-border/40" />
+          <Skeleton key={i} flex={1} height={40} rounded={12} />
         ))}
-      </div>
-    </section>
+      </XStack>
+    </View>
   );
 }

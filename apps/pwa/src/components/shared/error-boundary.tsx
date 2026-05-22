@@ -1,5 +1,5 @@
 import { Component, type ReactNode } from "react";
-import { Button } from "@stageholder/ui";
+import { Button, Paragraph, YStack } from "@stageholder/ui";
 import { logger } from "@repo/core/platform/logger";
 
 interface Props {
@@ -31,14 +31,24 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         this.props.fallback ?? (
-          <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 rounded-lg border border-border bg-card p-8">
-            <p className="text-sm text-muted-foreground">
+          <YStack
+            minH={200}
+            items="center"
+            justify="center"
+            gap="$4"
+            rounded="$lg"
+            borderWidth={1}
+            borderColor="$borderColor"
+            bg="$card"
+            p="$8"
+          >
+            <Paragraph fontSize="$3" color="$mutedForeground">
               Something went wrong.
-            </p>
+            </Paragraph>
             <Button onPress={() => this.setState({ hasError: false })}>
               Try again
             </Button>
-          </div>
+          </YStack>
         )
       );
     }

@@ -7,6 +7,7 @@ import {
   format,
   isSameDay,
 } from "date-fns";
+import { Grid, Hide, Show, Text, View, YStack } from "@stageholder/ui";
 import { CalendarCell } from "./calendar-cell";
 import type { CalendarData } from "@/lib/api/calendar";
 import type { Habit } from "@repo/core/types";
@@ -37,19 +38,23 @@ export function CalendarGrid({
   const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
 
   return (
-    <div>
-      <div className="grid grid-cols-7 gap-0.5 mb-1 sm:gap-1">
+    <YStack>
+      <Grid columns={7} gap="$1" mb="$0.5">
         {WEEKDAYS_LONG.map((day, i) => (
-          <div
-            key={day}
-            className="py-2 text-center text-xs font-medium text-muted-foreground"
-          >
-            <span className="hidden sm:inline">{day}</span>
-            <span className="sm:hidden">{WEEKDAYS_SHORT[i]}</span>
-          </div>
+          <View key={day} py="$2">
+            <Text
+              fontSize="$1"
+              fontWeight="500"
+              color="$mutedForeground"
+              text="center"
+            >
+              <Show above="sm">{day}</Show>
+              <Hide above="sm">{WEEKDAYS_SHORT[i]}</Hide>
+            </Text>
+          </View>
         ))}
-      </div>
-      <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
+      </Grid>
+      <Grid columns={7} gap="$1">
         {days.map((day) => {
           const dateKey = format(day, "yyyy-MM-dd");
           return (
@@ -64,7 +69,7 @@ export function CalendarGrid({
             />
           );
         })}
-      </div>
-    </div>
+      </Grid>
+    </YStack>
   );
 }

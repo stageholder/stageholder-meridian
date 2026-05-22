@@ -24,10 +24,7 @@ import {
   Moon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useAutoSync, useSyncOnFocus } from "@repo/offline/hooks";
-import { useNetworkStatusWithHeartbeat } from "@repo/offline/network";
 import { isDesktop } from "@repo/core/platform";
-import { cn } from "@/lib/utils";
 import { syncAll } from "@/lib/offline";
 import { subscribeLogout } from "@/lib/auth-broadcast";
 import { useUserLight } from "@/lib/api/light";
@@ -63,6 +60,7 @@ const CancellationBanner = () => null;
 import { TrialPill } from "@/components/billing/trial-pill";
 import {
   Button,
+  Grid,
   IconButton,
   MacTrafficLightSpacer,
   Popover,
@@ -70,6 +68,7 @@ import {
   Text,
   View,
   XStack,
+  YStack,
   useSidebar,
 } from "@stageholder/ui";
 
@@ -108,11 +107,16 @@ function isNavActive(pathname: string, href: string) {
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="h-dvh overflow-hidden safe-area-top">
+    // allowlist: safe-area-top env inset (no token equivalent)
+    <View
+      height={"100dvh" as never}
+      overflow="hidden"
+      className="safe-area-top"
+    >
       <Sidebar.Provider defaultOpen height="100%">
         <AppShellBody>{children}</AppShellBody>
       </Sidebar.Provider>
-    </div>
+    </View>
   );
 }
 
@@ -124,19 +128,13 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
   const { isMobile, setOpenMobile } = useSidebar();
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
-  const stableSyncAll = useCallback(() => syncAll(), []);
-  // Heartbeat against the same-origin BFF proxy on web; on desktop the proxy
-  // isn't reachable so fall back to VITE_API_URL.
-  const apiUrl = isDesktop()
-    ? import.meta.env.VITE_API_URL || "http://localhost:4000/api/v1"
-    : "/api/v1";
-  const heartbeatOnline = useNetworkStatusWithHeartbeat(`${apiUrl}/health`);
-  const syncIntervalMs = isDesktop() ? 30_000 : 60_000;
-  useAutoSync(stableSyncAll, {
-    intervalMs: syncIntervalMs,
-    isOnline: heartbeatOnline,
-  });
-  useSyncOnFocus(stableSyncAll);
+  // One-shot sync on mount. No interval polling, no focus refetch, no
+  // /health heartbeat — mutations already invalidate their own caches,
+  // and the rest stays hydrated from Dexie until the user explicitly
+  // refreshes.
+  useEffect(() => {
+    void syncAll();
+  }, []);
 
   const { data: userLight } = useUserLight();
 
@@ -232,20 +230,38 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
               return (
                 <Sidebar.MenuItem key={item.href}>
                   <Sidebar.MenuButton
-                    icon={<Icon className="size-4 text-sidebar-foreground" />}
+                    icon={<Icon size={16} />}
                     isActive={isActive}
                     trailing={
-                      <span className="inline-flex items-center gap-1">
-                        <kbd className="rounded border border-sidebar-border bg-sidebar-accent/50 px-1 font-mono text-[10px] font-medium text-muted-foreground/60">
+                      <XStack items="center" gap="$1">
+                        <Text
+                          fontFamily="$mono"
+                          fontSize={10}
+                          fontWeight="500"
+                          color="$mutedForeground"
+                          px="$1"
+                          rounded="$sm"
+                          borderWidth={1}
+                          borderColor="$sidebarBorder"
+                        >
                           G
-                        </kbd>
-                        <span className="text-[9px] text-muted-foreground/40">
+                        </Text>
+                        <Text fontSize={9} color="$mutedForeground">
                           →
-                        </span>
-                        <kbd className="rounded border border-sidebar-border bg-sidebar-accent/50 px-1 font-mono text-[10px] font-medium text-muted-foreground/60">
+                        </Text>
+                        <Text
+                          fontFamily="$mono"
+                          fontSize={10}
+                          fontWeight="500"
+                          color="$mutedForeground"
+                          px="$1"
+                          rounded="$sm"
+                          borderWidth={1}
+                          borderColor="$sidebarBorder"
+                        >
                           {item.shortcutKey}
-                        </kbd>
-                      </span>
+                        </Text>
+                      </XStack>
                     }
                     onPress={() => handleNavigate(item.href)}
                   >
@@ -261,12 +277,21 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
           <Sidebar.Menu>
             <Sidebar.MenuItem>
               <Sidebar.MenuButton
-                icon={<Keyboard className="size-4 text-sidebar-foreground" />}
+                icon={<Keyboard size={16} />}
                 onPress={() => setShortcutsDialogOpen(true)}
                 trailing={
-                  <kbd className="rounded border border-sidebar-border bg-sidebar-accent/50 px-1 font-mono text-[10px] font-medium text-muted-foreground/60">
+                  <Text
+                    fontFamily="$mono"
+                    fontSize={10}
+                    fontWeight="500"
+                    color="$mutedForeground"
+                    px="$1"
+                    rounded="$sm"
+                    borderWidth={1}
+                    borderColor="$sidebarBorder"
+                  >
                     ?
-                  </kbd>
+                  </Text>
                 }
               >
                 Shortcuts
@@ -301,14 +326,19 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
           {/* Sidebar toggle — collapses the desktop rail / opens the mobile
               drawer. Replaces the previous custom mobile-only Drawer wrapper. */}
           <Sidebar.Trigger aria-label="Toggle navigation">
-            <PanelLeft className="size-4" />
+            <PanelLeft size={16} />
           </Sidebar.Trigger>
 
           {/* Browser-style nav, desktop only. Forward is always enabled —
               HTML5 history has no canGoForward signal; clicking when
               there's no forward entry is a no-op. */}
           {isDesktop() && (
-            <XStack items="center" gap={2} className="hidden md:flex">
+            <XStack
+              items="center"
+              gap={2}
+              display="none"
+              $md={{ display: "flex" }}
+            >
               <IconButton
                 variant="ghost"
                 size="sm"
@@ -317,7 +347,7 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
                 aria-label="Back"
                 title="Back (⌘[)"
               >
-                <ChevronLeft className="size-4" />
+                <ChevronLeft size={16} />
               </IconButton>
               <IconButton
                 variant="ghost"
@@ -326,7 +356,7 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
                 aria-label="Forward"
                 title="Forward (⌘])"
               >
-                <ChevronRight className="size-4" />
+                <ChevronRight size={16} />
               </IconButton>
               <View width={1} height={16} bg="$borderColor" mx="$1" />
             </XStack>
@@ -334,13 +364,14 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
 
           {/* Page title */}
           {currentPage && (
-            <XStack items="center" gap="$2">
-              <currentPage.icon className="size-4 shrink-0 text-muted-foreground" />
+            <XStack items="center" gap="$2" color="$mutedForeground">
+              <currentPage.icon size={16} />
               <Text
                 fontSize="$3"
                 fontWeight="500"
                 color="$color"
-                className="hidden sm:block"
+                display="none"
+                $sm={{ display: "block" }}
               >
                 {currentPage.label}
               </Text>
@@ -348,7 +379,7 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
           )}
 
           {/* Spacer */}
-          <XStack flex={1} minWidth={0} />
+          <XStack flex={1} minW={0} />
 
           {/* Right side actions */}
           <XStack shrink={0} items="center" gap="$1.5">
@@ -356,13 +387,30 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
               intent="ghost"
               size="sm"
               onPress={() => setCommandPaletteOpen(true)}
-              className="hidden gap-2 text-muted-foreground sm:flex"
-              icon={<Search className="size-3.5" />}
+              gap="$2"
+              color="$mutedForeground"
+              display="none"
+              $sm={{ display: "flex" }}
+              icon={<Search size={14} />}
             >
-              <span className="text-xs">Search...</span>
-              <kbd className="pointer-events-none ml-1 hidden rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground sm:inline-flex">
+              <Text fontSize="$1">Search...</Text>
+              <Text
+                ml="$1"
+                px="$1.5"
+                fontFamily="$mono"
+                fontSize={10}
+                fontWeight="500"
+                color="$mutedForeground"
+                bg="$muted"
+                rounded="$sm"
+                borderWidth={1}
+                borderColor="$borderColor"
+                pointerEvents="none"
+                display="none"
+                $sm={{ display: "inline-flex" }}
+              >
                 ⌘K
-              </kbd>
+              </Text>
             </Button>
             <DailyTargetRings />
             <View width={1} height={16} bg="$borderColor" mx="$1" />
@@ -441,18 +489,22 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
                 return (
                   <Popover placement="bottom-end">
                     <Popover.Trigger asChild>
-                      <button
-                        type="button"
-                        className="group relative rounded-md py-1 pl-2 pr-1 transition-colors hover:bg-accent"
-                        style={{
-                          display: "flex",
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 6,
-                        }}
+                      <XStack
+                        group
+                        items="center"
+                        gap={6}
+                        py="$1"
+                        pl="$2"
+                        pr="$1"
+                        rounded="$md"
+                        transition="quick"
+                        hoverStyle={{ bg: "$accent" }}
                       >
-                        <span
-                          className="relative text-[11px] font-semibold tracking-wide"
+                        <Text
+                          fontSize={11}
+                          fontWeight="600"
+                          letterSpacing={0.5}
+                          // allowlist: shimmer keyframe + gradient text clip (no token equivalent)
                           style={{
                             background: `linear-gradient(90deg, ${colors.ring[0]}, ${colors.ring[1]}, ${colors.ring[2]}, ${colors.ring[1]}, ${colors.ring[0]})`,
                             backgroundSize: "200% 100%",
@@ -462,19 +514,31 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
                           }}
                         >
                           {userLight.currentTitle}
-                        </span>
-                        <div
-                          className="relative shrink-0"
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            width: 28,
-                            height: 28,
-                          }}
+                        </Text>
+                        <View
+                          shrink={0}
+                          items="center"
+                          justify="center"
+                          width={28}
+                          height={28}
+                          position="relative"
                         >
-                          <span
-                            className="pointer-events-none absolute inset-0 m-auto size-6 rounded-full opacity-0 blur-md transition-opacity duration-500 group-hover:opacity-40"
+                          <View
+                            position="absolute"
+                            t={0}
+                            b={0}
+                            l={0}
+                            r={0}
+                            m="auto"
+                            width={24}
+                            height={24}
+                            rounded={9999}
+                            opacity={0}
+                            pointerEvents="none"
+                            transition="medium"
+                            $group-hover={{ opacity: 0.4 }}
+                            // allowlist: radial-gradient glow + blur (no token equivalent)
+                            className="blur-md"
                             style={{
                               background: `radial-gradient(circle, ${colors.glow} 0%, transparent 70%)`,
                             }}
@@ -529,79 +593,135 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
                             size="xs"
                             className="relative"
                           />
-                        </div>
-                      </button>
+                        </View>
+                      </XStack>
                     </Popover.Trigger>
-                    <Popover.Content className="w-64 max-w-[calc(100vw-2rem)] p-0">
-                      <div className="flex flex-col items-center gap-2 px-4 pt-4 pb-3">
+                    <Popover.Content
+                      width={256}
+                      maxW="calc(100vw - 2rem)"
+                      p={0}
+                    >
+                      <YStack items="center" gap="$2" px="$4" pt="$4" pb="$3">
                         <StarVisual
                           tier={userLight.currentTier}
                           size="lg"
                           animate
                         />
-                        <p className="text-sm font-bold">
+                        <Text fontSize="$3" fontWeight="700">
                           {userLight.currentTitle}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground text-center leading-snug px-1">
+                        </Text>
+                        <Text
+                          fontSize={11}
+                          color="$mutedForeground"
+                          text="center"
+                          lineHeight={15}
+                          px="$1"
+                        >
                           {
                             LIGHT_TIERS[userLight.currentTier - 1]
                               ?.shortDescription
                           }
-                        </p>
+                        </Text>
                         {nextTier ? (
-                          <div className="w-full space-y-1">
-                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                              <div
-                                className="h-full rounded-full bg-amber-500 transition-all"
+                          <YStack width="100%" gap="$0.5">
+                            <View
+                              height={6}
+                              width="100%"
+                              overflow="hidden"
+                              rounded={9999}
+                              bg="$muted"
+                            >
+                              <View
+                                height="100%"
+                                rounded={9999}
+                                bg="$warning"
+                                transition="quick"
+                                // dynamic per-instance fill — stays inline
                                 style={{ width: `${progress}%` }}
                               />
-                            </div>
-                            <p className="text-center text-[11px] text-muted-foreground">
-                              <span className="font-medium text-foreground">
+                            </View>
+                            <Text
+                              text="center"
+                              fontSize={11}
+                              color="$mutedForeground"
+                            >
+                              <Text fontWeight="500" color="$color">
                                 {userLight.totalLight}
-                              </span>
+                              </Text>
                               {" / "}
                               {nextTier.lightRequired} Light
-                            </p>
-                          </div>
+                            </Text>
+                          </YStack>
                         ) : (
-                          <p className="text-[11px] text-muted-foreground">
+                          <Text fontSize={11} color="$mutedForeground">
                             {userLight.totalLight.toLocaleString()} Light — Max
                             tier reached
-                          </p>
+                          </Text>
                         )}
-                      </div>
-                      <div className="grid grid-cols-3 border-t border-border/50 text-center">
-                        <div className="border-r border-border/50 py-2.5">
-                          <p className="text-xs font-bold">
-                            {userLight.perfectDayStreak}d
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">
-                            Streak
-                          </p>
-                        </div>
-                        <div className="border-r border-border/50 py-2.5">
-                          <p className="text-xs font-bold">
-                            {userLight.perfectDaysTotal}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">
-                            Perfect
-                          </p>
-                        </div>
-                        <div className="py-2.5">
-                          <p className="text-xs font-bold">
-                            {userLight.longestPerfectStreak}d
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">
-                            Best
-                          </p>
-                        </div>
-                      </div>
-                      <Link
-                        to="/journey"
-                        className="flex w-full items-center justify-center gap-1.5 border-t border-border/50 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      </YStack>
+                      <Grid
+                        columns={3}
+                        gap={0}
+                        borderTopWidth={1}
+                        borderColor="$borderColor"
                       >
-                        My Journey →
+                        <YStack
+                          items="center"
+                          borderRightWidth={1}
+                          borderColor="$borderColor"
+                          py="$2.5"
+                        >
+                          <Text fontSize="$1" fontWeight="700">
+                            {userLight.perfectDayStreak}d
+                          </Text>
+                          <Text fontSize={10} color="$mutedForeground">
+                            Streak
+                          </Text>
+                        </YStack>
+                        <YStack
+                          items="center"
+                          borderRightWidth={1}
+                          borderColor="$borderColor"
+                          py="$2.5"
+                        >
+                          <Text fontSize="$1" fontWeight="700">
+                            {userLight.perfectDaysTotal}
+                          </Text>
+                          <Text fontSize={10} color="$mutedForeground">
+                            Perfect
+                          </Text>
+                        </YStack>
+                        <YStack items="center" py="$2.5">
+                          <Text fontSize="$1" fontWeight="700">
+                            {userLight.longestPerfectStreak}d
+                          </Text>
+                          <Text fontSize={10} color="$mutedForeground">
+                            Best
+                          </Text>
+                        </YStack>
+                      </Grid>
+                      <Link to="/journey" style={{ textDecoration: "none" }}>
+                        <XStack
+                          group
+                          width="100%"
+                          items="center"
+                          justify="center"
+                          gap="$1.5"
+                          borderTopWidth={1}
+                          borderColor="$borderColor"
+                          py="$2.5"
+                          transition="quick"
+                          hoverStyle={{ bg: "$accent" }}
+                        >
+                          <Text
+                            fontSize="$1"
+                            fontWeight="500"
+                            color="$mutedForeground"
+                            $group-hover={{ color: "$color" }}
+                          >
+                            My Journey →
+                          </Text>
+                        </XStack>
                       </Link>
                     </Popover.Content>
                   </Popover>
@@ -626,7 +746,7 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
                   // and are reachable from /settings → Account tab.
                   label: "Account settings",
                   href: "/settings",
-                  icon: <UserCog className="size-4" />,
+                  icon: <UserCog size={16} />,
                 },
                 {
                   // Single billing entry — matches every major SaaS
@@ -636,14 +756,14 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
                   // when a user hits a feature limit — not from menu nav.
                   label: "Plans & billing",
                   href: "/settings/billing",
-                  icon: <CreditCard className="size-4" />,
+                  icon: <CreditCard size={16} />,
                 },
                 {
                   kind: "switch",
                   label: "Dark mode",
                   value: isDark,
                   onChange: (next) => setTheme(next ? "dark" : "light"),
-                  icon: <Moon className="size-4" />,
+                  icon: <Moon size={16} />,
                 },
                 // Manual trigger for the same updater the auto-poll uses
                 // (UpdateChecker runs check() on launch + every 30 min
@@ -655,14 +775,14 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
                         label: "Check for updates",
                         onSelect: () =>
                           void checkForUpdate({ showWhenUpToDate: true }),
-                        icon: <RefreshCw className="size-4" />,
+                        icon: <RefreshCw size={16} />,
                       },
                     ]
                   : []),
                 {
                   label: "Sign out",
                   onSelect: () => void handleLogout(),
-                  icon: <LogOut className="size-4" />,
+                  icon: <LogOut size={16} />,
                 },
               ]}
             />
@@ -672,7 +792,15 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
         </XStack>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[calc(3.5rem+max(0.5rem,env(safe-area-inset-bottom,0px)))] md:pb-0">
+        <View
+          tag="main"
+          flex={1}
+          overflowY={"auto" as never}
+          overflowX={"hidden" as never}
+          // allowlist: env safe-area inset on the bottom padding (no token equivalent)
+          className="pb-[calc(3.5rem+max(0.5rem,env(safe-area-inset-bottom,0px)))]"
+          $md={{ pb: 0 }}
+        >
           {/* Lifecycle banners — render conditionally based on the active
               subscription's status. Each is null when not applicable so
               only one (at most) renders at a time in practice. The trial
@@ -680,12 +808,12 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
               page-width strip. PaymentFailed and Cancellation stay as
               banners — they're rare, urgent, and demand to be read in
               full. */}
-          <div className="mx-auto w-full max-w-5xl space-y-2 px-4 pt-3 empty:pt-0">
+          <YStack mx="auto" width="100%" maxW={1024} gap="$2" px="$4" pt="$3">
             <PaymentFailedBanner />
             <CancellationBanner />
-          </div>
+          </YStack>
           {children}
-        </main>
+        </View>
 
         {/* Mobile bottom navigation */}
         <MobileBottomNav />
@@ -703,18 +831,26 @@ function SidebarBrand() {
   const iconified =
     !isMobile && state === "collapsed" && collapsible === "icon";
   return (
-    <div
-      className={cn(
-        "flex w-full items-center gap-2 rounded-md p-2 text-sm",
-        iconified && "justify-center",
-      )}
+    <XStack
+      width="100%"
+      items="center"
+      gap="$2"
+      rounded="$md"
+      p="$2"
+      justify={iconified ? "center" : undefined}
     >
       <MeridianLogo size="md" />
       {!iconified && (
-        <span className="flex-1 truncate text-lg font-semibold text-sidebar-foreground">
+        <Text
+          flex={1}
+          fontSize="$6"
+          fontWeight="600"
+          color="$sidebarForeground"
+          numberOfLines={1}
+        >
           Meridian
-        </span>
+        </Text>
       )}
-    </div>
+    </XStack>
   );
 }

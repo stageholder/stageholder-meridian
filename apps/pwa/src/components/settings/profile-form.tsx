@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useProfile, useUpdateProfile } from "@stageholder/sdk/spa";
-import { Button, Input, Label } from "@stageholder/ui";
+import { Button, Input, Label, Text, XStack, YStack } from "@stageholder/ui";
 import { TimezoneSelect } from "@/components/ui/timezone-select";
 
 /**
@@ -33,7 +33,9 @@ export function ProfileForm() {
 
   if (isLoading) {
     return (
-      <div className="text-sm text-muted-foreground">Loading profile…</div>
+      <Text fontSize="$3" color="$mutedForeground">
+        Loading profile…
+      </Text>
     );
   }
 
@@ -43,35 +45,39 @@ export function ProfileForm() {
   }
 
   return (
-    <form onSubmit={save} className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="profile-name">Display name</Label>
-        <Input id="profile-name" value={name} onChangeText={setName} />
-      </div>
+    <form onSubmit={save}>
+      <YStack gap="$6">
+        <YStack gap="$2">
+          <Label htmlFor="profile-name">Display name</Label>
+          <Input id="profile-name" value={name} onChangeText={setName} />
+        </YStack>
 
-      <div className="space-y-2">
-        <Label htmlFor="profile-timezone">Timezone</Label>
-        <TimezoneSelect value={timezone} onValueChange={setTimezone} />
-      </div>
+        <YStack gap="$2">
+          <Label htmlFor="profile-timezone">Timezone</Label>
+          <TimezoneSelect value={timezone} onValueChange={setTimezone} />
+        </YStack>
 
-      <div className="flex items-center gap-3">
-        <Button
-          type="submit"
-          disabled={update.isPending}
-          loading={update.isPending}
-          loadingText="Saving…"
-        >
-          Save changes
-        </Button>
-        {update.isError && (
-          <span className="text-xs text-destructive">
-            Save failed. {update.error?.message}
-          </span>
-        )}
-        {update.isSuccess && !update.isPending && (
-          <span className="text-xs text-muted-foreground">Saved</span>
-        )}
-      </div>
+        <XStack items="center" gap="$3">
+          <Button
+            type="submit"
+            disabled={update.isPending}
+            loading={update.isPending}
+            loadingText="Saving…"
+          >
+            Save changes
+          </Button>
+          {update.isError && (
+            <Text fontSize="$1" color="$destructive">
+              Save failed. {update.error?.message}
+            </Text>
+          )}
+          {update.isSuccess && !update.isPending && (
+            <Text fontSize="$1" color="$mutedForeground">
+              Saved
+            </Text>
+          )}
+        </XStack>
+      </YStack>
     </form>
   );
 }

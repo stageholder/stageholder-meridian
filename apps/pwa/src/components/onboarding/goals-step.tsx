@@ -1,5 +1,5 @@
 import { CheckSquare, Heart, BookOpen, Target } from "lucide-react";
-import { Button, Text, ToggleGroup, YStack } from "@stageholder/ui";
+import { Button, Paragraph, Text, ToggleGroup, YStack } from "@stageholder/ui";
 
 const GOALS = [
   {
@@ -38,16 +38,16 @@ export function GoalsStep({
   onContinue: () => void;
 }) {
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <h2 className="text-xl font-bold text-foreground">
+    <YStack gap="$6">
+      <YStack gap="$2">
+        <Text fontSize="$7" fontWeight="700" color="$color">
           What are your goals?
-        </h2>
-        <p className="text-sm text-muted-foreground">
+        </Text>
+        <Paragraph fontSize="$3" color="$mutedForeground">
           Select what you&apos;d like to focus on. This helps us personalize
           your experience.
-        </p>
-      </div>
+        </Paragraph>
+      </YStack>
 
       {/* Kit ToggleGroup cards variant — multi-select. Default 2 cols at
           >= sm matches the previous custom 2x2 grid; mobile collapses to
@@ -65,11 +65,14 @@ export function GoalsStep({
           return (
             <ToggleGroup.Item key={goal.id} value={goal.id}>
               <YStack items="center" gap="$2">
-                <Icon className="size-6 text-muted-foreground" />
+                {/* Icon wrapped in Text to relay currentColor via CSS */}
+                <Text color="$mutedForeground">
+                  <Icon size={24} />
+                </Text>
                 <Text fontSize="$3" fontWeight="500" color="$color">
                   {goal.label}
                 </Text>
-                <Text fontSize="$2" color="$mutedForeground">
+                <Text fontSize="$2" color="$mutedForeground" text="center">
                   {goal.description}
                 </Text>
               </YStack>
@@ -78,9 +81,9 @@ export function GoalsStep({
         })}
       </ToggleGroup>
 
-      <Button className="w-full" onPress={onContinue}>
+      <Button width="100%" onPress={onContinue}>
         Continue
       </Button>
-    </div>
+    </YStack>
   );
 }

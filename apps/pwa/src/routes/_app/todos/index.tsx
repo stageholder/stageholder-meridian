@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { View } from "@stageholder/ui";
 import { TodayContent } from "@/components/todos/today-content";
 
 export const Route = createFileRoute("/_app/todos/")({
@@ -7,8 +8,8 @@ export const Route = createFileRoute("/_app/todos/")({
 
 function TodosPage() {
   return (
-    <div className="flex-1 overflow-y-auto p-4">
+    <View flex={1} overflowY={"auto" as never} p="$4">
       <TodayContent />
-    </div>
+    </View>
   );
 }

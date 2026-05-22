@@ -7,7 +7,11 @@ import {
   Input,
   Label,
   Select,
+  Text,
   TextArea,
+  View,
+  XStack,
+  YStack,
 } from "@stageholder/ui";
 import { EmojiPicker } from "@/components/ui/emoji-picker";
 
@@ -103,7 +107,7 @@ export function CreateHabitDialog({
         <Drawer.Overlay />
         <Drawer.Content
           side="right"
-          className="overflow-y-auto"
+          overflow="scroll"
           onPointerDownOutside={(e: {
             target: EventTarget | null;
             preventDefault: () => void;
@@ -123,158 +127,181 @@ export function CreateHabitDialog({
             }
           }}
         >
-          <div className="p-4">
+          <View p="$4">
             <Drawer.Title>New Habit</Drawer.Title>
-          </div>
-          <form onSubmit={handleSubmit} className="space-y-4 px-4 pb-4">
-            <div className="flex gap-2">
-              <div>
-                <label className="block text-sm font-medium text-foreground">
-                  Icon
-                </label>
-                <div className="mt-1">
-                  <EmojiPicker value={icon} onChange={setIcon} />
-                </div>
-              </div>
-              <div className="flex-1">
-                <Label htmlFor="habit-name">Name</Label>
-                <Input
-                  id="habit-name"
-                  className="mt-1"
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="e.g. Read for 30 minutes"
-                  autoFocus
+          </View>
+          <form onSubmit={handleSubmit}>
+            <YStack gap="$4" px="$4" pb="$4">
+              <XStack gap="$2">
+                <YStack>
+                  <Text fontSize="$3" fontWeight="500" color="$color">
+                    Icon
+                  </Text>
+                  <View mt="$1">
+                    <EmojiPicker value={icon} onChange={setIcon} />
+                  </View>
+                </YStack>
+                <YStack flex={1}>
+                  <Label htmlFor="habit-name">Name</Label>
+                  <Input
+                    id="habit-name"
+                    mt="$1"
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="e.g. Read for 30 minutes"
+                    autoFocus
+                  />
+                </YStack>
+              </XStack>
+
+              <YStack>
+                <Label htmlFor="habit-description">Description</Label>
+                <TextArea
+                  id="habit-description"
+                  mt="$1"
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder="Optional details"
+                  rows={2}
                 />
-              </div>
-            </div>
+              </YStack>
 
-            <div>
-              <Label htmlFor="habit-description">Description</Label>
-              <TextArea
-                id="habit-description"
-                className="mt-1"
-                value={description}
-                onChangeText={setDescription}
-                placeholder="Optional details"
-                rows={2}
-              />
-            </div>
+              <XStack gap="$4">
+                <YStack flex={1}>
+                  <Label htmlFor="habit-frequency">Frequency</Label>
+                  <Select
+                    value={frequency}
+                    onValueChange={(value) => {
+                      setFrequency(value);
+                      if (value === "daily") setScheduledDays([]);
+                    }}
+                  >
+                    <Select.Trigger mt="$1" width="100%" />
+                    <Select.Content>
+                      <Select.Item value="daily">Daily</Select.Item>
+                      <Select.Item value="weekly">Specific days</Select.Item>
+                    </Select.Content>
+                  </Select>
+                </YStack>
+                <YStack width={96}>
+                  <Label htmlFor="habit-target">Target</Label>
+                  <Input
+                    id="habit-target"
+                    mt="$1"
+                    keyboardType="number-pad"
+                    value={String(targetCount)}
+                    onChangeText={(text) => setTargetCount(Number(text) || 1)}
+                  />
+                </YStack>
+                <YStack flex={1}>
+                  <Label htmlFor="habit-unit">Unit</Label>
+                  <Input
+                    id="habit-unit"
+                    mt="$1"
+                    value={unit}
+                    onChangeText={setUnit}
+                    placeholder="e.g. minutes"
+                  />
+                </YStack>
+              </XStack>
 
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <Label htmlFor="habit-frequency">Frequency</Label>
-                <Select
-                  value={frequency}
-                  onValueChange={(value) => {
-                    setFrequency(value);
-                    if (value === "daily") setScheduledDays([]);
+              {frequency === "weekly" && (
+                <YStack>
+                  <Text fontSize="$3" fontWeight="500" color="$color">
+                    Days
+                  </Text>
+                  <XStack mt="$2" gap="$1.5">
+                    {DAY_OPTIONS.map((day) => {
+                      const active = scheduledDays.includes(day.value);
+                      return (
+                        <XStack
+                          key={day.value}
+                          tag="button"
+                          type="button"
+                          onPress={() =>
+                            setScheduledDays(
+                              active
+                                ? scheduledDays.filter((d) => d !== day.value)
+                                : [...scheduledDays, day.value].sort(),
+                            )
+                          }
+                          cursor="pointer"
+                          height={36}
+                          width={36}
+                          items="center"
+                          justify="center"
+                          rounded="$lg"
+                          borderWidth={active ? 0 : 1}
+                          borderColor="$borderColor"
+                          bg={active ? "$primary" : "transparent"}
+                          transition="quick"
+                          hoverStyle={active ? undefined : { bg: "$accent" }}
+                        >
+                          <Text
+                            fontSize="$1"
+                            fontWeight="500"
+                            color={
+                              active ? "$primaryForeground" : "$mutedForeground"
+                            }
+                          >
+                            {day.label}
+                          </Text>
+                        </XStack>
+                      );
+                    })}
+                  </XStack>
+                </YStack>
+              )}
+
+              <YStack>
+                <Text fontSize="$3" fontWeight="500" color="$color">
+                  Color
+                </Text>
+                <XStack mt="$2" gap="$2">
+                  {colorOptions.map((opt) => (
+                    <View
+                      key={opt.value}
+                      tag="button"
+                      type="button"
+                      onPress={() => setColor(opt.value)}
+                      cursor="pointer"
+                      height={28}
+                      width={28}
+                      rounded={9999}
+                      borderWidth={2}
+                      borderColor={
+                        color === opt.value ? "$color" : "transparent"
+                      }
+                      transition="quick"
+                      scale={color === opt.value ? 1.1 : 1}
+                      style={{ backgroundColor: opt.value }}
+                      aria-label={opt.label}
+                    />
+                  ))}
+                </XStack>
+              </YStack>
+
+              <XStack justify="flex-end" gap="$3" pt="$2">
+                <Button
+                  intent="outline"
+                  type="button"
+                  onPress={() => {
+                    resetForm();
+                    onOpenChange(false);
                   }}
                 >
-                  <Select.Trigger className="mt-1 w-full rounded-lg border-border bg-background" />
-                  <Select.Content>
-                    <Select.Item value="daily">Daily</Select.Item>
-                    <Select.Item value="weekly">Specific days</Select.Item>
-                  </Select.Content>
-                </Select>
-              </div>
-              <div className="w-24">
-                <Label htmlFor="habit-target">Target</Label>
-                <Input
-                  id="habit-target"
-                  className="mt-1"
-                  keyboardType="number-pad"
-                  value={String(targetCount)}
-                  onChangeText={(text) => setTargetCount(Number(text) || 1)}
-                />
-              </div>
-              <div className="flex-1">
-                <Label htmlFor="habit-unit">Unit</Label>
-                <Input
-                  id="habit-unit"
-                  className="mt-1"
-                  value={unit}
-                  onChangeText={setUnit}
-                  placeholder="e.g. minutes"
-                />
-              </div>
-            </div>
-
-            {frequency === "weekly" && (
-              <div>
-                <label className="block text-sm font-medium text-foreground">
-                  Days
-                </label>
-                <div className="mt-2 flex gap-1.5">
-                  {DAY_OPTIONS.map((day) => {
-                    const active = scheduledDays.includes(day.value);
-                    return (
-                      <button
-                        key={day.value}
-                        type="button"
-                        onClick={() =>
-                          setScheduledDays(
-                            active
-                              ? scheduledDays.filter((d) => d !== day.value)
-                              : [...scheduledDays, day.value].sort(),
-                          )
-                        }
-                        className={`flex h-9 w-9 items-center justify-center rounded-lg text-xs font-medium transition-all ${
-                          active
-                            ? "bg-primary text-primary-foreground"
-                            : "border border-border text-muted-foreground hover:bg-accent"
-                        }`}
-                      >
-                        {day.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-foreground">
-                Color
-              </label>
-              <div className="mt-2 flex gap-2">
-                {colorOptions.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setColor(opt.value)}
-                    className={`h-7 w-7 rounded-full border-2 transition-all ${
-                      color === opt.value
-                        ? "border-foreground scale-110"
-                        : "border-transparent"
-                    }`}
-                    style={{ backgroundColor: opt.value }}
-                    aria-label={opt.label}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-2">
-              <Button
-                intent="outline"
-                type="button"
-                onPress={() => {
-                  resetForm();
-                  onOpenChange(false);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={!name.trim() || createHabit.isPending}
-                loading={createHabit.isPending}
-                loadingText="Creating…"
-              >
-                Create
-              </Button>
-            </div>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={!name.trim() || createHabit.isPending}
+                  loading={createHabit.isPending}
+                  loadingText="Creating…"
+                >
+                  Create
+                </Button>
+              </XStack>
+            </YStack>
           </form>
         </Drawer.Content>
       </Drawer.Portal>

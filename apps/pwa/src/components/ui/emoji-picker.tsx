@@ -2,7 +2,7 @@ import { lazy, Suspense, useState } from "react";
 import { useTheme } from "next-themes";
 import { Theme, EmojiStyle } from "emoji-picker-react";
 import type { EmojiClickData } from "emoji-picker-react";
-import { Popover } from "@stageholder/ui";
+import { Popover, Text, View } from "@stageholder/ui";
 
 // In Vite SPA there's no SSR, so `next/dynamic({ ssr: false })` is just
 // React.lazy + Suspense. Same bundle-split outcome: emoji-picker only
@@ -32,23 +32,41 @@ export function EmojiPicker({
   return (
     <Popover open={open} onOpenChange={setOpen} placement="bottom-start">
       <Popover.Trigger asChild>
-        <button
-          type="button"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-lg hover:bg-accent"
+        <View
+          tag="button"
+          height={40}
+          width={40}
+          shrink={0}
+          items="center"
+          justify="center"
+          rounded="$lg"
+          borderWidth={1}
+          borderColor="$borderColor"
+          bg="$background"
+          hoverStyle={{ bg: "$accent" }}
         >
-          {value || "😀"}
-        </button>
+          <Text fontSize="$6" color="$color">
+            {value || "😀"}
+          </Text>
+        </View>
       </Popover.Trigger>
       <Popover.Content
-        className="z-[200] w-fit overflow-hidden border-none p-0 shadow-xl"
+        z={200}
+        width="auto"
+        p={0}
+        borderWidth={0}
+        overflow="hidden"
+        style={{ boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}
         onWheel={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
       >
         <Suspense
           fallback={
-            <div className="flex h-[400px] w-[350px] items-center justify-center text-xs text-muted-foreground">
-              Loading…
-            </div>
+            <View height={400} width={350} items="center" justify="center">
+              <Text fontSize="$1" color="$mutedForeground">
+                Loading…
+              </Text>
+            </View>
           }
         >
           <Picker

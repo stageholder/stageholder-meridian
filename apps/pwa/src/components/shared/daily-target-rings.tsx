@@ -2,7 +2,7 @@ import { format } from "date-fns";
 import { CheckSquare, BookOpen, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useActivityRings } from "@/lib/hooks/use-activity-rings";
-import { Popover } from "@stageholder/ui";
+import { Popover, Text, XStack, YStack } from "@stageholder/ui";
 
 function CircleProgress({
   percent,
@@ -84,15 +84,14 @@ export function DailyTargetRings() {
   return (
     <Popover placement="bottom-end">
       <Popover.Trigger asChild>
-        <button
-          type="button"
-          className="rounded-md px-1 py-1 transition-colors hover:bg-accent"
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 4,
-          }}
+        <XStack
+          items="center"
+          gap={4}
+          rounded="$md"
+          px="$1"
+          py="$1"
+          transition="quick"
+          hoverStyle={{ bg: "$accent" }}
           aria-label="View daily targets"
         >
           <CircleProgress
@@ -137,14 +136,14 @@ export function DailyTargetRings() {
               )}
             />
           </CircleProgress>
-        </button>
+        </XStack>
       </Popover.Trigger>
-      <Popover.Content className="w-52 p-3">
-        <p className="mb-2 text-xs font-semibold text-foreground">
+      <Popover.Content width={208} p="$3">
+        <Text mb="$2" fontSize="$1" fontWeight="600" color="$color">
           Daily Targets
-        </p>
-        <div className="space-y-2.5">
-          <div className="flex items-center gap-2.5">
+        </Text>
+        <YStack gap="$2.5">
+          <XStack items="center" gap="$2.5">
             <CircleProgress
               percent={data.todo}
               color="var(--ring-todo)"
@@ -161,17 +160,30 @@ export function DailyTargetRings() {
                 )}
               />
             </CircleProgress>
-            <div className="flex-1">
-              <p className="text-xs font-medium text-foreground">Todos</p>
-              <p className="text-[11px] tabular-nums text-muted-foreground">
+            <YStack flex={1}>
+              <Text fontSize="$1" fontWeight="500" color="$color">
+                Todos
+              </Text>
+              {/* allowlist: tabular-nums (figure alignment, no token equivalent) */}
+              <Text
+                fontSize={11}
+                color="$mutedForeground"
+                className="tabular-nums"
+              >
                 {details.todoDone}/{details.todoTarget} completed
-              </p>
-            </div>
-            <span className="text-xs font-semibold tabular-nums text-foreground">
+              </Text>
+            </YStack>
+            {/* allowlist: tabular-nums (figure alignment, no token equivalent) */}
+            <Text
+              fontSize="$1"
+              fontWeight="600"
+              color="$color"
+              className="tabular-nums"
+            >
               {Math.round(data.todo)}%
-            </span>
-          </div>
-          <div className="flex items-center gap-2.5">
+            </Text>
+          </XStack>
+          <XStack items="center" gap="$2.5">
             <CircleProgress
               percent={data.habit}
               color="var(--ring-habit)"
@@ -188,17 +200,30 @@ export function DailyTargetRings() {
                 )}
               />
             </CircleProgress>
-            <div className="flex-1">
-              <p className="text-xs font-medium text-foreground">Habits</p>
-              <p className="text-[11px] tabular-nums text-muted-foreground">
+            <YStack flex={1}>
+              <Text fontSize="$1" fontWeight="500" color="$color">
+                Habits
+              </Text>
+              {/* allowlist: tabular-nums (figure alignment, no token equivalent) */}
+              <Text
+                fontSize={11}
+                color="$mutedForeground"
+                className="tabular-nums"
+              >
                 {details.habitDone}/{details.habitTotal} completed
-              </p>
-            </div>
-            <span className="text-xs font-semibold tabular-nums text-foreground">
+              </Text>
+            </YStack>
+            {/* allowlist: tabular-nums (figure alignment, no token equivalent) */}
+            <Text
+              fontSize="$1"
+              fontWeight="600"
+              color="$color"
+              className="tabular-nums"
+            >
               {Math.round(data.habit)}%
-            </span>
-          </div>
-          <div className="flex items-center gap-2.5">
+            </Text>
+          </XStack>
+          <XStack items="center" gap="$2.5">
             <CircleProgress
               percent={data.journal}
               color="var(--ring-journal)"
@@ -215,17 +240,30 @@ export function DailyTargetRings() {
                 )}
               />
             </CircleProgress>
-            <div className="flex-1">
-              <p className="text-xs font-medium text-foreground">Journal</p>
-              <p className="text-[11px] tabular-nums text-muted-foreground">
+            <YStack flex={1}>
+              <Text fontSize="$1" fontWeight="500" color="$color">
+                Journal
+              </Text>
+              {/* allowlist: tabular-nums (figure alignment, no token equivalent) */}
+              <Text
+                fontSize={11}
+                color="$mutedForeground"
+                className="tabular-nums"
+              >
                 {details.journalWords}/{details.journalTarget} words
-              </p>
-            </div>
-            <span className="text-xs font-semibold tabular-nums text-foreground">
+              </Text>
+            </YStack>
+            {/* allowlist: tabular-nums (figure alignment, no token equivalent) */}
+            <Text
+              fontSize="$1"
+              fontWeight="600"
+              color="$color"
+              className="tabular-nums"
+            >
               {Math.round(data.journal)}%
-            </span>
-          </div>
-        </div>
+            </Text>
+          </XStack>
+        </YStack>
       </Popover.Content>
     </Popover>
   );

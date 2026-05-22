@@ -1,12 +1,18 @@
 import type { PricingPlan, ProductFeature } from "@stageholder/sdk/spa";
-import { cn } from "@/lib/utils";
 import { Check, Minus } from "lucide-react";
+import { H2, Text, View, YStack } from "@stageholder/ui";
 
 /**
  * Spec-sheet style comparison table. Reads like a printed datasheet —
  * monospaced category labels, hairline rules, no zebra rows, just type
  * and rules doing the work. Sticky header column lets the values scroll
  * laterally on narrow viewports without losing context.
+ *
+ * The `<table>` subtree stays real HTML: sticky-left feature column +
+ * horizontal scroll + variable column widths + rowspan have no kit `Table`
+ * equivalent (its cells are equal-flex), so the structural wrappers are
+ * Tamagui primitives and the table semantics/layout classes are kept as a
+ * functional unit. Cell typography/color is carried by nested `<Text>`.
  */
 export function ComparisonSheet({
   plans,
@@ -20,52 +26,76 @@ export function ComparisonSheet({
   const grouped = groupByCategory(features);
 
   return (
-    <div className="relative">
+    <View position="relative">
       {/* Section heading */}
-      <div className="mb-8 flex flex-wrap items-baseline justify-between gap-3 border-b border-border/70 pb-4">
-        <div className="space-y-1">
-          <h2
-            className="text-2xl tracking-tight"
-            style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
-          >
-            Compare all features
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Side-by-side breakdown of what&rsquo;s included in each plan.
-          </p>
-        </div>
-      </div>
+      <YStack
+        mb="$6"
+        gap="$3"
+        borderBottomWidth={1}
+        borderColor="$borderColor"
+        pb="$3"
+      >
+        <H2
+          fontSize="$8"
+          letterSpacing={-0.5}
+          // Display serif lives only as a CSS var (no kit font token).
+          style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
+        >
+          Compare all features
+        </H2>
+        <Text fontSize="$3" color="$mutedForeground">
+          Side-by-side breakdown of what&rsquo;s included in each plan.
+        </Text>
+      </YStack>
 
-      <div className="-mx-2 overflow-x-auto pb-4">
+      {/* allowlist: overflow-x-auto — horizontal scroll for the wide spec
+          table on narrow viewports; the sticky-left column needs the
+          scroll container as its positioning context. */}
+      <View mx={-8} pb="$4" className="overflow-x-auto">
         <table className="w-full min-w-[640px] border-separate border-spacing-0">
           <thead>
             <tr>
               <th className="sticky left-0 z-10 w-[34%] bg-background px-3 pb-4 text-left">
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <Text
+                  fontSize="$1"
+                  fontWeight="500"
+                  color="$mutedForeground"
+                  textTransform="uppercase"
+                  letterSpacing={0.5}
+                >
                   Feature
-                </span>
+                </Text>
               </th>
               {plans.map((p) => (
                 <th
                   key={p.id}
                   className="w-auto px-3 pb-4 text-left align-bottom"
                 >
-                  <div className="flex flex-col gap-1">
-                    <span
-                      className="text-base leading-none tracking-tight"
+                  <YStack gap="$1">
+                    <Text
+                      fontSize="$5"
+                      lineHeight={16}
+                      letterSpacing={-0.3}
+                      color="$color"
                       style={{
                         fontFamily: "var(--font-display)",
                         fontWeight: 600,
                       }}
                     >
                       {p.displayName}
-                    </span>
+                    </Text>
                     {p.isFeatured && (
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-foreground/60">
+                      <Text
+                        fontSize="$1"
+                        fontWeight="500"
+                        color="$mutedForeground"
+                        textTransform="uppercase"
+                        letterSpacing={0.5}
+                      >
                         Most popular
-                      </span>
+                      </Text>
                     )}
-                  </div>
+                  </YStack>
                 </th>
               ))}
             </tr>
@@ -82,8 +112,8 @@ export function ComparisonSheet({
             ))}
           </tbody>
         </table>
-      </div>
-    </div>
+      </View>
+    </View>
   );
 }
 
@@ -103,37 +133,40 @@ function CategoryRows({
           colSpan={1 + plans.length}
           className="border-t-2 border-foreground/40 px-3 pt-7"
         >
-          <span className="text-xs font-semibold uppercase tracking-wide text-foreground/70">
+          <Text
+            fontSize="$1"
+            fontWeight="600"
+            color="$color"
+            textTransform="uppercase"
+            letterSpacing={0.5}
+          >
             {category ?? "Other"}
-          </span>
+          </Text>
         </td>
       </tr>
       {group.map((f) => (
+        // allowlist: group/row + group-hover:bg — per-row hover tint on the
+        // sticky-table cells, which are HTML <td> (no Tamagui hoverStyle).
         <tr key={f.id} className="group/row">
           <th
             scope="row"
-            className={cn(
-              "sticky left-0 z-10 bg-background px-3 py-3 text-left align-top text-[13px] font-medium",
-              "border-t border-border/60",
-            )}
+            className="sticky left-0 z-10 bg-background px-3 py-3 text-left align-top border-t border-border/60"
           >
-            <div className="flex flex-col gap-0.5">
-              <span>{f.displayName}</span>
+            <YStack gap="$0.5">
+              <Text fontSize="$3" fontWeight="500" color="$color">
+                {f.displayName}
+              </Text>
               {f.description && (
-                <span className="text-[11px] font-normal text-muted-foreground">
+                <Text fontSize="$1" color="$mutedForeground">
                   {f.description}
-                </span>
+                </Text>
               )}
-            </div>
+            </YStack>
           </th>
           {plans.map((p) => (
             <td
               key={p.id}
-              className={cn(
-                "px-3 py-3 align-top text-[13px] tabular-nums",
-                "border-t border-border/60",
-                "transition-colors duration-200 group-hover/row:bg-foreground/3",
-              )}
+              className="px-3 py-3 align-top border-t border-border/60 transition-colors duration-200 group-hover/row:bg-foreground/3"
             >
               <Cell plan={p} feature={f} />
             </td>
@@ -156,42 +189,67 @@ function Cell({
   if (feature.valueType === "boolean") {
     if (value === true) {
       return (
-        <span className="inline-flex size-4 items-center justify-center rounded-full bg-foreground text-background">
-          <Check className="size-2.5" strokeWidth={3} />
-        </span>
+        <View
+          width={16}
+          height={16}
+          items="center"
+          justify="center"
+          rounded={9999}
+          bg="$color"
+        >
+          <Text color="$background" lineHeight={0}>
+            <Check size={10} strokeWidth={3} />
+          </Text>
+        </View>
       );
     }
-    return <Minus className="size-3 text-foreground/30" strokeWidth={2} />;
+    return (
+      <Text color="$mutedForeground" lineHeight={0}>
+        <Minus size={12} strokeWidth={2} />
+      </Text>
+    );
   }
   if (feature.valueType === "number") {
     if (value === null)
       return (
-        <span className="text-[13px] font-medium text-foreground/85">
+        <Text fontSize="$3" fontWeight="500" color="$color">
           Unlimited
-        </span>
+        </Text>
       );
     if (typeof value === "number") {
       return (
-        <span className="text-[13px] font-medium tabular-nums text-foreground">
+        <Text fontSize="$3" fontWeight="500" color="$color">
           {value.toLocaleString()}
           {feature.unit && (
-            <span className="ml-1 text-xs text-foreground/55">
+            <Text ml="$1" fontSize="$1" color="$mutedForeground">
               {feature.unit}
-            </span>
+            </Text>
           )}
-        </span>
+        </Text>
       );
     }
-    return <Minus className="size-3 text-foreground/30" strokeWidth={2} />;
+    return (
+      <Text color="$mutedForeground" lineHeight={0}>
+        <Minus size={12} strokeWidth={2} />
+      </Text>
+    );
   }
   if (
     feature.valueType === "text" &&
     typeof value === "string" &&
     value.length > 0
   ) {
-    return <span className="text-foreground">{value}</span>;
+    return (
+      <Text fontSize="$3" color="$color">
+        {value}
+      </Text>
+    );
   }
-  return <Minus className="size-3 text-foreground/30" strokeWidth={2} />;
+  return (
+    <Text color="$mutedForeground" lineHeight={0}>
+      <Minus size={12} strokeWidth={2} />
+    </Text>
+  );
 }
 
 function groupByCategory(

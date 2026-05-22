@@ -11,7 +11,7 @@ import {
 } from "@stageholder/sdk/spa";
 import { refreshEntitlement } from "@/lib/entitlement";
 import { tryGetCurrentUserSub } from "@/lib/current-user-sub";
-import { cn } from "@/lib/utils";
+import { H1, Paragraph, Text, View, XStack, YStack } from "@stageholder/ui";
 
 /** Hard cap on Polar polling — beyond this we run recovery optimistically. */
 const MAX_POLL_DURATION_MS = 15_000;
@@ -316,105 +316,188 @@ function BillingSuccessPage() {
     return "Checkout incomplete";
   })();
 
-  return (
-    <div className="relative min-h-screen bg-background">
-      <div className="relative z-10 mx-auto max-w-2xl px-4 py-16 md:py-24">
-        <div className="rounded-[32px] border border-border/70 bg-card/80 p-10 md:p-14 backdrop-blur-sm">
-          <div className="flex items-center gap-2">
-            <Sparkles
-              className={cn(
-                "size-4",
-                phase === "ready"
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : phase === "session_expired" || phase === "checkout_failed"
-                    ? "text-rose-600 dark:text-rose-400"
-                    : phase === "pending" || phase === "timeout"
-                      ? "text-amber-600 dark:text-amber-400"
-                      : "text-foreground/60",
-              )}
-            />
-            <p className="font-mono text-[11px] uppercase tracking-[0.32em] text-foreground/55">
-              {kicker}
-            </p>
-          </div>
+  // Semantic phase color for the Sparkles glyph (no kit token) — fixed
+  // hexes that read in both themes.
+  const sparkColor =
+    phase === "ready"
+      ? "#059669"
+      : phase === "session_expired" || phase === "checkout_failed"
+        ? "#e11d48"
+        : phase === "pending" || phase === "timeout"
+          ? "#d97706"
+          : undefined;
 
-          <h1
-            className="mt-5 text-[clamp(2.25rem,6vw,4rem)] leading-[0.95] tracking-[-0.02em]"
+  return (
+    <View position="relative" minH={"100vh" as never} bg="$background">
+      <YStack
+        position="relative"
+        z={10}
+        mx="auto"
+        maxW={672}
+        px="$4"
+        py={64}
+        $md={{ py: 96 }}
+      >
+        {/* allowlist: card translucency + frosted backdrop-blur + foreground-tinted border (no token equivalent) */}
+        <YStack
+          rounded={32}
+          borderWidth={1}
+          p="$7"
+          $md={{ p: "$9" }}
+          className="border-border/70 bg-card/80 backdrop-blur-sm"
+        >
+          <XStack items="center" gap="$2">
+            <View color={sparkColor ?? "$mutedForeground"}>
+              <Sparkles size={16} />
+            </View>
+            {/* allowlist: editorial mono kicker — letter-spacing + foreground tint (no token equivalent) */}
+            <Paragraph className="font-mono text-[11px] uppercase tracking-[0.32em] text-foreground/55">
+              {kicker}
+            </Paragraph>
+          </XStack>
+
+          {/* allowlist: display-font + clamp() responsive size (CSS var, no kit token) */}
+          <H1
+            mt="$4.5"
+            className="text-[clamp(2.25rem,6vw,4rem)] leading-[0.95] tracking-[-0.02em]"
             style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
           >
             {headline}
-          </h1>
+          </H1>
 
-          <p className="mt-6 max-w-md text-base leading-relaxed text-muted-foreground">
+          <Paragraph mt="$5" maxW={448} fontSize="$5" color="$mutedForeground">
             {body}
-          </p>
+          </Paragraph>
 
-          <div className="mt-10 flex flex-wrap items-center gap-3">
+          <XStack mt="$7" flexWrap="wrap" items="center" gap="$3">
             {(phase === "ready" ||
               phase === "timeout" ||
               phase === "pending") && (
-              <Link
-                to="/settings/billing"
-                className={cn(
-                  "group/btn inline-flex h-12 items-center gap-2 rounded-full bg-foreground pl-5 pr-1.5 text-sm font-medium text-background",
-                  "transition-opacity hover:opacity-90",
-                )}
-              >
-                View billing
-                <span className="inline-flex size-9 items-center justify-center rounded-full bg-background/15 transition-transform group-hover/btn:translate-x-0.5">
-                  <ArrowRight className="size-3.5" strokeWidth={2} />
-                </span>
+              <Link to="/settings/billing" style={{ textDecoration: "none" }}>
+                {/* allowlist: group/btn hover-translate on the inner chevron (no token equivalent) */}
+                <XStack
+                  className="group/btn"
+                  height={48}
+                  items="center"
+                  gap="$2"
+                  rounded={9999}
+                  bg="$color"
+                  pl="$5"
+                  pr="$1.5"
+                  fontSize="$3"
+                  fontWeight="500"
+                  color="$background"
+                  transition="quick"
+                  hoverStyle={{ opacity: 0.9 }}
+                >
+                  View billing
+                  <View
+                    items="center"
+                    justify="center"
+                    height={36}
+                    width={36}
+                    rounded={9999}
+                    className="bg-background/15 transition-transform group-hover/btn:translate-x-0.5"
+                  >
+                    <ArrowRight size={14} strokeWidth={2} />
+                  </View>
+                </XStack>
               </Link>
             )}
             {phase === "ready" && (
-              <Link
-                to="/"
-                className="inline-flex h-12 items-center rounded-full border border-foreground/80 bg-background px-5 text-sm font-medium text-foreground transition-colors hover:bg-foreground hover:text-background"
-              >
-                Back to dashboard
+              <Link to="/" style={{ textDecoration: "none" }}>
+                <XStack
+                  height={48}
+                  items="center"
+                  rounded={9999}
+                  borderWidth={1}
+                  bg="$background"
+                  px="$5"
+                  fontSize="$3"
+                  fontWeight="500"
+                  color="$color"
+                  transition="quick"
+                  className="border-foreground/80"
+                  hoverStyle={{ bg: "$color", color: "$background" }}
+                >
+                  Back to dashboard
+                </XStack>
               </Link>
             )}
             {phase === "pending" && (
-              <button
-                type="button"
-                onClick={() => void handleSignOutAndReauth()}
-                className="inline-flex h-12 items-center rounded-full border border-foreground/80 bg-background px-5 text-sm font-medium text-foreground transition-colors hover:bg-foreground hover:text-background"
+              <XStack
+                tag="button"
+                height={48}
+                items="center"
+                rounded={9999}
+                borderWidth={1}
+                bg="$background"
+                px="$5"
+                fontSize="$3"
+                fontWeight="500"
+                color="$color"
+                transition="quick"
+                className="border-foreground/80"
+                hoverStyle={{ bg: "$color", color: "$background" }}
+                onPress={() => void handleSignOutAndReauth()}
               >
                 Sign out & back in
-              </button>
+              </XStack>
             )}
             {phase === "session_expired" && (
-              <button
-                type="button"
-                onClick={() => void handleSignOutAndReauth()}
-                className={cn(
-                  "inline-flex h-12 items-center rounded-full bg-foreground px-5 text-sm font-medium text-background",
-                  "transition-opacity hover:opacity-90",
-                )}
+              <XStack
+                tag="button"
+                height={48}
+                items="center"
+                rounded={9999}
+                bg="$color"
+                px="$5"
+                fontSize="$3"
+                fontWeight="500"
+                color="$background"
+                transition="quick"
+                hoverStyle={{ opacity: 0.9 }}
+                onPress={() => void handleSignOutAndReauth()}
               >
                 Sign in again
-              </button>
+              </XStack>
             )}
             {phase === "checkout_failed" && (
               <Link
                 to="/settings/billing/upgrade"
-                className={cn(
-                  "inline-flex h-12 items-center rounded-full bg-foreground px-5 text-sm font-medium text-background",
-                  "transition-opacity hover:opacity-90",
-                )}
+                style={{ textDecoration: "none" }}
               >
-                Try again
+                <XStack
+                  height={48}
+                  items="center"
+                  rounded={9999}
+                  bg="$color"
+                  px="$5"
+                  fontSize="$3"
+                  fontWeight="500"
+                  color="$background"
+                  transition="quick"
+                  hoverStyle={{ opacity: 0.9 }}
+                >
+                  Try again
+                </XStack>
               </Link>
             )}
-          </div>
+          </XStack>
 
           {checkoutId && (
-            <p className="mt-10 border-t border-border/60 pt-4 font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+            // allowlist: editorial mono reference line + border-border/60 hairline (no token equivalent)
+            <Paragraph
+              mt="$7"
+              borderTopWidth={1}
+              pt="$3"
+              className="border-border/60 font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground"
+            >
               Reference · {checkoutId}
-            </p>
+            </Paragraph>
           )}
-        </div>
-      </div>
-    </div>
+        </YStack>
+      </YStack>
+    </View>
   );
 }

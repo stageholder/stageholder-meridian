@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { View } from "@stageholder/ui";
 import { CalendarView } from "@/components/calendar/calendar-view";
 
 export const Route = createFileRoute("/_app/calendar")({
@@ -7,8 +8,8 @@ export const Route = createFileRoute("/_app/calendar")({
 
 function CalendarPage() {
   return (
-    <div className="p-2 sm:p-4">
+    <View p="$2" $sm={{ p: "$4" }}>
       <CalendarView />
-    </div>
+    </View>
   );
 }

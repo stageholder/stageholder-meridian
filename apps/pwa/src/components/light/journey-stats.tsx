@@ -1,5 +1,5 @@
 import { Sparkles, Calendar, Trophy, Zap } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Text, View, XStack, YStack } from "@stageholder/ui";
 import type { UserLight } from "@repo/core/types/light";
 
 interface JourneyStatsProps {
@@ -15,52 +15,76 @@ function getMultiplier(streak: number): number {
 }
 
 export function JourneyStats({ userLight }: JourneyStatsProps) {
+  // `color` is the decorative accent for each stat's lucide icon — no kit
+  // token, so it rides the style escape hatch.
   const stats = [
     {
       label: "Total Light",
       value: userLight.totalLight.toLocaleString(),
       icon: Sparkles,
-      color: "text-amber-500",
+      color: "#f59e0b",
     },
     {
       label: "Perfect Days",
       value: String(userLight.perfectDaysTotal),
       icon: Calendar,
-      color: "text-emerald-500",
+      color: "#10b981",
     },
     {
       label: "Longest Streak",
       value: `${userLight.longestPerfectStreak}d`,
       icon: Trophy,
-      color: "text-blue-500",
+      color: "#3b82f6",
     },
     {
       label: "Multiplier",
       value: `${getMultiplier(userLight.perfectDayStreak)}x`,
       icon: Zap,
-      color: "text-purple-500",
+      color: "#a855f7",
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <View
+      display="grid"
+      gap="$2"
+      style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}
+    >
       {stats.map((stat) => {
         const Icon = stat.icon;
         return (
-          <div
+          <XStack
             key={stat.label}
-            className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2.5"
+            items="center"
+            gap="$2.5"
+            rounded="$lg"
+            borderWidth={1}
+            borderColor="$borderColor"
+            bg="$card"
+            px="$3"
+            py="$2.5"
           >
-            <Icon className={cn("size-4 shrink-0", stat.color)} />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-bold tabular-nums leading-tight">
+            <Text shrink={0} lineHeight={0} style={{ color: stat.color }}>
+              <Icon size={16} />
+            </Text>
+            <YStack minW={0}>
+              <Text
+                fontSize="$3"
+                fontWeight="700"
+                lineHeight={20}
+                color="$color"
+                numberOfLines={1}
+                style={{ fontVariantNumeric: "tabular-nums" }}
+              >
                 {stat.value}
-              </p>
-              <p className="text-[10px] text-muted-foreground">{stat.label}</p>
-            </div>
-          </div>
+              </Text>
+              <Text fontSize={10} color="$mutedForeground">
+                {stat.label}
+              </Text>
+            </YStack>
+          </XStack>
         );
       })}
-    </div>
+    </View>
   );
 }

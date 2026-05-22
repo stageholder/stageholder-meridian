@@ -19,8 +19,17 @@ import {
   SkipForward,
   Undo2,
 } from "lucide-react";
-import { AlertDialog, Button, XStack } from "@stageholder/ui";
-import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  Button,
+  H1,
+  H3,
+  Paragraph,
+  Text,
+  View,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 import { EditHabitSheet } from "@/components/habits/edit-habit-sheet";
 import {
   useHabit,
@@ -340,61 +349,95 @@ function HabitDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4 p-4">
-        <div className="h-8 w-48 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-      </div>
+      <YStack gap="$4" p="$4">
+        {/* allowlist: animate-pulse keyframe */}
+        <View
+          height={32}
+          width={192}
+          rounded="$sm"
+          bg="$muted"
+          className="animate-pulse"
+        />
+        <View
+          height={16}
+          width={128}
+          rounded="$sm"
+          bg="$muted"
+          className="animate-pulse"
+        />
+      </YStack>
     );
   }
 
   if (!habit) {
     return (
-      <div className="py-12 text-center">
-        <p className="text-sm text-muted-foreground">Habit not found.</p>
-      </div>
+      <YStack py="$8" items="center">
+        <Paragraph fontSize="$3" color="$mutedForeground">
+          Habit not found.
+        </Paragraph>
+      </YStack>
     );
   }
 
   const habitColor = habit.color || "#3b82f6";
 
   return (
-    <div className="space-y-6 p-4">
+    <YStack gap="$6" p="$4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate({ to: "/habits" })}
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      <XStack items="center" justify="space-between">
+        <XStack items="center" gap="$3">
+          <XStack
+            tag="button"
+            items="center"
+            gap="$1"
+            color="$mutedForeground"
+            hoverStyle={{ color: "$color" }}
+            onPress={() => navigate({ to: "/habits" })}
           >
-            <ArrowLeft className="size-4" />
-          </button>
-          <div
-            className="flex h-10 w-10 items-center justify-center rounded-lg text-lg"
+            <ArrowLeft size={16} />
+          </XStack>
+          <View
+            items="center"
+            justify="center"
+            height={40}
+            width={40}
+            rounded="$lg"
+            fontSize="$6"
+            // dynamic per-habit tint — stays inline
             style={{ backgroundColor: habitColor + "20" }}
           >
-            {habit.icon || habit.name.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">{habit.name}</h1>
+            <Text fontSize="$6">
+              {habit.icon || habit.name.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+          <YStack>
+            <H1 fontSize="$7" fontWeight="700" color="$color">
+              {habit.name}
+            </H1>
             {habit.description && (
-              <p className="text-sm text-muted-foreground">
+              <Paragraph fontSize="$3" color="$mutedForeground">
                 {habit.description}
-              </p>
+              </Paragraph>
             )}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
+          </YStack>
+        </XStack>
+        <XStack items="center" gap="$2">
           <Button intent="outline" onPress={() => setEditOpen(true)}>
             Edit
           </Button>
           <Button intent="destructive" onPress={() => setDeleteOpen(true)}>
             Delete
           </Button>
-        </div>
-      </div>
+        </XStack>
+      </XStack>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <View
+        display="grid"
+        gap="$3"
+        gridTemplateColumns={"repeat(2, minmax(0, 1fr))" as never}
+        $sm={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" as never }}
+      >
         <StatCard
           label="Current Streak"
           value={stats.streak}
@@ -427,42 +470,69 @@ function HabitDetailPage() {
           value={stats.completionRate}
           suffix="%"
         />
-      </div>
+      </View>
 
       {/* Calendar + Recent Entries — two-column on desktop, stacked on mobile */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <View
+        display="grid"
+        gap="$4"
+        gridTemplateColumns={"1fr" as never}
+        $lg={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" as never }}
+      >
         {/* Monthly Calendar Heatmap */}
-        <div className="rounded-xl border border-border bg-card p-5">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => setCalendarMonth(subMonths(calendarMonth, 1))}
-              className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+        <YStack
+          rounded="$6"
+          borderWidth={1}
+          borderColor="$borderColor"
+          bg="$card"
+          p="$5"
+        >
+          <XStack items="center" justify="space-between">
+            <View
+              tag="button"
+              rounded="$md"
+              p="$1"
+              color="$mutedForeground"
+              hoverStyle={{ bg: "$accent", color: "$color" }}
+              onPress={() => setCalendarMonth(subMonths(calendarMonth, 1))}
             >
-              <ChevronLeft className="size-4" />
-            </button>
-            <h3 className="text-sm font-semibold text-foreground">
+              <ChevronLeft size={16} />
+            </View>
+            <H3 fontSize="$3" fontWeight="600" color="$color">
               {format(calendarMonth, "MMMM yyyy")}
-            </h3>
-            <button
-              onClick={() => setCalendarMonth(addMonths(calendarMonth, 1))}
-              className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+            </H3>
+            <View
+              tag="button"
+              rounded="$md"
+              p="$1"
+              color="$mutedForeground"
+              hoverStyle={{ bg: "$accent", color: "$color" }}
+              onPress={() => setCalendarMonth(addMonths(calendarMonth, 1))}
             >
-              <ChevronRight className="size-4" />
-            </button>
-          </div>
+              <ChevronRight size={16} />
+            </View>
+          </XStack>
 
-          <div className="mt-3 grid grid-cols-7 gap-1.5 text-center">
+          <View
+            mt="$3"
+            display="grid"
+            gap="$1.5"
+            gridTemplateColumns={"repeat(7, minmax(0, 1fr))" as never}
+          >
             {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
-              <span
+              <Text
                 key={i}
-                className="text-[10px] font-medium text-muted-foreground"
+                fontSize={10}
+                fontWeight="500"
+                color="$mutedForeground"
+                text="center"
               >
                 {d}
-              </span>
+              </Text>
             ))}
             {/* Offset empty cells */}
             {Array.from({ length: calendarDays.offset }).map((_, i) => (
-              <div key={`empty-${i}`} />
+              <View key={`empty-${i}`} />
             ))}
             {calendarDays.days.map((day) => {
               const dateStr = format(day, "yyyy-MM-dd");
@@ -498,32 +568,63 @@ function HabitDetailPage() {
               const isAnyFail = isDayFailed || isAutoFailed;
 
               return (
-                <div key={dateStr} className="flex items-center justify-center">
-                  <button
-                    onClick={() =>
+                <XStack key={dateStr} items="center" justify="center">
+                  <XStack
+                    tag="button"
+                    items="center"
+                    justify="center"
+                    height={32}
+                    width={32}
+                    rounded={9999}
+                    fontSize={11}
+                    transition="quick"
+                    disabled={isFutureDay}
+                    opacity={
+                      isFutureDay ? 0.2 : !isScheduled ? 0.25 : undefined
+                    }
+                    cursor={isFutureDay ? "not-allowed" : "pointer"}
+                    // today/selected ring approximated with a 2px border
+                    borderWidth={
+                      (isDayToday && !isSelected) || isSelected || isDaySkipped
+                        ? 2
+                        : undefined
+                    }
+                    borderStyle={isDaySkipped ? "dashed" : undefined}
+                    borderColor={
+                      isSelected
+                        ? "$color"
+                        : isDayToday && !isSelected
+                          ? "$primary"
+                          : isDaySkipped
+                            ? "$mutedForeground"
+                            : undefined
+                    }
+                    scale={isSelected ? 1.1 : undefined}
+                    bg={isAnyFail ? "$destructive" : undefined}
+                    fontWeight={
+                      isComplete || isAnyFail
+                        ? "600"
+                        : isPartial
+                          ? "500"
+                          : undefined
+                    }
+                    color={
+                      isComplete
+                        ? "#ffffff"
+                        : isAnyFail
+                          ? "$destructiveForeground"
+                          : isDaySkipped
+                            ? "$mutedForeground"
+                            : isPartial
+                              ? "$color"
+                              : "$mutedForeground"
+                    }
+                    hoverStyle={!isFutureDay ? { scale: 1.1 } : undefined}
+                    onPress={() =>
                       !isFutureDay &&
                       setSelectedDate(isSelected ? null : dateStr)
                     }
-                    disabled={isFutureDay}
-                    className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-full text-[11px] transition-all",
-                      !isScheduled && "opacity-25",
-                      isDayToday && !isSelected && "ring-2 ring-primary",
-                      isSelected && "ring-2 ring-foreground scale-110",
-                      isComplete && "text-white font-semibold",
-                      isDaySkipped &&
-                        "border-2 border-dashed border-muted-foreground/40 text-muted-foreground",
-                      isAnyFail &&
-                        "bg-destructive/80 text-destructive-foreground font-semibold",
-                      !isComplete &&
-                        !isPartial &&
-                        !isDaySkipped &&
-                        !isAnyFail &&
-                        "text-muted-foreground",
-                      isPartial && "font-medium text-foreground",
-                      !isFutureDay && "cursor-pointer hover:scale-110",
-                      isFutureDay && "opacity-20 cursor-not-allowed",
-                    )}
+                    // dynamic per-habit fill — stays inline
                     style={
                       isComplete
                         ? { backgroundColor: habitColor }
@@ -548,17 +649,17 @@ function HabitDetailPage() {
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                     ) : isDaySkipped ? (
-                      <span className="text-[9px]">—</span>
+                      <Text fontSize={9}>—</Text>
                     ) : isAnyFail ? (
-                      <span className="text-[10px]">✕</span>
+                      <Text fontSize={10}>✕</Text>
                     ) : (
-                      day.getDate()
+                      <Text fontSize={11}>{day.getDate()}</Text>
                     )}
-                  </button>
-                </div>
+                  </XStack>
+                </XStack>
               );
             })}
-          </div>
+          </View>
 
           {/* Selected date action panel */}
           {selectedDate &&
@@ -585,21 +686,27 @@ function HabitDetailPage() {
               const selHasEntry = !!monthEntryObjMap.get(selectedDate);
 
               return (
-                <div className="mt-4 flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-foreground">
+                <XStack
+                  mt="$4"
+                  items="center"
+                  justify="space-between"
+                  rounded="$lg"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  bg="$muted"
+                  px="$3"
+                  py="$2.5"
+                >
+                  <XStack items="center" gap="$2">
+                    <Text fontSize="$1" fontWeight="500" color="$color">
                       {format(
                         new Date(selectedDate + "T00:00:00"),
                         "MMM d, yyyy",
                       )}
-                    </span>
-                    <span
-                      className={cn(
-                        "text-[10px]",
-                        selIsFailed
-                          ? "text-destructive"
-                          : "text-muted-foreground",
-                      )}
+                    </Text>
+                    <Text
+                      fontSize={10}
+                      color={selIsFailed ? "$destructive" : "$mutedForeground"}
                     >
                       {selIsFailed
                         ? "Failed — streak reset"
@@ -607,44 +714,96 @@ function HabitDetailPage() {
                           ? "Skipped"
                           : `${selValue}/${selEffectiveTarget}`}
                       {!selScheduled && " · Rest day"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
+                    </Text>
+                  </XStack>
+                  <XStack items="center" gap="$1.5">
                     {selValue > 0 && !selIsSkipped && !selIsFailed && (
-                      <button
-                        onClick={() => handleDateUndo(selectedDate)}
+                      <XStack
+                        tag="button"
+                        items="center"
+                        gap="$1"
+                        rounded="$md"
+                        borderWidth={1}
+                        borderColor="$borderColor"
+                        px="$2"
+                        py="$1"
+                        fontSize="$1"
+                        color="$mutedForeground"
+                        hoverStyle={{ bg: "$accent", color: "$color" }}
+                        disabledStyle={{ opacity: 0.5 }}
                         disabled={isMutating}
-                        className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+                        onPress={() => handleDateUndo(selectedDate)}
                       >
-                        <Undo2 className="size-3" />
+                        <Undo2 size={12} />
                         Undo
-                      </button>
+                      </XStack>
                     )}
                     {selIsSkipped || selIsFailed ? (
                       // Recovery: PATCH the entry back to a value=0 completion
                       // so the user can Record again. The Fail button itself
                       // is mobile-only per current scope; this Undo lets a
                       // user fix a mobile-set fail from PWA.
-                      <button
-                        onClick={() => handleClearNonCompletion(selectedDate)}
+                      <XStack
+                        tag="button"
+                        items="center"
+                        gap="$1"
+                        rounded="$md"
+                        borderWidth={1}
+                        borderColor="$borderColor"
+                        px="$2"
+                        py="$1"
+                        fontSize="$1"
+                        color="$mutedForeground"
+                        hoverStyle={{ bg: "$accent", color: "$color" }}
+                        disabledStyle={{ opacity: 0.5 }}
                         disabled={isMutating}
-                        className="flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+                        onPress={() => handleClearNonCompletion(selectedDate)}
                       >
-                        <Undo2 className="size-3" />
+                        <Undo2 size={12} />
                         Undo {selIsFailed ? "fail" : "skip"}
-                      </button>
+                      </XStack>
                     ) : null}
                     {selIsFailed ? (
-                      <span className="flex items-center gap-1 rounded-md bg-destructive/15 px-2.5 py-1 text-xs font-medium text-destructive">
+                      <XStack
+                        items="center"
+                        gap="$1"
+                        rounded="$md"
+                        bg="$destructiveMuted"
+                        px="$2.5"
+                        py="$1"
+                        fontSize="$1"
+                        fontWeight="500"
+                        color="$destructive"
+                      >
                         ✕ Failed
-                      </span>
+                      </XStack>
                     ) : selIsSkipped ? (
-                      <span className="flex items-center gap-1 rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                        <SkipForward className="size-3" />
+                      <XStack
+                        items="center"
+                        gap="$1"
+                        rounded="$md"
+                        bg="$muted"
+                        px="$2.5"
+                        py="$1"
+                        fontSize="$1"
+                        fontWeight="500"
+                        color="$mutedForeground"
+                      >
+                        <SkipForward size={12} />
                         Skipped
-                      </span>
+                      </XStack>
                     ) : selComplete ? (
-                      <span className="flex items-center gap-1 rounded-md bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                      <XStack
+                        items="center"
+                        gap="$1"
+                        rounded="$md"
+                        bg="$successMuted"
+                        px="$2.5"
+                        py="$1"
+                        fontSize="$1"
+                        fontWeight="500"
+                        color="$success"
+                      >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           width="12"
@@ -659,14 +818,14 @@ function HabitDetailPage() {
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
                         Done
-                      </span>
+                      </XStack>
                     ) : (
                       <>
                         {selIsToday && !selHasEntry && selScheduled && (
                           <Button
                             intent="outline"
                             size="sm"
-                            icon={<SkipForward className="size-3" />}
+                            icon={<SkipForward size={12} />}
                             onPress={() => {
                               skipEntryMutation.mutate(
                                 {
@@ -698,82 +857,120 @@ function HabitDetailPage() {
                         </Button>
                       </>
                     )}
-                  </div>
-                </div>
+                  </XStack>
+                </XStack>
               );
             })()}
-        </div>
+        </YStack>
 
         {/* Recent Entries */}
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold text-foreground">
+        <YStack
+          rounded="$6"
+          borderWidth={1}
+          borderColor="$borderColor"
+          bg="$card"
+          p="$5"
+        >
+          <H3 fontSize="$3" fontWeight="600" color="$color">
             Recent Entries
-          </h3>
+          </H3>
           {recentEntries.length === 0 ? (
-            <p className="mt-3 text-xs text-muted-foreground">
+            <Paragraph mt="$3" fontSize="$1" color="$mutedForeground">
               No entries yet.
-            </p>
+            </Paragraph>
           ) : (
-            <div className="mt-3 space-y-1.5 overflow-y-auto max-h-[320px] pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-track]:bg-transparent">
+            <YStack
+              mt="$3"
+              gap="$1.5"
+              overflowY={"auto" as never}
+              maxH={320}
+              pr="$1"
+              // allowlist: thin custom webkit scrollbar (no token equivalent)
+              className="[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-track]:bg-transparent"
+            >
               {recentEntries.map((entry: HabitEntry) => {
                 const dateStr = entry.date.split("T")[0]!;
                 const entryIsSkip = entry.type === "skip";
                 const entryIsFail = entry.type === "fail";
                 const isComplete = isEntryComplete(entry, habit);
                 return (
-                  <div
+                  <XStack
                     key={entry.id}
-                    className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2"
+                    items="center"
+                    justify="space-between"
+                    rounded="$lg"
+                    borderWidth={1}
+                    borderColor="$borderColor"
+                    px="$3"
+                    py="$2"
                   >
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={cn(
-                          "h-2 w-2 rounded-full",
+                    <XStack items="center" gap="$2">
+                      <View
+                        height={8}
+                        width={8}
+                        rounded={9999}
+                        // status dot — fail/skip use kit tokens; complete/partial
+                        // keep their semantic green/orange (no kit equivalent)
+                        bg={
                           entryIsFail
-                            ? "bg-destructive"
+                            ? "$destructive"
                             : entryIsSkip
-                              ? "bg-muted-foreground/40"
+                              ? "$mutedForeground"
                               : isComplete
-                                ? "bg-green-500"
-                                : "bg-orange-400",
-                        )}
+                                ? "#22c55e"
+                                : "#fb923c"
+                        }
                       />
-                      <span className="text-sm text-foreground">
+                      <Text fontSize="$3" color="$color">
                         {format(new Date(dateStr), "MMM d, yyyy")}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
+                      </Text>
+                    </XStack>
+                    <XStack items="center" gap="$2">
                       {entryIsFail ? (
-                        <span className="text-xs font-medium text-destructive">
+                        <Text
+                          fontSize="$1"
+                          fontWeight="500"
+                          color="$destructive"
+                        >
                           Failed
-                        </span>
+                        </Text>
                       ) : entryIsSkip ? (
-                        <span className="text-xs text-muted-foreground">
+                        <Text fontSize="$1" color="$mutedForeground">
                           Skipped
-                        </span>
+                        </Text>
                       ) : (
-                        <span className="text-xs text-muted-foreground">
+                        <Text fontSize="$1" color="$mutedForeground">
                           {entry.value}/{resolveTargetCount(entry, habit)}
-                        </span>
+                        </Text>
                       )}
                       {entry.skipReason && (
-                        <span className="max-w-[120px] truncate text-xs text-muted-foreground">
+                        <Text
+                          maxW={120}
+                          numberOfLines={1}
+                          fontSize="$1"
+                          color="$mutedForeground"
+                        >
                           {entry.skipReason}
-                        </span>
+                        </Text>
                       )}
                       {entry.notes && !entryIsSkip && !entryIsFail && (
-                        <span className="max-w-[120px] truncate text-xs text-muted-foreground">
+                        <Text
+                          maxW={120}
+                          numberOfLines={1}
+                          fontSize="$1"
+                          color="$mutedForeground"
+                        >
                           {entry.notes}
-                        </span>
+                        </Text>
                       )}
-                    </div>
-                  </div>
+                    </XStack>
+                  </XStack>
                 );
               })}
-            </div>
+            </YStack>
           )}
-        </div>
-      </div>
+        </YStack>
+      </View>
 
       <EditHabitSheet
         habit={habit}
@@ -809,7 +1006,7 @@ function HabitDetailPage() {
           </AlertDialog.Content>
         </AlertDialog.Portal>
       </AlertDialog>
-    </div>
+    </YStack>
   );
 }
 
@@ -825,15 +1022,23 @@ function StatCard({
   suffix?: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <div className="mt-1 flex items-center gap-1.5">
+    <YStack
+      rounded="$6"
+      borderWidth={1}
+      borderColor="$borderColor"
+      bg="$card"
+      p="$4"
+    >
+      <Paragraph fontSize="$1" color="$mutedForeground">
+        {label}
+      </Paragraph>
+      <XStack mt="$0.5" items="center" gap="$1.5">
         {icon}
-        <span className="text-xl font-bold text-foreground">
+        <Text fontSize="$7" fontWeight="700" color="$color">
           {value}
           {suffix}
-        </span>
-      </div>
-    </div>
+        </Text>
+      </XStack>
+    </YStack>
   );
 }

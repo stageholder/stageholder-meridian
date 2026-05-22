@@ -2,7 +2,6 @@ import { useState } from "react";
 import { format, subDays, startOfWeek, addDays } from "date-fns";
 import { Link } from "@tanstack/react-router";
 import { Check, MoreHorizontal, SkipForward, Undo2 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { HabitProgress } from "./habit-progress";
 import { EditHabitSheet } from "./edit-habit-sheet";
 import { RadianceBurst } from "./radiance-burst";
@@ -15,16 +14,17 @@ import {
 } from "@/lib/api/habits";
 import { toast } from "sonner";
 import type { Habit, HabitEntry } from "@repo/core/types";
-import {
-  resolveTargetCount,
-  entryCompletionRatio,
-} from "@/lib/habits/entry-resolution";
+import { resolveTargetCount } from "@/lib/habits/entry-resolution";
 import {
   AlertDialog,
   Button,
   DropdownMenu,
+  H3,
   IconButton,
+  Text,
+  View,
   XStack,
+  YStack,
 } from "@stageholder/ui";
 
 interface HabitCardProps {
@@ -184,40 +184,61 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
 
   return (
     <>
-      <div
-        className={cn(
-          "relative rounded-xl border border-border bg-card p-5 transition-all",
-          completing && "habit-card-completing",
-        )}
+      <View
+        position="relative"
+        rounded="$6"
+        borderWidth={1}
+        borderColor="$borderColor"
+        bg="$card"
+        p="$5"
+        transition="medium"
+        // allowlist: habit-card-completing — bespoke completion keyframe (no token equivalent)
+        className={completing ? "habit-card-completing" : undefined}
       >
         <RadianceBurst active={completing} color={habitColor} />
-        <div className="flex items-start justify-between">
+        <XStack items="flex-start" justify="space-between">
+          {/* Keep <Link> for routing (prefetch + middle-click); style lives on
+              the inner XStack so the kit tokens/hover apply. */}
           <Link
             to="/habits/$id"
             params={{ id: habit.id }}
-            className="flex items-center gap-3 hover:opacity-80"
+            style={{ textDecoration: "none" }}
           >
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-lg text-lg"
-              style={{ backgroundColor: habitColor + "20" }}
+            <XStack
+              items="center"
+              gap="$3"
+              transition="quick"
+              hoverStyle={{ opacity: 0.8 }}
             >
-              {habit.icon || habit.name.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-foreground">
-                {habit.name}
-              </h3>
-              {habit.description && (
-                <p className="text-xs text-muted-foreground">
-                  {habit.description}
-                </p>
-              )}
-            </div>
+              {/* Icon badge tinted with the habit's free-form color (no token) */}
+              <View
+                height={40}
+                width={40}
+                items="center"
+                justify="center"
+                rounded="$lg"
+                style={{ backgroundColor: habitColor + "20" }}
+              >
+                <Text fontSize="$6" color="$cardForeground">
+                  {habit.icon || habit.name.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+              <YStack>
+                <H3 fontSize="$3" fontWeight="600" color="$color">
+                  {habit.name}
+                </H3>
+                {habit.description && (
+                  <Text fontSize="$1" color="$mutedForeground">
+                    {habit.description}
+                  </Text>
+                )}
+              </YStack>
+            </XStack>
           </Link>
           <DropdownMenu>
             <DropdownMenu.Trigger asChild>
               <IconButton variant="ghost" size="sm" aria-label="Habit options">
-                <MoreHorizontal className="size-4" />
+                <MoreHorizontal size={16} />
               </IconButton>
             </DropdownMenu.Trigger>
             <DropdownMenu.Content>
@@ -232,108 +253,133 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
               </DropdownMenu.Item>
             </DropdownMenu.Content>
           </DropdownMenu>
-        </div>
+        </XStack>
 
-        <div className="mt-4">
+        <View mt="$4">
           <HabitProgress
             value={activeDateValue}
             targetCount={activeTargetCount}
             color={habit.color}
             streak={streak}
           />
-        </div>
+        </View>
 
         {/* Week dots */}
-        <div className="mt-3 flex justify-between px-1">
+        <XStack mt="$3" justify="space-between" px="$1">
           {weekDays.map((day) => {
             const ratio =
               day.effectiveTarget > 0 ? day.value / day.effectiveTarget : 0;
             const isDaySkipped = day.type === "skip";
             const isDayFailed = day.type === "fail";
+            // "Today" highlight = a 1px primary ring with a 1px background-colored
+            // offset (Tailwind ring-1 ring-offset-1 ring-offset-background).
+            const todayRing = day.isToday
+              ? ({
+                  outlineWidth: 1,
+                  outlineColor: "$primary",
+                  outlineStyle: "solid",
+                  outlineOffset: 1,
+                } as const)
+              : undefined;
             return (
-              <div
-                key={day.dateStr}
-                className="flex flex-col items-center gap-1"
-              >
-                <span
-                  className={cn(
-                    "text-[10px]",
-                    day.isScheduled
-                      ? "text-muted-foreground"
-                      : "text-muted-foreground/40",
-                  )}
+              <YStack key={day.dateStr} items="center" gap="$1">
+                <Text
+                  fontSize={10}
+                  color="$mutedForeground"
+                  opacity={day.isScheduled ? 1 : 0.4}
                 >
                   {day.label}
-                </span>
+                </Text>
                 {isDayFailed ? (
-                  <div
-                    className={cn(
-                      "flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive/80",
-                      day.isToday &&
-                        "ring-1 ring-offset-1 ring-offset-background",
-                    )}
+                  <View
+                    height={14}
+                    width={14}
+                    items="center"
+                    justify="center"
+                    rounded={9999}
+                    // destructive at 80% (Tailwind bg-destructive/80); the alpha
+                    // is fill-only so the glyph stays crisp — via style hatch.
+                    style={{ backgroundColor: "rgba(231, 0, 11, 0.8)" }}
                     title="Failed"
+                    {...todayRing}
                   >
-                    <span className="text-[8px] leading-none text-destructive-foreground">
+                    <Text
+                      fontSize={8}
+                      lineHeight={0}
+                      color="$destructiveForeground"
+                    >
                       ✕
-                    </span>
-                  </div>
+                    </Text>
+                  </View>
                 ) : isDaySkipped ? (
-                  <div
-                    className={cn(
-                      "flex h-3.5 w-3.5 items-center justify-center rounded-full border border-dashed border-muted-foreground/40",
-                      day.isToday &&
-                        "ring-1 ring-offset-1 ring-offset-background",
-                    )}
+                  <View
+                    height={14}
+                    width={14}
+                    items="center"
+                    justify="center"
+                    rounded={9999}
+                    borderWidth={1}
+                    borderStyle="dashed"
+                    borderColor="$mutedForeground"
+                    // muted-foreground/40 dashed ring — alpha via opacity keeps
+                    // it theme-aware (token differs per light/dark).
+                    opacity={0.4}
                     title="Skipped"
+                    {...todayRing}
                   >
-                    <span className="text-[8px] leading-none text-muted-foreground">
+                    <Text fontSize={8} lineHeight={0} color="$mutedForeground">
                       —
-                    </span>
-                  </div>
+                    </Text>
+                  </View>
                 ) : ratio >= 1 ? (
-                  <span
-                    className="text-sm leading-none"
+                  <Text
+                    fontSize="$3"
+                    lineHeight={0}
                     title={`${day.value}/${day.effectiveTarget}`}
                   >
                     🔥
-                  </span>
+                  </Text>
                 ) : (
-                  <div
-                    className={cn(
-                      "h-3.5 w-3.5 rounded-full border transition-all",
-                      day.isToday &&
-                        "ring-1 ring-offset-1 ring-offset-background",
+                  <View
+                    height={14}
+                    width={14}
+                    rounded={9999}
+                    borderWidth={1}
+                    transition="medium"
+                    borderStyle={!day.isScheduled ? "dashed" : "solid"}
+                    borderColor={
                       !day.isScheduled
-                        ? "border-dashed border-muted-foreground/20"
+                        ? "$mutedForeground"
                         : ratio > 0
-                          ? "border-transparent"
-                          : "border-muted-foreground/30",
-                    )}
-                    style={
-                      !day.isScheduled
-                        ? undefined
-                        : ratio > 0
-                          ? {
-                              backgroundColor: habitColor + "60",
-                              borderColor: habitColor + "60",
-                            }
-                          : undefined
+                          ? "transparent"
+                          : "$mutedForeground"
                     }
+                    // Non-scheduled/empty dots read as faint outlines; tinted
+                    // fill (when in progress) uses the habit's free-form color.
+                    opacity={!day.isScheduled ? 0.2 : ratio > 0 ? 1 : 0.3}
+                    style={
+                      day.isScheduled && ratio > 0
+                        ? {
+                            backgroundColor: habitColor + "60",
+                            borderColor: habitColor + "60",
+                          }
+                        : undefined
+                    }
+                    {...todayRing}
                   />
                 )}
-              </div>
+              </YStack>
             );
           })}
-        </div>
+        </XStack>
 
-        <div className="mt-4 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">
+        <XStack mt="$4" items="center" justify="space-between">
+          <Text fontSize="$1" color="$mutedForeground">
             {habit.unit
               ? `${habit.targetCount} ${habit.unit}`
               : `${habit.targetCount}x target`}
-          </span>
-          <div className="flex items-center gap-1.5">
+          </Text>
+          <XStack items="center" gap="$1.5">
             {activeDateValue > 0 && !isSkipped && (
               <IconButton
                 variant="outline"
@@ -343,35 +389,56 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
                 title="Undo last check-in"
                 aria-label="Undo last check-in"
               >
-                <Undo2 className="size-3" />
+                <Undo2 size={12} />
               </IconButton>
             )}
             {isSkipped ? (
-              <span className="flex items-center gap-1 rounded-lg bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground">
-                <SkipForward className="size-3" />
-                Skipped
-              </span>
-            ) : !isScheduledOnActiveDate && !isComplete ? (
-              <span className="rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground">
-                Rest day
-              </span>
-            ) : isComplete ? (
-              <span
-                className={cn(
-                  "flex items-center gap-1.5 rounded-lg bg-green-100 px-3 py-1.5 text-xs font-medium text-green-700 transition-transform dark:bg-green-900/30 dark:text-green-400",
-                  bouncing && "scale-110",
-                )}
+              <XStack
+                items="center"
+                gap="$1"
+                rounded="$lg"
+                bg="$muted"
+                px="$3"
+                py="$1.5"
               >
-                <Check className="size-3.5" />
-                Complete
-              </span>
+                <Text color="$mutedForeground" lineHeight={0}>
+                  <SkipForward size={12} />
+                </Text>
+                <Text fontSize="$1" fontWeight="500" color="$mutedForeground">
+                  Skipped
+                </Text>
+              </XStack>
+            ) : !isScheduledOnActiveDate && !isComplete ? (
+              <View rounded="$lg" px="$3" py="$1.5">
+                <Text fontSize="$1" fontWeight="500" color="$mutedForeground">
+                  Rest day
+                </Text>
+              </View>
+            ) : isComplete ? (
+              <XStack
+                items="center"
+                gap="$1.5"
+                rounded="$lg"
+                px="$3"
+                py="$1.5"
+                transition="quick"
+                scale={bouncing ? 1.1 : 1}
+                bg="$successMuted"
+              >
+                <Text color="$success" lineHeight={0}>
+                  <Check size={14} />
+                </Text>
+                <Text fontSize="$1" fontWeight="500" color="$success">
+                  Complete
+                </Text>
+              </XStack>
             ) : (
               <>
                 {!activeDateEntry && isScheduledOnActiveDate && (
                   <Button
                     intent="outline"
                     size="sm"
-                    icon={<SkipForward className="size-3" />}
+                    icon={<SkipForward size={12} />}
                     onPress={handleSkip}
                     disabled={isPending}
                     title="Skip today"
@@ -385,10 +452,8 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
                   disabled={isPending}
                   loading={isPending}
                   loadingText="Checking…"
-                  className={cn(
-                    "transition-transform",
-                    bouncing && "scale-110",
-                  )}
+                  transition="quick"
+                  scale={bouncing ? 1.1 : 1}
                 >
                   {habit.targetCount > 1
                     ? `${activeDateValue}/${habit.targetCount}`
@@ -396,9 +461,9 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
                 </Button>
               </>
             )}
-          </div>
-        </div>
-      </div>
+          </XStack>
+        </XStack>
+      </View>
 
       <EditHabitSheet
         habit={habit}

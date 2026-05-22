@@ -7,6 +7,7 @@ import {
 import { JournalSidebar } from "@/components/journal/journal-sidebar";
 import { EncryptionGate } from "@/components/encryption/encryption-gate";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
+import { View, XStack, YStack } from "@stageholder/ui";
 
 export const Route = createFileRoute("/_app/journal")({
   component: JournalLayout,
@@ -24,21 +25,28 @@ function JournalLayout() {
 
   return (
     <EncryptionGate>
-      <div className="flex h-full">
+      <XStack height="100%">
         {/* Left column: sidebar */}
         {(isDesktop || !isChildRoute) && (
-          <div className="w-full shrink-0 border-r border-border md:w-80 lg:w-96">
+          <View
+            width="100%"
+            shrink={0}
+            borderRightWidth={1}
+            borderColor="$borderColor"
+            $md={{ width: 320 }}
+            $lg={{ width: 384 }}
+          >
             <JournalSidebar activeId={activeId} />
-          </div>
+          </View>
         )}
 
         {/* Right column: children */}
         {(isDesktop || isChildRoute) && (
-          <div className="flex flex-1 flex-col overflow-hidden">
+          <YStack flex={1} overflow="hidden">
             <Outlet />
-          </div>
+          </YStack>
         )}
-      </div>
+      </XStack>
     </EncryptionGate>
   );
 }

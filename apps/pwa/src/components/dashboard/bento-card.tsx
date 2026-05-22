@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { cn } from "@/lib/utils";
-import { Card } from "@stageholder/ui";
+import { Card, Text } from "@stageholder/ui";
 
 interface BentoCardProps {
   children: React.ReactNode;
@@ -21,16 +20,28 @@ export function BentoCard({
 }: BentoCardProps) {
   return (
     <Card
-      className={cn("animate-[bento-enter_0.4s_ease-out_both]", className)}
-      style={{ animationDelay: `${index * 75}ms` }}
+      // Tamagui v2 native staggered mount fade (was the `bento-enter` keyframe:
+      // opacity 0 + translateY(12px) → 1/0), delayed per grid index.
+      enterStyle={{ opacity: 0, y: 12 }}
+      transition={["medium", { delay: index * 75 }]}
+      // allowlist: CSS grid-placement classes (col-span-*) forwarded from the
+      // dashboard route — pure CSS-grid placement, no kit token equivalent.
+      className={className}
     >
       {(title || action) && (
         <Card.Header>
           {title && (
-            <Card.Title className="text-sm">
+            <Card.Title fontSize="$3">
               {href ? (
-                <Link to={href} className="hover:underline">
-                  {title}
+                <Link to={href} style={{ textDecoration: "none" }}>
+                  <Text
+                    fontSize="$3"
+                    fontWeight="600"
+                    color="$cardForeground"
+                    hoverStyle={{ textDecorationLine: "underline" }}
+                  >
+                    {title}
+                  </Text>
                 </Link>
               ) : (
                 title

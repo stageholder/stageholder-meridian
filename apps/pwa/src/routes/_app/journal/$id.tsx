@@ -11,6 +11,8 @@ import {
   IconButton,
   Input,
   Popover,
+  Text,
+  View,
   XStack,
   YStack,
 } from "@stageholder/ui";
@@ -18,7 +20,6 @@ import { useJournal, useDeleteJournal } from "@/lib/api/journals";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { useAutosave } from "@/lib/hooks/use-autosave";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import type { JournalContent } from "@repo/core/types";
 
 export const Route = createFileRoute("/_app/journal/$id")({
@@ -124,16 +125,20 @@ function JournalEntryPage() {
   }
 
   if (isLoading) {
-    return <div className="p-4 text-sm text-muted-foreground">Loading...</div>;
+    return (
+      <Text p="$4" fontSize="$3" color="$mutedForeground">
+        Loading...
+      </Text>
+    );
   }
 
   if (!journal) {
     return (
-      <div className="py-12 text-center">
-        <p className="text-sm text-muted-foreground">
+      <YStack py="$8" items="center">
+        <Text fontSize="$3" color="$mutedForeground">
           Journal entry not found.
-        </p>
-      </div>
+        </Text>
+      </YStack>
     );
   }
 
@@ -152,19 +157,24 @@ function JournalEntryPage() {
     <YStack flex={1} height="100%" overflow="hidden">
       <YStack shrink={0} px="$4" pt="$4" overflow="hidden">
         {!isDesktop && (
-          <div className="mb-6">
-            <button
-              onClick={() => navigate({ to: "/journal" })}
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          <View mb="$5">
+            <XStack
+              tag="button"
+              items="center"
+              gap="$1"
+              fontSize="$3"
+              color="$mutedForeground"
+              hoverStyle={{ color: "$color" }}
+              onPress={() => navigate({ to: "/journal" })}
             >
-              <ArrowLeft className="size-4" />
+              <ArrowLeft size={16} />
               Back
-            </button>
-          </div>
+            </XStack>
+          </View>
         )}
 
         {/* Title + delete */}
-        <div className="mb-3 flex items-center gap-2">
+        <XStack mb="$3" items="center" gap="$2">
           {/* `paddingHorizontal={0}` strips the kit Input's internal
               horizontal inset that survives `unstyled`. Keeps the title
               text aligned with the pills row below. */}
@@ -174,7 +184,7 @@ function JournalEntryPage() {
             placeholder="Untitled"
             unstyled
             flex={1}
-            minWidth={0}
+            minW={0}
             paddingHorizontal={0}
             bg="transparent"
             fontSize={24}
@@ -191,14 +201,19 @@ function JournalEntryPage() {
             aria-label="Delete entry"
             title="Delete entry"
           >
-            <Trash2 className="size-4" />
+            <Trash2 size={16} />
           </IconButton>
-        </div>
+        </XStack>
 
         {/* Metadata pills row */}
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+        <XStack mb="$4" flexWrap="wrap" items="center" gap="$2">
           {/* Date pill (read-only for existing entries) */}
-          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+          <XStack
+            items="center"
+            gap="$1"
+            fontSize="$1"
+            color="$mutedForeground"
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="12"
@@ -216,70 +231,97 @@ function JournalEntryPage() {
               <line x1="3" x2="21" y1="10" y2="10" />
             </svg>
             {dateLabel}
-          </span>
+          </XStack>
 
           {/* Mood pill */}
           <Popover placement="bottom-start">
             <Popover.Trigger asChild>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              <XStack
+                tag="button"
+                items="center"
+                gap="$1"
+                fontSize="$1"
+                color="$mutedForeground"
+                transition="quick"
+                hoverStyle={{ color: "$color" }}
               >
                 {currentMood ? (
-                  <span className="inline-flex items-center gap-1">
-                    <span className="text-sm">{currentMood.emoji}</span>
+                  <XStack items="center" gap="$1">
+                    <Text fontSize="$3">{currentMood.emoji}</Text>
                     {currentMood.label}
-                  </span>
+                  </XStack>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 hover:border-foreground/30">
-                    <span className="text-xs">{"\u{1F642}"}</span>
+                  <XStack
+                    items="center"
+                    gap="$1"
+                    rounded={9999}
+                    borderWidth={1}
+                    borderStyle="dashed"
+                    borderColor="$borderColor"
+                    px="$2"
+                    py="$0.5"
+                  >
+                    <Text fontSize="$1">{"\u{1F642}"}</Text>
                     Mood
-                  </span>
+                  </XStack>
                 )}
-              </button>
+              </XStack>
             </Popover.Trigger>
-            <Popover.Content className="w-auto p-1">
-              <div className="flex items-center gap-1">
+            <Popover.Content width="auto" p="$1">
+              <XStack items="center" gap="$1">
                 {moods.map((m) => (
-                  <button
+                  <XStack
                     key={m.value}
-                    type="button"
-                    onClick={() =>
+                    tag="button"
+                    items="center"
+                    justify="center"
+                    height={36}
+                    width={36}
+                    rounded="$lg"
+                    fontSize="$6"
+                    transition="quick"
+                    bg={mood === m.value ? "$accent" : undefined}
+                    hoverStyle={{ bg: "$accent" }}
+                    title={m.label}
+                    onPress={() =>
                       setMood(mood === m.value ? undefined : m.value)
                     }
-                    className={cn(
-                      "flex h-9 w-9 items-center justify-center rounded-lg text-lg transition-colors",
-                      mood === m.value ? "bg-accent" : "hover:bg-accent",
-                    )}
-                    title={m.label}
                   >
                     {m.emoji}
-                  </button>
+                  </XStack>
                 ))}
-              </div>
+              </XStack>
             </Popover.Content>
           </Popover>
 
           {/* Tag pills */}
           {tags.map((tag) => (
-            <span
+            <XStack
               key={tag}
-              className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-xs text-accent-foreground"
+              items="center"
+              gap="$1"
+              rounded={9999}
+              bg="$accent"
+              px="$2"
+              py="$0.5"
+              fontSize="$1"
+              color="$accentForeground"
             >
               {tag}
-              <button
-                type="button"
-                onClick={() => setTags(tags.filter((t) => t !== tag))}
-                className="text-muted-foreground hover:text-foreground"
+              <View
+                tag="button"
+                color="$mutedForeground"
+                hoverStyle={{ color: "$color" }}
+                onPress={() => setTags(tags.filter((t) => t !== tag))}
               >
-                <X className="size-3" />
-              </button>
-            </span>
+                <X size={12} />
+              </View>
+            </XStack>
           ))}
 
           {/* Add tag pill */}
           <TagInput tags={tags} onChange={setTags} inline />
-        </div>
+        </XStack>
       </YStack>
 
       {initialized && (

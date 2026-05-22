@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { View } from "@stageholder/ui";
 
 const EMBER_COLORS = [
   "oklch(0.72 0.22 40)", // bright orange
@@ -43,12 +44,19 @@ export function EmberBurst({ active, count = 10 }: EmberBurstProps) {
   if (!active) return null;
 
   return (
-    <div
-      className="pointer-events-none absolute inset-0 z-10"
+    <View
+      position="absolute"
+      t={0}
+      b={0}
+      l={0}
+      r={0}
+      z={10}
+      pointerEvents="none"
+      overflow="visible"
       aria-hidden="true"
-      style={{ overflow: "visible" }}
     >
       {particles.map((p) => (
+        // CSS-var-driven particle (allowlist: ember-particle keyframe + per-instance vars)
         <span
           key={p.id}
           className="absolute rounded-full ember-particle"
@@ -66,6 +74,6 @@ export function EmberBurst({ active, count = 10 }: EmberBurstProps) {
           }}
         />
       ))}
-    </div>
+    </View>
   );
 }
