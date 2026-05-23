@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useCreateTodoList } from "@/lib/api/todos";
+import { useState, useEffect } from "react";
+import { useCreateTodoList, useUpdateTodoList } from "@/lib/api/todos";
 import { toast } from "sonner";
 import {
   Button,
@@ -10,6 +10,7 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
+import type { TodoList } from "@repo/core/types";
 
 const colorOptions = [
   { value: "#ef4444", label: "Red" },
@@ -25,19 +26,46 @@ const colorOptions = [
 interface CreateListDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** When provided, the dialog edits this list instead of creating one. */
+  list?: TodoList;
 }
 
 export function CreateListDialog({
   open,
   onOpenChange,
+  list,
 }: CreateListDialogProps) {
+  const isEdit = !!list;
   const [name, setName] = useState("");
   const [color, setColor] = useState("#3b82f6");
   const createList = useCreateTodoList();
+  const updateList = useUpdateTodoList();
+  const pending = createList.isPending || updateList.isPending;
+
+  // Prefill (edit) / reset (create) whenever the dialog opens.
+  useEffect(() => {
+    if (!open) return;
+    setName(list?.name ?? "");
+    setColor(list?.color ?? "#3b82f6");
+  }, [open, list]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
+
+    if (isEdit && list) {
+      updateList.mutate(
+        { listId: list.id, data: { name: name.trim(), color } },
+        {
+          onSuccess: () => {
+            toast.success("List updated");
+            onOpenChange(false);
+          },
+          onError: () => toast.error("Failed to update list"),
+        },
+      );
+      return;
+    }
 
     createList.mutate(
       { name: name.trim(), color },
@@ -48,9 +76,7 @@ export function CreateListDialog({
           setColor("#3b82f6");
           onOpenChange(false);
         },
-        onError: () => {
-          toast.error("Failed to create list");
-        },
+        onError: () => toast.error("Failed to create list"),
       },
     );
   }
@@ -92,7 +118,7 @@ export function CreateListDialog({
         boxShadow="0 16px 48px rgba(0,0,0,0.45)"
       >
         <Text fontSize="$6" fontWeight="600" color="$color">
-          New List
+          {isEdit ? "Edit List" : "New List"}
         </Text>
         <form onSubmit={handleSubmit}>
           <YStack gap="$4">
@@ -141,11 +167,11 @@ export function CreateListDialog({
               </Button>
               <Button
                 type="submit"
-                disabled={!name.trim() || createList.isPending}
-                loading={createList.isPending}
-                loadingText="Creating…"
+                disabled={!name.trim() || pending}
+                loading={pending}
+                loadingText={isEdit ? "Saving…" : "Creating…"}
               >
-                Create
+                {isEdit ? "Save" : "Create"}
               </Button>
             </XStack>
           </YStack>
