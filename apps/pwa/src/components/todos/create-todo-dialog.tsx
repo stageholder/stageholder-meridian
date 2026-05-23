@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
+import { Inbox, CalendarClock, Clock } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCreateTodo, useTodoLists } from "@/lib/api/todos";
 import {
@@ -14,7 +15,7 @@ import {
   YStack,
 } from "@stageholder/ui";
 import { toast } from "sonner";
-import { format, addDays, nextMonday } from "date-fns";
+import { format } from "date-fns";
 import { parseDateLocal } from "@/lib/date";
 
 // Priority dot colors — fixed brand swatches matching the shadcn palette
@@ -26,6 +27,41 @@ const PRIORITY_DOT: Record<string, string> = {
   high: "#f97316",
   urgent: "#ef4444",
 };
+
+// Shared date field — label + icon header, then the kit DatePicker with its
+// built-in Notion-style preset shortcuts. Used for both Due and Do dates.
+function DateField({
+  label,
+  icon,
+  value,
+  onChange,
+}: {
+  label: string;
+  icon: ReactNode;
+  value: string;
+  onChange: (iso: string) => void;
+}) {
+  return (
+    <YStack gap="$1.5">
+      <XStack items="center" gap="$2">
+        <Text color="$mutedForeground" lineHeight={0}>
+          {icon}
+        </Text>
+        <Text fontSize="$3" fontWeight="500" color="$color">
+          {label}
+        </Text>
+      </XStack>
+      <DatePicker
+        value={value ? parseDateLocal(value) : null}
+        onChange={(d) => onChange(d ? format(d, "yyyy-MM-dd") : "")}
+        placeholder={`No ${label.toLowerCase()}`}
+        presets={["today", "tomorrow", "next-week"]}
+        headerStyle="compact"
+        showClear
+      />
+    </YStack>
+  );
+}
 
 interface CreateTodoDialogProps {
   open: boolean;
@@ -181,21 +217,8 @@ export function CreateTodoDialog({
                             justify="center"
                           >
                             {list.isDefault ? (
-                              <Text color="$primary">
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="12"
-                                  height="12"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
-                                  <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
-                                  <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
-                                </svg>
+                              <Text color="$primary" lineHeight={0}>
+                                <Inbox size={12} />
                               </Text>
                             ) : (
                               <View
@@ -301,135 +324,18 @@ export function CreateTodoDialog({
             </YStack>
 
             <YStack gap="$3">
-              <YStack>
-                <YStack
-                  gap="$1.5"
-                  $sm={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: "$3",
-                  }}
-                >
-                  <Text
-                    fontSize="$3"
-                    fontWeight="500"
-                    color="$color"
-                    $sm={{ width: 80, flexShrink: 0 }}
-                  >
-                    Due Date
-                  </Text>
-                  <View flex={1}>
-                    <DatePicker
-                      value={dueDate ? parseDateLocal(dueDate) : null}
-                      onChange={(d) =>
-                        setDueDate(d ? format(d, "yyyy-MM-dd") : "")
-                      }
-                      placeholder="No due date"
-                      showClear
-                    />
-                  </View>
-                </YStack>
-                <XStack mt="$1.5" flexWrap="wrap" gap="$1.5" $sm={{ ml: 92 }}>
-                  {[
-                    { label: "Today", date: new Date() },
-                    { label: "Tomorrow", date: addDays(new Date(), 1) },
-                    { label: "Next Week", date: nextMonday(new Date()) },
-                  ].map((shortcut) => {
-                    const iso = format(shortcut.date, "yyyy-MM-dd");
-                    const isActive = dueDate === iso;
-                    return (
-                      <XStack
-                        key={shortcut.label}
-                        onPress={() => setDueDate(isActive ? "" : iso)}
-                        cursor="pointer"
-                        rounded={9999}
-                        borderWidth={1}
-                        px="$2.5"
-                        py="$0.5"
-                        transition="quick"
-                        borderColor={isActive ? "$primary" : "$borderColor"}
-                        bg={isActive ? "$primary" : "transparent"}
-                        hoverStyle={isActive ? undefined : { bg: "$accent" }}
-                      >
-                        <Text
-                          fontSize="$1"
-                          fontWeight="500"
-                          color={
-                            isActive ? "$primaryForeground" : "$mutedForeground"
-                          }
-                        >
-                          {shortcut.label}
-                        </Text>
-                      </XStack>
-                    );
-                  })}
-                </XStack>
-              </YStack>
-
-              <YStack>
-                <YStack
-                  gap="$1.5"
-                  $sm={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: "$3",
-                  }}
-                >
-                  <Text
-                    fontSize="$3"
-                    fontWeight="500"
-                    color="$color"
-                    $sm={{ width: 80, flexShrink: 0 }}
-                  >
-                    Do Date
-                  </Text>
-                  <View flex={1}>
-                    <DatePicker
-                      value={doDate ? parseDateLocal(doDate) : null}
-                      onChange={(d) =>
-                        setDoDate(d ? format(d, "yyyy-MM-dd") : "")
-                      }
-                      placeholder="No do date"
-                      showClear
-                    />
-                  </View>
-                </YStack>
-                <XStack mt="$1.5" flexWrap="wrap" gap="$1.5" $sm={{ ml: 92 }}>
-                  {[
-                    { label: "Today", date: new Date() },
-                    { label: "Tomorrow", date: addDays(new Date(), 1) },
-                    { label: "Next Week", date: nextMonday(new Date()) },
-                  ].map((shortcut) => {
-                    const iso = format(shortcut.date, "yyyy-MM-dd");
-                    const isActive = doDate === iso;
-                    return (
-                      <XStack
-                        key={`do-${shortcut.label}`}
-                        onPress={() => setDoDate(isActive ? "" : iso)}
-                        cursor="pointer"
-                        rounded={9999}
-                        borderWidth={1}
-                        px="$2.5"
-                        py="$0.5"
-                        transition="quick"
-                        borderColor={isActive ? "$primary" : "$borderColor"}
-                        bg={isActive ? "$primary" : "transparent"}
-                        hoverStyle={isActive ? undefined : { bg: "$accent" }}
-                      >
-                        <Text
-                          fontSize="$1"
-                          fontWeight="500"
-                          color={
-                            isActive ? "$primaryForeground" : "$mutedForeground"
-                          }
-                        >
-                          {shortcut.label}
-                        </Text>
-                      </XStack>
-                    );
-                  })}
-                </XStack>
-              </YStack>
+              <DateField
+                label="Due Date"
+                icon={<CalendarClock size={14} />}
+                value={dueDate}
+                onChange={setDueDate}
+              />
+              <DateField
+                label="Do Date"
+                icon={<Clock size={14} />}
+                value={doDate}
+                onChange={setDoDate}
+              />
             </YStack>
 
             <XStack justify="flex-end" gap="$3" pt="$2">

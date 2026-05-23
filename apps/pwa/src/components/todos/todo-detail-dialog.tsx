@@ -785,6 +785,8 @@ export function TodoDetailDialog({
                     })
                   }
                   placeholder="Set due date"
+                  presets={["today", "tomorrow", "next-week"]}
+                  headerStyle="compact"
                   showClear
                 />
               </View>
@@ -811,6 +813,8 @@ export function TodoDetailDialog({
                     })
                   }
                   placeholder="Set do date"
+                  presets={["today", "tomorrow", "next-week"]}
+                  headerStyle="compact"
                   showClear
                 />
               </View>

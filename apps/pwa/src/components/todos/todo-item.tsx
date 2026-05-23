@@ -161,8 +161,8 @@ export function TodoItem({ todo, listId }: TodoItemProps) {
         <View shrink={0} position="relative">
           <View
             onPress={handleToggle}
-            width={20}
-            height={20}
+            width={24}
+            height={24}
             items="center"
             justify="center"
             rounded={9999}
@@ -192,8 +192,8 @@ export function TodoItem({ todo, listId }: TodoItemProps) {
                 <Text color="$primaryForeground" lineHeight={0}>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    width="12"
-                    height="12"
+                    width="14"
+                    height="14"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -211,10 +211,10 @@ export function TodoItem({ todo, listId }: TodoItemProps) {
             // Confirming ring pulse — expands + fades on ignite.
             <View
               position="absolute"
-              t={-3}
-              l={-3}
-              r={-3}
-              b={-3}
+              t={-4}
+              l={-4}
+              r={-4}
+              b={-4}
               rounded={9999}
               borderWidth={2}
               style={{ borderColor: EMBER }}
