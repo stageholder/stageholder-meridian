@@ -5,18 +5,15 @@ import { QuickAddTodo } from "./quick-add-todo";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
 import {
   AnimatePresence,
-  Button,
-  Calendar,
-  Popover,
+  DateRangePicker,
   Text,
   View,
   XStack,
   YStack,
+  type CalendarRangeValue,
 } from "@stageholder/ui";
 import { format, addDays } from "date-fns";
-import { parseDateLocal } from "@/lib/date";
 import { TodoListSkeleton } from "./todo-list-skeleton";
-import type { DateRange } from "react-day-picker";
 import type { Todo, TodoList } from "@repo/core/types";
 
 const PRESETS = [
@@ -30,19 +27,20 @@ export function UpcomingContent() {
   const { data: todos, isLoading: todosLoading } = useAllTodos();
   const { data: lists, isLoading: listsLoading } = useTodoLists();
   const [selectedDays, setSelectedDays] = useState<number>(7);
-  const [customRange, setCustomRange] = useState<DateRange | undefined>();
-  const [customOpen, setCustomOpen] = useState(false);
+  const [customRange, setCustomRange] = useState<CalendarRangeValue | null>(
+    null,
+  );
 
   const isLoading = todosLoading || listsLoading;
 
   const today = format(new Date(), "yyyy-MM-dd");
 
-  const hasCustomRange = customRange?.from != null;
-  const customFrom = customRange?.from
-    ? format(customRange.from, "yyyy-MM-dd")
+  const hasCustomRange = customRange?.start != null;
+  const customFrom = customRange?.start
+    ? format(customRange.start, "yyyy-MM-dd")
     : null;
-  const customTo = customRange?.to
-    ? format(customRange.to, "yyyy-MM-dd")
+  const customTo = customRange?.end
+    ? format(customRange.end, "yyyy-MM-dd")
     : null;
 
   // Compute filter bounds
@@ -109,32 +107,16 @@ export function UpcomingContent() {
 
   function handlePreset(days: number) {
     setSelectedDays(days);
-    setCustomRange(undefined);
+    setCustomRange(null);
   }
 
-  function handleCustomRange(range: DateRange | undefined) {
+  function handleCustomRange(range: CalendarRangeValue) {
     setCustomRange(range);
-    if (range?.from) {
-      setSelectedDays(-1); // deselect presets
-    }
-  }
-
-  function clearCustomRange() {
-    setCustomRange(undefined);
-    setSelectedDays(7);
-    setCustomOpen(false);
+    if (range.start) setSelectedDays(-1); // a custom range deselects presets
   }
 
   const isPresetActive = (days: number) =>
     !hasCustomRange && selectedDays === days;
-
-  const filterLabel = hasCustomRange
-    ? customFrom && customTo && customFrom !== customTo
-      ? `${format(parseDateLocal(customFrom), "MMM d")} – ${format(parseDateLocal(customTo), "MMM d")}`
-      : customFrom
-        ? format(parseDateLocal(customFrom), "MMM d")
-        : null
-    : null;
 
   const defaultList = lists?.find((l) => l.isDefault) || lists?.[0];
 
@@ -184,100 +166,21 @@ export function UpcomingContent() {
           );
         })}
 
-        {/* Custom date picker */}
-        <Popover
-          open={customOpen}
-          onOpenChange={setCustomOpen}
-          placement="bottom-start"
-        >
-          <Popover.Trigger asChild>
-            <XStack
-              cursor="pointer"
-              items="center"
-              gap="$1"
-              rounded={9999}
-              borderWidth={1}
-              px="$3"
-              py="$1"
-              transition="quick"
-              borderColor={hasCustomRange ? "$primary" : "$borderColor"}
-              bg={hasCustomRange ? "$primary" : "transparent"}
-              color={hasCustomRange ? "$primaryForeground" : "$mutedForeground"}
-              hoverStyle={hasCustomRange ? undefined : { bg: "$accent" }}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M8 2v4" />
-                <path d="M16 2v4" />
-                <rect width="18" height="18" x="3" y="4" rx="2" />
-                <path d="M3 10h18" />
-              </svg>
-              <Text
-                fontSize="$1"
-                fontWeight="500"
-                color={
-                  hasCustomRange ? "$primaryForeground" : "$mutedForeground"
-                }
-              >
-                {filterLabel || "Custom"}
-              </Text>
-            </XStack>
-          </Popover.Trigger>
-          <Popover.Content width="auto">
-            {hasCustomRange && (
-              <XStack mb="$2" items="center" justify="space-between">
-                <Text fontSize="$1" color="$mutedForeground">
-                  {customRange?.to ? "Range selected" : "Pick end date"}
-                </Text>
-                <Button
-                  intent="outline"
-                  size="sm"
-                  type="button"
-                  onPress={clearCustomRange}
-                >
-                  Clear
-                </Button>
-              </XStack>
-            )}
-            <Calendar
-              mode="range"
-              // Kit's range shape is `{ start, end }`. We translate at the
-              // boundary so the local `DateRange { from, to }` state can
-              // stay unchanged (lots of downstream consumers of customRange).
-              value={
-                customRange
-                  ? {
-                      start: customRange.from ?? null,
-                      end: customRange.to ?? null,
-                    }
-                  : null
-              }
-              onChange={(range) =>
-                handleCustomRange({
-                  from: range.start ?? undefined,
-                  to: range.end ?? undefined,
-                })
-              }
-              initialMonth={customRange?.from || addDays(new Date(), 1)}
-              isDateDisabled={(date) => {
-                const d = new Date(date);
-                d.setHours(0, 0, 0, 0);
-                const now = new Date();
-                now.setHours(0, 0, 0, 0);
-                return d < now;
-              }}
-            />
-          </Popover.Content>
-        </Popover>
+        {/* Custom range — kit DateRangePicker (replaces the hand-rolled
+            Calendar popover). Past dates are disabled since this view is for
+            upcoming todos. */}
+        <DateRangePicker
+          value={customRange}
+          onChange={handleCustomRange}
+          placeholder="Custom range"
+          isDateDisabled={(date) => {
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            return d < now;
+          }}
+        />
       </XStack>
 
       {defaultList && <QuickAddTodo listId={defaultList.id} />}
