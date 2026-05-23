@@ -105,22 +105,14 @@ export function TodoListSidebar({ onNavigate }: TodoListSidebarProps = {}) {
 
   return (
     <YStack height="100%" width="100%" bg="$card">
-      <View
-        position={"sticky" as never}
-        t={0}
-        z={10}
-        borderBottomWidth={1}
-        borderColor="$borderColor"
-        bg="$card"
-        px="$4"
-        py="$3"
+      <YStack
+        tag="nav"
+        flex={1}
+        gap="$0.5"
+        overflowY={"auto" as never}
+        p="$2"
+        pt="$3"
       >
-        <Text fontSize="$4" fontWeight="700" color="$color">
-          Todos
-        </Text>
-      </View>
-
-      <YStack tag="nav" flex={1} gap="$0.5" overflowY={"auto" as never} p="$2">
         {isLoading && (
           <Text px="$3" py="$2" fontSize="$1" color="$mutedForeground">
             Loading…

@@ -50,13 +50,6 @@ import { useUser } from "@/hooks/use-user";
 import { useStageholder } from "@stageholder/sdk/spa";
 import { LocalUserButton } from "@/components/layout/local-user-button";
 
-// Lifecycle banners — replace the SDK's BFF-only `<PaymentFailedBanner>`
-// and `<CancellationBanner>`. Both surfaced rare/edge subscription states
-// that don't trigger in normal dev flow. Stubbed to null until we have
-// SPA-compatible equivalents (would read `useSubscription().status` and
-// render contextual copy when status is `past_due` or `canceled`).
-const PaymentFailedBanner = () => null;
-const CancellationBanner = () => null;
 import { TrialPill } from "@/components/billing/trial-pill";
 import {
   Button,
@@ -801,17 +794,6 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
           className="pb-[calc(3.5rem+max(0.5rem,env(safe-area-inset-bottom,0px)))]"
           $md={{ pb: 0 }}
         >
-          {/* Lifecycle banners — render conditionally based on the active
-              subscription's status. Each is null when not applicable so
-              only one (at most) renders at a time in practice. The trial
-              countdown lives in the header as <TrialPill> instead of a
-              page-width strip. PaymentFailed and Cancellation stay as
-              banners — they're rare, urgent, and demand to be read in
-              full. */}
-          <YStack mx="auto" width="100%" maxW={1024} gap="$2" px="$4" pt="$3">
-            <PaymentFailedBanner />
-            <CancellationBanner />
-          </YStack>
           {children}
         </View>
 
