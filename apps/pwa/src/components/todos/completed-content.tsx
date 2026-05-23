@@ -1,3 +1,4 @@
+import { CheckCircle2 } from "lucide-react";
 import { AnimatePresence, Text, View, XStack, YStack } from "@stageholder/ui";
 import { TodoItem } from "./todo-item";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
@@ -41,14 +42,19 @@ export function CompletedContent() {
 
   return (
     <>
-      <YStack mb="$6">
-        <Text fontSize="$7" fontWeight="700" color="$color">
-          Completed
+      <XStack mb="$6" items="center" gap="$3">
+        <Text color="$mutedForeground" lineHeight={0}>
+          <CheckCircle2 size={24} />
         </Text>
-        <Text mt="$1" fontSize="$3" color="$mutedForeground">
-          {completedTodos.length} completed in the past 7 days
-        </Text>
-      </YStack>
+        <YStack>
+          <Text fontSize="$7" fontWeight="700" color="$color">
+            Completed
+          </Text>
+          <Text mt="$1" fontSize="$3" color="$mutedForeground">
+            {completedTodos.length} completed in the past 7 days
+          </Text>
+        </YStack>
+      </XStack>
 
       {isLoading ? (
         <TodoListSkeleton />

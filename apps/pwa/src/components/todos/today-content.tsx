@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { Sun } from "lucide-react";
 import { AnimatePresence, Text, XStack, YStack } from "@stageholder/ui";
 import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
@@ -76,14 +77,19 @@ export function TodayContent() {
 
   return (
     <>
-      <YStack mb="$6">
-        <Text fontSize="$7" fontWeight="700" color="$color">
-          Today
+      <XStack mb="$6" items="center" gap="$3">
+        <Text color="$mutedForeground" lineHeight={0}>
+          <Sun size={24} />
         </Text>
-        <Text mt="$1" fontSize="$3" color="$mutedForeground">
-          {dueByToday.length} due today or overdue
-        </Text>
-      </YStack>
+        <YStack>
+          <Text fontSize="$7" fontWeight="700" color="$color">
+            Today
+          </Text>
+          <Text mt="$1" fontSize="$3" color="$mutedForeground">
+            {dueByToday.length} due today or overdue
+          </Text>
+        </YStack>
+      </XStack>
 
       {defaultList && <QuickAddTodo listId={defaultList.id} />}
 

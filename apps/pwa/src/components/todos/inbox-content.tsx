@@ -58,14 +58,19 @@ export function InboxContent() {
 
   return (
     <>
-      <YStack mb="$6">
-        <Text fontSize="$7" fontWeight="700" color="$color">
-          Inbox
+      <XStack mb="$6" items="center" gap="$3">
+        <Text color="$mutedForeground" lineHeight={0}>
+          <Inbox size={24} />
         </Text>
-        <Text mt="$1" fontSize="$3" color="$mutedForeground">
-          {pendingTodos.length} todo{pendingTodos.length !== 1 ? "s" : ""}
-        </Text>
-      </YStack>
+        <YStack>
+          <Text fontSize="$7" fontWeight="700" color="$color">
+            Inbox
+          </Text>
+          <Text mt="$1" fontSize="$3" color="$mutedForeground">
+            {pendingTodos.length} todo{pendingTodos.length !== 1 ? "s" : ""}
+          </Text>
+        </YStack>
+      </XStack>
 
       {defaultList && <QuickAddTodo listId={defaultList.id} />}
 

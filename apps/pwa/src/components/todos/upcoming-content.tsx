@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CalendarClock } from "lucide-react";
 import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
@@ -139,15 +140,20 @@ export function UpcomingContent() {
 
   return (
     <>
-      <YStack mb="$4">
-        <Text fontSize="$7" fontWeight="700" color="$color">
-          Upcoming
+      <XStack mb="$4" items="center" gap="$3">
+        <Text color="$mutedForeground" lineHeight={0}>
+          <CalendarClock size={24} />
         </Text>
-        <Text mt="$1" fontSize="$3" color="$mutedForeground">
-          {upcomingTodos.length} upcoming todo
-          {upcomingTodos.length !== 1 ? "s" : ""}
-        </Text>
-      </YStack>
+        <YStack>
+          <Text fontSize="$7" fontWeight="700" color="$color">
+            Upcoming
+          </Text>
+          <Text mt="$1" fontSize="$3" color="$mutedForeground">
+            {upcomingTodos.length} upcoming todo
+            {upcomingTodos.length !== 1 ? "s" : ""}
+          </Text>
+        </YStack>
+      </XStack>
 
       {/* Filter chips */}
       <XStack mb="$4" flexWrap="wrap" items="center" gap="$1.5">
