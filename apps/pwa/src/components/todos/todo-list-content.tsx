@@ -9,6 +9,7 @@ import {
 } from "@stageholder/ui";
 import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
+import { CompletedSection } from "./completed-section";
 import { useTodos } from "@/lib/api/todos";
 import { TodoListSkeleton } from "./todo-list-skeleton";
 import type { Todo } from "@repo/core/types";
@@ -29,6 +30,7 @@ export function TodoListContent({
   const { data: todos, isLoading } = useTodos(listId);
 
   const pendingTodos = todos?.filter((t: Todo) => t.status !== "done") || [];
+  const completedTodos = todos?.filter((t: Todo) => t.status === "done") || [];
 
   return (
     <>
@@ -62,7 +64,7 @@ export function TodoListContent({
               <TodoItem key={todo.id} todo={todo} listId={listId} />
             ))}
           </AnimatePresence>
-          {pendingTodos.length === 0 && (
+          {pendingTodos.length === 0 && completedTodos.length === 0 && (
             <EmptyState>
               <EmptyState.IconSlot>
                 <Text color="$mutedForeground">
@@ -73,6 +75,7 @@ export function TodoListContent({
               <EmptyState.Description>Add one above!</EmptyState.Description>
             </EmptyState>
           )}
+          <CompletedSection todos={completedTodos} />
         </YStack>
       )}
     </>

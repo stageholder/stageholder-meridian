@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import { AnimatePresence, Text, XStack, YStack } from "@stageholder/ui";
 import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
+import { CompletedSection } from "./completed-section";
 import { TodoListSkeleton } from "./todo-list-skeleton";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
 import type { Todo } from "@repo/core/types";
@@ -38,6 +39,13 @@ export function TodayContent() {
 
   const overdue = dueByToday.filter(isOverdue);
   const dueToday = dueByToday.filter((t) => !isOverdue(t));
+
+  // Todos finished today (the satisfying "look what I got done" group).
+  const completedToday = (todos || []).filter(
+    (t: Todo) =>
+      t.status === "done" &&
+      format(new Date(t.updatedAt), "yyyy-MM-dd") === today,
+  );
 
   const defaultList = lists?.find((l) => l.isDefault) || lists?.[0];
 
@@ -85,16 +93,21 @@ export function TodayContent() {
         <Text mt="$3" fontSize="$3" color="$destructive">
           Failed to load todos. Please try refreshing the page.
         </Text>
-      ) : dueByToday.length === 0 ? (
-        <YStack py="$8" items="center">
-          <Text fontSize="$3" color="$mutedForeground" text="center">
-            Nothing due today. You&apos;re all caught up!
-          </Text>
-        </YStack>
       ) : (
         <YStack mt="$4" gap="$6">
-          {section("Overdue", "$destructive", overdue)}
-          {section("Today", "$mutedForeground", dueToday)}
+          {dueByToday.length === 0 ? (
+            <YStack py="$8" items="center">
+              <Text fontSize="$3" color="$mutedForeground" text="center">
+                Nothing due today. You&apos;re all caught up!
+              </Text>
+            </YStack>
+          ) : (
+            <>
+              {section("Overdue", "$destructive", overdue)}
+              {section("Today", "$mutedForeground", dueToday)}
+            </>
+          )}
+          <CompletedSection todos={completedToday} />
         </YStack>
       )}
     </>

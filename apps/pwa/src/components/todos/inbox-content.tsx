@@ -9,6 +9,7 @@ import {
 } from "@stageholder/ui";
 import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
+import { CompletedSection } from "./completed-section";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
 import { TodoListSkeleton } from "./todo-list-skeleton";
 import type { Todo, TodoList } from "@repo/core/types";
@@ -34,6 +35,7 @@ export function InboxContent() {
   }
 
   const pendingTodos = (todos || []).filter((t) => t.status !== "done");
+  const completedTodos = (todos || []).filter((t) => t.status === "done");
 
   // Group pending todos by list
   const groupedByList = new Map<string, Todo[]>();
@@ -105,7 +107,7 @@ export function InboxContent() {
             );
           })}
 
-          {pendingTodos.length === 0 && (
+          {pendingTodos.length === 0 && completedTodos.length === 0 && (
             <EmptyState>
               <EmptyState.IconSlot>
                 <Text color="$mutedForeground">
@@ -118,6 +120,8 @@ export function InboxContent() {
               </EmptyState.Description>
             </EmptyState>
           )}
+
+          <CompletedSection todos={completedTodos} />
         </YStack>
       )}
     </>
