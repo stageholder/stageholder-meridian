@@ -24,6 +24,7 @@ import {
   useCreateHabitEntry,
   useUpdateHabitEntry,
   useSkipHabitEntry,
+  useFailHabitEntry,
   useDeleteHabit,
 } from "@/lib/api/habits";
 import { toast } from "sonner";
@@ -47,6 +48,7 @@ function HabitDetailPage() {
   const createEntry = useCreateHabitEntry();
   const updateEntry = useUpdateHabitEntry();
   const skipEntryMutation = useSkipHabitEntry();
+  const failEntry = useFailHabitEntry();
   const [editOpen, setEditOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -233,7 +235,8 @@ function HabitDetailPage() {
   const isMutating =
     createEntry.isPending ||
     updateEntry.isPending ||
-    skipEntryMutation.isPending;
+    skipEntryMutation.isPending ||
+    failEntry.isPending;
 
   function handleDateCheckIn(dateStr: string) {
     if (!habit) return;
@@ -303,6 +306,54 @@ function HabitDetailPage() {
         onSuccess: () => toast.success(`Undid for ${dateStr}`),
         onError: () => toast.error("Failed to undo"),
       },
+    );
+  }
+
+  // Explicitly mark a day failed — breaks the streak. New entry → create;
+  // existing partial/skip → PATCH to fail.
+  function handleDateFail(dateStr: string) {
+    if (!habit) return;
+    const existing = monthEntryObjMap.get(dateStr);
+    const onSuccess = () => toast.success(`Marked failed for ${dateStr}`);
+    const onError = () => toast.error("Failed to update");
+    if (!existing) {
+      failEntry.mutate(
+        { habitId: habit.id, data: { date: dateStr } },
+        { onSuccess, onError },
+      );
+      return;
+    }
+    updateEntry.mutate(
+      {
+        habitId: habit.id,
+        entryId: existing.id,
+        data: { type: "fail", value: 0 },
+      },
+      { onSuccess, onError },
+    );
+  }
+
+  // Skip a day — preserves the streak. New entry → create; existing
+  // partial/fail → PATCH to skip.
+  function handleDateSkip(dateStr: string) {
+    if (!habit) return;
+    const existing = monthEntryObjMap.get(dateStr);
+    const onSuccess = () => toast.success(`Skipped ${dateStr}`);
+    const onError = () => toast.error("Failed to skip");
+    if (!existing) {
+      skipEntryMutation.mutate(
+        { habitId: habit.id, data: { date: dateStr } },
+        { onSuccess, onError },
+      );
+      return;
+    }
+    updateEntry.mutate(
+      {
+        habitId: habit.id,
+        entryId: existing.id,
+        data: { type: "skip", value: 0 },
+      },
+      { onSuccess, onError },
     );
   }
 
@@ -528,17 +579,20 @@ function HabitDetailPage() {
                 !habit.scheduledDays?.length ||
                 habit.scheduledDays.includes(dow);
               const isSkip = d?.type === "skip";
-              const isFail = d?.type === "fail";
+              const isExplicitFail = d?.type === "fail";
               const isComplete =
-                !!d && !isSkip && !isFail && d.value >= d.target;
+                !!d && !isSkip && !isExplicitFail && d.value >= d.target;
               const ratio =
                 d && d.target > 0 ? Math.min(d.value / d.target, 1) : 0;
-              const partial = !isComplete && !isSkip && !isFail && ratio > 0;
+              const isPast = dateStr < today;
+              // Auto-fail only days with NO entry (truly missed). A cleared day
+              // (value-0 completion entry) stays neutral, so "undo fail" works.
+              const failed = isExplicitFail || (isScheduled && isPast && !d);
+              const partial = !isComplete && !failed && !isSkip && ratio > 0;
 
-              // The month reads as the habit's ORANGE rhythm: completed days
-              // fill solid orange (soft glow), partial a faint orange, today an
-              // orange wash. Skipped = dashed; missed / rest stay plain. No
-              // generic blue, no rings.
+              // The month reads as the habit's ORANGE rhythm: done = solid
+              // orange (glow), partial = faint orange, today = orange wash,
+              // failed/missed = red, skipped = dashed.
               let bgToken: string | undefined;
               let bgStyle: Record<string, string> | undefined;
               if (isComplete)
@@ -546,8 +600,8 @@ function HabitDetailPage() {
                   backgroundColor: habitColor,
                   boxShadow: "0 0 8px var(--ring-habit-track)",
                 };
+              else if (failed) bgToken = "$destructiveMuted";
               else if (partial) bgStyle = { backgroundColor: habitTrack };
-              else if (isFail) bgToken = "$destructiveMuted";
               else if (isToday) bgStyle = { backgroundColor: habitTrack };
               else if (isSelected) bgToken = "$accent";
 
@@ -706,30 +760,26 @@ function HabitDetailPage() {
                       </XStack>
                     ) : (
                       <>
-                        {selIsToday && !selHasEntry && selScheduled && (
-                          <Button
-                            intent="outline"
-                            size="sm"
-                            icon={<SkipForward size={12} />}
-                            onPress={() => {
-                              skipEntryMutation.mutate(
-                                {
-                                  habitId: habit.id,
-                                  data: { date: selectedDate },
-                                },
-                                {
-                                  onSuccess: () =>
-                                    toast.success(
-                                      `Skipped for ${selectedDate}`,
-                                    ),
-                                  onError: () => toast.error("Failed to skip"),
-                                },
-                              );
-                            }}
-                            disabled={isMutating}
-                          >
-                            Skip
-                          </Button>
+                        {selScheduled && selectedDate <= today && (
+                          <>
+                            <Button
+                              intent="outline"
+                              size="sm"
+                              onPress={() => handleDateSkip(selectedDate)}
+                              disabled={isMutating}
+                            >
+                              Skip
+                            </Button>
+                            <Button
+                              intent="outline"
+                              size="sm"
+                              onPress={() => handleDateFail(selectedDate)}
+                              disabled={isMutating}
+                              title="Mark failed — resets the streak"
+                            >
+                              Fail
+                            </Button>
+                          </>
                         )}
                         <Button
                           size="sm"

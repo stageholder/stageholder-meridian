@@ -231,3 +231,37 @@ export function useSkipHabitEntry() {
     ],
   });
 }
+
+// Explicitly mark a day failed (value 0, type "fail"). Unlike skip, a fail
+// breaks the streak. For a day that already has an entry, PATCH it to "fail"
+// via useUpdateHabitEntry instead.
+export function useFailHabitEntry() {
+  return useOfflineMutation<
+    HabitEntry,
+    {
+      habitId: string;
+      data: { date: string };
+    }
+  >({
+    mutationFn: async ({ habitId, data }) => {
+      const res = await apiClient.post(`/habits/${habitId}/entries`, {
+        date: data.date,
+        value: 0,
+        type: "fail",
+      });
+      return res.data as HabitEntry;
+    },
+    table: db.habitEntries,
+    entityType: "habitEntries",
+    operation: "create",
+    buildPath: ({ habitId }) => `/habits/${habitId}/entries`,
+    getUserSub: getCurrentUserSub,
+    invalidateKeys: [
+      ["habitEntries"],
+      ["habits"],
+      ["calendar"],
+      [...lightKeys.me],
+      [...lightKeys.stats],
+    ],
+  });
+}

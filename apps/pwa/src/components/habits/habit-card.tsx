@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { format, subDays, startOfWeek, addDays } from "date-fns";
 import { Link } from "@tanstack/react-router";
-import { Check, MoreHorizontal, SkipForward, Undo2 } from "lucide-react";
-import { HabitProgress } from "./habit-progress";
+import { Check, MoreHorizontal, SkipForward, Undo2, X } from "lucide-react";
 import { EditHabitSheet } from "./edit-habit-sheet";
 import { RadianceBurst } from "./radiance-burst";
 import {
   useCreateHabitEntry,
   useUpdateHabitEntry,
   useSkipHabitEntry,
+  useFailHabitEntry,
   useHabitEntries,
   useDeleteHabit,
 } from "@/lib/api/habits";
@@ -21,6 +21,7 @@ import {
   DropdownMenu,
   H3,
   IconButton,
+  StreakBadge,
   Text,
   View,
   XStack,
@@ -47,6 +48,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
   const createEntry = useCreateHabitEntry();
   const updateEntry = useUpdateHabitEntry();
   const skipEntry = useSkipHabitEntry();
+  const failEntry = useFailHabitEntry();
   const deleteHabit = useDeleteHabit();
   const [editOpen, setEditOpen] = useState(false);
   const [bouncing, setBouncing] = useState(false);
@@ -57,6 +59,7 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
   );
   const activeDateValue = activeDateEntry?.value ?? 0;
   const isSkipped = activeDateEntry?.type === "skip";
+  const isFailed = activeDateEntry?.type === "fail";
   const activeTargetCount = activeDateEntry
     ? resolveTargetCount(activeDateEntry, habit)
     : habit.targetCount;
@@ -140,14 +143,45 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
   }
 
   function handleSkip() {
-    if (isComplete || isSkipped || !isScheduledOnActiveDate || activeDateEntry)
+    if (isComplete || isSkipped || !isScheduledOnActiveDate) return;
+    const onSuccess = () => toast.success(`Skipped ${habit.name}`);
+    const onError = () => toast.error("Failed to skip");
+    if (!activeDateEntry) {
+      skipEntry.mutate(
+        { habitId: habit.id, data: { date: activeDate } },
+        { onSuccess, onError },
+      );
       return;
-    skipEntry.mutate(
-      { habitId: habit.id, data: { date: activeDate } },
+    }
+    updateEntry.mutate(
       {
-        onSuccess: () => toast.success(`Skipped ${habit.name}`),
-        onError: () => toast.error("Failed to skip"),
+        habitId: habit.id,
+        entryId: activeDateEntry.id,
+        data: { type: "skip", value: 0 },
       },
+      { onSuccess, onError },
+    );
+  }
+
+  // Mark today failed — breaks the streak.
+  function handleFail() {
+    if (isComplete || isFailed || !isScheduledOnActiveDate) return;
+    const onSuccess = () => toast.success(`Marked ${habit.name} failed`);
+    const onError = () => toast.error("Failed to update");
+    if (!activeDateEntry) {
+      failEntry.mutate(
+        { habitId: habit.id, data: { date: activeDate } },
+        { onSuccess, onError },
+      );
+      return;
+    }
+    updateEntry.mutate(
+      {
+        habitId: habit.id,
+        entryId: activeDateEntry.id,
+        data: { type: "fail", value: 0 },
+      },
+      { onSuccess, onError },
     );
   }
 
@@ -168,6 +202,22 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
     );
   }
 
+  // Clear a skip/fail back to an un-acted day (value-0 completion).
+  function handleClearStatus() {
+    if (!activeDateEntry) return;
+    updateEntry.mutate(
+      {
+        habitId: habit.id,
+        entryId: activeDateEntry.id,
+        data: { type: "completion", value: 0 },
+      },
+      {
+        onSuccess: () => toast.success(`Cleared ${habit.name}`),
+        onError: () => toast.error("Failed to undo"),
+      },
+    );
+  }
+
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   function confirmDelete() {
@@ -179,62 +229,87 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
   }
 
   const isPending =
-    createEntry.isPending || updateEntry.isPending || skipEntry.isPending;
-  const habitColor = habit.color || "#3b82f6";
+    createEntry.isPending ||
+    updateEntry.isPending ||
+    skipEntry.isPending ||
+    failEntry.isPending;
+  // Orange = the habit category identity color (matches the calendar + detail
+  // pages). The whole habit surface reads as orange, not the per-habit blue.
+  const habitColor = "var(--ring-habit)";
+  const habitTrack = "var(--ring-habit-track)";
 
   return (
     <>
       <View
         position="relative"
-        rounded="$6"
+        rounded="$5"
         borderWidth={1}
         borderColor="$borderColor"
         bg="$card"
-        p="$5"
+        p="$4"
+        gap="$3"
         transition="medium"
         // allowlist: habit-card-completing — bespoke completion keyframe (no token equivalent)
         className={completing ? "habit-card-completing" : undefined}
       >
-        <RadianceBurst active={completing} color={habitColor} />
-        <XStack items="flex-start" justify="space-between">
+        <RadianceBurst active={completing} />
+
+        {/* Header — icon · name/desc · streak · menu */}
+        <XStack items="center" gap="$2.5">
           {/* Keep <Link> for routing (prefetch + middle-click); style lives on
               the inner XStack so the kit tokens/hover apply. */}
           <Link
             to="/habits/$id"
             params={{ id: habit.id }}
-            style={{ textDecoration: "none" }}
+            style={{ textDecoration: "none", flex: 1, minWidth: 0 }}
           >
             <XStack
               items="center"
-              gap="$3"
+              gap="$2.5"
+              minW={0}
               transition="quick"
               hoverStyle={{ opacity: 0.8 }}
             >
-              {/* Icon badge tinted with the habit's free-form color (no token) */}
+              {/* Icon badge tinted with the habit identity color (faint orange) */}
               <View
                 height={40}
                 width={40}
+                shrink={0}
                 items="center"
                 justify="center"
                 rounded="$lg"
-                style={{ backgroundColor: habitColor + "20" }}
+                style={{ backgroundColor: habitTrack }}
               >
-                <Text fontSize="$6" color="$cardForeground">
+                <Text fontSize="$6">
                   {habit.icon || habit.name.charAt(0).toUpperCase()}
                 </Text>
               </View>
-              <YStack>
-                <H3 fontSize="$3" fontWeight="600" color="$color">
+              {/* justify="center" + tight line-heights keep the name/desc block
+                  vertically centered against the icon, with or without a desc. */}
+              <YStack flex={1} minW={0} justify="center">
+                <H3
+                  fontSize="$3"
+                  fontWeight="600"
+                  color="$color"
+                  numberOfLines={1}
+                  lineHeight={20}
+                >
                   {habit.name}
                 </H3>
-                {habit.description && (
-                  <Text fontSize="$1" color="$mutedForeground">
+                {habit.description ? (
+                  <Text
+                    fontSize="$1"
+                    color="$mutedForeground"
+                    numberOfLines={1}
+                    lineHeight={16}
+                  >
                     {habit.description}
                   </Text>
-                )}
+                ) : null}
               </YStack>
             </XStack>
           </Link>
+          {streak > 0 ? <StreakBadge count={streak} size="$2" /> : null}
           <DropdownMenu>
             <DropdownMenu.Trigger asChild>
               <IconButton variant="ghost" size="sm" aria-label="Habit options">
@@ -255,132 +330,167 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
           </DropdownMenu>
         </XStack>
 
-        <View mt="$4">
-          <HabitProgress
-            value={activeDateValue}
-            targetCount={activeTargetCount}
-            color={habit.color}
-            streak={streak}
-          />
-        </View>
+        {/* Spacer pins the week strip + actions to the bottom, so cards stay
+            aligned whether or not they carry a description. */}
+        <View flex={1} />
 
-        {/* Week dots */}
-        <XStack mt="$3" justify="space-between" px="$1">
+        {/* Week strip — a run of filled days reads as the streak at a glance */}
+        <XStack justify="space-between" px="$0.5">
           {weekDays.map((day) => {
             const ratio =
               day.effectiveTarget > 0 ? day.value / day.effectiveTarget : 0;
             const isDaySkipped = day.type === "skip";
             const isDayFailed = day.type === "fail";
-            // "Today" highlight = a 1px primary ring with a 1px background-colored
-            // offset (Tailwind ring-1 ring-offset-1 ring-offset-background).
-            const todayRing = day.isToday
-              ? ({
-                  outlineWidth: 1,
-                  outlineColor: "$primary",
-                  outlineStyle: "solid",
-                  outlineOffset: 1,
-                } as const)
-              : undefined;
+            const isPast = day.dateStr < today;
+            const complete = !isDaySkipped && !isDayFailed && ratio >= 1;
+            // Auto-fail only days with NO entry (truly missed). A cleared day
+            // (value-0 completion entry) stays neutral, so "undo fail" works.
+            const failed =
+              isDayFailed ||
+              (day.isScheduled && isPast && day.type === undefined);
+            const partial = !isDaySkipped && !failed && ratio > 0 && ratio < 1;
             return (
-              <YStack key={day.dateStr} items="center" gap="$1">
+              <YStack key={day.dateStr} items="center" gap="$1.5">
                 <Text
-                  fontSize={10}
+                  fontSize={9}
+                  fontWeight="500"
                   color="$mutedForeground"
-                  opacity={day.isScheduled ? 1 : 0.4}
+                  opacity={day.isScheduled ? 0.8 : 0.35}
                 >
                   {day.label}
                 </Text>
-                {isDayFailed ? (
-                  <View
-                    height={14}
-                    width={14}
-                    items="center"
-                    justify="center"
-                    rounded={9999}
-                    // destructive at 80% (Tailwind bg-destructive/80); the alpha
-                    // is fill-only so the glyph stays crisp — via style hatch.
-                    style={{ backgroundColor: "rgba(231, 0, 11, 0.8)" }}
-                    title="Failed"
-                    {...todayRing}
-                  >
-                    <Text
-                      fontSize={8}
-                      lineHeight={0}
-                      color="$destructiveForeground"
-                    >
-                      ✕
-                    </Text>
-                  </View>
-                ) : isDaySkipped ? (
-                  <View
-                    height={14}
-                    width={14}
-                    items="center"
-                    justify="center"
-                    rounded={9999}
-                    borderWidth={1}
-                    borderStyle="dashed"
-                    borderColor="$mutedForeground"
-                    // muted-foreground/40 dashed ring — alpha via opacity keeps
-                    // it theme-aware (token differs per light/dark).
-                    opacity={0.4}
-                    title="Skipped"
-                    {...todayRing}
-                  >
-                    <Text fontSize={8} lineHeight={0} color="$mutedForeground">
-                      —
-                    </Text>
-                  </View>
-                ) : ratio >= 1 ? (
-                  <Text
-                    fontSize="$3"
-                    lineHeight={0}
-                    title={`${day.value}/${day.effectiveTarget}`}
-                  >
-                    🔥
-                  </Text>
-                ) : (
-                  <View
-                    height={14}
-                    width={14}
-                    rounded={9999}
-                    borderWidth={1}
-                    transition="medium"
-                    borderStyle={!day.isScheduled ? "dashed" : "solid"}
-                    borderColor={
-                      !day.isScheduled
-                        ? "$mutedForeground"
-                        : ratio > 0
-                          ? "transparent"
-                          : "$mutedForeground"
-                    }
-                    // Non-scheduled/empty dots read as faint outlines; tinted
-                    // fill (when in progress) uses the habit's free-form color.
-                    opacity={!day.isScheduled ? 0.2 : ratio > 0 ? 1 : 0.3}
-                    style={
-                      day.isScheduled && ratio > 0
-                        ? {
-                            backgroundColor: habitColor + "60",
-                            borderColor: habitColor + "60",
-                          }
+                {/* One consistent dot per day: filled (habit color) = done,
+                    tinted = partial, dashed = skip/rest, red ring = fail,
+                    primary ring = today. A run of filled dots IS the streak. */}
+                <View
+                  width={11}
+                  height={11}
+                  rounded={9999}
+                  transition="quick"
+                  title={
+                    failed
+                      ? "Failed"
+                      : isDaySkipped
+                        ? "Skipped"
+                        : `${day.value}/${day.effectiveTarget}`
+                  }
+                  borderWidth={complete ? 0 : 1}
+                  borderStyle={
+                    !day.isScheduled || isDaySkipped ? "dashed" : "solid"
+                  }
+                  borderColor={failed ? "$destructive" : "$mutedForeground"}
+                  opacity={
+                    !day.isScheduled
+                      ? 0.3
+                      : complete || partial || failed
+                        ? 1
+                        : 0.4
+                  }
+                  outlineWidth={day.isToday ? 2 : 0}
+                  outlineColor="$primary"
+                  outlineStyle="solid"
+                  outlineOffset={1}
+                  style={
+                    complete
+                      ? { backgroundColor: habitColor }
+                      : partial
+                        ? { backgroundColor: habitTrack }
                         : undefined
-                    }
-                    {...todayRing}
-                  />
-                )}
+                  }
+                />
               </YStack>
             );
           })}
         </XStack>
 
-        <XStack mt="$4" items="center" justify="space-between">
-          <Text fontSize="$1" color="$mutedForeground">
-            {habit.unit
-              ? `${habit.targetCount} ${habit.unit}`
-              : `${habit.targetCount}x target`}
-          </Text>
+        {/* Action row — primary (Check In) or status on the left,
+            representative icon actions on the right. */}
+        <XStack items="center" justify="space-between" gap="$2">
+          {isComplete ? (
+            <XStack
+              items="center"
+              gap="$1.5"
+              rounded="$md"
+              px="$2.5"
+              py="$1.5"
+              bg="$successMuted"
+              transition="quick"
+              scale={bouncing ? 1.1 : 1}
+            >
+              <Text color="$success" lineHeight={0}>
+                <Check size={14} />
+              </Text>
+              <Text fontSize="$1" fontWeight="600" color="$success">
+                Complete
+              </Text>
+            </XStack>
+          ) : isSkipped ? (
+            <XStack
+              items="center"
+              gap="$1.5"
+              rounded="$md"
+              px="$2.5"
+              py="$1.5"
+              bg="$muted"
+            >
+              <Text color="$mutedForeground" lineHeight={0}>
+                <SkipForward size={12} />
+              </Text>
+              <Text fontSize="$1" fontWeight="600" color="$mutedForeground">
+                Skipped
+              </Text>
+            </XStack>
+          ) : isFailed ? (
+            <XStack
+              items="center"
+              gap="$1.5"
+              rounded="$md"
+              px="$2.5"
+              py="$1.5"
+              bg="$destructiveMuted"
+            >
+              <Text color="$destructive" lineHeight={0}>
+                <X size={12} />
+              </Text>
+              <Text fontSize="$1" fontWeight="600" color="$destructive">
+                Failed
+              </Text>
+            </XStack>
+          ) : !isScheduledOnActiveDate ? (
+            <Text fontSize="$1" fontWeight="500" color="$mutedForeground">
+              Rest day
+            </Text>
+          ) : (
+            <Button
+              size="sm"
+              icon={<Check size={14} />}
+              onPress={handleCheckIn}
+              disabled={isPending}
+              loading={isPending}
+              loadingText="Checking…"
+              transition="quick"
+              scale={bouncing ? 1.1 : 1}
+            >
+              {activeDateValue > 0
+                ? `${activeDateValue}/${activeTargetCount}`
+                : "Check In"}
+            </Button>
+          )}
+
           <XStack items="center" gap="$1.5">
-            {activeDateValue > 0 && !isSkipped && (
+            {(isSkipped || isFailed) && (
+              <IconButton
+                variant="outline"
+                size="sm"
+                onPress={handleClearStatus}
+                disabled={isPending}
+                title="Undo"
+                aria-label="Undo"
+              >
+                <Undo2 size={14} />
+              </IconButton>
+            )}
+            {activeDateValue > 0 && !isSkipped && !isFailed && (
               <IconButton
                 variant="outline"
                 size="sm"
@@ -389,78 +499,37 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
                 title="Undo last check-in"
                 aria-label="Undo last check-in"
               >
-                <Undo2 size={12} />
+                <Undo2 size={14} />
               </IconButton>
             )}
-            {isSkipped ? (
-              <XStack
-                items="center"
-                gap="$1"
-                rounded="$lg"
-                bg="$muted"
-                px="$3"
-                py="$1.5"
-              >
-                <Text color="$mutedForeground" lineHeight={0}>
-                  <SkipForward size={12} />
-                </Text>
-                <Text fontSize="$1" fontWeight="500" color="$mutedForeground">
-                  Skipped
-                </Text>
-              </XStack>
-            ) : !isScheduledOnActiveDate && !isComplete ? (
-              <View rounded="$lg" px="$3" py="$1.5">
-                <Text fontSize="$1" fontWeight="500" color="$mutedForeground">
-                  Rest day
-                </Text>
-              </View>
-            ) : isComplete ? (
-              <XStack
-                items="center"
-                gap="$1.5"
-                rounded="$lg"
-                px="$3"
-                py="$1.5"
-                transition="quick"
-                scale={bouncing ? 1.1 : 1}
-                bg="$successMuted"
-              >
-                <Text color="$success" lineHeight={0}>
-                  <Check size={14} />
-                </Text>
-                <Text fontSize="$1" fontWeight="500" color="$success">
-                  Complete
-                </Text>
-              </XStack>
-            ) : (
-              <>
-                {!activeDateEntry && isScheduledOnActiveDate && (
-                  <Button
-                    intent="outline"
+            {activeDateValue === 0 &&
+              !isSkipped &&
+              !isFailed &&
+              isScheduledOnActiveDate && (
+                <>
+                  <IconButton
+                    variant="outline"
                     size="sm"
-                    icon={<SkipForward size={12} />}
                     onPress={handleSkip}
                     disabled={isPending}
-                    title="Skip today"
+                    title="Skip"
+                    aria-label="Skip"
                   >
-                    Skip
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  onPress={handleCheckIn}
-                  disabled={isPending}
-                  loading={isPending}
-                  loadingText="Checking…"
-                  transition="quick"
-                  scale={bouncing ? 1.1 : 1}
-                >
-                  {habit.targetCount > 1
-                    ? `${activeDateValue}/${habit.targetCount}`
-                    : "Check In"}
-                </Button>
-              </>
-            )}
+                    <SkipForward size={14} />
+                  </IconButton>
+                  <IconButton
+                    variant="outline"
+                    intent="danger"
+                    size="sm"
+                    onPress={handleFail}
+                    disabled={isPending}
+                    title="Mark failed — resets the streak"
+                    aria-label="Mark failed"
+                  >
+                    <X size={14} />
+                  </IconButton>
+                </>
+              )}
           </XStack>
         </XStack>
       </View>
