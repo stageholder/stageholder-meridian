@@ -32,7 +32,13 @@ export function TimezoneSelect({
     <Popover open={open} onOpenChange={setOpen} placement="bottom-start">
       <Popover.Trigger asChild>
         <XStack
-          tag="button"
+          {...({
+            role: "button",
+            "aria-haspopup": "listbox",
+            "aria-expanded": open,
+            "aria-label": value || "Select timezone",
+          } as object)}
+          cursor="pointer"
           height={36}
           width="100%"
           items="center"
@@ -122,7 +128,11 @@ export function TimezoneSelect({
               filtered.map((tz) => (
                 <XStack
                   key={tz}
-                  tag="button"
+                  {...({
+                    role: "option",
+                    "aria-selected": value === tz,
+                    "aria-label": tz,
+                  } as object)}
                   width="100%"
                   cursor="pointer"
                   items="center"

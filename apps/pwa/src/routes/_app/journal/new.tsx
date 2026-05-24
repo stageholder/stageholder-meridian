@@ -2,14 +2,16 @@ import { useState, useEffect, useRef } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { format, addDays, nextMonday } from "date-fns";
 import { parseDateLocal } from "@/lib/date";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, X } from "lucide-react";
 import { JournalEditor } from "@/components/journal/journal-editor";
 import { TagInput } from "@/components/journal/tag-input";
 import {
+  Button,
   Calendar,
   Input,
   Popover,
   Text,
+  ToggleGroup,
   View,
   XStack,
   YStack,
@@ -146,25 +148,21 @@ function NewJournalPage() {
       <YStack shrink={0} px="$4" pt="$4">
         {!isDesktop && (
           <View mb="$5">
-            <XStack
-              tag="button"
-              items="center"
-              gap="$1"
-              fontSize="$3"
-              color="$mutedForeground"
-              hoverStyle={{ color: "$color" }}
+            <Button
+              intent="ghost"
+              size="sm"
+              icon={<ArrowLeft size={16} />}
               onPress={() => navigate({ to: "/journal" })}
             >
-              <ArrowLeft size={16} />
               Back
-            </XStack>
+            </Button>
           </View>
         )}
 
-        {/* Title — `paddingHorizontal={0}` strips the kit Input's internal
-            horizontal inset that survives `unstyled`. Without it, the
-            title text starts further inside than the pills row below,
-            making the column edge look uneven. */}
+        {/* Title — `px={0}` strips the kit Input's internal horizontal inset
+            that survives `unstyled`. Without it, the title text starts
+            further inside than the pills row below, making the column edge
+            look uneven. */}
         <Input
           value={title}
           onChangeText={setTitle}
@@ -172,7 +170,7 @@ function NewJournalPage() {
           unstyled
           width="100%"
           marginBottom="$3"
-          paddingHorizontal={0}
+          px={0}
           bg="transparent"
           fontSize={24}
           fontWeight="700"
@@ -186,33 +184,15 @@ function NewJournalPage() {
           {/* Date pill */}
           <Popover placement="bottom-start">
             <Popover.Trigger asChild>
-              <XStack
-                tag="button"
-                items="center"
-                gap="$1"
-                fontSize="$1"
-                transition="quick"
-                // semantic date-status color (no kit token); icon inherits via currentColor
-                color={dateInfo.color}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-                  <line x1="16" x2="16" y1="2" y2="6" />
-                  <line x1="8" x2="8" y1="2" y2="6" />
-                  <line x1="3" x2="21" y1="10" y2="10" />
-                </svg>
-                {dateInfo.label}
-              </XStack>
+              <Button intent="ghost" size="sm" gap="$1">
+                {/* semantic date-status color (no kit token) — raw hex via style */}
+                <Text lineHeight={0} style={{ color: dateInfo.color }}>
+                  <CalendarDays size={12} />
+                </Text>
+                <Text fontSize="$1" style={{ color: dateInfo.color }}>
+                  {dateInfo.label}
+                </Text>
+              </Button>
             </Popover.Trigger>
             <Popover.Content width="auto" p="$2">
               <XStack flexWrap="wrap" gap="$1" pb="$2">
@@ -226,27 +206,31 @@ function NewJournalPage() {
                   return (
                     <XStack
                       key={shortcut.label}
-                      tag="button"
+                      {...({
+                        role: "button",
+                        "aria-pressed": isActive,
+                        "aria-label": shortcut.label,
+                      } as object)}
+                      cursor="pointer"
                       rounded={9999}
                       borderWidth={1}
                       px="$2.5"
                       py="$0.5"
-                      fontSize="$1"
-                      fontWeight="500"
                       transition="quick"
                       borderColor={isActive ? "$primary" : "$borderColor"}
                       bg={isActive ? "$primary" : undefined}
-                      color={
-                        isActive ? "$primaryForeground" : "$mutedForeground"
-                      }
-                      hoverStyle={
-                        isActive
-                          ? undefined
-                          : { bg: "$accent", color: "$color" }
-                      }
+                      hoverStyle={isActive ? undefined : { bg: "$accent" }}
                       onPress={() => setDate(iso)}
                     >
-                      {shortcut.label}
+                      <Text
+                        fontSize="$1"
+                        fontWeight="500"
+                        color={
+                          isActive ? "$primaryForeground" : "$mutedForeground"
+                        }
+                      >
+                        {shortcut.label}
+                      </Text>
                     </XStack>
                   );
                 })}
@@ -265,19 +249,13 @@ function NewJournalPage() {
           {/* Mood pill */}
           <Popover placement="bottom-start">
             <Popover.Trigger asChild>
-              <XStack
-                tag="button"
-                items="center"
-                gap="$1"
-                fontSize="$1"
-                color="$mutedForeground"
-                transition="quick"
-                hoverStyle={{ color: "$color" }}
-              >
+              <Button intent="ghost" size="sm" gap="$1">
                 {currentMood ? (
                   <XStack items="center" gap="$1">
                     <Text fontSize="$3">{currentMood.emoji}</Text>
-                    {currentMood.label}
+                    <Text fontSize="$1" color="$mutedForeground">
+                      {currentMood.label}
+                    </Text>
                   </XStack>
                 ) : (
                   <XStack
@@ -291,35 +269,31 @@ function NewJournalPage() {
                     py="$0.5"
                   >
                     <Text fontSize="$1">🙂</Text>
-                    Mood
+                    <Text fontSize="$1" color="$mutedForeground">
+                      Mood
+                    </Text>
                   </XStack>
                 )}
-              </XStack>
+              </Button>
             </Popover.Trigger>
             <Popover.Content width="auto" p="$1">
-              <XStack items="center" gap="$1">
+              <ToggleGroup
+                type="single"
+                value={mood ? String(mood) : ""}
+                onValueChange={(v: string) =>
+                  setMood(v ? Number(v) : undefined)
+                }
+              >
                 {moods.map((m) => (
-                  <XStack
+                  <ToggleGroup.Item
                     key={m.value}
-                    tag="button"
-                    items="center"
-                    justify="center"
-                    height={36}
-                    width={36}
-                    rounded="$lg"
-                    fontSize="$6"
-                    transition="quick"
-                    bg={mood === m.value ? "$accent" : undefined}
-                    hoverStyle={{ bg: "$accent" }}
-                    title={m.label}
-                    onPress={() =>
-                      setMood(mood === m.value ? undefined : m.value)
-                    }
+                    value={String(m.value)}
+                    aria-label={m.label}
                   >
-                    {m.emoji}
-                  </XStack>
+                    <Text fontSize="$5">{m.emoji}</Text>
+                  </ToggleGroup.Item>
                 ))}
-              </XStack>
+              </ToggleGroup>
             </Popover.Content>
           </Popover>
 
@@ -333,17 +307,25 @@ function NewJournalPage() {
               bg="$accent"
               px="$2"
               py="$0.5"
-              fontSize="$1"
-              color="$accentForeground"
             >
-              {tag}
+              <Text fontSize="$1" color="$accentForeground">
+                {tag}
+              </Text>
               <View
-                tag="button"
-                color="$mutedForeground"
-                hoverStyle={{ color: "$color" }}
+                {...({
+                  role: "button",
+                  "aria-label": `Remove ${tag}`,
+                } as object)}
+                cursor="pointer"
                 onPress={() => setTags(tags.filter((t) => t !== tag))}
               >
-                <X size={12} />
+                <Text
+                  color="$accentForeground"
+                  lineHeight={0}
+                  hoverStyle={{ opacity: 0.6 }}
+                >
+                  <X size={12} />
+                </Text>
               </View>
             </XStack>
           ))}

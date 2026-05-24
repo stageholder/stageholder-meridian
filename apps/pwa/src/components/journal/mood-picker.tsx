@@ -22,6 +22,7 @@ export function MoodPicker({ value, onChange }: MoodPickerProps) {
           <View
             key={mood.value}
             onPress={() => onChange(mood.value)}
+            cursor="pointer"
             height={40}
             width={40}
             items="center"

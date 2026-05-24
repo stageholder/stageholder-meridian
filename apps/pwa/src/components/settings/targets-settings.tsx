@@ -5,6 +5,7 @@ import {
   Label,
   NumberInput,
   Text,
+  ToggleGroup,
   XStack,
   YStack,
 } from "@stageholder/ui";
@@ -80,36 +81,24 @@ export function TargetsSettings() {
           <Text mt="$0.5" fontSize="$1" color="$mutedForeground">
             How many words you aim to write in your journal each day.
           </Text>
-          <XStack mt="$2" flexWrap="wrap" gap="$2">
-            {JOURNAL_PRESETS.map((preset) => {
-              const active = journalTarget === preset.value;
-              return (
-                <XStack
-                  key={preset.value}
-                  tag="button"
-                  type="button"
-                  onPress={() => setJournalTarget(preset.value)}
-                  cursor="pointer"
-                  rounded="$lg"
-                  borderWidth={1}
-                  px="$3"
-                  py="$1.5"
-                  borderColor={active ? "$primary" : "$borderColor"}
-                  bg={active ? "$primaryMuted" : "$background"}
-                  transition="quick"
-                  hoverStyle={active ? undefined : { bg: "$accent" }}
-                >
-                  <Text
-                    fontSize="$3"
-                    fontWeight="500"
-                    color={active ? "$primary" : "$mutedForeground"}
-                  >
-                    {preset.label} ({preset.value})
-                  </Text>
-                </XStack>
-              );
-            })}
-          </XStack>
+          <ToggleGroup
+            type="single"
+            mt="$2"
+            value={String(journalTarget)}
+            onValueChange={(v: string) => {
+              if (v) setJournalTarget(Number(v));
+            }}
+          >
+            {JOURNAL_PRESETS.map((preset) => (
+              <ToggleGroup.Item
+                key={preset.value}
+                value={String(preset.value)}
+                aria-label={`${preset.label} (${preset.value})`}
+              >
+                {preset.label} ({preset.value})
+              </ToggleGroup.Item>
+            ))}
+          </ToggleGroup>
           <XStack mt="$2" items="center" gap="$2">
             <NumberInput
               value={journalTarget}

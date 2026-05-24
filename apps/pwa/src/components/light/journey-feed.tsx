@@ -11,7 +11,7 @@ import {
   Flame,
   CircleDot,
 } from "lucide-react";
-import { Text, View, XStack, YStack } from "@stageholder/ui";
+import { Button, Text, View, XStack, YStack } from "@stageholder/ui";
 
 // Per-action accent colors. These decorative hues (blue/orange/emerald/amber/
 // red/purple) have no kit token — they're event-category accents, so the icon
@@ -174,27 +174,13 @@ export function JourneyFeed() {
         );
       })}
       {hasMore && (
-        <View
-          tag="button"
-          group
+        <Button
+          intent="outline"
           width="100%"
-          rounded="$lg"
-          borderWidth={1}
-          borderColor="$borderColor"
-          py="$2"
-          items="center"
-          transition="quick"
-          hoverStyle={{ bg: "$accent" }}
           onPress={() => setLimit((l) => l + LOAD_MORE)}
         >
-          <Text
-            fontSize="$3"
-            color="$mutedForeground"
-            $group-hover={{ color: "$color" }}
-          >
-            Show more
-          </Text>
-        </View>
+          Show more
+        </Button>
       )}
     </YStack>
   );

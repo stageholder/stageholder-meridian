@@ -312,6 +312,7 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
   if (!isEditing) {
     return (
       <XStack
+        group
         onPress={handleActivate}
         cursor="pointer"
         width="100%"
@@ -323,13 +324,24 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
         borderColor="$borderColor"
         px="$3"
         py="$2.5"
-        color="$mutedForeground"
         transition="quick"
-        hoverStyle={{ borderColor: "$primary", color: "$color" }}
+        hoverStyle={{ borderColor: "$primary" }}
         role="button"
       >
-        <Plus size={16} />
-        <Text fontSize="$3">Add a todo…</Text>
+        <Text
+          color="$mutedForeground"
+          lineHeight={0}
+          $group-hover={{ color: "$color" }}
+        >
+          <Plus size={16} />
+        </Text>
+        <Text
+          fontSize="$3"
+          color="$mutedForeground"
+          $group-hover={{ color: "$color" }}
+        >
+          Add a todo…
+        </Text>
       </XStack>
     );
   }

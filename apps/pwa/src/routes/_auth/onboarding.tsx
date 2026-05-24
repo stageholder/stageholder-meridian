@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Text, View, XStack, YStack } from "@stageholder/ui";
+import { Button, View, XStack, YStack } from "@stageholder/ui";
 import { useUser } from "@/hooks/use-user";
 import { apiClient } from "@/lib/api-client";
 import { WelcomeStep } from "@/components/onboarding/welcome-step";
@@ -148,29 +148,19 @@ function OnboardingPage() {
         <XStack items="center" justify="space-between">
           <View>
             {step > 0 && step < lastStep && (
-              <Text
-                tag="button"
-                fontSize="$3"
-                color="$mutedForeground"
-                transition="quick"
-                hoverStyle={{ color: "$color" }}
+              <Button
+                intent="ghost"
+                size="sm"
                 onPress={() => setStep(step - 1)}
               >
                 Back
-              </Text>
+              </Button>
             )}
           </View>
           {step < lastStep && (
-            <Text
-              tag="button"
-              fontSize="$3"
-              color="$mutedForeground"
-              transition="quick"
-              hoverStyle={{ color: "$color" }}
-              onPress={handleSkip}
-            >
+            <Button intent="ghost" size="sm" onPress={handleSkip}>
               Skip setup
-            </Text>
+            </Button>
           )}
         </XStack>
       </YStack>

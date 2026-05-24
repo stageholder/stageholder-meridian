@@ -4,12 +4,13 @@ import { toast } from "sonner";
 import type { Habit } from "@repo/core/types";
 import {
   Button,
-  Drawer,
+  Dialog,
   Input,
   Label,
   Select,
   Text,
   TextArea,
+  ToggleGroup,
   View,
   XStack,
   YStack,
@@ -105,12 +106,14 @@ export function EditHabitSheet({
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <Drawer.Portal>
-        <Drawer.Overlay />
-        <Drawer.Content
-          side="right"
-          overflow="scroll"
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay />
+        <Dialog.Content
+          width="92%"
+          maxW={520}
+          maxH={"86vh" as never}
+          overflow={"auto" as never}
           onPointerDownOutside={(e: {
             target: EventTarget | null;
             preventDefault: () => void;
@@ -130,11 +133,9 @@ export function EditHabitSheet({
             }
           }}
         >
-          <View p="$4">
-            <Drawer.Title>Edit Habit</Drawer.Title>
-          </View>
-          <form onSubmit={handleSubmit}>
-            <YStack gap="$4" px="$4" pb="$4">
+          <Dialog.Title>Edit Habit</Dialog.Title>
+          <form onSubmit={handleSubmit} style={{ width: "100%" }}>
+            <YStack gap="$4">
               <XStack gap="$2">
                 <YStack>
                   <Text fontSize="$3" fontWeight="500" color="$color">
@@ -212,46 +213,24 @@ export function EditHabitSheet({
                   <Text fontSize="$3" fontWeight="500" color="$color">
                     Days
                   </Text>
-                  <XStack mt="$2" gap="$1.5">
-                    {DAY_OPTIONS.map((day) => {
-                      const active = scheduledDays.includes(day.value);
-                      return (
-                        <XStack
-                          key={day.value}
-                          tag="button"
-                          type="button"
-                          onPress={() =>
-                            setScheduledDays(
-                              active
-                                ? scheduledDays.filter((d) => d !== day.value)
-                                : [...scheduledDays, day.value].sort(),
-                            )
-                          }
-                          cursor="pointer"
-                          height={36}
-                          width={36}
-                          items="center"
-                          justify="center"
-                          rounded="$lg"
-                          borderWidth={active ? 0 : 1}
-                          borderColor="$borderColor"
-                          bg={active ? "$primary" : "transparent"}
-                          transition="quick"
-                          hoverStyle={active ? undefined : { bg: "$accent" }}
-                        >
-                          <Text
-                            fontSize="$1"
-                            fontWeight="500"
-                            color={
-                              active ? "$primaryForeground" : "$mutedForeground"
-                            }
-                          >
-                            {day.label}
-                          </Text>
-                        </XStack>
-                      );
-                    })}
-                  </XStack>
+                  <ToggleGroup
+                    type="multiple"
+                    mt="$2"
+                    value={scheduledDays.map(String)}
+                    onValueChange={(vals: string[]) =>
+                      setScheduledDays(vals.map(Number).sort((a, b) => a - b))
+                    }
+                  >
+                    {DAY_OPTIONS.map((day) => (
+                      <ToggleGroup.Item
+                        key={day.value}
+                        value={String(day.value)}
+                        aria-label={day.label}
+                      >
+                        {day.label}
+                      </ToggleGroup.Item>
+                    ))}
+                  </ToggleGroup>
                 </YStack>
               )}
 
@@ -263,8 +242,11 @@ export function EditHabitSheet({
                   {colorOptions.map((opt) => (
                     <View
                       key={opt.value}
-                      tag="button"
-                      type="button"
+                      {...({
+                        role: "button",
+                        "aria-pressed": color === opt.value,
+                        "aria-label": opt.label,
+                      } as object)}
                       onPress={() => setColor(opt.value)}
                       cursor="pointer"
                       height={28}
@@ -277,7 +259,6 @@ export function EditHabitSheet({
                       transition="quick"
                       scale={color === opt.value ? 1.1 : 1}
                       style={{ backgroundColor: opt.value }}
-                      aria-label={opt.label}
                     />
                   ))}
                 </XStack>
@@ -302,8 +283,8 @@ export function EditHabitSheet({
               </XStack>
             </YStack>
           </form>
-        </Drawer.Content>
-      </Drawer.Portal>
-    </Drawer>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog>
   );
 }

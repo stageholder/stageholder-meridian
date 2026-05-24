@@ -5,6 +5,7 @@ import { useCreateTodo, useTodoLists } from "@/lib/api/todos";
 import {
   Button,
   DatePicker,
+  Dialog,
   Input,
   Label,
   Select,
@@ -136,228 +137,204 @@ export function CreateTodoDialog({
     );
   }
 
-  useEffect(() => {
-    if (!open) return;
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        onOpenChange(false);
-      }
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onOpenChange]);
-
-  if (!open) return null;
-
   return (
-    <View
-      position={"fixed" as never}
-      t={0}
-      b={0}
-      l={0}
-      r={0}
-      z={50}
-      items="center"
-      justify="center"
-    >
-      <View
-        position={"fixed" as never}
-        t={0}
-        b={0}
-        l={0}
-        r={0}
-        // load-bearing modal dimming — translucent black, no token equivalent
-        bg="rgba(0,0,0,0.5)"
-        onPress={() => onOpenChange(false)}
-      />
-      <YStack
-        role="dialog"
-        aria-modal="true"
-        position="relative"
-        z={50}
-        mx="$4"
-        width="100%"
-        maxW={448}
-        maxH={"90vh" as never}
-        overflowY={"auto" as never}
-        rounded="$6"
-        borderWidth={1}
-        borderColor="$borderColor"
-        bg="$card"
-        p="$4"
-        $sm={{ p: "$6" }}
-        gap="$4"
-        boxShadow="0 16px 48px rgba(0,0,0,0.45)"
-      >
-        <Text fontSize="$6" fontWeight="600" color="$color">
-          New Todo
-        </Text>
-        <form onSubmit={handleSubmit}>
-          <YStack gap="$4">
-            {lists && lists.length > 1 && (
-              <YStack gap="$1">
-                <Text fontSize="$3" fontWeight="500" color="$color">
-                  List
-                </Text>
-                <Select
-                  value={selectedListId || defaultListId}
-                  onValueChange={setSelectedListId}
-                >
-                  <Select.Trigger placeholder="Select list" width="100%" />
-                  <Select.Content>
-                    {lists.map((list) => (
-                      <Select.Item key={list.id} value={list.id}>
-                        <XStack items="center" gap="$2">
-                          <XStack
-                            width={12}
-                            height={12}
-                            shrink={0}
-                            items="center"
-                            justify="center"
-                          >
-                            {list.isDefault ? (
-                              <Text color="$primary" lineHeight={0}>
-                                <Inbox size={12} />
-                              </Text>
-                            ) : (
-                              <View
-                                width={8}
-                                height={8}
-                                rounded={9999}
-                                style={{
-                                  backgroundColor: list.color || "#6b7280",
-                                }}
-                              />
-                            )}
-                          </XStack>
-                          {/* Kit's Select.Item only auto-wraps string/number
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay />
+        <Dialog.Content
+          width="90%"
+          maxW={448}
+          maxH={"86vh" as never}
+          overflow={"auto" as never}
+          onPointerDownOutside={(e: {
+            target: EventTarget | null;
+            preventDefault: () => void;
+          }) => {
+            const target = e.target as Element;
+            if (target.closest('[data-slot="popover-content"]')) {
+              e.preventDefault();
+            }
+          }}
+          onInteractOutside={(e: {
+            target: EventTarget | null;
+            preventDefault: () => void;
+          }) => {
+            const target = e.target as Element;
+            if (target.closest('[data-slot="popover-content"]')) {
+              e.preventDefault();
+            }
+          }}
+        >
+          <Dialog.Title>New Todo</Dialog.Title>
+          <Dialog.Description>
+            Create a new todo with optional details, priority, and dates.
+          </Dialog.Description>
+          <form onSubmit={handleSubmit} style={{ width: "100%" }}>
+            <YStack gap="$4">
+              {lists && lists.length > 1 && (
+                <YStack gap="$1">
+                  <Text fontSize="$3" fontWeight="500" color="$color">
+                    List
+                  </Text>
+                  <Select
+                    value={selectedListId || defaultListId}
+                    onValueChange={setSelectedListId}
+                  >
+                    <Select.Trigger placeholder="Select list" width="100%" />
+                    <Select.Content>
+                      {lists.map((list) => (
+                        <Select.Item key={list.id} value={list.id}>
+                          <XStack items="center" gap="$2">
+                            <XStack
+                              width={12}
+                              height={12}
+                              shrink={0}
+                              items="center"
+                              justify="center"
+                            >
+                              {list.isDefault ? (
+                                <Text color="$primary" lineHeight={0}>
+                                  <Inbox size={12} />
+                                </Text>
+                              ) : (
+                                <View
+                                  width={8}
+                                  height={8}
+                                  rounded={9999}
+                                  style={{
+                                    backgroundColor: list.color || "#6b7280",
+                                  }}
+                                />
+                              )}
+                            </XStack>
+                            {/* Kit's Select.Item only auto-wraps string/number
                               children in ItemText. For JSX children (icon
                               + label), include ItemText explicitly so the
                               trigger's value-display still shows the list
                               name when this option is selected. */}
-                          <Select.ItemText>{list.name}</Select.ItemText>
-                        </XStack>
-                      </Select.Item>
-                    ))}
+                            <Select.ItemText>{list.name}</Select.ItemText>
+                          </XStack>
+                        </Select.Item>
+                      ))}
+                    </Select.Content>
+                  </Select>
+                </YStack>
+              )}
+
+              <YStack gap="$1">
+                <Label htmlFor="todo-title">Title</Label>
+                <Input
+                  id="todo-title"
+                  value={title}
+                  onChangeText={setTitle}
+                  placeholder="What needs to be done?"
+                  autoFocus
+                />
+              </YStack>
+
+              <YStack gap="$1">
+                <Label htmlFor="todo-description">Description</Label>
+                <TextArea
+                  id="todo-description"
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder="Add details..."
+                  rows={3}
+                />
+              </YStack>
+
+              <YStack gap="$1">
+                <Text fontSize="$3" fontWeight="500" color="$color">
+                  Priority
+                </Text>
+                <Select value={priority} onValueChange={setPriority}>
+                  <Select.Trigger placeholder="None" width="100%" />
+                  <Select.Content>
+                    <Select.Item value="none">None</Select.Item>
+                    <Select.Item value="low">
+                      <XStack items="center" gap="$2">
+                        <View
+                          width={8}
+                          height={8}
+                          rounded={9999}
+                          style={{ backgroundColor: PRIORITY_DOT.low }}
+                        />
+                        <Select.ItemText>Low</Select.ItemText>
+                      </XStack>
+                    </Select.Item>
+                    <Select.Item value="medium">
+                      <XStack items="center" gap="$2">
+                        <View
+                          width={8}
+                          height={8}
+                          rounded={9999}
+                          style={{ backgroundColor: PRIORITY_DOT.medium }}
+                        />
+                        <Select.ItemText>Medium</Select.ItemText>
+                      </XStack>
+                    </Select.Item>
+                    <Select.Item value="high">
+                      <XStack items="center" gap="$2">
+                        <View
+                          width={8}
+                          height={8}
+                          rounded={9999}
+                          style={{ backgroundColor: PRIORITY_DOT.high }}
+                        />
+                        <Select.ItemText>High</Select.ItemText>
+                      </XStack>
+                    </Select.Item>
+                    <Select.Item value="urgent">
+                      <XStack items="center" gap="$2">
+                        <View
+                          width={8}
+                          height={8}
+                          rounded={9999}
+                          style={{ backgroundColor: PRIORITY_DOT.urgent }}
+                        />
+                        <Select.ItemText>Urgent</Select.ItemText>
+                      </XStack>
+                    </Select.Item>
                   </Select.Content>
                 </Select>
               </YStack>
-            )}
 
-            <YStack gap="$1">
-              <Label htmlFor="todo-title">Title</Label>
-              <Input
-                id="todo-title"
-                value={title}
-                onChangeText={setTitle}
-                placeholder="What needs to be done?"
-                autoFocus
-              />
+              <YStack gap="$3">
+                <DateField
+                  label="Due Date"
+                  icon={<CalendarClock size={14} />}
+                  value={dueDate}
+                  onChange={setDueDate}
+                />
+                <DateField
+                  label="Do Date"
+                  icon={<Clock size={14} />}
+                  value={doDate}
+                  onChange={setDoDate}
+                />
+              </YStack>
+
+              <XStack justify="flex-end" gap="$3" pt="$2">
+                <Button
+                  intent="outline"
+                  type="button"
+                  onPress={() => onOpenChange(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={!title.trim() || createTodo.isPending}
+                  loading={createTodo.isPending}
+                  loadingText="Creating…"
+                >
+                  Create
+                </Button>
+              </XStack>
             </YStack>
-
-            <YStack gap="$1">
-              <Label htmlFor="todo-description">Description</Label>
-              <TextArea
-                id="todo-description"
-                value={description}
-                onChangeText={setDescription}
-                placeholder="Add details..."
-                rows={3}
-              />
-            </YStack>
-
-            <YStack gap="$1">
-              <Text fontSize="$3" fontWeight="500" color="$color">
-                Priority
-              </Text>
-              <Select value={priority} onValueChange={setPriority}>
-                <Select.Trigger placeholder="None" width="100%" />
-                <Select.Content>
-                  <Select.Item value="none">None</Select.Item>
-                  <Select.Item value="low">
-                    <XStack items="center" gap="$2">
-                      <View
-                        width={8}
-                        height={8}
-                        rounded={9999}
-                        style={{ backgroundColor: PRIORITY_DOT.low }}
-                      />
-                      <Select.ItemText>Low</Select.ItemText>
-                    </XStack>
-                  </Select.Item>
-                  <Select.Item value="medium">
-                    <XStack items="center" gap="$2">
-                      <View
-                        width={8}
-                        height={8}
-                        rounded={9999}
-                        style={{ backgroundColor: PRIORITY_DOT.medium }}
-                      />
-                      <Select.ItemText>Medium</Select.ItemText>
-                    </XStack>
-                  </Select.Item>
-                  <Select.Item value="high">
-                    <XStack items="center" gap="$2">
-                      <View
-                        width={8}
-                        height={8}
-                        rounded={9999}
-                        style={{ backgroundColor: PRIORITY_DOT.high }}
-                      />
-                      <Select.ItemText>High</Select.ItemText>
-                    </XStack>
-                  </Select.Item>
-                  <Select.Item value="urgent">
-                    <XStack items="center" gap="$2">
-                      <View
-                        width={8}
-                        height={8}
-                        rounded={9999}
-                        style={{ backgroundColor: PRIORITY_DOT.urgent }}
-                      />
-                      <Select.ItemText>Urgent</Select.ItemText>
-                    </XStack>
-                  </Select.Item>
-                </Select.Content>
-              </Select>
-            </YStack>
-
-            <YStack gap="$3">
-              <DateField
-                label="Due Date"
-                icon={<CalendarClock size={14} />}
-                value={dueDate}
-                onChange={setDueDate}
-              />
-              <DateField
-                label="Do Date"
-                icon={<Clock size={14} />}
-                value={doDate}
-                onChange={setDoDate}
-              />
-            </YStack>
-
-            <XStack justify="flex-end" gap="$3" pt="$2">
-              <Button
-                intent="outline"
-                type="button"
-                onPress={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={!title.trim() || createTodo.isPending}
-                loading={createTodo.isPending}
-                loadingText="Creating…"
-              >
-                Create
-              </Button>
-            </XStack>
-          </YStack>
-        </form>
-      </YStack>
-    </View>
+          </form>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog>
   );
 }

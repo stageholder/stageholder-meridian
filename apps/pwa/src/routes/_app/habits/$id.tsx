@@ -1,30 +1,17 @@
 import { useState, useMemo } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import {
-  format,
-  subDays,
-  startOfMonth,
-  endOfMonth,
-  eachDayOfInterval,
-  getDay,
-  addMonths,
-  subMonths,
-  isFuture,
-  isToday as isTodayFn,
-} from "date-fns";
-import {
-  ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
-  SkipForward,
-  Undo2,
-} from "lucide-react";
+import { format, subDays, startOfMonth, endOfMonth, getDay } from "date-fns";
+import { ArrowLeft, Check, Minus, SkipForward, Undo2, X } from "lucide-react";
 import {
   AlertDialog,
   Button,
+  EventCalendar,
   H1,
   H3,
+  IconButton,
   Paragraph,
+  Stat,
+  StreakBadge,
   Text,
   View,
   XStack,
@@ -45,6 +32,7 @@ import {
   resolveTargetCount,
   isEntryComplete,
 } from "@/lib/habits/entry-resolution";
+import { parseDateLocal } from "@/lib/date";
 
 export const Route = createFileRoute("/_app/habits/$id")({
   component: HabitDetailPage,
@@ -60,20 +48,24 @@ function HabitDetailPage() {
   const updateEntry = useUpdateHabitEntry();
   const skipEntryMutation = useSkipHabitEntry();
   const [editOpen, setEditOpen] = useState(false);
-  const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const today = format(new Date(), "yyyy-MM-dd");
-  const ninetyDaysAgo = format(subDays(new Date(), 90), "yyyy-MM-dd");
+  // A full year of history powers the year-long Activity heatmap (and the
+  // streak/stat/recent-entry computations below).
+  const yearAgo = format(subDays(new Date(), 365), "yyyy-MM-dd");
 
   const { data: allEntries } = useHabitEntries(id, {
-    startDate: ninetyDaysAgo,
+    startDate: yearAgo,
     endDate: today,
   });
 
-  // Entries for the visible calendar month
-  const calMonthStart = format(startOfMonth(calendarMonth), "yyyy-MM-dd");
-  const calMonthEnd = format(endOfMonth(calendarMonth), "yyyy-MM-dd");
+  // Entries for the month of the day being edited (defaults to current month).
+  // This window backs the action panel's entry lookups for PATCH/undo, so it
+  // tracks whichever day the Calendar has selected.
+  const editAnchor = selectedDate ? parseDateLocal(selectedDate) : new Date();
+  const calMonthStart = format(startOfMonth(editAnchor), "yyyy-MM-dd");
+  const calMonthEnd = format(endOfMonth(editAnchor), "yyyy-MM-dd");
   const { data: monthEntries } = useHabitEntries(id, {
     startDate: calMonthStart,
     endDate: calMonthEnd,
@@ -210,15 +202,25 @@ function HabitDetailPage() {
     };
   }, [entryMap, habit]);
 
-  // Calendar grid
-  const calendarDays = useMemo(() => {
-    const monthStart = startOfMonth(calendarMonth);
-    const monthEnd = endOfMonth(calendarMonth);
-    const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-    const startDay = getDay(monthStart);
-    const offset = startDay === 0 ? 6 : startDay - 1; // Monday start
-    return { days, offset };
-  }, [calendarMonth]);
+  // Per-day completion keyed by yyyy-MM-dd — drives the month calendar's day
+  // tinting (complete / partial / skip / fail) in renderDayCell.
+  const dayMap = useMemo(() => {
+    const m = new Map<
+      string,
+      { value: number; target: number; type?: string }
+    >();
+    if (!habit) return m;
+    for (const e of allEntries || []) {
+      const dateStr = e.date.split("T")[0]!;
+      const existing = m.get(dateStr);
+      m.set(dateStr, {
+        value: (existing?.value ?? 0) + e.value,
+        target: resolveTargetCount(e, habit),
+        type: e.type || existing?.type,
+      });
+    }
+    return m;
+  }, [allEntries, habit]);
 
   // Recent entries (last 20)
   const recentEntries = useMemo(() => {
@@ -379,23 +381,31 @@ function HabitDetailPage() {
     );
   }
 
-  const habitColor = habit.color || "#3b82f6";
+  // Orange = the habit category identity color (the same `--ring-habit` the
+  // calendar page uses for habits). The whole habit page reads as "orange =
+  // habit" instead of the per-habit blue default.
+  const habitColor = "var(--ring-habit)";
+  const habitTrack = "var(--ring-habit-track)";
 
   return (
-    <YStack gap="$6" p="$4">
+    <YStack
+      gap="$6"
+      p="$4"
+      width="100%"
+      maxW={1040}
+      style={{ marginLeft: "auto", marginRight: "auto" }}
+    >
       {/* Header */}
       <XStack items="center" justify="space-between">
         <XStack items="center" gap="$3">
-          <XStack
-            tag="button"
-            items="center"
-            gap="$1"
-            color="$mutedForeground"
-            hoverStyle={{ color: "$color" }}
+          <IconButton
+            variant="ghost"
+            size="sm"
+            aria-label="Back to habits"
             onPress={() => navigate({ to: "/habits" })}
           >
             <ArrowLeft size={16} />
-          </XStack>
+          </IconButton>
           <View
             items="center"
             justify="center"
@@ -403,8 +413,8 @@ function HabitDetailPage() {
             width={40}
             rounded="$lg"
             fontSize="$6"
-            // dynamic per-habit tint — stays inline
-            style={{ backgroundColor: habitColor + "20" }}
+            // habit identity tint (faint orange)
+            style={{ backgroundColor: habitTrack }}
           >
             <Text fontSize="$6">
               {habit.icon || habit.name.charAt(0).toUpperCase()}
@@ -438,228 +448,138 @@ function HabitDetailPage() {
         gridTemplateColumns={"repeat(2, minmax(0, 1fr))" as never}
         $sm={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" as never }}
       >
-        <StatCard
-          label="Current Streak"
-          value={stats.streak}
-          icon={
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-orange-500"
-            >
-              <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
-            </svg>
-          }
-          suffix=" days"
-        />
-        <StatCard
-          label="Longest Streak"
-          value={stats.longestStreak}
-          suffix=" days"
-        />
-        <StatCard label="Total Completions" value={stats.totalCompletions} />
-        <StatCard
-          label="Completion Rate"
-          value={stats.completionRate}
-          suffix="%"
-        />
-      </View>
-
-      {/* Calendar + Recent Entries — two-column on desktop, stacked on mobile */}
-      <View
-        display="grid"
-        gap="$4"
-        gridTemplateColumns={"1fr" as never}
-        $lg={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" as never }}
-      >
-        {/* Monthly Calendar Heatmap */}
-        <YStack
+        {/* Current streak uses the kit StreakBadge (auto-tiers cold→blazing). */}
+        <Stat
           rounded="$6"
           borderWidth={1}
           borderColor="$borderColor"
           bg="$card"
-          p="$5"
+          p="$4"
         >
-          <XStack items="center" justify="space-between">
-            <View
-              tag="button"
-              rounded="$md"
-              p="$1"
-              color="$mutedForeground"
-              hoverStyle={{ bg: "$accent", color: "$color" }}
-              onPress={() => setCalendarMonth(subMonths(calendarMonth, 1))}
-            >
-              <ChevronLeft size={16} />
-            </View>
-            <H3 fontSize="$3" fontWeight="600" color="$color">
-              {format(calendarMonth, "MMMM yyyy")}
-            </H3>
-            <View
-              tag="button"
-              rounded="$md"
-              p="$1"
-              color="$mutedForeground"
-              hoverStyle={{ bg: "$accent", color: "$color" }}
-              onPress={() => setCalendarMonth(addMonths(calendarMonth, 1))}
-            >
-              <ChevronRight size={16} />
-            </View>
-          </XStack>
+          <Stat.Label color="$mutedForeground">Current Streak</Stat.Label>
+          <View mt="$1.5" items="flex-start">
+            <StreakBadge count={stats.streak} size="$3" label="days" />
+          </View>
+        </Stat>
+        <Stat
+          rounded="$6"
+          borderWidth={1}
+          borderColor="$borderColor"
+          bg="$card"
+          p="$4"
+        >
+          <Stat.Label color="$mutedForeground">Longest Streak</Stat.Label>
+          <Stat.Value color="$color">{stats.longestStreak} days</Stat.Value>
+        </Stat>
+        <Stat
+          rounded="$6"
+          borderWidth={1}
+          borderColor="$borderColor"
+          bg="$card"
+          p="$4"
+        >
+          <Stat.Label color="$mutedForeground">Total Completions</Stat.Label>
+          <Stat.Value color="$color">{stats.totalCompletions}</Stat.Value>
+        </Stat>
+        <Stat
+          rounded="$6"
+          borderWidth={1}
+          borderColor="$borderColor"
+          bg="$card"
+          p="$4"
+        >
+          <Stat.Label color="$mutedForeground">Completion Rate</Stat.Label>
+          <Stat.Value color="$color">{stats.completionRate}%</Stat.Value>
+        </Stat>
+      </View>
 
-          <View
-            mt="$3"
-            display="grid"
-            gap="$1.5"
-            gridTemplateColumns={"repeat(7, minmax(0, 1fr))" as never}
-          >
-            {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
-              <Text
-                key={i}
-                fontSize={10}
-                fontWeight="500"
-                color="$mutedForeground"
-                text="center"
-              >
-                {d}
-              </Text>
-            ))}
-            {/* Offset empty cells */}
-            {Array.from({ length: calendarDays.offset }).map((_, i) => (
-              <View key={`empty-${i}`} />
-            ))}
-            {calendarDays.days.map((day) => {
-              const dateStr = format(day, "yyyy-MM-dd");
-              const monthEntry = monthEntryMap.get(dateStr);
-              const value = monthEntry?.value ?? 0;
-              const isDaySkipped = monthEntry?.type === "skip";
-              const isDayFailed = monthEntry?.type === "fail";
-              const entryObj = monthEntryObjMap.get(dateStr);
-              const effectiveTarget = entryObj
-                ? resolveTargetCount(entryObj, habit)
-                : habit.targetCount;
-              const ratio = effectiveTarget > 0 ? value / effectiveTarget : 0;
-              const isComplete = !isDaySkipped && !isDayFailed && ratio >= 1;
-              const isPartial =
-                !isDaySkipped && !isDayFailed && ratio > 0 && ratio < 1;
-              const isDayToday = dateStr === today;
-              const isFutureDay = isFuture(day) && !isTodayFn(day);
-              const isPastDay = !isFutureDay && !isDayToday;
-              const isSelected = selectedDate === dateStr;
-              const dow = getDay(day);
-              const hasSchedule =
-                habit.scheduledDays && habit.scheduledDays.length > 0;
+      {/* Day editor + Recent Entries. Fixed calendar column + flexible entries
+          column (mirrors the calendar page's sizing), stacked on mobile. */}
+      <View
+        display="grid"
+        gap="$6"
+        gridTemplateColumns={"1fr" as never}
+        $lg={{
+          gridTemplateColumns: "minmax(0, 440px) minmax(0, 1fr)" as never,
+          alignItems: "start" as never,
+        }}
+      >
+        {/* Interactive calendar for picking any day to edit (no card). */}
+        <YStack gap="$3">
+          <H3 fontSize="$3" fontWeight="600" color="$color">
+            Edit a day
+          </H3>
+          {/* Compact 7-wide month calendar (column-constrained like the
+              calendar page; built-in month nav). Days tinted by completion;
+              click one to load it into the panel below. */}
+          <EventCalendar
+            events={[]}
+            variant="month"
+            density="compact"
+            todayIndicator="none"
+            onDateClick={(date) => setSelectedDate(format(date, "yyyy-MM-dd"))}
+            renderDayCell={({ date, isToday }) => {
+              const dateStr = format(date, "yyyy-MM-dd");
+              const d = dayMap.get(dateStr);
+              const isFuture = dateStr > today;
+              const isSelected = dateStr === selectedDate;
+              const dow = date.getDay();
               const isScheduled =
-                !hasSchedule || habit.scheduledDays!.includes(dow);
-              // Auto-fail: a past scheduled day with no entry (and after the
-              // habit was created) reads identically to an explicit fail in
-              // the streak math; render it the same way for consistency.
-              const habitCreated = habit.createdAt?.slice(0, 10);
-              const afterHabitCreation =
-                !habitCreated || dateStr >= habitCreated;
-              const isAutoFailed =
-                !monthEntry && isPastDay && isScheduled && afterHabitCreation;
-              const isAnyFail = isDayFailed || isAutoFailed;
+                !habit.scheduledDays?.length ||
+                habit.scheduledDays.includes(dow);
+              const isSkip = d?.type === "skip";
+              const isFail = d?.type === "fail";
+              const isComplete =
+                !!d && !isSkip && !isFail && d.value >= d.target;
+              const ratio =
+                d && d.target > 0 ? Math.min(d.value / d.target, 1) : 0;
+              const partial = !isComplete && !isSkip && !isFail && ratio > 0;
+
+              // The month reads as the habit's ORANGE rhythm: completed days
+              // fill solid orange (soft glow), partial a faint orange, today an
+              // orange wash. Skipped = dashed; missed / rest stay plain. No
+              // generic blue, no rings.
+              let bgToken: string | undefined;
+              let bgStyle: Record<string, string> | undefined;
+              if (isComplete)
+                bgStyle = {
+                  backgroundColor: habitColor,
+                  boxShadow: "0 0 8px var(--ring-habit-track)",
+                };
+              else if (partial) bgStyle = { backgroundColor: habitTrack };
+              else if (isFail) bgToken = "$destructiveMuted";
+              else if (isToday) bgStyle = { backgroundColor: habitTrack };
+              else if (isSelected) bgToken = "$accent";
 
               return (
-                <XStack key={dateStr} items="center" justify="center">
-                  <XStack
-                    tag="button"
+                <YStack flex={1} items="center" justify="center" py="$1">
+                  <View
+                    width={32}
+                    height={32}
+                    rounded={9999}
                     items="center"
                     justify="center"
-                    height={32}
-                    width={32}
-                    rounded={9999}
-                    fontSize={11}
-                    transition="quick"
-                    disabled={isFutureDay}
-                    opacity={
-                      isFutureDay ? 0.2 : !isScheduled ? 0.25 : undefined
-                    }
-                    cursor={isFutureDay ? "not-allowed" : "pointer"}
-                    // today/selected ring approximated with a 2px border
-                    borderWidth={
-                      (isDayToday && !isSelected) || isSelected || isDaySkipped
-                        ? 2
-                        : undefined
-                    }
-                    borderStyle={isDaySkipped ? "dashed" : undefined}
-                    borderColor={
-                      isSelected
-                        ? "$color"
-                        : isDayToday && !isSelected
-                          ? "$primary"
-                          : isDaySkipped
-                            ? "$mutedForeground"
-                            : undefined
-                    }
-                    scale={isSelected ? 1.1 : undefined}
-                    bg={isAnyFail ? "$destructive" : undefined}
-                    fontWeight={
-                      isComplete || isAnyFail
-                        ? "600"
-                        : isPartial
-                          ? "500"
-                          : undefined
-                    }
-                    color={
-                      isComplete
-                        ? "#ffffff"
-                        : isAnyFail
-                          ? "$destructiveForeground"
-                          : isDaySkipped
-                            ? "$mutedForeground"
-                            : isPartial
-                              ? "$color"
-                              : "$mutedForeground"
-                    }
-                    hoverStyle={!isFutureDay ? { scale: 1.1 } : undefined}
-                    onPress={() =>
-                      !isFutureDay &&
-                      setSelectedDate(isSelected ? null : dateStr)
-                    }
-                    // dynamic per-habit fill — stays inline
-                    style={
-                      isComplete
-                        ? { backgroundColor: habitColor }
-                        : isPartial
-                          ? { backgroundColor: habitColor + "25" }
-                          : undefined
-                    }
-                    title={`${dateStr}: ${isDayFailed ? "Failed" : isDaySkipped ? "Skipped" : isAutoFailed ? "Missed" : `${value}/${effectiveTarget}`}${!isScheduled ? " (rest day)" : ""}${isFutureDay ? " (future)" : ""}`}
+                    opacity={isFuture || (!isScheduled && !d) ? 0.4 : 1}
+                    borderWidth={isSkip ? 1 : 0}
+                    borderStyle="dashed"
+                    borderColor="$mutedForeground"
+                    bg={bgToken as never}
+                    style={bgStyle}
                   >
-                    {isComplete ? (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    ) : isDaySkipped ? (
-                      <Text fontSize={9}>—</Text>
-                    ) : isAnyFail ? (
-                      <Text fontSize={10}>✕</Text>
-                    ) : (
-                      <Text fontSize={11}>{day.getDate()}</Text>
-                    )}
-                  </XStack>
-                </XStack>
+                    <Text
+                      fontSize={12}
+                      fontWeight={
+                        isComplete || isToday || isSelected ? "700" : "500"
+                      }
+                      color={(isComplete ? "#ffffff" : "$color") as never}
+                    >
+                      {date.getDate()}
+                    </Text>
+                  </View>
+                </YStack>
               );
-            })}
-          </View>
+            }}
+          />
 
           {/* Selected date action panel */}
           {selectedDate &&
@@ -677,7 +597,7 @@ function HabitDetailPage() {
                 !selIsFailed &&
                 selEffectiveTarget > 0 &&
                 selValue >= selEffectiveTarget;
-              const selDow = getDay(new Date(selectedDate + "T00:00:00"));
+              const selDow = getDay(parseDateLocal(selectedDate));
               const hasSchedule =
                 habit.scheduledDays && habit.scheduledDays.length > 0;
               const selScheduled =
@@ -687,7 +607,6 @@ function HabitDetailPage() {
 
               return (
                 <XStack
-                  mt="$4"
                   items="center"
                   justify="space-between"
                   rounded="$lg"
@@ -699,10 +618,7 @@ function HabitDetailPage() {
                 >
                   <XStack items="center" gap="$2">
                     <Text fontSize="$1" fontWeight="500" color="$color">
-                      {format(
-                        new Date(selectedDate + "T00:00:00"),
-                        "MMM d, yyyy",
-                      )}
+                      {format(parseDateLocal(selectedDate), "MMM d, yyyy")}
                     </Text>
                     <Text
                       fontSize={10}
@@ -718,50 +634,30 @@ function HabitDetailPage() {
                   </XStack>
                   <XStack items="center" gap="$1.5">
                     {selValue > 0 && !selIsSkipped && !selIsFailed && (
-                      <XStack
-                        tag="button"
-                        items="center"
-                        gap="$1"
-                        rounded="$md"
-                        borderWidth={1}
-                        borderColor="$borderColor"
-                        px="$2"
-                        py="$1"
-                        fontSize="$1"
-                        color="$mutedForeground"
-                        hoverStyle={{ bg: "$accent", color: "$color" }}
-                        disabledStyle={{ opacity: 0.5 }}
+                      <Button
+                        intent="outline"
+                        size="sm"
+                        icon={<Undo2 size={12} />}
                         disabled={isMutating}
                         onPress={() => handleDateUndo(selectedDate)}
                       >
-                        <Undo2 size={12} />
                         Undo
-                      </XStack>
+                      </Button>
                     )}
                     {selIsSkipped || selIsFailed ? (
                       // Recovery: PATCH the entry back to a value=0 completion
                       // so the user can Record again. The Fail button itself
                       // is mobile-only per current scope; this Undo lets a
                       // user fix a mobile-set fail from PWA.
-                      <XStack
-                        tag="button"
-                        items="center"
-                        gap="$1"
-                        rounded="$md"
-                        borderWidth={1}
-                        borderColor="$borderColor"
-                        px="$2"
-                        py="$1"
-                        fontSize="$1"
-                        color="$mutedForeground"
-                        hoverStyle={{ bg: "$accent", color: "$color" }}
-                        disabledStyle={{ opacity: 0.5 }}
+                      <Button
+                        intent="outline"
+                        size="sm"
+                        icon={<Undo2 size={12} />}
                         disabled={isMutating}
                         onPress={() => handleClearNonCompletion(selectedDate)}
                       >
-                        <Undo2 size={12} />
                         Undo {selIsFailed ? "fail" : "skip"}
-                      </XStack>
+                      </Button>
                     ) : null}
                     {selIsFailed ? (
                       <XStack
@@ -775,7 +671,8 @@ function HabitDetailPage() {
                         fontWeight="500"
                         color="$destructive"
                       >
-                        ✕ Failed
+                        <X size={12} />
+                        Failed
                       </XStack>
                     ) : selIsSkipped ? (
                       <XStack
@@ -804,19 +701,7 @@ function HabitDetailPage() {
                         fontWeight="500"
                         color="$success"
                       >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
+                        <Check size={12} />
                         Done
                       </XStack>
                     ) : (
@@ -863,14 +748,8 @@ function HabitDetailPage() {
             })()}
         </YStack>
 
-        {/* Recent Entries */}
-        <YStack
-          rounded="$6"
-          borderWidth={1}
-          borderColor="$borderColor"
-          bg="$card"
-          p="$5"
-        >
+        {/* Recent Entries (no card) */}
+        <YStack>
           <H3 fontSize="$3" fontWeight="600" color="$color">
             Recent Entries
           </H3>
@@ -879,15 +758,7 @@ function HabitDetailPage() {
               No entries yet.
             </Paragraph>
           ) : (
-            <YStack
-              mt="$3"
-              gap="$1.5"
-              overflowY={"auto" as never}
-              maxH={320}
-              pr="$1"
-              // allowlist: thin custom webkit scrollbar (no token equivalent)
-              className="[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-track]:bg-transparent"
-            >
+            <YStack mt="$3" gap="$1.5" overflowY={"auto" as never} maxH={320}>
               {recentEntries.map((entry: HabitEntry) => {
                 const dateStr = entry.date.split("T")[0]!;
                 const entryIsSkip = entry.type === "skip";
@@ -905,24 +776,32 @@ function HabitDetailPage() {
                     py="$2"
                   >
                     <XStack items="center" gap="$2">
-                      <View
-                        height={8}
-                        width={8}
-                        rounded={9999}
-                        // status dot — fail/skip use kit tokens; complete/partial
-                        // keep their semantic green/orange (no kit equivalent)
-                        bg={
-                          entryIsFail
-                            ? "$destructive"
-                            : entryIsSkip
-                              ? "$mutedForeground"
-                              : isComplete
-                                ? "#22c55e"
-                                : "#fb923c"
-                        }
-                      />
+                      {/* Status icon — lucide glyph inherits currentColor from
+                          its wrapper. Fail/skip use semantic tokens; complete
+                          keeps its green hex via the style escape hatch (no kit
+                          token); partial stays a small orange-hex dot. */}
+                      {entryIsFail ? (
+                        <Text color="$destructive">
+                          <X size={14} />
+                        </Text>
+                      ) : entryIsSkip ? (
+                        <Text color="$mutedForeground">
+                          <Minus size={14} />
+                        </Text>
+                      ) : isComplete ? (
+                        <Text style={{ color: "#22c55e" }}>
+                          <Check size={14} />
+                        </Text>
+                      ) : (
+                        <View
+                          height={8}
+                          width={8}
+                          rounded={9999}
+                          style={{ backgroundColor: "#fb923c" }}
+                        />
+                      )}
                       <Text fontSize="$3" color="$color">
-                        {format(new Date(dateStr), "MMM d, yyyy")}
+                        {format(parseDateLocal(dateStr), "MMM d, yyyy")}
                       </Text>
                     </XStack>
                     <XStack items="center" gap="$2">
@@ -1006,39 +885,6 @@ function HabitDetailPage() {
           </AlertDialog.Content>
         </AlertDialog.Portal>
       </AlertDialog>
-    </YStack>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  icon,
-  suffix = "",
-}: {
-  label: string;
-  value: number;
-  icon?: React.ReactNode;
-  suffix?: string;
-}) {
-  return (
-    <YStack
-      rounded="$6"
-      borderWidth={1}
-      borderColor="$borderColor"
-      bg="$card"
-      p="$4"
-    >
-      <Paragraph fontSize="$1" color="$mutedForeground">
-        {label}
-      </Paragraph>
-      <XStack mt="$0.5" items="center" gap="$1.5">
-        {icon}
-        <Text fontSize="$7" fontWeight="700" color="$color">
-          {value}
-          {suffix}
-        </Text>
-      </XStack>
     </YStack>
   );
 }

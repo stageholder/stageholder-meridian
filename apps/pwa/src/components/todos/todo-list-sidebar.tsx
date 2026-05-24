@@ -47,8 +47,10 @@ function NavRow({
   label: string;
   count?: number;
 }) {
+  const rowColor = active ? "$color" : "$mutedForeground";
   return (
     <XStack
+      group
       items="center"
       gap="$2.5"
       rounded="$md"
@@ -56,17 +58,27 @@ function NavRow({
       py="$2"
       transition="quick"
       bg={active ? "$accent" : "transparent"}
-      color={active ? "$color" : "$mutedForeground"}
-      hoverStyle={active ? undefined : { bg: "$accent", color: "$color" }}
+      hoverStyle={active ? undefined : { bg: "$accent" }}
     >
-      <View shrink={0} items="center" justify="center" width={18} height={18}>
+      <Text
+        shrink={0}
+        items="center"
+        justify="center"
+        width={18}
+        height={18}
+        lineHeight={0}
+        color={rowColor}
+        $group-hover={active ? undefined : { color: "$color" }}
+      >
         {icon}
-      </View>
+      </Text>
       <Text
         flex={1}
         fontSize="$3"
         fontWeight={active ? "600" : "500"}
         numberOfLines={1}
+        color={rowColor}
+        $group-hover={active ? undefined : { color: "$color" }}
       >
         {label}
       </Text>
@@ -219,15 +231,7 @@ function ListNavRow({
         onClick={onNavigate}
         style={{ flex: 1, minWidth: 0, textDecoration: "none" }}
       >
-        <XStack
-          items="center"
-          gap="$2.5"
-          px="$2.5"
-          py="$2"
-          minW={0}
-          color={active ? "$color" : "$mutedForeground"}
-          $group-hover={active ? undefined : { color: "$color" }}
-        >
+        <XStack items="center" gap="$2.5" px="$2.5" py="$2" minW={0}>
           <View
             width={10}
             height={10}
@@ -240,6 +244,8 @@ function ListNavRow({
             fontSize="$3"
             fontWeight={active ? "600" : "500"}
             numberOfLines={1}
+            color={active ? "$color" : "$mutedForeground"}
+            $group-hover={active ? undefined : { color: "$color" }}
           >
             {list.name}
           </Text>
@@ -393,6 +399,7 @@ export function TodoListSidebar({ onNavigate }: TodoListSidebarProps = {}) {
             Lists
           </Text>
           <View
+            group
             onPress={() => {
               setShowCreateDialog(true);
               onNavigate?.();
@@ -402,14 +409,19 @@ export function TodoListSidebar({ onNavigate }: TodoListSidebarProps = {}) {
             items="center"
             justify="center"
             rounded="$sm"
-            color="$mutedForeground"
             cursor="pointer"
             transition="quick"
-            hoverStyle={{ bg: "$accent", color: "$color" }}
+            hoverStyle={{ bg: "$accent" }}
             aria-label="Create list"
             role="button"
           >
-            <Plus size={15} />
+            <Text
+              lineHeight={0}
+              color="$mutedForeground"
+              $group-hover={{ color: "$color" }}
+            >
+              <Plus size={15} />
+            </Text>
           </View>
         </XStack>
 

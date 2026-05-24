@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { Text, View, XStack, YStack } from "@stageholder/ui";
+import { Progress, Text, XStack, YStack } from "@stageholder/ui";
 import { useHabits } from "@/lib/api/habits";
 import { useCalendarData } from "@/lib/api/calendar";
 import { BentoCard } from "./bento-card";
@@ -169,20 +169,17 @@ export function HabitSummary({
                     {value}/{target}
                   </Text>
                 </XStack>
-                <View height={6} width="100%" rounded={9999} bg="$muted">
-                  <View
-                    height="100%"
-                    rounded={9999}
+                <Progress value={pct} height={6} bg="$muted" rounded={9999}>
+                  <Progress.Indicator
                     transition="medium"
                     bg={isComplete ? "$success" : undefined}
-                    style={{
-                      width: `${pct}%`,
-                      ...(isComplete
+                    style={
+                      isComplete
                         ? undefined
-                        : { backgroundColor: PROGRESS_ORANGE }),
-                    }}
+                        : { backgroundColor: PROGRESS_ORANGE }
+                    }
                   />
-                </View>
+                </Progress>
               </YStack>
             );
           })

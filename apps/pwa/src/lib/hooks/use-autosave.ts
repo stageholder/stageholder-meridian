@@ -1,11 +1,14 @@
 import { useRef, useEffect, useCallback, useState } from "react";
 import { useCreateJournal, useUpdateJournal } from "@/lib/api/journals";
+import type { JournalContent } from "@repo/core/types";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 interface AutosaveData {
   title: string;
-  content: string;
+  // Legacy entries are HTML strings, new ones are TipTap JSON objects — the
+  // editor emits JournalContent (string | object); store/forward as-is.
+  content: JournalContent;
   mood?: number;
   tags: string[];
   date: string;

@@ -33,7 +33,8 @@ export function EmojiPicker({
     <Popover open={open} onOpenChange={setOpen} placement="bottom-start">
       <Popover.Trigger asChild>
         <View
-          tag="button"
+          {...({ role: "button", "aria-label": placeholder } as object)}
+          cursor="pointer"
           height={40}
           width={40}
           shrink={0}

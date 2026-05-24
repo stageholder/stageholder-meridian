@@ -347,9 +347,13 @@ function BillingSuccessPage() {
           className="border-border/70 bg-card/80 backdrop-blur-sm"
         >
           <XStack items="center" gap="$2">
-            <View color={sparkColor ?? "$mutedForeground"}>
+            <Text
+              lineHeight={0}
+              color={sparkColor ? undefined : "$mutedForeground"}
+              style={sparkColor ? { color: sparkColor } : undefined}
+            >
               <Sparkles size={16} />
-            </View>
+            </Text>
             {/* allowlist: editorial mono kicker — letter-spacing + foreground tint (no token equivalent) */}
             <Paragraph className="font-mono text-[11px] uppercase tracking-[0.32em] text-foreground/55">
               {kicker}
@@ -384,13 +388,12 @@ function BillingSuccessPage() {
                   bg="$color"
                   pl="$5"
                   pr="$1.5"
-                  fontSize="$3"
-                  fontWeight="500"
-                  color="$background"
                   transition="quick"
                   hoverStyle={{ opacity: 0.9 }}
                 >
-                  View billing
+                  <Text fontSize="$3" fontWeight="500" color="$background">
+                    View billing
+                  </Text>
                   <View
                     items="center"
                     justify="center"
@@ -413,53 +416,58 @@ function BillingSuccessPage() {
                   borderWidth={1}
                   bg="$background"
                   px="$5"
-                  fontSize="$3"
-                  fontWeight="500"
-                  color="$color"
                   transition="quick"
                   className="border-foreground/80"
-                  hoverStyle={{ bg: "$color", color: "$background" }}
+                  hoverStyle={{ bg: "$color" }}
                 >
-                  Back to dashboard
+                  <Text fontSize="$3" fontWeight="500" color="$color">
+                    Back to dashboard
+                  </Text>
                 </XStack>
               </Link>
             )}
             {phase === "pending" && (
               <XStack
-                tag="button"
+                {...({
+                  role: "button",
+                  "aria-label": "Sign out and back in",
+                } as object)}
+                cursor="pointer"
                 height={48}
                 items="center"
                 rounded={9999}
                 borderWidth={1}
                 bg="$background"
                 px="$5"
-                fontSize="$3"
-                fontWeight="500"
-                color="$color"
                 transition="quick"
                 className="border-foreground/80"
-                hoverStyle={{ bg: "$color", color: "$background" }}
+                hoverStyle={{ bg: "$color" }}
                 onPress={() => void handleSignOutAndReauth()}
               >
-                Sign out & back in
+                <Text fontSize="$3" fontWeight="500" color="$color">
+                  Sign out & back in
+                </Text>
               </XStack>
             )}
             {phase === "session_expired" && (
               <XStack
-                tag="button"
+                {...({
+                  role: "button",
+                  "aria-label": "Sign in again",
+                } as object)}
+                cursor="pointer"
                 height={48}
                 items="center"
                 rounded={9999}
                 bg="$color"
                 px="$5"
-                fontSize="$3"
-                fontWeight="500"
-                color="$background"
                 transition="quick"
                 hoverStyle={{ opacity: 0.9 }}
                 onPress={() => void handleSignOutAndReauth()}
               >
-                Sign in again
+                <Text fontSize="$3" fontWeight="500" color="$background">
+                  Sign in again
+                </Text>
               </XStack>
             )}
             {phase === "checkout_failed" && (
@@ -473,13 +481,12 @@ function BillingSuccessPage() {
                   rounded={9999}
                   bg="$color"
                   px="$5"
-                  fontSize="$3"
-                  fontWeight="500"
-                  color="$background"
                   transition="quick"
                   hoverStyle={{ opacity: 0.9 }}
                 >
-                  Try again
+                  <Text fontSize="$3" fontWeight="500" color="$background">
+                    Try again
+                  </Text>
                 </XStack>
               </Link>
             )}

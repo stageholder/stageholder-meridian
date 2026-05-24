@@ -61,19 +61,13 @@ function HabitsPage() {
           isDateDisabled={(d) => d > new Date()}
         />
         {!isViewingToday && (
-          <Text
-            tag="button"
-            rounded="$md"
-            px="$3"
-            py="$1.5"
-            fontSize="$1"
-            fontWeight="500"
-            color="$primary"
-            hoverStyle={{ bg: "$primaryMuted" }}
+          <Button
+            intent="ghost"
+            size="sm"
             onPress={() => setSelectedDate(todayStr)}
           >
             Back to today
-          </Text>
+          </Button>
         )}
         {!isViewingToday && (
           <Text fontSize="$1" color="$mutedForeground">
