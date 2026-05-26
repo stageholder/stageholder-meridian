@@ -14,7 +14,11 @@ import {
 } from "@/lib/api/habits";
 import { toast } from "sonner";
 import type { Habit, HabitEntry } from "@repo/core/types";
-import { resolveTargetCount } from "@/lib/habits/entry-resolution";
+import {
+  resolveTargetCount,
+  calculateWeeklyStreak,
+  weeklyCompletions,
+} from "@/lib/habits/entry-resolution";
 import {
   AlertDialog,
   Button,
@@ -54,6 +58,8 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
   const [bouncing, setBouncing] = useState(false);
   const [completing, setCompleting] = useState(false);
 
+  const isQuota = habit.frequency === "weekly_target";
+
   const activeDateEntry = entries?.find(
     (e: HabitEntry) => e.date.split("T")[0] === activeDate,
   );
@@ -68,11 +74,39 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
     ? new Date(selectedDate + "T00:00:00")
     : new Date();
   const activeDow = activeDateObj.getDay();
+  // Quota habits are loggable on ANY day, so treat them as always scheduled.
   const isScheduledOnActiveDate =
+    isQuota ||
     !habit.scheduledDays ||
     habit.scheduledDays.length === 0 ||
     habit.scheduledDays.includes(activeDow);
-  const streak = calculateStreak(entries || [], habit);
+
+  // Aggregate entries per day for the weekly-quota streak / progress.
+  const entryMap = new Map<
+    string,
+    { value: number; type?: string; targetCountSnapshot?: number }
+  >();
+  for (const e of entries || []) {
+    const dateStr = e.date.split("T")[0]!;
+    const existing = entryMap.get(dateStr);
+    entryMap.set(dateStr, {
+      value: (existing?.value ?? 0) + e.value,
+      type: e.type || existing?.type || "completion",
+      targetCountSnapshot:
+        existing?.targetCountSnapshot ?? e.targetCountSnapshot,
+    });
+  }
+
+  const streak = isQuota
+    ? calculateWeeklyStreak(entryMap, habit)
+    : calculateStreak(entries || [], habit);
+  const weeklyProgress = isQuota
+    ? weeklyCompletions(
+        entryMap,
+        startOfWeek(new Date(), { weekStartsOn: 1 }),
+        habit,
+      )
+    : 0;
 
   // Week dots data
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
@@ -83,7 +117,9 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
       (e: HabitEntry) => e.date.split("T")[0] === dateStr,
     );
     const dow = date.getDay();
+    // Quota habits have no rest days — every day is schedulable/loggable.
     const isScheduled =
+      isQuota ||
       !habit.scheduledDays ||
       habit.scheduledDays.length === 0 ||
       habit.scheduledDays.includes(dow);
@@ -345,9 +381,12 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
             const complete = !isDaySkipped && !isDayFailed && ratio >= 1;
             // Auto-fail only days with NO entry (truly missed). A cleared day
             // (value-0 completion entry) stays neutral, so "undo fail" works.
+            // Quota habits NEVER auto-fail — a missed day just isn't a
+            // completion toward the weekly target.
             const failed =
-              isDayFailed ||
-              (day.isScheduled && isPast && day.type === undefined);
+              !isQuota &&
+              (isDayFailed ||
+                (day.isScheduled && isPast && day.type === undefined));
             const partial = !isDaySkipped && !failed && ratio > 0 && ratio < 1;
             return (
               <YStack key={day.dateStr} items="center" gap="$1.5">
@@ -405,133 +444,191 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
 
         {/* Action row — primary (Check In) or status on the left,
             representative icon actions on the right. */}
-        <XStack items="center" justify="space-between" gap="$2">
-          {isComplete ? (
-            <XStack
-              items="center"
-              gap="$1.5"
-              rounded="$md"
-              px="$2.5"
-              py="$1.5"
-              bg="$successMuted"
-              transition="quick"
-              scale={bouncing ? 1.1 : 1}
-            >
-              <Text color="$success" lineHeight={0}>
-                <Check size={14} />
-              </Text>
-              <Text fontSize="$1" fontWeight="600" color="$success">
-                Complete
-              </Text>
-            </XStack>
-          ) : isSkipped ? (
-            <XStack
-              items="center"
-              gap="$1.5"
-              rounded="$md"
-              px="$2.5"
-              py="$1.5"
-              bg="$muted"
-            >
-              <Text color="$mutedForeground" lineHeight={0}>
-                <SkipForward size={12} />
-              </Text>
-              <Text fontSize="$1" fontWeight="600" color="$mutedForeground">
-                Skipped
-              </Text>
-            </XStack>
-          ) : isFailed ? (
-            <XStack
-              items="center"
-              gap="$1.5"
-              rounded="$md"
-              px="$2.5"
-              py="$1.5"
-              bg="$destructiveMuted"
-            >
-              <Text color="$destructive" lineHeight={0}>
-                <X size={12} />
-              </Text>
-              <Text fontSize="$1" fontWeight="600" color="$destructive">
-                Failed
-              </Text>
-            </XStack>
-          ) : !isScheduledOnActiveDate ? (
-            <Text fontSize="$1" fontWeight="500" color="$mutedForeground">
-              Rest day
-            </Text>
-          ) : (
-            <Button
-              size="sm"
-              icon={<Check size={14} />}
-              onPress={handleCheckIn}
-              disabled={isPending}
-              loading={isPending}
-              loadingText="Checking…"
-              transition="quick"
-              scale={bouncing ? 1.1 : 1}
-            >
-              {activeDateValue > 0
-                ? `${activeDateValue}/${activeTargetCount}`
-                : "Check In"}
-            </Button>
-          )}
+        {isQuota ? (
+          /* Quota footer: log-only. LEFT = "Logged" badge when today is done,
+             else the Check In button. RIGHT = "{progress}/{target} this week"
+             + an Undo when today is logged. No Skip / Fail for quota. */
+          <XStack items="center" justify="space-between" gap="$2">
+            {isComplete ? (
+              <XStack
+                items="center"
+                gap="$1.5"
+                rounded="$md"
+                px="$2.5"
+                py="$1.5"
+                bg="$successMuted"
+                transition="quick"
+                scale={bouncing ? 1.1 : 1}
+              >
+                <Text color="$success" lineHeight={0}>
+                  <Check size={14} />
+                </Text>
+                <Text fontSize="$1" fontWeight="600" color="$success">
+                  Logged
+                </Text>
+              </XStack>
+            ) : (
+              <Button
+                size="sm"
+                icon={<Check size={14} />}
+                onPress={handleCheckIn}
+                disabled={isPending}
+                loading={isPending}
+                loadingText="Logging…"
+                transition="quick"
+                scale={bouncing ? 1.1 : 1}
+              >
+                Check In
+              </Button>
+            )}
 
-          <XStack items="center" gap="$1.5">
-            {(isSkipped || isFailed) && (
-              <IconButton
-                variant="outline"
-                size="sm"
-                onPress={handleClearStatus}
-                disabled={isPending}
-                title="Undo"
-                aria-label="Undo"
-              >
-                <Undo2 size={14} />
-              </IconButton>
-            )}
-            {activeDateValue > 0 && !isSkipped && !isFailed && (
-              <IconButton
-                variant="outline"
-                size="sm"
-                onPress={handleUndo}
-                disabled={isPending}
-                title="Undo last check-in"
-                aria-label="Undo last check-in"
-              >
-                <Undo2 size={14} />
-              </IconButton>
-            )}
-            {activeDateValue === 0 &&
-              !isSkipped &&
-              !isFailed &&
-              isScheduledOnActiveDate && (
-                <>
-                  <IconButton
-                    variant="outline"
-                    size="sm"
-                    onPress={handleSkip}
-                    disabled={isPending}
-                    title="Skip"
-                    aria-label="Skip"
-                  >
-                    <SkipForward size={14} />
-                  </IconButton>
-                  <IconButton
-                    variant="outline"
-                    intent="danger"
-                    size="sm"
-                    onPress={handleFail}
-                    disabled={isPending}
-                    title="Mark failed — resets the streak"
-                    aria-label="Mark failed"
-                  >
-                    <X size={14} />
-                  </IconButton>
-                </>
+            <XStack items="center" gap="$1.5">
+              <Text fontSize="$1" fontWeight="500" color="$mutedForeground">
+                {weeklyProgress}/{habit.weeklyTarget} this week
+              </Text>
+              {isComplete && (
+                <IconButton
+                  variant="outline"
+                  size="sm"
+                  onPress={handleUndo}
+                  disabled={isPending}
+                  title="Undo today's log"
+                  aria-label="Undo today's log"
+                >
+                  <Undo2 size={14} />
+                </IconButton>
               )}
+            </XStack>
           </XStack>
-        </XStack>
+        ) : (
+          <XStack items="center" justify="space-between" gap="$2">
+            {isComplete ? (
+              <XStack
+                items="center"
+                gap="$1.5"
+                rounded="$md"
+                px="$2.5"
+                py="$1.5"
+                bg="$successMuted"
+                transition="quick"
+                scale={bouncing ? 1.1 : 1}
+              >
+                <Text color="$success" lineHeight={0}>
+                  <Check size={14} />
+                </Text>
+                <Text fontSize="$1" fontWeight="600" color="$success">
+                  Complete
+                </Text>
+              </XStack>
+            ) : isSkipped ? (
+              <XStack
+                items="center"
+                gap="$1.5"
+                rounded="$md"
+                px="$2.5"
+                py="$1.5"
+                bg="$muted"
+              >
+                <Text color="$mutedForeground" lineHeight={0}>
+                  <SkipForward size={12} />
+                </Text>
+                <Text fontSize="$1" fontWeight="600" color="$mutedForeground">
+                  Skipped
+                </Text>
+              </XStack>
+            ) : isFailed ? (
+              <XStack
+                items="center"
+                gap="$1.5"
+                rounded="$md"
+                px="$2.5"
+                py="$1.5"
+                bg="$destructiveMuted"
+              >
+                <Text color="$destructive" lineHeight={0}>
+                  <X size={12} />
+                </Text>
+                <Text fontSize="$1" fontWeight="600" color="$destructive">
+                  Failed
+                </Text>
+              </XStack>
+            ) : !isScheduledOnActiveDate ? (
+              <Text fontSize="$1" fontWeight="500" color="$mutedForeground">
+                Rest day
+              </Text>
+            ) : (
+              <Button
+                size="sm"
+                icon={<Check size={14} />}
+                onPress={handleCheckIn}
+                disabled={isPending}
+                loading={isPending}
+                loadingText="Checking…"
+                transition="quick"
+                scale={bouncing ? 1.1 : 1}
+              >
+                {activeDateValue > 0
+                  ? `${activeDateValue}/${activeTargetCount}`
+                  : "Check In"}
+              </Button>
+            )}
+
+            <XStack items="center" gap="$1.5">
+              {(isSkipped || isFailed) && (
+                <IconButton
+                  variant="outline"
+                  size="sm"
+                  onPress={handleClearStatus}
+                  disabled={isPending}
+                  title="Undo"
+                  aria-label="Undo"
+                >
+                  <Undo2 size={14} />
+                </IconButton>
+              )}
+              {activeDateValue > 0 && !isSkipped && !isFailed && (
+                <IconButton
+                  variant="outline"
+                  size="sm"
+                  onPress={handleUndo}
+                  disabled={isPending}
+                  title="Undo last check-in"
+                  aria-label="Undo last check-in"
+                >
+                  <Undo2 size={14} />
+                </IconButton>
+              )}
+              {activeDateValue === 0 &&
+                !isSkipped &&
+                !isFailed &&
+                isScheduledOnActiveDate && (
+                  <>
+                    <IconButton
+                      variant="outline"
+                      size="sm"
+                      onPress={handleSkip}
+                      disabled={isPending}
+                      title="Skip"
+                      aria-label="Skip"
+                    >
+                      <SkipForward size={14} />
+                    </IconButton>
+                    <IconButton
+                      variant="outline"
+                      intent="danger"
+                      size="sm"
+                      onPress={handleFail}
+                      disabled={isPending}
+                      title="Mark failed — resets the streak"
+                      aria-label="Mark failed"
+                    >
+                      <X size={14} />
+                    </IconButton>
+                  </>
+                )}
+            </XStack>
+          </XStack>
+        )}
       </View>
 
       <EditHabitSheet

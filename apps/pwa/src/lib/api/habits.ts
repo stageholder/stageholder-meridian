@@ -62,6 +62,7 @@ export function useCreateHabit() {
       frequency?: string;
       targetCount?: number;
       scheduledDays?: number[];
+      weeklyTarget?: number;
       unit?: string;
       color?: string;
       icon?: string;
@@ -91,6 +92,7 @@ export function useUpdateHabit() {
         frequency?: string;
         targetCount?: number;
         scheduledDays?: number[] | null;
+        weeklyTarget?: number;
         unit?: string;
         color?: string;
         icon?: string;

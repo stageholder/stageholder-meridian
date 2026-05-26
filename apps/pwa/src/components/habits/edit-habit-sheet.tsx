@@ -7,6 +7,7 @@ import {
   Dialog,
   Input,
   Label,
+  NumberInput,
   Select,
   Text,
   TextArea,
@@ -60,6 +61,7 @@ export function EditHabitSheet({
   const [scheduledDays, setScheduledDays] = useState<number[]>(
     habit.scheduledDays || [],
   );
+  const [weeklyTarget, setWeeklyTarget] = useState(habit.weeklyTarget ?? 2);
   const updateHabit = useUpdateHabit();
 
   useEffect(() => {
@@ -69,6 +71,7 @@ export function EditHabitSheet({
       setFrequency(habit.frequency);
       setTargetCount(habit.targetCount);
       setScheduledDays(habit.scheduledDays || []);
+      setWeeklyTarget(habit.weeklyTarget ?? 2);
       setUnit(habit.unit || "");
       setColor(habit.color || "#3b82f6");
       setIcon(habit.icon || "");
@@ -87,7 +90,12 @@ export function EditHabitSheet({
           description: description.trim() || undefined,
           frequency,
           targetCount,
-          scheduledDays: scheduledDays.length > 0 ? scheduledDays : null,
+          scheduledDays:
+            frequency === "weekly" && scheduledDays.length > 0
+              ? scheduledDays
+              : null,
+          weeklyTarget:
+            frequency === "weekly_target" ? weeklyTarget : undefined,
           unit: unit.trim() || undefined,
           color,
           icon: icon || undefined,
@@ -176,18 +184,25 @@ export function EditHabitSheet({
                     value={frequency}
                     onValueChange={(value) => {
                       setFrequency(value as Habit["frequency"]);
-                      if (value === "daily") setScheduledDays([]);
+                      if (value !== "weekly") setScheduledDays([]);
                     }}
                   >
                     <Select.Trigger mt="$1" width="100%" />
                     <Select.Content>
                       <Select.Item value="daily">Daily</Select.Item>
                       <Select.Item value="weekly">Specific days</Select.Item>
+                      <Select.Item value="weekly_target">
+                        Times per week
+                      </Select.Item>
                     </Select.Content>
                   </Select>
                 </YStack>
-                <YStack width={96}>
-                  <Label htmlFor="edit-habit-target">Target</Label>
+                <YStack width={120}>
+                  <Label htmlFor="edit-habit-target">
+                    {frequency === "weekly_target"
+                      ? "Per session"
+                      : "Times per day"}
+                  </Label>
                   <Input
                     id="edit-habit-target"
                     mt="$1"
@@ -227,10 +242,31 @@ export function EditHabitSheet({
                         value={String(day.value)}
                         aria-label={day.label}
                       >
-                        {day.label}
+                        <Text>{day.label}</Text>
                       </ToggleGroup.Item>
                     ))}
                   </ToggleGroup>
+                </YStack>
+              )}
+
+              {frequency === "weekly_target" && (
+                <YStack>
+                  <Label>Times per week</Label>
+                  <Text mt="$0.5" fontSize="$1" color="$mutedForeground">
+                    Do it this many times a week, on any days.
+                  </Text>
+                  <XStack mt="$2" items="center" gap="$2">
+                    <NumberInput
+                      value={weeklyTarget}
+                      onChange={setWeeklyTarget}
+                      min={1}
+                      max={7}
+                      step={1}
+                    />
+                    <Text fontSize="$3" color="$mutedForeground">
+                      × / week
+                    </Text>
+                  </XStack>
                 </YStack>
               )}
 

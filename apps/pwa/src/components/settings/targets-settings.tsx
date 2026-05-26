@@ -95,7 +95,9 @@ export function TargetsSettings() {
                 value={String(preset.value)}
                 aria-label={`${preset.label} (${preset.value})`}
               >
-                {preset.label} ({preset.value})
+                <Text>
+                  {preset.label} ({preset.value})
+                </Text>
               </ToggleGroup.Item>
             ))}
           </ToggleGroup>

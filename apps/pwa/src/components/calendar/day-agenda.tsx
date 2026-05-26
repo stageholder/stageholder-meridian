@@ -31,10 +31,14 @@ const priorityConfig = {
   none: { label: "", bg: "$muted", color: "$mutedForeground" },
 } as const;
 
+// Quota (`weekly_target`) habits aren't day-scheduled, so they're excluded
+// from the per-day habit-ring denominator.
 function countScheduledHabits(habits: Habit[], date: Date): number {
   const dow = date.getDay();
   return habits.filter(
-    (h) => !h.scheduledDays?.length || h.scheduledDays.includes(dow),
+    (h) =>
+      h.frequency !== "weekly_target" &&
+      (!h.scheduledDays?.length || h.scheduledDays.includes(dow)),
   ).length;
 }
 
@@ -115,7 +119,16 @@ export function DayAgenda({ date, dayData, habits }: DayAgendaProps) {
         <XStack items="center" gap="$3">
           <ActivityRings
             rings={activityRingsConfig(
-              computeActivityRings(dayData, countScheduledHabits(habits, date)),
+              computeActivityRings(
+                dayData,
+                countScheduledHabits(habits, date),
+                undefined,
+                new Set(
+                  habits
+                    .filter((h) => h.frequency === "weekly_target")
+                    .map((h) => h.id),
+                ),
+              ),
             )}
             size={48}
             thickness={5}

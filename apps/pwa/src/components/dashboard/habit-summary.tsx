@@ -51,6 +51,12 @@ export function HabitSummary({
 
   const isLoading = habitsLoading || calendarLoading;
 
+  // Quota (`weekly_target`) habits aren't due on any specific day — they're
+  // tracked weekly on /habits — so they're excluded from this daily summary.
+  const dayHabits = (habits ?? []).filter(
+    (h) => h.frequency !== "weekly_target",
+  );
+
   return (
     <BentoCard
       title="Habits Today"
@@ -74,8 +80,16 @@ export function HabitSummary({
           <Text fontSize="$1" color="$mutedForeground">
             Loading...
           </Text>
-        ) : habits && habits.length > 0 ? (
-          habits.slice(0, 5).map((habit: Habit) => {
+        ) : !habits || habits.length === 0 ? (
+          <Text fontSize="$1" color="$mutedForeground">
+            No habits to track yet.
+          </Text>
+        ) : dayHabits.length === 0 ? (
+          <Text fontSize="$1" color="$mutedForeground">
+            Nothing scheduled for today.
+          </Text>
+        ) : (
+          dayHabits.slice(0, 5).map((habit: Habit) => {
             const todayDow = new Date().getDay();
             const isScheduledToday =
               !habit.scheduledDays ||
@@ -183,10 +197,6 @@ export function HabitSummary({
               </YStack>
             );
           })
-        ) : (
-          <Text fontSize="$1" color="$mutedForeground">
-            No habits to track yet.
-          </Text>
         )}
       </YStack>
     </BentoCard>

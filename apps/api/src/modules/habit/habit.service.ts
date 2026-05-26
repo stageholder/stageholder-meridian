@@ -29,6 +29,7 @@ export class HabitService {
       frequency: dto.frequency || "daily",
       targetCount: dto.targetCount,
       scheduledDays: dto.scheduledDays,
+      weeklyTarget: dto.weeklyTarget,
       unit: dto.unit,
       color: dto.color,
       icon: dto.icon,
@@ -88,6 +89,8 @@ export class HabitService {
     if (dto.targetCount !== undefined) habit.updateTargetCount(dto.targetCount);
     if (dto.scheduledDays !== undefined)
       habit.updateScheduledDays(dto.scheduledDays ?? undefined);
+    if (dto.weeklyTarget !== undefined)
+      habit.updateWeeklyTarget(dto.weeklyTarget ?? undefined);
     if (dto.unit !== undefined) habit.updateUnit(dto.unit);
     if (dto.color !== undefined) habit.updateColor(dto.color);
     if (dto.icon !== undefined) habit.updateIcon(dto.icon);

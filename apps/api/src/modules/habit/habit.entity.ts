@@ -1,6 +1,6 @@
 import { Entity, EntityProps, Ok, Err, Result } from "../../shared";
 
-export type HabitFrequency = "daily" | "weekly" | "custom";
+export type HabitFrequency = "daily" | "weekly" | "weekly_target" | "custom";
 
 export interface HabitProps extends EntityProps {
   name: string;
@@ -8,6 +8,7 @@ export interface HabitProps extends EntityProps {
   frequency: HabitFrequency;
   targetCount: number;
   scheduledDays?: number[];
+  weeklyTarget?: number;
   unit?: string;
   color?: string;
   icon?: string;
@@ -33,6 +34,9 @@ export class Habit extends Entity<HabitProps> {
   }
   get scheduledDays(): number[] | undefined {
     return this.get("scheduledDays");
+  }
+  get weeklyTarget(): number | undefined {
+    return this.get("weeklyTarget");
   }
   get unit(): string | undefined {
     return this.get("unit");
@@ -61,6 +65,9 @@ export class Habit extends Entity<HabitProps> {
   }
   updateScheduledDays(scheduledDays: number[] | undefined): void {
     this.set("scheduledDays", scheduledDays);
+  }
+  updateWeeklyTarget(weeklyTarget: number | undefined): void {
+    this.set("weeklyTarget", weeklyTarget);
   }
   updateUnit(unit: string | undefined): void {
     this.set("unit", unit);

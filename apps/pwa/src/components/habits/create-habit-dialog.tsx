@@ -6,6 +6,7 @@ import {
   Dialog,
   Input,
   Label,
+  NumberInput,
   Select,
   Text,
   TextArea,
@@ -55,6 +56,7 @@ export function CreateHabitDialog({
   const [color, setColor] = useState("#3b82f6");
   const [icon, setIcon] = useState("🎯");
   const [scheduledDays, setScheduledDays] = useState<number[]>([]);
+  const [weeklyTarget, setWeeklyTarget] = useState(2);
   const createHabit = useCreateHabit();
 
   function resetForm() {
@@ -66,6 +68,7 @@ export function CreateHabitDialog({
     setColor("#3b82f6");
     setIcon("🎯");
     setScheduledDays([]);
+    setWeeklyTarget(2);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -78,7 +81,11 @@ export function CreateHabitDialog({
         description: description.trim() || undefined,
         frequency,
         targetCount,
-        scheduledDays: scheduledDays.length > 0 ? scheduledDays : undefined,
+        scheduledDays:
+          frequency === "weekly" && scheduledDays.length > 0
+            ? scheduledDays
+            : undefined,
+        weeklyTarget: frequency === "weekly_target" ? weeklyTarget : undefined,
         unit: unit.trim() || undefined,
         color,
         icon: icon || undefined,
@@ -174,18 +181,25 @@ export function CreateHabitDialog({
                     value={frequency}
                     onValueChange={(value) => {
                       setFrequency(value);
-                      if (value === "daily") setScheduledDays([]);
+                      if (value !== "weekly") setScheduledDays([]);
                     }}
                   >
                     <Select.Trigger mt="$1" width="100%" />
                     <Select.Content>
                       <Select.Item value="daily">Daily</Select.Item>
                       <Select.Item value="weekly">Specific days</Select.Item>
+                      <Select.Item value="weekly_target">
+                        Times per week
+                      </Select.Item>
                     </Select.Content>
                   </Select>
                 </YStack>
-                <YStack width={96}>
-                  <Label htmlFor="habit-target">Target</Label>
+                <YStack width={120}>
+                  <Label htmlFor="habit-target">
+                    {frequency === "weekly_target"
+                      ? "Per session"
+                      : "Times per day"}
+                  </Label>
                   <Input
                     id="habit-target"
                     mt="$1"
@@ -225,10 +239,31 @@ export function CreateHabitDialog({
                         value={String(day.value)}
                         aria-label={day.label}
                       >
-                        {day.label}
+                        <Text>{day.label}</Text>
                       </ToggleGroup.Item>
                     ))}
                   </ToggleGroup>
+                </YStack>
+              )}
+
+              {frequency === "weekly_target" && (
+                <YStack>
+                  <Label>Times per week</Label>
+                  <Text mt="$0.5" fontSize="$1" color="$mutedForeground">
+                    Do it this many times a week, on any days.
+                  </Text>
+                  <XStack mt="$2" items="center" gap="$2">
+                    <NumberInput
+                      value={weeklyTarget}
+                      onChange={setWeeklyTarget}
+                      min={1}
+                      max={7}
+                      step={1}
+                    />
+                    <Text fontSize="$3" color="$mutedForeground">
+                      × / week
+                    </Text>
+                  </XStack>
                 </YStack>
               )}
 

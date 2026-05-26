@@ -67,16 +67,21 @@ export function computeActivityRings(
   dayData: CalendarDayData | undefined,
   scheduledHabitCount: number,
   targets: Targets = DEFAULT_TARGETS,
+  quotaIds: Set<string> = new Set(),
 ): ActivityRingsData {
   if (!dayData) return { todo: 0, habit: 0, journal: 0 };
 
   const todoDone = dayData.todos.filter((t) => t.status === "done").length;
   const todoPct = Math.min(100, (todoDone / targets.todoDaily) * 100);
 
-  const habitDone = dayData.habitEntries.filter((e) => e.value > 0).length;
-  const habitSkipped = dayData.habitEntries.filter(
-    (e) => e.type === "skip",
-  ).length;
+  // `weekly_target` (quota) habits aren't day-scheduled, so their entries must
+  // not feed the daily habit ring numerator (the denominator already excludes
+  // them via countScheduledHabitsForDate).
+  const dayHabitEntries = dayData.habitEntries.filter(
+    (e) => !quotaIds.has(e.habitId),
+  );
+  const habitDone = dayHabitEntries.filter((e) => e.value > 0).length;
+  const habitSkipped = dayHabitEntries.filter((e) => e.type === "skip").length;
   const habitPct =
     scheduledHabitCount === 0
       ? 0
@@ -112,6 +117,15 @@ export function useActivityRings(date: string) {
     () => countScheduledHabitsForDate(habits, date),
     [habits, date],
   );
+  const quotaIds = useMemo(
+    () =>
+      new Set(
+        (habits ?? [])
+          .filter((h) => h.frequency === "weekly_target")
+          .map((h) => h.id),
+      ),
+    [habits],
+  );
   const dayData = calendarData?.[date];
 
   const targets: Targets = useMemo(
@@ -124,16 +138,19 @@ export function useActivityRings(date: string) {
   );
 
   const data = useMemo(
-    () => computeActivityRings(dayData, scheduledHabitCount, targets),
-    [dayData, scheduledHabitCount, targets],
+    () => computeActivityRings(dayData, scheduledHabitCount, targets, quotaIds),
+    [dayData, scheduledHabitCount, targets, quotaIds],
   );
 
   const details = useMemo(() => {
     const todoDone =
       dayData?.todos.filter((t) => t.status === "done").length ?? 0;
+    // Exclude quota-habit entries from the daily habit numerator too.
+    const dayHabitEntries =
+      dayData?.habitEntries.filter((e) => !quotaIds.has(e.habitId)) ?? [];
     const habitDone =
-      (dayData?.habitEntries.filter((e) => e.value > 0).length ?? 0) +
-      (dayData?.habitEntries.filter((e) => e.type === "skip").length ?? 0);
+      dayHabitEntries.filter((e) => e.value > 0).length +
+      dayHabitEntries.filter((e) => e.type === "skip").length;
     const journalWords =
       dayData?.journals.reduce((sum, j) => sum + (j.wordCount ?? 0), 0) ?? 0;
     const hasJournal = (dayData?.journals.length ?? 0) > 0;
@@ -146,7 +163,7 @@ export function useActivityRings(date: string) {
       journalWords,
       journalTarget: targets.journalDailyWords,
     };
-  }, [dayData, scheduledHabitCount, targets]);
+  }, [dayData, scheduledHabitCount, targets, quotaIds]);
 
   // Only show loading on first fetch, not on background refetches
   const isInitialLoading =

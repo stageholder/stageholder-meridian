@@ -1,3 +1,4 @@
+import { addDays, format, startOfWeek, subWeeks } from "date-fns";
 import type { Habit, HabitEntry } from "@repo/core/types";
 
 /**
@@ -39,6 +40,9 @@ export function entryCompletionRatio(
  * Counts how many habits from the provided list were both:
  * 1. Created on or before the given date (so new habits don't inflate past rings)
  * 2. Scheduled on that day of week
+ *
+ * `weekly_target` (quota) habits are NOT day-scheduled — they're tracked weekly
+ * — so they're excluded from the per-day denominator entirely.
  */
 export function countScheduledHabitsForDate(
   habits: Habit[] | undefined,
@@ -47,9 +51,77 @@ export function countScheduledHabitsForDate(
   if (!habits) return 0;
   const dow = new Date(date + "T00:00:00").getDay();
   return habits.filter((h) => {
+    if (h.frequency === "weekly_target") return false;
     const createdDate = h.createdAt?.slice(0, 10);
     if (createdDate && createdDate > date) return false;
     if (!h.scheduledDays || h.scheduledDays.length === 0) return true;
     return h.scheduledDays.includes(dow);
   }).length;
+}
+
+/** Shape of the per-day entry aggregate used by the weekly-quota helpers. */
+type EntryMapValue = {
+  value: number;
+  type?: string;
+  targetCountSnapshot?: number;
+};
+
+/**
+ * Counts the number of COMPLETED days within the week beginning at
+ * `weekStart` (inclusive) through +6 days. A day counts when it has an entry
+ * that is neither a skip nor a fail and whose value reaches the snapshotted
+ * target. Used for `weekly_target` (quota) habits where progress is weekly.
+ */
+export function weeklyCompletions(
+  entryMap: Map<string, EntryMapValue>,
+  weekStart: Date,
+  habit: Pick<Habit, "targetCount">,
+): number {
+  let count = 0;
+  for (let i = 0; i <= 6; i++) {
+    const d = addDays(weekStart, i);
+    const entry = entryMap.get(format(d, "yyyy-MM-dd"));
+    if (!entry) continue;
+    if (entry.type === "skip" || entry.type === "fail") continue;
+    if (
+      entry.value >=
+      resolveTargetCount(
+        { targetCountSnapshot: entry.targetCountSnapshot },
+        habit,
+      )
+    ) {
+      count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * Weekly streak for a `weekly_target` (quota) habit: the number of consecutive
+ * weeks (current + preceding) in which the habit hit its weekly quota. The
+ * current week counts the moment the quota is met; preceding weeks must each
+ * meet the quota or the streak breaks.
+ */
+export function calculateWeeklyStreak(
+  entryMap: Map<string, EntryMapValue>,
+  habit: Pick<Habit, "targetCount" | "weeklyTarget">,
+): number {
+  const quota = habit.weeklyTarget ?? 1;
+  const now = new Date();
+  // Monday-start weeks, matching the card week-strip + the calendar's layout.
+  let streak =
+    weeklyCompletions(entryMap, startOfWeek(now, { weekStartsOn: 1 }), habit) >=
+    quota
+      ? 1
+      : 0;
+  for (let w = 1; w <= 52; w++) {
+    const c = weeklyCompletions(
+      entryMap,
+      startOfWeek(subWeeks(now, w), { weekStartsOn: 1 }),
+      habit,
+    );
+    if (c >= quota) streak++;
+    else break;
+  }
+  return streak;
 }

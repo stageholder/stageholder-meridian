@@ -22,6 +22,7 @@ export class HabitModel {
   @Prop({ type: String, required: true, default: "daily" }) frequency: string;
   @Prop({ type: Number, required: true, default: 1 }) target_count: number;
   @Prop({ type: [Number], default: undefined }) scheduled_days: number[];
+  @Prop({ type: Number }) weekly_target: number;
   @Prop({ type: String }) unit: string;
   @Prop({ type: String }) color: string;
   @Prop({ type: String }) icon: string;

@@ -29,10 +29,13 @@ const EMPTY_DAY: CalendarDayData = {
 };
 
 // Habits scheduled on a given weekday — the denominator for the habit ring.
+// Quota (`weekly_target`) habits aren't day-scheduled, so they're excluded.
 function countScheduledHabits(habits: Habit[], date: Date): number {
   const dow = date.getDay();
   return habits.filter(
-    (h) => !h.scheduledDays?.length || h.scheduledDays.includes(dow),
+    (h) =>
+      h.frequency !== "weekly_target" &&
+      (!h.scheduledDays?.length || h.scheduledDays.includes(dow)),
   ).length;
 }
 
@@ -180,6 +183,12 @@ export function CalendarView() {
                           computeActivityRings(
                             dayData,
                             countScheduledHabits(habitsList, date),
+                            undefined,
+                            new Set(
+                              habitsList
+                                .filter((h) => h.frequency === "weekly_target")
+                                .map((h) => h.id),
+                            ),
                           ),
                         )}
                       >

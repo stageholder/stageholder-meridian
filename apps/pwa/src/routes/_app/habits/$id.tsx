@@ -32,7 +32,10 @@ import type { HabitEntry } from "@repo/core/types";
 import {
   resolveTargetCount,
   isEntryComplete,
+  calculateWeeklyStreak,
+  weeklyCompletions,
 } from "@/lib/habits/entry-resolution";
+import { startOfWeek, subWeeks } from "date-fns";
 import { parseDateLocal } from "@/lib/date";
 
 export const Route = createFileRoute("/_app/habits/$id")({
@@ -115,6 +118,8 @@ function HabitDetailPage() {
     return map;
   }, [monthEntries]);
 
+  const isQuota = habit?.frequency === "weekly_target";
+
   // Stats
   const stats = useMemo(() => {
     if (!habit)
@@ -123,7 +128,84 @@ function HabitDetailPage() {
         longestStreak: 0,
         totalCompletions: 0,
         completionRate: 0,
+        weeklyProgress: 0,
       };
+
+    // Quota (`weekly_target`) habits track progress + streak WEEKLY. A
+    // "completed day" still counts toward the week; Skip/Fail don't apply.
+    if (habit.frequency === "weekly_target") {
+      const quota = habit.weeklyTarget ?? 1;
+      const now = new Date();
+      const streak = calculateWeeklyStreak(entryMap, habit);
+      const weeklyProgress = weeklyCompletions(
+        entryMap,
+        startOfWeek(now, { weekStartsOn: 1 }),
+        habit,
+      );
+
+      // Longest run of consecutive past weeks meeting quota (over ~1y),
+      // plus total completed days and a week-based completion rate.
+      let longestStreak = 0;
+      let tempStreak = 0;
+      let weeksMet = 0;
+      // Rate only the weeks the habit has actually existed (capped at the
+      // 1-year data window), so a brand-new habit that hit its goal reads
+      // 100% — not 1/53.
+      const currentWeekStart = startOfWeek(now, { weekStartsOn: 1 });
+      const createdStr = habit.createdAt?.slice(0, 10);
+      let weeksElapsed = 53;
+      if (createdStr) {
+        const createdWeekStart = startOfWeek(
+          new Date(createdStr + "T00:00:00"),
+          { weekStartsOn: 1 },
+        );
+        const diff = Math.round(
+          (currentWeekStart.getTime() - createdWeekStart.getTime()) /
+            (7 * 24 * 60 * 60 * 1000),
+        );
+        weeksElapsed = Math.max(1, Math.min(53, diff + 1));
+      }
+      for (let w = 52; w >= 0; w--) {
+        const c = weeklyCompletions(
+          entryMap,
+          startOfWeek(subWeeks(now, w), { weekStartsOn: 1 }),
+          habit,
+        );
+        if (c >= quota) {
+          tempStreak++;
+          weeksMet++;
+          longestStreak = Math.max(longestStreak, tempStreak);
+        } else {
+          tempStreak = 0;
+        }
+      }
+
+      let totalCompletions = 0;
+      for (const v of entryMap.values()) {
+        if (v.type === "skip" || v.type === "fail") continue;
+        if (
+          v.value >=
+          resolveTargetCount(
+            { targetCountSnapshot: v.targetCountSnapshot },
+            habit,
+          )
+        ) {
+          totalCompletions++;
+        }
+      }
+
+      const completionRate = Math.round(
+        (weeksMet / Math.max(1, weeksElapsed)) * 100,
+      );
+
+      return {
+        streak,
+        longestStreak,
+        totalCompletions,
+        completionRate,
+        weeklyProgress,
+      };
+    }
 
     const hasSchedule = habit.scheduledDays && habit.scheduledDays.length > 0;
     const now = new Date();
@@ -201,6 +283,7 @@ function HabitDetailPage() {
       longestStreak,
       totalCompletions,
       completionRate,
+      weeklyProgress: 0,
     };
   }, [entryMap, habit]);
 
@@ -492,6 +575,16 @@ function HabitDetailPage() {
         </XStack>
       </XStack>
 
+      {/* Weekly progress line — quota habits only. */}
+      {isQuota && (
+        <Text fontSize="$3" fontWeight="500" color="$mutedForeground">
+          This week:{" "}
+          <Text fontSize="$3" fontWeight="700" color="$color">
+            {stats.weeklyProgress}/{habit.weeklyTarget}
+          </Text>
+        </Text>
+      )}
+
       {/* Stats row */}
       <View
         display="grid"
@@ -499,7 +592,8 @@ function HabitDetailPage() {
         gridTemplateColumns={"repeat(2, minmax(0, 1fr))" as never}
         $sm={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" as never }}
       >
-        {/* Current streak uses the kit StreakBadge (auto-tiers cold→blazing). */}
+        {/* Current streak uses the kit StreakBadge (auto-tiers cold→blazing).
+            Quota habits streak in WEEKS, not days. */}
         <Stat
           rounded="$6"
           borderWidth={1}
@@ -507,9 +601,15 @@ function HabitDetailPage() {
           bg="$card"
           p="$4"
         >
-          <Stat.Label color="$mutedForeground">Current Streak</Stat.Label>
+          <Stat.Label color="$mutedForeground">
+            {isQuota ? "Current streak (weeks)" : "Current Streak"}
+          </Stat.Label>
           <View mt="$1.5" items="flex-start">
-            <StreakBadge count={stats.streak} size="$3" label="days" />
+            <StreakBadge
+              count={stats.streak}
+              size="$3"
+              label={isQuota ? "wks" : "days"}
+            />
           </View>
         </Stat>
         <Stat
@@ -520,7 +620,9 @@ function HabitDetailPage() {
           p="$4"
         >
           <Stat.Label color="$mutedForeground">Longest Streak</Stat.Label>
-          <Stat.Value color="$color">{stats.longestStreak} days</Stat.Value>
+          <Stat.Value color="$color">
+            {stats.longestStreak} {isQuota ? "wks" : "days"}
+          </Stat.Value>
         </Stat>
         <Stat
           rounded="$6"
@@ -587,7 +689,10 @@ function HabitDetailPage() {
               const isPast = dateStr < today;
               // Auto-fail only days with NO entry (truly missed). A cleared day
               // (value-0 completion entry) stays neutral, so "undo fail" works.
-              const failed = isExplicitFail || (isScheduled && isPast && !d);
+              // Quota habits never auto-fail — a non-completed day is simply
+              // not a completion toward the weekly target.
+              const failed =
+                !isQuota && (isExplicitFail || (isScheduled && isPast && !d));
               const partial = !isComplete && !failed && !isSkip && ratio > 0;
 
               // The month reads as the habit's ORANGE rhythm: done = solid
@@ -760,7 +865,9 @@ function HabitDetailPage() {
                       </XStack>
                     ) : (
                       <>
-                        {selScheduled && selectedDate <= today && (
+                        {/* Skip / Fail are day-based concepts — quota habits
+                            only log completions, so hide them when isQuota. */}
+                        {!isQuota && selScheduled && selectedDate <= today && (
                           <>
                             <Button
                               intent="outline"

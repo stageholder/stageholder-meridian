@@ -3,9 +3,10 @@ export interface Habit {
   userSub: string;
   name: string;
   description?: string;
-  frequency: "daily" | "weekly" | "custom";
+  frequency: "daily" | "weekly" | "weekly_target" | "custom";
   targetCount: number;
   scheduledDays?: number[];
+  weeklyTarget?: number;
   unit?: string;
   color?: string;
   icon?: string;
