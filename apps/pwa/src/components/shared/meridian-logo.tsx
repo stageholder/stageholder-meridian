@@ -5,16 +5,15 @@ const sizes = {
   lg: 64,
 } as const;
 
-// Theme-aware brand mark. `meridian_light.png` is the transparent-BG
-// colored spiral; `meridian_dark.png` is the same spiral on a dark navy
-// rounded tile so it reads cleanly on dark surfaces. Both are rendered
-// and toggled via Tailwind's `dark:` variant so we don't need to read
-// theme state from React (next-themes adds `class="dark"` to <html>).
+// Single colored brand mark on a transparent background. The colorful spiral
+// reads cleanly on both light and dark surfaces, so we use one image for
+// every theme — no dark-mode swap. (The previous `meridian_dark.png` was a
+// spiral on a dark navy tile that blended into the dark sidebar and looked
+// like it had disappeared.)
 //
-// Stays a native <img>: it is a leaf media element carrying no layout,
-// color, or typography, and the `dark:`/`block`/`hidden` theme toggle has
-// no Tamagui token equivalent (the kit `Image` is RN-based: `source`/
-// `resizeMode`, not `src`/`dark:`).
+// Stays a native <img>: it's a leaf media element with no layout, color, or
+// typography, and the kit `Image` is RN-based (`source`/`resizeMode`, not
+// `src`), so a plain <img> is the right primitive here.
 export function MeridianLogo({
   size = "md",
   className,
@@ -23,24 +22,13 @@ export function MeridianLogo({
   className?: string;
 }) {
   const px = sizes[size];
-  const extra = className ? ` ${className}` : "";
   return (
-    <>
-      <img
-        src="/logo/meridian_light.png"
-        alt="Meridian"
-        width={px}
-        height={px}
-        className={`block dark:hidden${extra}`}
-      />
-      <img
-        src="/logo/meridian_dark.png"
-        alt=""
-        aria-hidden
-        width={px}
-        height={px}
-        className={`hidden dark:block${extra}`}
-      />
-    </>
+    <img
+      src="/logo/meridian_light.png"
+      alt="Meridian"
+      width={px}
+      height={px}
+      className={className}
+    />
   );
 }

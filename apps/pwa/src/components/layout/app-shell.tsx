@@ -212,7 +212,6 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
           {/* macOS Tauri traffic-light clearance. Renders 28 px of draggable
               space on Tauri-macOS, null everywhere else. */}
           <MacTrafficLightSpacer />
-          <SidebarBrand />
         </Sidebar.Header>
 
         <Sidebar.Content>
@@ -294,6 +293,8 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
               <FeedbackButton />
             </Sidebar.MenuItem>
           </Sidebar.Menu>
+          {/* Brand sits at the very bottom of the sidebar. */}
+          <SidebarBrand />
         </Sidebar.Footer>
       </Sidebar>
 
