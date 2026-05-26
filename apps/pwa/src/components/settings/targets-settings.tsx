@@ -4,8 +4,8 @@ import {
   Button,
   Label,
   NumberInput,
+  Select,
   Text,
-  ToggleGroup,
   XStack,
   YStack,
 } from "@stageholder/ui";
@@ -81,27 +81,29 @@ export function TargetsSettings() {
           <Text mt="$0.5" fontSize="$1" color="$mutedForeground">
             How many words you aim to write in your journal each day.
           </Text>
-          <ToggleGroup
-            type="single"
-            mt="$2"
-            value={String(journalTarget)}
-            onValueChange={(v: string) => {
-              if (v) setJournalTarget(Number(v));
-            }}
-          >
-            {JOURNAL_PRESETS.map((preset) => (
-              <ToggleGroup.Item
-                key={preset.value}
-                value={String(preset.value)}
-                aria-label={`${preset.label} (${preset.value})`}
-              >
-                <Text>
-                  {preset.label} ({preset.value})
-                </Text>
-              </ToggleGroup.Item>
-            ))}
-          </ToggleGroup>
-          <XStack mt="$2" items="center" gap="$2">
+          <XStack mt="$2" items="center" gap="$2" flexWrap="wrap">
+            {/* Preset picker — a compact Select scales to any number of named
+                tiers without the row-cramming a ToggleGroup hits. Shows
+                "Custom" whenever the value doesn't match a preset. */}
+            <Select
+              value={
+                JOURNAL_PRESETS.some((p) => p.value === journalTarget)
+                  ? String(journalTarget)
+                  : ""
+              }
+              onValueChange={(v) => {
+                if (v) setJournalTarget(Number(v));
+              }}
+            >
+              <Select.Trigger width={190} placeholder="Custom" />
+              <Select.Content>
+                {JOURNAL_PRESETS.map((preset) => (
+                  <Select.Item key={preset.value} value={String(preset.value)}>
+                    {`${preset.label} · ${preset.value} words`}
+                  </Select.Item>
+                ))}
+              </Select.Content>
+            </Select>
             <NumberInput
               value={journalTarget}
               onChange={setJournalTarget}
