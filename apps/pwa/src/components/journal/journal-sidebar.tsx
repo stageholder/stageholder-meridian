@@ -4,16 +4,16 @@ import { format } from "date-fns";
 import { Plus, SlidersHorizontal } from "lucide-react";
 import { useJournals, useJournalsPaginated } from "@/lib/api/journals";
 import { JournalList } from "@/components/journal/journal-list";
-import { parseDateLocal } from "@/lib/date";
 import type { Journal } from "@repo/core/types";
 import {
   Button,
-  DatePicker,
+  DateRangePicker,
   Popover,
   Select,
   Text,
   XStack,
   YStack,
+  type CalendarRangeValue,
 } from "@stageholder/ui";
 
 const moodOptions = [
@@ -31,9 +31,15 @@ interface JournalSidebarProps {
 
 export function JournalSidebar({ activeId }: JournalSidebarProps) {
   const navigate = useNavigate();
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [dateRange, setDateRange] = useState<CalendarRangeValue | null>(null);
   const [moodFilter, setMoodFilter] = useState(0);
+
+  // The kit DateRangePicker owns the range; the journal query still wants
+  // yyyy-MM-dd strings, so derive them from the range endpoints.
+  const startDate = dateRange?.start
+    ? format(dateRange.start, "yyyy-MM-dd")
+    : "";
+  const endDate = dateRange?.end ? format(dateRange.end, "yyyy-MM-dd") : "";
 
   const hasDateFilter = !!(startDate || endDate);
   // Active-filter count drives the trigger label ("Filter (2)") so the
@@ -114,8 +120,8 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
               width={300}
               p="$3"
               // Keep the filter popover open while interacting with a nested
-              // DatePicker calendar / Select listbox (both render their own
-              // popover-content portals).
+              // DateRangePicker calendar / Select listbox (both render their
+              // own popover-content portals).
               onPointerDownOutside={(e: {
                 target: EventTarget | null;
                 preventDefault: () => void;
@@ -143,8 +149,7 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
                       intent="ghost"
                       size="sm"
                       onPress={() => {
-                        setStartDate("");
-                        setEndDate("");
+                        setDateRange(null);
                         setMoodFilter(0);
                       }}
                     >
@@ -157,24 +162,11 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
                   <Text fontSize="$1" fontWeight="500" color="$mutedForeground">
                     Date range
                   </Text>
-                  <YStack gap="$2">
-                    <DatePicker
-                      value={startDate ? parseDateLocal(startDate) : null}
-                      onChange={(d) =>
-                        setStartDate(d ? format(d, "yyyy-MM-dd") : "")
-                      }
-                      placeholder="Start date"
-                      showClear
-                    />
-                    <DatePicker
-                      value={endDate ? parseDateLocal(endDate) : null}
-                      onChange={(d) =>
-                        setEndDate(d ? format(d, "yyyy-MM-dd") : "")
-                      }
-                      placeholder="End date"
-                      showClear
-                    />
-                  </YStack>
+                  <DateRangePicker
+                    value={dateRange}
+                    onChange={setDateRange}
+                    placeholder="Any date"
+                  />
                 </YStack>
 
                 <YStack gap="$1.5">
