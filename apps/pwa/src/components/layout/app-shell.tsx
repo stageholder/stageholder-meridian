@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import {
-  Link,
   useCanGoBack,
   useNavigate,
   useRouterState,
@@ -53,10 +52,12 @@ import { LocalUserButton } from "@/components/layout/local-user-button";
 import { TrialPill } from "@/components/billing/trial-pill";
 import {
   Button,
-  Grid,
+  Header,
   IconButton,
   MacTrafficLightSpacer,
   Popover,
+  Progress,
+  ProgressRing,
   Sidebar,
   Text,
   View,
@@ -299,84 +300,75 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
       </Sidebar>
 
       <Sidebar.Inset>
-        {/* Top bar — XStack (not plain <header>) so RN-Web's flex model
-            governs layout. Plain HTML inside an RNW View doesn't reliably
-            pick up Tailwind flex utilities, which produced vertical-stack
-            bugs on the right-side actions cluster. data-tauri-drag-region
-            still works via Tamagui's prop forwarding. */}
-        <XStack
-          {...({ "data-tauri-drag-region": "" } as object)}
-          height={48}
-          shrink={0}
-          items="center"
-          gap="$3"
-          px="$4"
-          overflow="hidden"
-          borderBottomWidth={1}
-          borderColor="$borderColor"
-          bg="$background"
-          tag="header"
-        >
-          {/* Sidebar toggle — collapses the desktop rail / opens the mobile
-              drawer. Replaces the previous custom mobile-only Drawer wrapper. */}
-          <Sidebar.Trigger aria-label="Toggle navigation">
-            <PanelLeft size={16} />
-          </Sidebar.Trigger>
+        {/* Top bar — kit <Header> owns the chrome (height, bg, border,
+            sticky position, translucent backdrop-blur, justify/gap/px).
+            The kit Header doesn't expose a tauri-drag prop, so we keep the
+            data-tauri-drag-region attribute via Tamagui's prop forwarding —
+            same pattern <MacTrafficLightSpacer /> uses — to preserve macOS
+            window dragging from the bar. */}
+        <Header bordered {...({ "data-tauri-drag-region": "" } as object)}>
+          {/* LEFT group — sidebar toggle + browser-style nav + page title. */}
+          <XStack items="center" gap="$2" shrink={0}>
+            {/* Sidebar toggle — collapses the desktop rail / opens the mobile
+                drawer. Replaces the previous custom mobile-only Drawer wrapper. */}
+            <Sidebar.Trigger aria-label="Toggle navigation">
+              <PanelLeft size={16} />
+            </Sidebar.Trigger>
 
-          {/* Browser-style nav, desktop only. Forward is always enabled —
-              HTML5 history has no canGoForward signal; clicking when
-              there's no forward entry is a no-op. */}
-          {isDesktop() && (
-            <XStack
-              items="center"
-              gap={2}
-              display="none"
-              $md={{ display: "flex" }}
-            >
-              <IconButton
-                variant="ghost"
-                size="sm"
-                disabled={!canGoBack}
-                onPress={() => window.history.back()}
-                aria-label="Back"
-                title="Back (⌘[)"
-              >
-                <ChevronLeft size={16} />
-              </IconButton>
-              <IconButton
-                variant="ghost"
-                size="sm"
-                onPress={() => window.history.forward()}
-                aria-label="Forward"
-                title="Forward (⌘])"
-              >
-                <ChevronRight size={16} />
-              </IconButton>
-              <View width={1} height={16} bg="$borderColor" mx="$1" />
-            </XStack>
-          )}
-
-          {/* Page title */}
-          {currentPage && (
-            <XStack items="center" gap="$2" color="$mutedForeground">
-              <currentPage.icon size={16} />
-              <Text
-                fontSize="$3"
-                fontWeight="500"
-                color="$color"
+            {/* Browser-style nav, desktop only. Forward is always enabled —
+                HTML5 history has no canGoForward signal; clicking when
+                there's no forward entry is a no-op. */}
+            {isDesktop() && (
+              <XStack
+                items="center"
+                gap={2}
                 display="none"
-                $sm={{ display: "block" }}
+                $md={{ display: "flex" }}
               >
-                {currentPage.label}
-              </Text>
-            </XStack>
-          )}
+                <IconButton
+                  variant="ghost"
+                  size="sm"
+                  disabled={!canGoBack}
+                  onPress={() => window.history.back()}
+                  aria-label="Back"
+                  title="Back (⌘[)"
+                >
+                  <ChevronLeft size={16} />
+                </IconButton>
+                <IconButton
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => window.history.forward()}
+                  aria-label="Forward"
+                  title="Forward (⌘])"
+                >
+                  <ChevronRight size={16} />
+                </IconButton>
+                <View width={1} height={16} bg="$borderColor" mx="$1" />
+              </XStack>
+            )}
 
-          {/* Spacer */}
-          <XStack flex={1} minW={0} />
+            {/* Page title */}
+            {currentPage && (
+              <XStack items="center" gap="$2" color="$mutedForeground">
+                <currentPage.icon size={16} />
+                <Text
+                  fontSize="$3"
+                  fontWeight="500"
+                  color="$color"
+                  display="none"
+                  $sm={{ display: "block" }}
+                >
+                  {currentPage.label}
+                </Text>
+              </XStack>
+            )}
+          </XStack>
 
-          {/* Right side actions */}
-          <XStack shrink={0} items="center" gap="$1.5">
+          {/* CENTER — search trigger. A plain flex-1 stack (no maxWidth cap)
+              absorbs the free space and centers the search; the kit Center's
+              560px cap left dangling space that collapsed the actions cluster. */}
+          <XStack flex={1} minW={0} items="center" justify="center">
             <Button
               intent="ghost"
               size="sm"
@@ -406,321 +398,224 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
                 ⌘K
               </Text>
             </Button>
-            <DailyTargetRings />
-            <View width={1} height={16} bg="$borderColor" mx="$1" />
+          </XStack>
+
+          {/* RIGHT side actions. shrink={0} keeps the cluster at its content
+              width; overflow="hidden" clips the journey tier-ring's decorative
+              glow (an absolute element that bled ~89px past the viewport edge)
+              — without collapsing the cluster, since shrink={0} fixes its
+              width. Popover/menu dropdowns are portalled, so they're unaffected. */}
+          <Header.Actions shrink={0} overflow="hidden">
+            {/* Decorative — desktop only so the essentials (offline / trial /
+                user menu) always fit and never clip on narrow widths. */}
+            <XStack
+              items="center"
+              gap="$1.5"
+              display="none"
+              $md={{ display: "flex" }}
+            >
+              <DailyTargetRings />
+              <View width={1} height={16} bg="$borderColor" mx="$1" />
+            </XStack>
             <OfflineIndicator />
             <TrialPill />
 
-            {/* Journey progress popover */}
-            {userLight &&
-              (() => {
-                const progress = getTierProgress(
-                  userLight.totalLight,
-                  userLight.currentTier,
-                );
-                const nextTier = getNextTier(userLight.currentTier);
-                const tierColors: Record<
-                  number,
-                  {
-                    ring: [string, string, string];
-                    track: string;
-                    glow: string;
-                  }
-                > = {
-                  1: {
-                    ring: ["#94a3b8", "#cbd5e1", "#94a3b8"],
-                    track: "rgba(148,163,184,0.15)",
-                    glow: "#cbd5e1",
-                  },
-                  2: {
-                    ring: ["#ef4444", "#fca5a5", "#ef4444"],
-                    track: "rgba(239,68,68,0.15)",
-                    glow: "#ef4444",
-                  },
-                  3: {
-                    ring: ["#dc2626", "#f59e0b", "#fbbf24"],
-                    track: "rgba(245,158,11,0.15)",
-                    glow: "#f59e0b",
-                  },
-                  4: {
-                    ring: ["#dc2626", "#f97316", "#fbbf24"],
-                    track: "rgba(249,115,22,0.15)",
-                    glow: "#f97316",
-                  },
-                  5: {
-                    ring: ["#ea580c", "#f97316", "#fbbf24"],
-                    track: "rgba(249,115,22,0.15)",
-                    glow: "#f97316",
-                  },
-                  6: {
-                    ring: ["#a16207", "#eab308", "#fde68a"],
-                    track: "rgba(234,179,8,0.15)",
-                    glow: "#eab308",
-                  },
-                  7: {
-                    ring: ["#a16207", "#fbbf24", "#fef9c3"],
-                    track: "rgba(251,191,36,0.15)",
-                    glow: "#fbbf24",
-                  },
-                  8: {
-                    ring: ["#ca8a04", "#fde68a", "#ffffff"],
-                    track: "rgba(253,230,138,0.15)",
-                    glow: "#fde68a",
-                  },
-                  9: {
-                    ring: ["#854d0e", "#eab308", "#fde68a"],
-                    track: "rgba(234,179,8,0.15)",
-                    glow: "#eab308",
-                  },
-                  10: {
-                    ring: ["#f59e0b", "#fbbf24", "#ffffff"],
-                    track: "rgba(251,191,36,0.15)",
-                    glow: "#fbbf24",
-                  },
-                };
-                const colors = (tierColors[userLight.currentTier] ??
-                  tierColors[1])!;
-                return (
-                  <Popover placement="bottom-end">
-                    <Popover.Trigger asChild>
-                      <XStack
-                        group
-                        items="center"
-                        gap={6}
-                        py="$1"
-                        pl="$2"
-                        pr="$1"
-                        rounded="$md"
-                        transition="quick"
-                        hoverStyle={{ bg: "$accent" }}
-                      >
-                        <Text
-                          fontSize={11}
-                          fontWeight="600"
-                          letterSpacing={0.5}
-                          // allowlist: shimmer keyframe + gradient text clip (no token equivalent)
-                          style={{
-                            background: `linear-gradient(90deg, ${colors.ring[0]}, ${colors.ring[1]}, ${colors.ring[2]}, ${colors.ring[1]}, ${colors.ring[0]})`,
-                            backgroundSize: "200% 100%",
-                            WebkitBackgroundClip: "text",
-                            WebkitTextFillColor: "transparent",
-                            animation: "shimmer 3s ease-in-out infinite",
-                          }}
-                        >
-                          {userLight.currentTitle}
-                        </Text>
-                        <View
+            {/* Journey / tier progress (desktop only). shrink={0} on the
+                wrapper AND on the trigger keeps the control at its content
+                width so it never collapses under the flex row's shrink
+                pressure. */}
+            <XStack
+              items="center"
+              shrink={0}
+              display="none"
+              $md={{ display: "flex" }}
+            >
+              {userLight &&
+                (() => {
+                  const progress = getTierProgress(
+                    userLight.totalLight,
+                    userLight.currentTier,
+                  );
+                  const nextTier = getNextTier(userLight.currentTier);
+                  // COLOR VALUES per tier. `ring` is the brightest mid-stop —
+                  // applied as a SOLID color via Tamagui's `color`/`fillColor`
+                  // props (no gradient text clip). `track` is the unfilled ring.
+                  const tierColors: Record<
+                    number,
+                    { ring: string; track: string }
+                  > = {
+                    1: { ring: "#cbd5e1", track: "rgba(148,163,184,0.15)" },
+                    2: { ring: "#ef4444", track: "rgba(239,68,68,0.15)" },
+                    3: { ring: "#f59e0b", track: "rgba(245,158,11,0.15)" },
+                    4: { ring: "#f97316", track: "rgba(249,115,22,0.15)" },
+                    5: { ring: "#f97316", track: "rgba(249,115,22,0.15)" },
+                    6: { ring: "#eab308", track: "rgba(234,179,8,0.15)" },
+                    7: { ring: "#fbbf24", track: "rgba(251,191,36,0.15)" },
+                    8: { ring: "#fde68a", track: "rgba(253,230,138,0.15)" },
+                    9: { ring: "#eab308", track: "rgba(234,179,8,0.15)" },
+                    10: { ring: "#fbbf24", track: "rgba(251,191,36,0.15)" },
+                  };
+                  const colors = (tierColors[userLight.currentTier] ??
+                    tierColors[1])!;
+                  return (
+                    <Popover placement="bottom-end">
+                      <Popover.Trigger asChild>
+                        <Button
+                          intent="ghost"
+                          size="sm"
                           shrink={0}
-                          items="center"
-                          justify="center"
-                          width={28}
-                          height={28}
-                          position="relative"
-                        >
-                          <View
-                            position="absolute"
-                            t={0}
-                            b={0}
-                            l={0}
-                            r={0}
-                            m="auto"
-                            width={24}
-                            height={24}
-                            rounded={9999}
-                            opacity={0}
-                            pointerEvents="none"
-                            transition="medium"
-                            $group-hover={{ opacity: 0.4 }}
-                            // allowlist: radial-gradient glow + blur (no token equivalent)
-                            className="blur-md"
-                            style={{
-                              background: `radial-gradient(circle, ${colors.glow} 0%, transparent 70%)`,
-                            }}
-                          />
-                          <svg
-                            className="absolute inset-0 -rotate-90"
-                            width={28}
-                            height={28}
-                            viewBox="0 0 28 28"
-                          >
-                            <defs>
-                              <linearGradient
-                                id="light-ring-grad"
-                                x1="0%"
-                                y1="0%"
-                                x2="100%"
-                                y2="100%"
-                              >
-                                <stop offset="0%" stopColor={colors.ring[0]} />
-                                <stop offset="50%" stopColor={colors.ring[1]} />
-                                <stop
-                                  offset="100%"
-                                  stopColor={colors.ring[2]}
-                                />
-                              </linearGradient>
-                            </defs>
-                            <circle
-                              cx={14}
-                              cy={14}
-                              r={12.75}
-                              fill="none"
-                              stroke={colors.track}
-                              strokeWidth={2.5}
-                            />
-                            {progress > 0 && (
-                              <circle
-                                cx={14}
-                                cy={14}
-                                r={12.75}
-                                fill="none"
-                                stroke="url(#light-ring-grad)"
-                                strokeWidth={2.5}
-                                strokeLinecap="round"
-                                strokeDasharray={`${2 * Math.PI * 12.75}`}
-                                strokeDashoffset={`${2 * Math.PI * 12.75 * (1 - Math.min(100, progress) / 100)}`}
-                                className="transition-all duration-700"
-                              />
-                            )}
-                          </svg>
-                          <StarVisual
-                            tier={userLight.currentTier}
-                            size="xs"
-                            className="relative"
-                          />
-                        </View>
-                      </XStack>
-                    </Popover.Trigger>
-                    <Popover.Content
-                      width={256}
-                      maxW="calc(100vw - 2rem)"
-                      p={0}
-                    >
-                      <YStack items="center" gap="$2" px="$4" pt="$4" pb="$3">
-                        <StarVisual
-                          tier={userLight.currentTier}
-                          size="lg"
-                          animate
-                        />
-                        <Text fontSize="$3" fontWeight="700">
-                          {userLight.currentTitle}
-                        </Text>
-                        <Text
-                          fontSize={11}
-                          color="$mutedForeground"
-                          text="center"
-                          lineHeight={15}
-                          px="$1"
-                        >
-                          {
-                            LIGHT_TIERS[userLight.currentTier - 1]
-                              ?.shortDescription
-                          }
-                        </Text>
-                        {nextTier ? (
-                          <YStack width="100%" gap="$0.5">
-                            <View
-                              height={6}
-                              width="100%"
-                              overflow="hidden"
-                              rounded={9999}
-                              bg="$muted"
-                            >
-                              <View
-                                height="100%"
-                                rounded={9999}
-                                bg="$warning"
-                                transition="quick"
-                                // dynamic per-instance fill — stays inline
-                                style={{ width: `${progress}%` }}
-                              />
-                            </View>
-                            <Text
-                              text="center"
-                              fontSize={11}
-                              color="$mutedForeground"
-                            >
-                              <Text fontWeight="500" color="$color">
-                                {userLight.totalLight}
-                              </Text>
-                              {" / "}
-                              {nextTier.lightRequired} Light
-                            </Text>
-                          </YStack>
-                        ) : (
-                          <Text fontSize={11} color="$mutedForeground">
-                            {userLight.totalLight.toLocaleString()} Light — Max
-                            tier reached
-                          </Text>
-                        )}
-                      </YStack>
-                      <Grid
-                        columns={3}
-                        gap={0}
-                        borderTopWidth={1}
-                        borderColor="$borderColor"
-                      >
-                        <YStack
-                          items="center"
-                          borderRightWidth={1}
-                          borderColor="$borderColor"
-                          py="$2.5"
-                        >
-                          <Text fontSize="$1" fontWeight="700">
-                            {userLight.perfectDayStreak}d
-                          </Text>
-                          <Text fontSize={10} color="$mutedForeground">
-                            Streak
-                          </Text>
-                        </YStack>
-                        <YStack
-                          items="center"
-                          borderRightWidth={1}
-                          borderColor="$borderColor"
-                          py="$2.5"
-                        >
-                          <Text fontSize="$1" fontWeight="700">
-                            {userLight.perfectDaysTotal}
-                          </Text>
-                          <Text fontSize={10} color="$mutedForeground">
-                            Perfect
-                          </Text>
-                        </YStack>
-                        <YStack items="center" py="$2.5">
-                          <Text fontSize="$1" fontWeight="700">
-                            {userLight.longestPerfectStreak}d
-                          </Text>
-                          <Text fontSize={10} color="$mutedForeground">
-                            Best
-                          </Text>
-                        </YStack>
-                      </Grid>
-                      <Link to="/journey" style={{ textDecoration: "none" }}>
-                        <XStack
-                          group
-                          width="100%"
-                          items="center"
-                          justify="center"
-                          gap="$1.5"
-                          borderTopWidth={1}
-                          borderColor="$borderColor"
-                          py="$2.5"
-                          transition="quick"
-                          hoverStyle={{ bg: "$accent" }}
+                          gap={6}
+                          py="$1"
+                          px="$2"
+                          height="auto"
+                          aria-label="Journey progress"
                         >
                           <Text
-                            fontSize="$1"
-                            fontWeight="500"
+                            fontSize={11}
+                            fontWeight="600"
+                            letterSpacing={0.5}
+                            color={colors.ring}
+                          >
+                            {userLight.currentTitle}
+                          </Text>
+                          <ProgressRing
+                            value={progress}
+                            size={28}
+                            thickness={2.5}
+                            fillColor={colors.ring}
+                            trackColor={colors.track}
+                            shrink={0}
+                          >
+                            <StarVisual
+                              tier={userLight.currentTier}
+                              size="xs"
+                            />
+                          </ProgressRing>
+                        </Button>
+                      </Popover.Trigger>
+                      <Popover.Content
+                        width={256}
+                        maxW="calc(100vw - 2rem)"
+                        p={0}
+                      >
+                        <YStack items="center" gap="$2" px="$4" pt="$4" pb="$3">
+                          <ProgressRing
+                            value={progress}
+                            size={72}
+                            thickness={4}
+                            fillColor={colors.ring}
+                            trackColor={colors.track}
+                            animate
+                          >
+                            <StarVisual
+                              tier={userLight.currentTier}
+                              size="md"
+                              animate
+                            />
+                          </ProgressRing>
+                          <Text fontSize="$3" fontWeight="700">
+                            {userLight.currentTitle}
+                          </Text>
+                          <Text
+                            fontSize={11}
                             color="$mutedForeground"
-                            $group-hover={{ color: "$color" }}
+                            text="center"
+                            lineHeight={15}
+                            px="$1"
+                          >
+                            {
+                              LIGHT_TIERS[userLight.currentTier - 1]
+                                ?.shortDescription
+                            }
+                          </Text>
+                          {nextTier ? (
+                            <YStack width="100%" gap="$0.5">
+                              <Progress
+                                value={progress}
+                                height={6}
+                                width="100%"
+                                bg="$muted"
+                                rounded={9999}
+                              >
+                                <Progress.Indicator
+                                  bg="$warning"
+                                  transition="quick"
+                                />
+                              </Progress>
+                              <Text
+                                text="center"
+                                fontSize={11}
+                                color="$mutedForeground"
+                              >
+                                <Text fontWeight="500" color="$color">
+                                  {userLight.totalLight}
+                                </Text>
+                                {" / "}
+                                {nextTier.lightRequired} Light
+                              </Text>
+                            </YStack>
+                          ) : (
+                            <Text fontSize={11} color="$mutedForeground">
+                              {userLight.totalLight.toLocaleString()} Light —
+                              Max tier reached
+                            </Text>
+                          )}
+                        </YStack>
+                        <XStack
+                          width="100%"
+                          py="$2.5"
+                          borderTopWidth={1}
+                          borderColor="$borderColor"
+                        >
+                          <YStack flex={1} items="center" gap="$0.5">
+                            <Text fontSize="$1" fontWeight="700">
+                              {userLight.perfectDayStreak}d
+                            </Text>
+                            <Text fontSize={10} color="$mutedForeground">
+                              Streak
+                            </Text>
+                          </YStack>
+                          <YStack flex={1} items="center" gap="$0.5">
+                            <Text fontSize="$1" fontWeight="700">
+                              {userLight.perfectDaysTotal}
+                            </Text>
+                            <Text fontSize={10} color="$mutedForeground">
+                              Perfect
+                            </Text>
+                          </YStack>
+                          <YStack flex={1} items="center" gap="$0.5">
+                            <Text fontSize="$1" fontWeight="700">
+                              {userLight.longestPerfectStreak}d
+                            </Text>
+                            <Text fontSize={10} color="$mutedForeground">
+                              Best
+                            </Text>
+                          </YStack>
+                        </XStack>
+                        {/* Popover.Close dismisses the popover on click; the
+                          Button's onPress still navigates (handlers compose). */}
+                        <Popover.Close asChild>
+                          <Button
+                            intent="ghost"
+                            size="sm"
+                            width="100%"
+                            height="auto"
+                            py="$2.5"
+                            rounded={0}
+                            borderTopWidth={1}
+                            borderColor="$borderColor"
+                            color="$mutedForeground"
+                            hoverStyle={{ bg: "$accent", color: "$color" }}
+                            onPress={() => navigate({ to: "/journey" })}
                           >
                             My Journey →
-                          </Text>
-                        </XStack>
-                      </Link>
-                    </Popover.Content>
-                  </Popover>
-                );
-              })()}
+                          </Button>
+                        </Popover.Close>
+                      </Popover.Content>
+                    </Popover>
+                  );
+                })()}
+            </XStack>
 
             {/* User menu — local replacement for the SDK's UserButton
                 (which is BFF-only / unreachable under SPA). Same menu
@@ -782,8 +677,8 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
             />
             {/* hideSignOut is accepted for API parity but is a no-op —
                 LocalUserButton never renders a built-in sign-out. */}
-          </XStack>
-        </XStack>
+          </Header.Actions>
+        </Header>
 
         {/* Page content */}
         <View
