@@ -140,42 +140,19 @@ export function JournalEditor({
     prevMetRef.current = nowMet;
   }, [totalWords, target]);
 
-  // Editor controlled value is always JSON. `content` may arrive as a
-  // legacy HTML string (read from a pre-Phase-2 row) or as a TipTap JSON
-  // object (read from a Phase-2 row). `normalizeToJson` handles both.
-  const [json, setJson] = useState<JSONContent>(() => normalizeToJson(content));
-
-  // Push external `content` changes into the editor when they don't match
-  // what's already there. We compare on the *incoming* shape directly:
-  //   - If incoming is JSON, deep-compare via JSON.stringify (cheap, and
-  //     stable across keystrokes because we control the JSON we emit).
-  //   - If incoming is a string, treat any change as a fresh import (the
-  //     parent is asking us to reset to that legacy HTML).
-  // Skipping when in sync avoids clobbering the user's cursor mid-edit.
-  // `json` is intentionally omitted from deps: including it would re-run
-  // on every keystroke (since we setJson in handleEditorChange) and
-  // create an infinite loop.
-  useEffect(() => {
-    if (typeof content === "string") {
-      // Legacy HTML coming in — always re-normalize. This branch fires
-      // exactly once per row's lifetime (the next save emits JSON).
-      setJson(normalizeToJson(content));
-    } else {
-      const incoming = JSON.stringify(content);
-      const current = JSON.stringify(json);
-      if (incoming !== current) {
-        setJson(content as JSONContent);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [content]);
+  // The editor OWNS its content after mount (uncontrolled). We capture the
+  // initial value exactly once — `normalizeToJson` accepts either a legacy
+  // HTML string or TipTap JSON. We deliberately never push the live
+  // `content` prop back in as `value`: that round-trip (value → the kit's
+  // `setContent`) collapses the cursor and blinks the editor mid-typing,
+  // especially when an autosave triggers a re-render. To load a *different*
+  // entry, the parent remounts this component via `key` (see the routes).
+  const [initialValue] = useState<JSONContent>(() => normalizeToJson(content));
 
   const handleEditorChange = useCallback(
     (next: JSONContent) => {
-      setJson(next);
       setWordCount(countWordsFromContent(next));
-      // Always emit JSON. The parent autosave persists it; subsequent
-      // reads return JSON natively. No more HTML round-trips.
+      // Emit JSON for the parent's autosave; the editor keeps its own state.
       onChange(next);
     },
     [onChange],
@@ -239,7 +216,7 @@ export function JournalEditor({
         onPress={focusEditorOnDeadZoneClick}
       >
         <RichTextEditor
-          value={json}
+          value={initialValue}
           onChange={handleEditorChange}
           placeholder={placeholder ?? "Write your thoughts..."}
           autoFocus={autoFocus}

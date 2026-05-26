@@ -85,15 +85,13 @@ function NewJournalPage() {
   const dateInfo = getDateInfo(date);
   const currentMood = moods.find((m) => m.value === mood);
 
-  const onCreatedRef = useRef((id: string) => {
-    // Update URL silently without unmounting/remounting the page so the
-    // editor keeps focus and doesn't blink during the first autosave.
-    window.history.replaceState(null, "", `/journal/${id}`);
-  });
-
-  const { scheduleSave, status, journalId } = useAutosave({
-    onCreated: onCreatedRef.current,
-  });
+  // No URL rewrite on first save. TanStack Router intercepts
+  // history.replaceState and re-matches the route, which remounts
+  // new → $id and blurs the editor mid-typing (the bug this caused). The
+  // autosave hook keeps the created id internally for subsequent PATCHes,
+  // and the entry appears in the list immediately — so we just keep editing
+  // in place. The URL stays /journal/new for this session.
+  const { scheduleSave, status, journalId } = useAutosave({});
 
   const lastSavedRef = useRef<{
     title: string;
