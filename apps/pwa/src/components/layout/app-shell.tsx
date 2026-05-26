@@ -69,7 +69,7 @@ const navItems = [
   { href: "/", label: "Dashboard", icon: Home, shortcutKey: "D" },
   {
     href: "/calendar",
-    label: "Calendar",
+    label: "Today",
     icon: CalendarDays,
     shortcutKey: "C",
   },
