@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "nest start --watch -b swc",
+    "dev": "bun --watch src/main.ts",
     "build": "nest build -b swc",
-    "start": "nest start -b swc",
-    "start:prod": "node dist/main",
+    "start": "bun src/main.ts",
+    "start:prod": "bun dist/main.js",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "check": "tsc --noEmit",
     "test": "vitest run",

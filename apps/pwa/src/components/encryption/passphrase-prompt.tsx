@@ -50,6 +50,7 @@ export function PassphrasePrompt() {
           <Input
             width="100%"
             secureTextEntry
+            type={"password" as never}
             value={passphrase}
             onChangeText={setPassphrase}
             placeholder="Encryption passphrase"

@@ -122,6 +122,7 @@ export function PassphraseSetupDialog({
                     id="passphrase"
                     width="100%"
                     secureTextEntry
+                    type={"password" as never}
                     value={passphrase}
                     onChangeText={setPassphrase}
                     placeholder="Enter a strong passphrase"
@@ -133,6 +134,7 @@ export function PassphraseSetupDialog({
                     id="confirm"
                     width="100%"
                     secureTextEntry
+                    type={"password" as never}
                     value={confirm}
                     onChangeText={setConfirm}
                     placeholder="Confirm your passphrase"
