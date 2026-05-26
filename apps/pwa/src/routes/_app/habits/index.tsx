@@ -6,8 +6,6 @@ import {
   Button,
   DatePicker,
   EmptyState,
-  H1,
-  Paragraph,
   Text,
   View,
   XStack,
@@ -33,48 +31,56 @@ function HabitsPage() {
 
   return (
     <YStack gap="$6" p="$4">
-      <XStack items="center" justify="space-between">
-        <YStack>
-          <H1 fontSize="$8" fontWeight="700" color="$color">
-            Habits
-          </H1>
-          <Paragraph mt="$0.5" fontSize="$3" color="$mutedForeground">
-            Track your daily habits and build streaks.
-          </Paragraph>
-        </YStack>
+      {/* Header — the date filter (left) sits on the same row as New Habit
+          (right). No page title; the app bar already reads "Habits". */}
+      <XStack items="center" justify="space-between" gap="$3" flexWrap="wrap">
+        <XStack items="center" gap="$3" flexWrap="wrap">
+          <DatePicker
+            value={selectedDate ? parseDateLocal(selectedDate) : null}
+            onChange={(d) =>
+              setSelectedDate(d ? format(d, "yyyy-MM-dd") : todayStr)
+            }
+            placeholder="Select date"
+            isDateDisabled={(d) => d > new Date()}
+          />
+          {!isViewingToday && (
+            <Button
+              intent="ghost"
+              size="sm"
+              onPress={() => setSelectedDate(todayStr)}
+            >
+              Back to today
+            </Button>
+          )}
+          {!isViewingToday && (
+            <Text fontSize="$1" color="$mutedForeground">
+              Viewing:{" "}
+              {format(
+                new Date(selectedDate + "T00:00:00"),
+                "EEEE, MMM d, yyyy",
+              )}
+            </Text>
+          )}
+        </XStack>
         <Button
-          icon={<Plus size={16} />}
+          borderWidth={0}
+          color={"#ffffff" as never}
+          icon={<Plus size={16} color="#ffffff" />}
+          style={{ backgroundColor: "var(--ring-habit)" }}
+          hoverStyle={
+            { backgroundColor: "var(--ring-habit)", opacity: 0.9 } as never
+          }
+          pressStyle={
+            {
+              backgroundColor: "var(--ring-habit)",
+              opacity: 0.82,
+              scale: 0.96,
+            } as never
+          }
           onPress={() => setShowCreateDialog(true)}
         >
           New Habit
         </Button>
-      </XStack>
-
-      {/* Date selector */}
-      <XStack items="center" gap="$3">
-        <DatePicker
-          value={selectedDate ? parseDateLocal(selectedDate) : null}
-          onChange={(d) =>
-            setSelectedDate(d ? format(d, "yyyy-MM-dd") : todayStr)
-          }
-          placeholder="Select date"
-          isDateDisabled={(d) => d > new Date()}
-        />
-        {!isViewingToday && (
-          <Button
-            intent="ghost"
-            size="sm"
-            onPress={() => setSelectedDate(todayStr)}
-          >
-            Back to today
-          </Button>
-        )}
-        {!isViewingToday && (
-          <Text fontSize="$1" color="$mutedForeground">
-            Viewing:{" "}
-            {format(new Date(selectedDate + "T00:00:00"), "EEEE, MMM d, yyyy")}
-          </Text>
-        )}
       </XStack>
 
       {isLoading ? (

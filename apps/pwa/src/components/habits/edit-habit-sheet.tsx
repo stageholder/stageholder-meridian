@@ -310,6 +310,21 @@ export function EditHabitSheet({
                 </Button>
                 <Button
                   type="submit"
+                  borderWidth={0}
+                  color={"#ffffff" as never}
+                  style={{ backgroundColor: "var(--ring-habit)" }}
+                  hoverStyle={
+                    {
+                      backgroundColor: "var(--ring-habit)",
+                      opacity: 0.9,
+                    } as never
+                  }
+                  pressStyle={
+                    {
+                      backgroundColor: "var(--ring-habit)",
+                      opacity: 0.82,
+                    } as never
+                  }
                   disabled={!name.trim() || updateHabit.isPending}
                   loading={updateHabit.isPending}
                   loadingText="Saving…"

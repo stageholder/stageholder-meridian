@@ -97,8 +97,16 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
             color={"#1c1917" as never}
             icon={<Plus size={15} color="#1c1917" />}
             style={{ backgroundColor: "var(--ring-journal)" }}
-            hoverStyle={{ opacity: 0.9 }}
-            pressStyle={{ opacity: 0.82, scale: 0.96 }}
+            hoverStyle={
+              { backgroundColor: "var(--ring-journal)", opacity: 0.9 } as never
+            }
+            pressStyle={
+              {
+                backgroundColor: "var(--ring-journal)",
+                opacity: 0.82,
+                scale: 0.96,
+              } as never
+            }
             onPress={() => void navigate({ to: "/journal/new" })}
           >
             New Journal

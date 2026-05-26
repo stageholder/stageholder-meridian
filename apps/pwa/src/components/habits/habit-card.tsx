@@ -470,7 +470,22 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
             ) : (
               <Button
                 size="sm"
-                icon={<Check size={14} />}
+                borderWidth={0}
+                color={"#ffffff" as never}
+                icon={<Check size={14} color="#ffffff" />}
+                style={{ backgroundColor: "var(--ring-habit)" }}
+                hoverStyle={
+                  {
+                    backgroundColor: "var(--ring-habit)",
+                    opacity: 0.9,
+                  } as never
+                }
+                pressStyle={
+                  {
+                    backgroundColor: "var(--ring-habit)",
+                    opacity: 0.82,
+                  } as never
+                }
                 onPress={handleCheckIn}
                 disabled={isPending}
                 loading={isPending}
@@ -559,7 +574,22 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
             ) : (
               <Button
                 size="sm"
-                icon={<Check size={14} />}
+                borderWidth={0}
+                color={"#ffffff" as never}
+                icon={<Check size={14} color="#ffffff" />}
+                style={{ backgroundColor: "var(--ring-habit)" }}
+                hoverStyle={
+                  {
+                    backgroundColor: "var(--ring-habit)",
+                    opacity: 0.9,
+                  } as never
+                }
+                pressStyle={
+                  {
+                    backgroundColor: "var(--ring-habit)",
+                    opacity: 0.82,
+                  } as never
+                }
                 onPress={handleCheckIn}
                 disabled={isPending}
                 loading={isPending}

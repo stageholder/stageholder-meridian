@@ -420,8 +420,16 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
               color={"#ffffff" as never}
               icon={<Plus size={15} color="#ffffff" />}
               style={{ backgroundColor: "var(--ring-todo)" }}
-              hoverStyle={{ opacity: 0.9 }}
-              pressStyle={{ opacity: 0.82, scale: 0.96 }}
+              hoverStyle={
+                { backgroundColor: "var(--ring-todo)", opacity: 0.9 } as never
+              }
+              pressStyle={
+                {
+                  backgroundColor: "var(--ring-todo)",
+                  opacity: 0.82,
+                  scale: 0.96,
+                } as never
+              }
               onPress={handleSubmit}
               disabled={!title.trim() || createTodo.isPending}
               loading={createTodo.isPending}
