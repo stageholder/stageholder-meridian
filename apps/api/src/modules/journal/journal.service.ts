@@ -97,6 +97,12 @@ export class JournalService {
     dto: UpdateJournalDto,
   ): Promise<Journal> {
     const journal = await this.findById(userSub, id);
+    // Persist the encryption flag BEFORE content: updateContent only counts
+    // words when the journal is unencrypted, so the flag must be current or
+    // it would try to word-count opaque ciphertext. Without this, editing a
+    // plaintext journal after passphrase setup wrote ciphertext but left
+    // `encrypted: false`, so the client never decrypted it.
+    if (dto.encrypted !== undefined) journal.updateEncrypted(dto.encrypted);
     if (dto.title) journal.updateTitle(dto.title);
     if (dto.content !== undefined) journal.updateContent(dto.content);
     if (dto.mood !== undefined) journal.updateMood(dto.mood ?? undefined);

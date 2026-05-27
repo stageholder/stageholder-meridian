@@ -11,6 +11,8 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
+// Form isn't re-exported by the kit yet; pull it from the shared tamagui dep.
+import { Form } from "tamagui";
 import { toast } from "sonner";
 import { Shield, Copy, Check } from "lucide-react";
 
@@ -115,7 +117,7 @@ export function PassphraseSetupDialog({
                   cannot read your encrypted journals.
                 </Dialog.Description>
               </YStack>
-              <YStack gap="$4" pt="$2">
+              <Form onSubmit={() => void handleSetup()} gap="$4" pt="$2">
                 <YStack gap="$2">
                   <Label htmlFor="passphrase">Encryption Passphrase</Label>
                   <Input
@@ -138,16 +140,13 @@ export function PassphraseSetupDialog({
                     value={confirm}
                     onChangeText={setConfirm}
                     placeholder="Confirm your passphrase"
-                    onKeyPress={(e: { nativeEvent: { key: string } }) => {
-                      if (e.nativeEvent.key === "Enter") void handleSetup();
-                    }}
                   />
                 </YStack>
-                {error && (
+                {error ? (
                   <Text fontSize="$3" color="$destructive">
                     {error}
                   </Text>
-                )}
+                ) : null}
                 {/* Dialog-footer convention: right-aligned actions, primary
                   on the far right, dismissive (Cancel) ghost-styled on the
                   left of the pair. Both content-sized.
@@ -162,16 +161,17 @@ export function PassphraseSetupDialog({
                   <Button intent="ghost" onPress={handleCancel}>
                     Cancel
                   </Button>
-                  <Button
-                    onPress={handleSetup}
-                    disabled={loading}
-                    loading={loading}
-                    loadingText="Setting up…"
-                  >
-                    Set Up Encryption
-                  </Button>
+                  <Form.Trigger asChild>
+                    <Button
+                      disabled={loading}
+                      loading={loading}
+                      loadingText="Setting up…"
+                    >
+                      Set Up Encryption
+                    </Button>
+                  </Form.Trigger>
                 </XStack>
-              </YStack>
+              </Form>
             </>
           ) : (
             <>
@@ -221,7 +221,7 @@ export function PassphraseSetupDialog({
                       <Check size={12} />
                     </Checkbox.Indicator>
                   </Checkbox>
-                  I have saved these recovery codes
+                  <Text>I have saved these recovery codes</Text>
                 </Label>
                 <Button onPress={handleDone} disabled={!saved} width="100%">
                   Done

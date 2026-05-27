@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useEncryptionStore } from "@/lib/crypto/encryption-store";
 import { Button, H2, Input, Text, View, XStack, YStack } from "@stageholder/ui";
+// Form isn't re-exported by the kit yet; pull it from the shared tamagui dep.
+import { Form } from "tamagui";
 import { Lock } from "lucide-react";
 
 export function PassphrasePrompt() {
@@ -46,7 +48,7 @@ export function PassphrasePrompt() {
             Enter your encryption passphrase to access your journal entries.
           </Text>
         </YStack>
-        <YStack gap="$3">
+        <Form onSubmit={() => void handleUnlock()} gap="$3" width="100%">
           <Input
             width="100%"
             secureTextEntry
@@ -54,26 +56,24 @@ export function PassphrasePrompt() {
             value={passphrase}
             onChangeText={setPassphrase}
             placeholder="Encryption passphrase"
-            onKeyPress={(e: { nativeEvent: { key: string } }) => {
-              if (e.nativeEvent.key === "Enter") void handleUnlock();
-            }}
             autoFocus
           />
-          {error && (
+          {error ? (
             <Text fontSize="$3" color="$destructive" text="center">
               {error}
             </Text>
-          )}
-          <Button
-            width="100%"
-            onPress={handleUnlock}
-            disabled={loading || !passphrase}
-            loading={loading}
-            loadingText="Unlocking…"
-          >
-            Unlock
-          </Button>
-        </YStack>
+          ) : null}
+          <Form.Trigger asChild>
+            <Button
+              width="100%"
+              disabled={loading || !passphrase}
+              loading={loading}
+              loadingText="Unlocking…"
+            >
+              Unlock
+            </Button>
+          </Form.Trigger>
+        </Form>
       </YStack>
     </XStack>
   );

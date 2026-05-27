@@ -83,6 +83,9 @@ export class Journal extends Entity<JournalProps> {
   updateDate(date: string): void {
     this.set("date", date);
   }
+  updateEncrypted(encrypted: boolean): void {
+    this.set("encrypted", encrypted);
+  }
 
   static create(
     props: Omit<
