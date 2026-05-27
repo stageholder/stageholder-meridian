@@ -1,75 +1,14 @@
 import { format } from "date-fns";
 import { CheckSquare, BookOpen, Target } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { useActivityRings } from "@/lib/hooks/use-activity-rings";
-import { Popover, Text, XStack, YStack } from "@stageholder/ui";
-
-function CircleProgress({
-  percent,
-  color,
-  trackColor,
-  size = 28,
-  strokeWidth = 2.5,
-  children,
-  className,
-}: {
-  percent: number;
-  color: string;
-  trackColor: string;
-  size?: number;
-  strokeWidth?: number;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  const r = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * r;
-  const filled = Math.min(100, Math.max(0, percent));
-  const offset = circumference - (filled / 100) * circumference;
-
-  return (
-    <div
-      className={cn("relative", className)}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: size,
-        height: size,
-      }}
-    >
-      <svg
-        className="absolute inset-0 -rotate-90"
-        width={size}
-        height={size}
-        viewBox={`0 0 ${size} ${size}`}
-      >
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          stroke={trackColor}
-          strokeWidth={strokeWidth}
-        />
-        {filled > 0 && (
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={r}
-            fill="none"
-            stroke={color}
-            strokeWidth={strokeWidth}
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            className="transition-all duration-500"
-          />
-        )}
-      </svg>
-      {children}
-    </div>
-  );
-}
+import {
+  Popover,
+  ProgressRing,
+  Text,
+  View,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 
 export function DailyTargetRings() {
   const today = format(new Date(), "yyyy-MM-dd");
@@ -77,9 +16,35 @@ export function DailyTargetRings() {
 
   if (isLoading) return null;
 
-  const todoComplete = data.todo >= 100;
-  const habitComplete = data.habit >= 100;
-  const journalComplete = data.journal >= 100;
+  const rows = [
+    {
+      key: "todo",
+      Icon: CheckSquare,
+      ring: "var(--ring-todo)",
+      track: "var(--ring-todo-track)",
+      label: "Todos",
+      percent: data.todo,
+      subtitle: `${details.todoDone}/${details.todoTarget} completed`,
+    },
+    {
+      key: "habit",
+      Icon: Target,
+      ring: "var(--ring-habit)",
+      track: "var(--ring-habit-track)",
+      label: "Habits",
+      percent: data.habit,
+      subtitle: `${details.habitDone}/${details.habitTotal} completed`,
+    },
+    {
+      key: "journal",
+      Icon: BookOpen,
+      ring: "var(--ring-journal)",
+      track: "var(--ring-journal-track)",
+      label: "Journal",
+      percent: data.journal,
+      subtitle: `${details.journalWords}/${details.journalTarget} words`,
+    },
+  ] as const;
 
   return (
     <Popover placement="bottom-end">
@@ -90,179 +55,90 @@ export function DailyTargetRings() {
           rounded="$md"
           px="$1"
           py="$1"
+          cursor="pointer"
           transition="quick"
           hoverStyle={{ bg: "$accent" }}
           aria-label="View daily targets"
         >
-          <CircleProgress
-            percent={data.todo}
-            color="var(--ring-todo)"
-            trackColor="var(--ring-todo-track)"
-          >
-            <CheckSquare
-              className={cn(
-                "size-3.5",
-                todoComplete
-                  ? "text-[var(--ring-todo)]"
-                  : "text-muted-foreground/60",
-              )}
-            />
-          </CircleProgress>
-          <CircleProgress
-            percent={data.habit}
-            color="var(--ring-habit)"
-            trackColor="var(--ring-habit-track)"
-          >
-            <Target
-              className={cn(
-                "size-3.5",
-                habitComplete
-                  ? "text-[var(--ring-habit)]"
-                  : "text-muted-foreground/60",
-              )}
-            />
-          </CircleProgress>
-          <CircleProgress
-            percent={data.journal}
-            color="var(--ring-journal)"
-            trackColor="var(--ring-journal-track)"
-          >
-            <BookOpen
-              className={cn(
-                "size-3.5",
-                journalComplete
-                  ? "text-[var(--ring-journal)]"
-                  : "text-muted-foreground/60",
-              )}
-            />
-          </CircleProgress>
+          {rows.map((r) => {
+            const Icon = r.Icon;
+            const complete = r.percent >= 100;
+            return (
+              <ProgressRing
+                key={r.key}
+                value={r.percent}
+                size={28}
+                thickness={2.5}
+                fillColor={r.ring}
+                trackColor={r.track}
+              >
+                {/* Tamagui `color` flows to the icon via currentColor. */}
+                <View color={(complete ? r.ring : "$mutedForeground") as never}>
+                  <Icon size={14} />
+                </View>
+              </ProgressRing>
+            );
+          })}
         </XStack>
       </Popover.Trigger>
-      <Popover.Content width={208} p="$3">
-        <Text mb="$2" fontSize="$1" fontWeight="600" color="$color">
+      <Popover.Content width={236} p="$3" items="stretch">
+        <Text
+          mb="$2.5"
+          width="100%"
+          fontSize={11}
+          fontWeight="700"
+          letterSpacing={0.6}
+          textTransform="uppercase"
+          color="$mutedForeground"
+        >
           Daily Targets
         </Text>
-        <YStack gap="$2.5">
-          <XStack items="center" gap="$2.5">
-            <CircleProgress
-              percent={data.todo}
-              color="var(--ring-todo)"
-              trackColor="var(--ring-todo-track)"
-              size={32}
-              strokeWidth={3}
-            >
-              <CheckSquare
-                className={cn(
-                  "size-4",
-                  todoComplete
-                    ? "text-[var(--ring-todo)]"
-                    : "text-muted-foreground/60",
-                )}
-              />
-            </CircleProgress>
-            <YStack flex={1}>
-              <Text fontSize="$1" fontWeight="500" color="$color">
-                Todos
-              </Text>
-              {/* allowlist: tabular-nums (figure alignment, no token equivalent) */}
-              <Text
-                fontSize={11}
-                color="$mutedForeground"
-                className="tabular-nums"
-              >
-                {details.todoDone}/{details.todoTarget} completed
-              </Text>
-            </YStack>
-            {/* allowlist: tabular-nums (figure alignment, no token equivalent) */}
-            <Text
-              fontSize="$1"
-              fontWeight="600"
-              color="$color"
-              className="tabular-nums"
-            >
-              {Math.round(data.todo)}%
-            </Text>
-          </XStack>
-          <XStack items="center" gap="$2.5">
-            <CircleProgress
-              percent={data.habit}
-              color="var(--ring-habit)"
-              trackColor="var(--ring-habit-track)"
-              size={32}
-              strokeWidth={3}
-            >
-              <Target
-                className={cn(
-                  "size-4",
-                  habitComplete
-                    ? "text-[var(--ring-habit)]"
-                    : "text-muted-foreground/60",
-                )}
-              />
-            </CircleProgress>
-            <YStack flex={1}>
-              <Text fontSize="$1" fontWeight="500" color="$color">
-                Habits
-              </Text>
-              {/* allowlist: tabular-nums (figure alignment, no token equivalent) */}
-              <Text
-                fontSize={11}
-                color="$mutedForeground"
-                className="tabular-nums"
-              >
-                {details.habitDone}/{details.habitTotal} completed
-              </Text>
-            </YStack>
-            {/* allowlist: tabular-nums (figure alignment, no token equivalent) */}
-            <Text
-              fontSize="$1"
-              fontWeight="600"
-              color="$color"
-              className="tabular-nums"
-            >
-              {Math.round(data.habit)}%
-            </Text>
-          </XStack>
-          <XStack items="center" gap="$2.5">
-            <CircleProgress
-              percent={data.journal}
-              color="var(--ring-journal)"
-              trackColor="var(--ring-journal-track)"
-              size={32}
-              strokeWidth={3}
-            >
-              <BookOpen
-                className={cn(
-                  "size-4",
-                  journalComplete
-                    ? "text-[var(--ring-journal)]"
-                    : "text-muted-foreground/60",
-                )}
-              />
-            </CircleProgress>
-            <YStack flex={1}>
-              <Text fontSize="$1" fontWeight="500" color="$color">
-                Journal
-              </Text>
-              {/* allowlist: tabular-nums (figure alignment, no token equivalent) */}
-              <Text
-                fontSize={11}
-                color="$mutedForeground"
-                className="tabular-nums"
-              >
-                {details.journalWords}/{details.journalTarget} words
-              </Text>
-            </YStack>
-            {/* allowlist: tabular-nums (figure alignment, no token equivalent) */}
-            <Text
-              fontSize="$1"
-              fontWeight="600"
-              color="$color"
-              className="tabular-nums"
-            >
-              {Math.round(data.journal)}%
-            </Text>
-          </XStack>
+        <YStack width="100%" gap="$2.5">
+          {rows.map((r) => {
+            const Icon = r.Icon;
+            const complete = r.percent >= 100;
+            return (
+              <XStack key={r.key} width="100%" items="center" gap="$2.5">
+                <ProgressRing
+                  value={r.percent}
+                  size={34}
+                  thickness={3}
+                  fillColor={r.ring}
+                  trackColor={r.track}
+                >
+                  <View
+                    color={(complete ? r.ring : "$mutedForeground") as never}
+                  >
+                    <Icon size={16} />
+                  </View>
+                </ProgressRing>
+                {/* Title + % share one baseline so the figure reads as the
+                    row's value instead of floating in the vertical gap. */}
+                <YStack flex={1} minW={0} gap={1}>
+                  <XStack items="center" justify="space-between" gap="$2">
+                    <Text fontSize="$2" fontWeight="600" color="$color">
+                      {r.label}
+                    </Text>
+                    <Text
+                      fontSize="$2"
+                      fontWeight="700"
+                      color={(complete ? r.ring : "$color") as never}
+                      style={{ fontVariantNumeric: "tabular-nums" }}
+                    >
+                      {Math.round(r.percent)}%
+                    </Text>
+                  </XStack>
+                  <Text
+                    fontSize={12}
+                    color="$mutedForeground"
+                    style={{ fontVariantNumeric: "tabular-nums" }}
+                  >
+                    {r.subtitle}
+                  </Text>
+                </YStack>
+              </XStack>
+            );
+          })}
         </YStack>
       </Popover.Content>
     </Popover>
