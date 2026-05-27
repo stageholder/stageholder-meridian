@@ -5,7 +5,6 @@ import { getNextTier, getTierProgress } from "@repo/core/types/light";
 
 interface LevelProgressProps {
   userLight: UserLight;
-  className?: string;
 }
 
 function getMultiplierDisplay(streak: number): string {
@@ -16,15 +15,15 @@ function getMultiplierDisplay(streak: number): string {
   return "1x";
 }
 
-export function LevelProgress({ userLight, className }: LevelProgressProps) {
+export function LevelProgress({ userLight }: LevelProgressProps) {
   const { totalLight, currentTier, currentTitle, perfectDayStreak } = userLight;
   const nextTier = getNextTier(currentTier);
   const progress = getTierProgress(totalLight, currentTier);
 
   return (
-    // `className` is forwarded so the route's layout classes (mt-*/w-full)
-    // still apply until Batch 2 converts those callers.
-    <YStack width="100%" gap="$2" className={className}>
+    // Layout (margin/width) is owned by the caller via a wrapping View; the
+    // component itself just fills its container.
+    <YStack width="100%" gap="$2">
       {/* Top row: current title — next title */}
       <XStack items="center" justify="space-between">
         <Text fontSize="$3" fontWeight="600" color="$color">

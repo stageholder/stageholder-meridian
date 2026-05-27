@@ -15,6 +15,8 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
+// Form isn't re-exported by the kit yet; pull it from the shared tamagui dep.
+import { Form } from "tamagui";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { parseDateLocal } from "@/lib/date";
@@ -104,8 +106,7 @@ export function CreateTodoDialog({
     }
   }, [open, selectedListId, defaultListId]);
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function handleSubmit() {
     if (!title.trim()) return;
 
     createTodo.mutate(
@@ -169,7 +170,7 @@ export function CreateTodoDialog({
           <Dialog.Description>
             Create a new todo with optional details, priority, and dates.
           </Dialog.Description>
-          <form onSubmit={handleSubmit} style={{ width: "100%" }}>
+          <Form onSubmit={handleSubmit} width="100%">
             <YStack gap="$4">
               {lists && lists.length > 1 && (
                 <YStack gap="$1">
@@ -315,24 +316,21 @@ export function CreateTodoDialog({
               </YStack>
 
               <XStack justify="flex-end" gap="$3" pt="$2">
-                <Button
-                  intent="outline"
-                  type="button"
-                  onPress={() => onOpenChange(false)}
-                >
+                <Button intent="outline" onPress={() => onOpenChange(false)}>
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={!title.trim() || createTodo.isPending}
-                  loading={createTodo.isPending}
-                  loadingText="Creating…"
-                >
-                  Create
-                </Button>
+                <Form.Trigger asChild>
+                  <Button
+                    disabled={!title.trim() || createTodo.isPending}
+                    loading={createTodo.isPending}
+                    loadingText="Creating…"
+                  >
+                    Create
+                  </Button>
+                </Form.Trigger>
               </XStack>
             </YStack>
-          </form>
+          </Form>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   useCanManageBilling,
   useInvoices,
@@ -257,6 +258,7 @@ function NoticePanel({ headline, body }: { headline: string; body: string }) {
 }
 
 function EmptyLedger({ changePlanHref }: { changePlanHref: string }) {
+  const navigate = useNavigate();
   return (
     <XStack
       flexWrap="wrap"
@@ -283,11 +285,10 @@ function EmptyLedger({ changePlanHref }: { changePlanHref: string }) {
           appear here as a downloadable PDF.
         </Paragraph>
       </YStack>
-      {/* External-style anchor wrapping a kit Button: the route is owned by
-          the host page; an <a> keeps it a real navigable link. */}
-      <a href={changePlanHref} style={{ textDecoration: "none" }}>
-        <Button>See plans</Button>
-      </a>
+      {/* Client-side nav via TanStack's useNavigate — no page refresh. */}
+      <Button onPress={() => void navigate({ to: changePlanHref })}>
+        See plans
+      </Button>
     </XStack>
   );
 }

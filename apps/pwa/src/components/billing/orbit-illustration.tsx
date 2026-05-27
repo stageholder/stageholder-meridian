@@ -1,5 +1,3 @@
-import { cn } from "@/lib/utils";
-
 /**
  * Abstract "orbital chart" illustration. Renders the three Meridian pillars
  * (todos / habits / journal) as concentric rings tinted with the product
@@ -24,7 +22,10 @@ export function OrbitIllustration({
       viewBox="0 0 240 240"
       role="presentation"
       aria-hidden
-      className={cn("h-full w-full text-foreground/80", className)}
+      // allowlist: SVG sizing + foreground-tint utility classes (no kit token; native SVG styling)
+      className={["h-full w-full text-foreground/80", className]
+        .filter(Boolean)
+        .join(" ")}
     >
       {/* paper grid — barely there, gives the feeling of a planner page */}
       <defs>

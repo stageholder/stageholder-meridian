@@ -3,7 +3,14 @@ import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { ListFilter } from "lucide-react";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { TodoListSidebar } from "@/components/todos/todo-list-sidebar";
-import { Button, Drawer, View, XStack, YStack } from "@stageholder/ui";
+import {
+  Button,
+  Drawer,
+  View,
+  VisuallyHidden,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 
 export const Route = createFileRoute("/_app/todos")({
   component: TodosLayout,
@@ -34,7 +41,9 @@ function TodosLayout() {
           <Drawer.Portal>
             <Drawer.Overlay />
             <Drawer.Content side="left" width={256} p={0}>
-              <Drawer.Title className="sr-only">Todo Lists</Drawer.Title>
+              <VisuallyHidden>
+                <Drawer.Title>Todo Lists</Drawer.Title>
+              </VisuallyHidden>
               <TodoListSidebar onNavigate={() => setSheetOpen(false)} />
             </Drawer.Content>
           </Drawer.Portal>

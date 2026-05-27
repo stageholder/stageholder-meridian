@@ -1,16 +1,5 @@
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { Text, View } from "@stageholder/ui";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
+import { AreaChart, Text, View, type ChartDatum } from "@stageholder/ui";
 import { useLightTrend } from "@/lib/hooks/use-light-trend";
-
-const chartConfig = {
-  light: { label: "Total Light", color: "oklch(0.75 0.18 55)" },
-} satisfies ChartConfig;
 
 export function LightEarnedChart() {
   const { data, isLoading } = useLightTrend();
@@ -35,47 +24,18 @@ export function LightEarnedChart() {
     );
   }
 
+  const chartData: ChartDatum[] = data.map((d) => ({
+    label: d.label,
+    value: d.light,
+  }));
+
   return (
-    <ChartContainer config={chartConfig} className="h-[200px] w-full">
-      <AreaChart data={data}>
-        <defs>
-          <linearGradient id="lightGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop
-              offset="5%"
-              stopColor="var(--color-light)"
-              stopOpacity={0.3}
-            />
-            <stop offset="95%" stopColor="var(--color-light)" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid vertical={false} strokeDasharray="3 3" />
-        <XAxis
-          dataKey="label"
-          tickLine={false}
-          axisLine={false}
-          fontSize={12}
-          interval="preserveStartEnd"
-        />
-        <YAxis
-          tickLine={false}
-          axisLine={false}
-          fontSize={12}
-          width={36}
-          allowDecimals={false}
-          tickFormatter={(v: number) =>
-            v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v)
-          }
-        />
-        <ChartTooltip content={<ChartTooltipContent />} />
-        <Area
-          type="monotone"
-          dataKey="light"
-          stroke="var(--color-light)"
-          fill="url(#lightGradient)"
-          strokeWidth={2}
-          dot={false}
-        />
-      </AreaChart>
-    </ChartContainer>
+    <AreaChart
+      data={chartData}
+      height={200}
+      showGrid
+      continuous
+      color="oklch(0.75 0.18 55)"
+    />
   );
 }

@@ -29,7 +29,7 @@ export function CycleToggle({
       <SegmentedControl.Item value="yearly">
         <XStack items="center" gap="$2">
           <Text>Yearly</Text>
-          {yearlyDiscountLabel && (
+          {yearlyDiscountLabel ? (
             <Text
               rounded={9999}
               px="$2"
@@ -41,7 +41,7 @@ export function CycleToggle({
             >
               {yearlyDiscountLabel}
             </Text>
-          )}
+          ) : null}
         </XStack>
       </SegmentedControl.Item>
     </SegmentedControl>

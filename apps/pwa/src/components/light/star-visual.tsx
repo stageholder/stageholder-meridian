@@ -1,5 +1,3 @@
-import { cn } from "@/lib/utils";
-
 interface StarVisualProps {
   tier: number;
   size?: "xs" | "sm" | "md" | "lg" | "xl";
@@ -24,7 +22,10 @@ export function StarVisual({
       width={px}
       height={px}
       viewBox="0 0 100 100"
-      className={cn("shrink-0", className)}
+      // allowlist: SVG-internal Tailwind classes — `shrink-0` plus any caller
+      // class (e.g. `dark:hidden` on the sky portal); no Tamagui equivalent
+      // for an <svg> element.
+      className={className ? `shrink-0 ${className}` : "shrink-0"}
       aria-hidden
     >
       <defs>

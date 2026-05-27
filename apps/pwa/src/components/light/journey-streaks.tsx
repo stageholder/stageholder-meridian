@@ -98,17 +98,9 @@ function StreakRing({
 
 export function JourneyStreaks({ userLight }: JourneyStreaksProps) {
   return (
-    // Responsive grid: 2 columns, 4 at lg. `Grid`'s `columns` isn't a media-
-    // aware style prop, so the CSS-grid template lives directly on a View with
-    // an `$lg` override (gap maps gap-3 → $3).
-    <View
-      display="grid"
-      gap="$3"
-      style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}
-      $lg={{
-        style: { gridTemplateColumns: "repeat(4, minmax(0, 1fr))" },
-      }}
-    >
+    // Flexbox auto-fit: cards flex to fill, wrapping below minWidth so the row
+    // reads ~2 cols on narrow screens and ~4 once wide enough (gap-3 → $3).
+    <XStack flexWrap="wrap" gap="$3">
       {streakCards.map((card) => {
         const Icon = card.icon;
         const current = userLight[card.currentKey];
@@ -117,6 +109,8 @@ export function JourneyStreaks({ userLight }: JourneyStreaksProps) {
         return (
           <XStack
             key={card.label}
+            flex={1}
+            minW={150}
             items="center"
             gap="$3"
             rounded="$lg"
@@ -163,6 +157,6 @@ export function JourneyStreaks({ userLight }: JourneyStreaksProps) {
           </XStack>
         );
       })}
-    </View>
+    </XStack>
   );
 }

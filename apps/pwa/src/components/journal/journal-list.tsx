@@ -148,7 +148,7 @@ export function JournalList({
                     <Text mt="$0.5" fontSize="$1" color="$mutedForeground">
                       {dateLabel}
                     </Text>
-                    {preview && (
+                    {preview ? (
                       <Text
                         mt="$1.5"
                         fontSize="$1"
@@ -157,7 +157,7 @@ export function JournalList({
                       >
                         {preview}
                       </Text>
-                    )}
+                    ) : null}
                     {Array.isArray(journal.tags) && journal.tags.length > 0 && (
                       <XStack mt="$1.5" flexWrap="wrap" gap="$1">
                         {(journal.tags as string[]).map((tag: string) => (

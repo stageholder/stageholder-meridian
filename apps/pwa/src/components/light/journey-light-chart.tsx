@@ -1,16 +1,11 @@
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { Text, View, XStack } from "@stageholder/ui";
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
+  AreaChart,
+  Text,
+  View,
+  XStack,
+  type ChartDatum,
+} from "@stageholder/ui";
 import { useLightTrend } from "@/lib/hooks/use-light-trend";
-
-const chartConfig = {
-  light: { label: "Light Earned", color: "oklch(0.75 0.18 55)" },
-} satisfies ChartConfig;
 
 export function JourneyLightChart() {
   const { data, isLoading } = useLightTrend();
@@ -37,6 +32,11 @@ export function JourneyLightChart() {
 
   const totalRecent = data.reduce((s, d) => s + d.light, 0);
 
+  const chartData: ChartDatum[] = data.map((d) => ({
+    label: d.label,
+    value: d.light,
+  }));
+
   return (
     <View>
       <XStack mb="$2" items="center" justify="space-between">
@@ -52,54 +52,13 @@ export function JourneyLightChart() {
           +{totalRecent} Light
         </Text>
       </XStack>
-      <ChartContainer config={chartConfig} className="h-[180px] w-full">
-        <AreaChart data={data}>
-          <defs>
-            <linearGradient
-              id="journeyLightGradient"
-              x1="0"
-              y1="0"
-              x2="0"
-              y2="1"
-            >
-              <stop
-                offset="5%"
-                stopColor="var(--color-light)"
-                stopOpacity={0.3}
-              />
-              <stop
-                offset="95%"
-                stopColor="var(--color-light)"
-                stopOpacity={0}
-              />
-            </linearGradient>
-          </defs>
-          <CartesianGrid vertical={false} strokeDasharray="3 3" />
-          <XAxis
-            dataKey="label"
-            tickLine={false}
-            axisLine={false}
-            fontSize={11}
-            interval="preserveStartEnd"
-          />
-          <YAxis
-            tickLine={false}
-            axisLine={false}
-            fontSize={11}
-            width={28}
-            allowDecimals={false}
-          />
-          <ChartTooltip content={<ChartTooltipContent />} />
-          <Area
-            type="monotone"
-            dataKey="light"
-            stroke="var(--color-light)"
-            fill="url(#journeyLightGradient)"
-            strokeWidth={2}
-            dot={{ r: 2.5, fill: "var(--color-light)" }}
-          />
-        </AreaChart>
-      </ChartContainer>
+      <AreaChart
+        data={chartData}
+        height={180}
+        showGrid
+        continuous
+        color="oklch(0.75 0.18 55)"
+      />
     </View>
   );
 }

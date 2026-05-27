@@ -141,6 +141,12 @@ export function JournalCelebration({ trigger }: JournalCelebrationProps) {
       overflow="hidden"
       aria-hidden="true"
     >
+      {/* allowlist: journal-celebration-* / journal-fire-edge / journal-ember /
+          journal-spark are bespoke celebration keyframes (flash, shimmer
+          sweep, rising embers/sparks) driven by CSS `@keyframes` + per-particle
+          CSS-var offsets — no Tamagui token/transition equivalent. Raw
+          div/span kept so the keyframe classes + inline CSS-var styles apply. */}
+
       {/* Golden flash overlay */}
       <div className="journal-celebration-flash absolute inset-0" />
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useProfile, useUpdateProfile } from "@stageholder/sdk/spa";
 import { Button, Input, Label, Paragraph, Text, YStack } from "@stageholder/ui";
-import { TimezoneSelect } from "@/components/ui/timezone-select";
+import { TimezoneSelect } from "@/components/settings/timezone-select";
 
 /**
  * Onboarding step where the user confirms display name and picks a

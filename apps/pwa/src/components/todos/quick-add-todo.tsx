@@ -12,6 +12,8 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
+// Form isn't re-exported by the kit yet; pull it from the shared tamagui dep.
+import { Form } from "tamagui";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { parseDateLocal } from "@/lib/date";
@@ -356,14 +358,9 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
         p="$3"
         gap="$3"
       >
-        {/* Title */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSubmit();
-          }}
-          style={{ width: "100%" }}
-        >
+        {/* Title — Form gives Enter-to-submit; the standalone "Add Todo"
+            button below shares the same handleSubmit. */}
+        <Form onSubmit={() => handleSubmit()} width="100%">
           <Input
             ref={inputRef}
             value={title}
@@ -379,7 +376,7 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
             placeholderTextColor="$mutedForeground"
             focusVisibleStyle={{ outlineWidth: 0 }}
           />
-        </form>
+        </Form>
 
         {/* Metadata — priority pill + kit date pickers (Notion-style, with
             preset shortcuts) + list pill. */}

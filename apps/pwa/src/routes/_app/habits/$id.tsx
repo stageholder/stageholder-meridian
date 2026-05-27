@@ -546,7 +546,6 @@ function HabitDetailPage() {
             height={40}
             width={40}
             rounded="$lg"
-            fontSize="$6"
             // habit identity tint (faint orange)
             style={{ backgroundColor: habitTrack }}
           >
@@ -558,11 +557,11 @@ function HabitDetailPage() {
             <H1 fontSize="$7" fontWeight="700" color="$color">
               {habit.name}
             </H1>
-            {habit.description && (
+            {habit.description ? (
               <Paragraph fontSize="$3" color="$mutedForeground">
                 {habit.description}
               </Paragraph>
-            )}
+            ) : null}
           </YStack>
         </XStack>
         <XStack items="center" gap="$2">
@@ -585,16 +584,14 @@ function HabitDetailPage() {
         </Text>
       )}
 
-      {/* Stats row */}
-      <View
-        display="grid"
-        gap="$3"
-        gridTemplateColumns={"repeat(2, minmax(0, 1fr))" as never}
-        $sm={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" as never }}
-      >
+      {/* Stats row — flexbox auto-fit: each Stat flexes to fill, wrapping below
+          minWidth so the row reads as ~2 cols on narrow screens and ~4 wide. */}
+      <XStack flexWrap="wrap" gap="$3">
         {/* Current streak uses the kit StreakBadge (auto-tiers cold→blazing).
             Quota habits streak in WEEKS, not days. */}
         <Stat
+          flex={1}
+          minW={150}
           rounded="$6"
           borderWidth={1}
           borderColor="$borderColor"
@@ -613,6 +610,8 @@ function HabitDetailPage() {
           </View>
         </Stat>
         <Stat
+          flex={1}
+          minW={150}
           rounded="$6"
           borderWidth={1}
           borderColor="$borderColor"
@@ -625,6 +624,8 @@ function HabitDetailPage() {
           </Stat.Value>
         </Stat>
         <Stat
+          flex={1}
+          minW={150}
           rounded="$6"
           borderWidth={1}
           borderColor="$borderColor"
@@ -635,6 +636,8 @@ function HabitDetailPage() {
           <Stat.Value color="$color">{stats.totalCompletions}</Stat.Value>
         </Stat>
         <Stat
+          flex={1}
+          minW={150}
           rounded="$6"
           borderWidth={1}
           borderColor="$borderColor"
@@ -644,21 +647,18 @@ function HabitDetailPage() {
           <Stat.Label color="$mutedForeground">Completion Rate</Stat.Label>
           <Stat.Value color="$color">{stats.completionRate}%</Stat.Value>
         </Stat>
-      </View>
+      </XStack>
 
       {/* Day editor + Recent Entries. Fixed calendar column + flexible entries
-          column (mirrors the calendar page's sizing), stacked on mobile. */}
-      <View
-        display="grid"
+          column (mirrors the calendar page's sizing), stacked on mobile, then
+          a fixed 440-wide calendar + a flexible entries column at $lg. */}
+      <XStack
+        flexDirection="column"
         gap="$6"
-        gridTemplateColumns={"1fr" as never}
-        $lg={{
-          gridTemplateColumns: "minmax(0, 440px) minmax(0, 1fr)" as never,
-          alignItems: "start" as never,
-        }}
+        $lg={{ flexDirection: "row", items: "flex-start" }}
       >
         {/* Interactive calendar for picking any day to edit (no card). */}
-        <YStack gap="$3">
+        <YStack gap="$3" $lg={{ width: 440 }}>
           <H3 fontSize="$3" fontWeight="600" color="$color">
             Edit a day
           </H3>
@@ -761,8 +761,6 @@ function HabitDetailPage() {
                 habit.scheduledDays && habit.scheduledDays.length > 0;
               const selScheduled =
                 !hasSchedule || habit.scheduledDays!.includes(selDow);
-              const selIsToday = selectedDate === today;
-              const selHasEntry = !!monthEntryObjMap.get(selectedDate);
 
               return (
                 <XStack
@@ -826,12 +824,17 @@ function HabitDetailPage() {
                         bg="$destructiveMuted"
                         px="$2.5"
                         py="$1"
-                        fontSize="$1"
-                        fontWeight="500"
-                        color="$destructive"
                       >
-                        <X size={12} />
-                        Failed
+                        <Text color="$destructive" lineHeight={0}>
+                          <X size={12} />
+                        </Text>
+                        <Text
+                          fontSize="$1"
+                          fontWeight="500"
+                          color="$destructive"
+                        >
+                          Failed
+                        </Text>
                       </XStack>
                     ) : selIsSkipped ? (
                       <XStack
@@ -841,12 +844,17 @@ function HabitDetailPage() {
                         bg="$muted"
                         px="$2.5"
                         py="$1"
-                        fontSize="$1"
-                        fontWeight="500"
-                        color="$mutedForeground"
                       >
-                        <SkipForward size={12} />
-                        Skipped
+                        <Text color="$mutedForeground" lineHeight={0}>
+                          <SkipForward size={12} />
+                        </Text>
+                        <Text
+                          fontSize="$1"
+                          fontWeight="500"
+                          color="$mutedForeground"
+                        >
+                          Skipped
+                        </Text>
                       </XStack>
                     ) : selComplete ? (
                       <XStack
@@ -856,12 +864,13 @@ function HabitDetailPage() {
                         bg="$successMuted"
                         px="$2.5"
                         py="$1"
-                        fontSize="$1"
-                        fontWeight="500"
-                        color="$success"
                       >
-                        <Check size={12} />
-                        Done
+                        <Text color="$success" lineHeight={0}>
+                          <Check size={12} />
+                        </Text>
+                        <Text fontSize="$1" fontWeight="500" color="$success">
+                          Done
+                        </Text>
                       </XStack>
                     ) : (
                       <>
@@ -882,7 +891,6 @@ function HabitDetailPage() {
                               size="sm"
                               onPress={() => handleDateFail(selectedDate)}
                               disabled={isMutating}
-                              title="Mark failed — resets the streak"
                             >
                               Fail
                             </Button>
@@ -906,7 +914,7 @@ function HabitDetailPage() {
         </YStack>
 
         {/* Recent Entries (no card) */}
-        <YStack>
+        <YStack flex={1}>
           <H3 fontSize="$3" fontWeight="600" color="$color">
             Recent Entries
           </H3>
@@ -979,7 +987,7 @@ function HabitDetailPage() {
                           {entry.value}/{resolveTargetCount(entry, habit)}
                         </Text>
                       )}
-                      {entry.skipReason && (
+                      {entry.skipReason ? (
                         <Text
                           maxW={120}
                           numberOfLines={1}
@@ -988,8 +996,8 @@ function HabitDetailPage() {
                         >
                           {entry.skipReason}
                         </Text>
-                      )}
-                      {entry.notes && !entryIsSkip && !entryIsFail && (
+                      ) : null}
+                      {entry.notes && !entryIsSkip && !entryIsFail ? (
                         <Text
                           maxW={120}
                           numberOfLines={1}
@@ -998,7 +1006,7 @@ function HabitDetailPage() {
                         >
                           {entry.notes}
                         </Text>
-                      )}
+                      ) : null}
                     </XStack>
                   </XStack>
                 );
@@ -1006,7 +1014,7 @@ function HabitDetailPage() {
             </YStack>
           )}
         </YStack>
-      </View>
+      </XStack>
 
       <EditHabitSheet
         habit={habit}

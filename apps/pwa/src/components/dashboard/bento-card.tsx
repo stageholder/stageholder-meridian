@@ -28,9 +28,11 @@ export function BentoCard({
       // dashboard route — pure CSS-grid placement, no kit token equivalent.
       className={className}
     >
-      {(title || action) && (
+      {title || action ? (
         <Card.Header>
-          {title && (
+          {/* Ternary (not `title && …`) so an empty-string title can't render
+              a stray "" text node inside the header. */}
+          {title ? (
             <Card.Title fontSize="$3">
               {href ? (
                 <Link to={href} style={{ textDecoration: "none" }}>
@@ -44,13 +46,15 @@ export function BentoCard({
                   </Text>
                 </Link>
               ) : (
-                title
+                <Text fontSize="$3" fontWeight="600" color="$cardForeground">
+                  {title}
+                </Text>
               )}
             </Card.Title>
-          )}
-          {action && <Card.Action>{action}</Card.Action>}
+          ) : null}
+          {action ? <Card.Action>{action}</Card.Action> : null}
         </Card.Header>
-      )}
+      ) : null}
       <Card.Body>{children}</Card.Body>
     </Card>
   );

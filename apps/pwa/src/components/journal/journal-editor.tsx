@@ -209,6 +209,9 @@ export function JournalEditor({
           panel feels like one typing surface, not a tiny clickable box.
           Toolbar buttons + ProseMirror itself are excluded so they
           handle their own click semantics. */}
+      {/* allowlist: journal-editor-body scopes globals.css overrides for the
+          TipTap/ProseMirror editor chrome (padding alignment + text cursor
+          over the empty dead-zone) — editor-specific CSS, no token equiv. */}
       <YStack
         flex={1}
         overflow="scroll"
@@ -348,6 +351,12 @@ function MeridianProgress({
   const thumbLeftPx = thumbCenterPx - THUMB_WIDTH / 2;
 
   return (
+    // allowlist: the meridian progress strip is a measured, pixel-precise
+    // visualization — ResizeObserver-driven left/width in raw px, CSS-var
+    // theming (var(--ring-journal)/var(--background)), color-mix(in oklch, …)
+    // gradients + glow, and per-property CSS transitions on the measured
+    // positions. No Tamagui token/transition equivalent; kept as styled DOM.
+    // tabular-nums on the count keeps the digits from jittering as they tick.
     <div
       ref={stripRef}
       className="relative shrink-0 w-full overflow-visible"

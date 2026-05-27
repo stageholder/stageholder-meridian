@@ -84,16 +84,14 @@ function HabitsPage() {
       </XStack>
 
       {isLoading ? (
-        <View
-          display="grid"
-          gap="$4"
-          gridTemplateColumns={"1fr" as never}
-          $sm={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" as never }}
-          $lg={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" as never }}
-        >
+        // Flexbox auto-fit: cards flex to fill, wrapping below minWidth so the
+        // row reads ~1 col on mobile, ~2–3 as width grows.
+        <XStack flexWrap="wrap" gap="$4">
           {[1, 2, 3].map((i) => (
             <YStack
               key={i}
+              flex={1}
+              minW={220}
               rounded="$6"
               borderWidth={1}
               borderColor="$borderColor"
@@ -173,23 +171,21 @@ function HabitsPage() {
               </XStack>
             </YStack>
           ))}
-        </View>
+        </XStack>
       ) : habits && habits.length > 0 ? (
-        <View
-          display="grid"
-          gap="$4"
-          gridTemplateColumns={"1fr" as never}
-          $sm={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" as never }}
-          $lg={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" as never }}
-        >
+        // Flexbox auto-fit: cards flex to fill, wrapping below minWidth so the
+        // row reads ~1 col on mobile, ~2–3 as width grows.
+        <XStack flexWrap="wrap" gap="$4">
           {habits.map((habit: Habit) => (
             <HabitCard
               key={habit.id}
               habit={habit}
+              flex={1}
+              minW={220}
               selectedDate={isViewingToday ? undefined : selectedDate}
             />
           ))}
-        </View>
+        </XStack>
       ) : (
         <EmptyState>
           <EmptyState.IconSlot>

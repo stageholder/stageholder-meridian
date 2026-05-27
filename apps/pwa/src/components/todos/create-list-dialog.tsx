@@ -11,6 +11,8 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
+// Form isn't re-exported by the kit yet; pull it from the shared tamagui dep.
+import { Form } from "tamagui";
 import type { TodoList } from "@repo/core/types";
 
 const colorOptions = [
@@ -50,8 +52,7 @@ export function CreateListDialog({
     setColor(list?.color ?? "#3b82f6");
   }, [open, list]);
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function handleSubmit() {
     if (!name.trim()) return;
 
     if (isEdit && list) {
@@ -93,7 +94,7 @@ export function CreateListDialog({
               ? "Update this list's name and color."
               : "Name your list and pick a color."}
           </Dialog.Description>
-          <form onSubmit={handleSubmit} style={{ width: "100%" }}>
+          <Form onSubmit={handleSubmit} width="100%">
             <YStack gap="$4">
               <YStack gap="$1">
                 <Label htmlFor="list-name">Name</Label>
@@ -134,24 +135,21 @@ export function CreateListDialog({
               </YStack>
 
               <XStack justify="flex-end" gap="$3" pt="$2">
-                <Button
-                  intent="outline"
-                  type="button"
-                  onPress={() => onOpenChange(false)}
-                >
+                <Button intent="outline" onPress={() => onOpenChange(false)}>
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={!name.trim() || pending}
-                  loading={pending}
-                  loadingText={isEdit ? "Saving…" : "Creating…"}
-                >
-                  {isEdit ? "Save" : "Create"}
-                </Button>
+                <Form.Trigger asChild>
+                  <Button
+                    disabled={!name.trim() || pending}
+                    loading={pending}
+                    loadingText={isEdit ? "Saving…" : "Creating…"}
+                  >
+                    {isEdit ? "Save" : "Create"}
+                  </Button>
+                </Form.Trigger>
               </XStack>
             </YStack>
-          </form>
+          </Form>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog>

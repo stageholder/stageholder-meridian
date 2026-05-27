@@ -156,11 +156,11 @@ function CategoryRows({
               <Text fontSize="$3" fontWeight="500" color="$color">
                 {f.displayName}
               </Text>
-              {f.description && (
+              {f.description ? (
                 <Text fontSize="$1" color="$mutedForeground">
                   {f.description}
                 </Text>
-              )}
+              ) : null}
             </YStack>
           </th>
           {plans.map((p) => (
@@ -220,11 +220,11 @@ function Cell({
       return (
         <Text fontSize="$3" fontWeight="500" color="$color">
           {value.toLocaleString()}
-          {feature.unit && (
+          {feature.unit ? (
             <Text ml="$1" fontSize="$1" color="$mutedForeground">
               {feature.unit}
             </Text>
-          )}
+          ) : null}
         </Text>
       );
     }

@@ -41,15 +41,14 @@ function JourneyPage() {
   return (
     <YStack mx="auto" maxW={768} gap="$6" p="$4" $lg={{ p: "$5" }}>
       {/* Hero + Today's Progress — two-column on md+ */}
-      <View
-        display="grid"
-        gap="$4"
-        gridTemplateColumns={"1fr" as never}
-        $md={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" as never }}
-      >
+      {/* Flexbox auto-fit: columns flex to fill, wrapping below minWidth so the
+          layout reads single-column on mobile and two-up once wide enough. */}
+      <XStack flexWrap="wrap" gap="$4">
         {/* Left: Hero — Star + Title + Progress */}
         {/* allowlist: amber gradient surface + border tint (no token equivalent) */}
         <YStack
+          flex={1}
+          minW={280}
           position="relative"
           items="center"
           justify="center"
@@ -86,11 +85,14 @@ function JourneyPage() {
           <Paragraph mt="$0.5" fontSize="$3" color="$mutedForeground">
             {userLight.totalLight.toLocaleString()} Light earned
           </Paragraph>
-          <LevelProgress userLight={userLight} className="mt-5 w-full" />
+          {/* mt-5 / w-full → Tamagui margin + width on a wrapping View. */}
+          <View mt="$5" width="100%">
+            <LevelProgress userLight={userLight} />
+          </View>
         </YStack>
 
         {/* Right: Today's Progress + Quick Stats */}
-        <YStack gap="$4">
+        <YStack flex={1} minW={280} gap="$4">
           <View>
             <H2
               mb="$3"
@@ -106,7 +108,7 @@ function JourneyPage() {
           </View>
           <JourneyStats userLight={userLight} />
         </YStack>
-      </View>
+      </XStack>
 
       {/* Tier description — full width below hero */}
       <Paragraph
@@ -137,7 +139,7 @@ function JourneyPage() {
       {/* Light Earned Chart */}
       <Card>
         <Card.Header>
-          <Card.Title className="text-sm">Light Earned</Card.Title>
+          <Card.Title fontSize="$3">Light Earned</Card.Title>
         </Card.Header>
         <Card.Body>
           <JourneyLightChart />
@@ -162,7 +164,7 @@ function JourneyPage() {
       {/* Recent Light Feed */}
       <Card>
         <Card.Header>
-          <Card.Title className="text-sm">Recent Light</Card.Title>
+          <Card.Title fontSize="$3">Recent Light</Card.Title>
         </Card.Header>
         <Card.Body>
           <JourneyFeed />

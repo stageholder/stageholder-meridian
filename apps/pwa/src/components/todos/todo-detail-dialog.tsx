@@ -14,11 +14,18 @@ import {
   IconButton,
   Input,
   Separator,
+  TextArea,
   Text,
   View,
   XStack,
   YStack,
 } from "@stageholder/ui";
+// The kit Input is a frame-compound and doesn't forward refs to the inner
+// DOM input; the inline-edit title field needs direct .focus()/.blur()/
+// .selectionStart access, so use the raw Tamagui Input (forwards ref to the
+// DOM node on web) plus Form for the subtask Enter-to-submit. Neither is
+// re-exported by the kit yet.
+import { Form, Input as RawInput } from "tamagui";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { parseDateLocal } from "@/lib/date";
@@ -258,23 +265,39 @@ export function TodoDetailDialog({
             </View>
             <YStack flex={1} minW={0}>
               {editingTitle ? (
-                <input
-                  ref={titleRef}
+                <RawInput
+                  ref={titleRef as never}
                   value={titleDraft}
-                  onChange={(e) => setTitleDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      titleRef.current?.blur();
-                    }
-                    if (e.key === "Escape") {
-                      titleCancelledRef.current = true;
-                      setTitleDraft(todo.title);
-                      setEditingTitle(false);
-                    }
-                  }}
+                  onChangeText={setTitleDraft}
+                  {...({
+                    onKeyDown: (e: {
+                      key: string;
+                      preventDefault: () => void;
+                    }) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        titleRef.current?.blur();
+                      }
+                      if (e.key === "Escape") {
+                        titleCancelledRef.current = true;
+                        setTitleDraft(todo.title);
+                        setEditingTitle(false);
+                      }
+                    },
+                  } as object)}
                   onBlur={handleSaveTitle}
-                  className="w-full bg-transparent text-base font-semibold text-foreground outline-none border-b-2 border-primary pb-0.5"
+                  unstyled
+                  width="100%"
+                  bg="transparent"
+                  fontSize="$5"
+                  fontWeight="600"
+                  color="$color"
+                  borderWidth={0}
+                  borderBottomWidth={2}
+                  borderColor="$primary"
+                  pb={2}
+                  outlineWidth={0}
+                  focusVisibleStyle={{ outlineWidth: 0 }}
                 />
               ) : (
                 <Text
@@ -357,22 +380,34 @@ export function TodoDetailDialog({
                 </XStack>
                 {editingDesc ? (
                   <YStack mt="$1.5">
-                    <textarea
-                      ref={descRef}
+                    <TextArea
+                      ref={descRef as never}
                       value={descDraft}
-                      onChange={(e) => setDescDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                          handleSaveDescription();
-                        }
-                        if (e.key === "Escape") {
-                          setDescDraft(todo.description ?? "");
-                          setEditingDesc(false);
-                        }
-                      }}
+                      onChangeText={setDescDraft}
+                      {...({
+                        onKeyDown: (e: {
+                          key: string;
+                          metaKey: boolean;
+                          ctrlKey: boolean;
+                        }) => {
+                          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                            handleSaveDescription();
+                          }
+                          if (e.key === "Escape") {
+                            setDescDraft(todo.description ?? "");
+                            setEditingDesc(false);
+                          }
+                        },
+                      } as object)}
                       placeholder="Add a description..."
                       rows={3}
-                      className="w-full resize-none rounded-md border border-border bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      width="100%"
+                      bg="transparent"
+                      px="$3"
+                      py="$2"
+                      fontSize="$3"
+                      // resize: web-only CSS, no Tamagui prop equivalent.
+                      style={{ resize: "none" }}
                     />
                     <XStack mt="$1.5" items="center" gap="$2">
                       <Button
@@ -566,10 +601,9 @@ export function TodoDetailDialog({
                       ))}
                   </YStack>
                 )}
-                <form
-                  style={{ marginTop: 7 }}
-                  onSubmit={(e) => {
-                    e.preventDefault();
+                <Form
+                  mt={7}
+                  onSubmit={() => {
                     const title = newSubtaskTitle.trim();
                     if (!title) return;
                     addSubtask.mutate(
@@ -586,7 +620,7 @@ export function TodoDetailDialog({
                     placeholder="Add subtask..."
                     size="$3"
                   />
-                </form>
+                </Form>
               </YStack>
             </YStack>
 

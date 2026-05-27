@@ -5,9 +5,11 @@ import type { Habit } from "@repo/core/types";
 import {
   Button,
   Dialog,
+  EmojiPicker,
   Input,
   Label,
   NumberInput,
+  Popover,
   Select,
   Text,
   TextArea,
@@ -16,7 +18,6 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
-import { EmojiPicker } from "@/components/ui/emoji-picker";
 
 interface EditHabitSheetProps {
   habit: Habit;
@@ -58,6 +59,7 @@ export function EditHabitSheet({
   const [unit, setUnit] = useState(habit.unit || "");
   const [color, setColor] = useState(habit.color || "#3b82f6");
   const [icon, setIcon] = useState(habit.icon || "");
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [scheduledDays, setScheduledDays] = useState<number[]>(
     habit.scheduledDays || [],
   );
@@ -150,7 +152,52 @@ export function EditHabitSheet({
                     Icon
                   </Text>
                   <View mt="$1">
-                    <EmojiPicker value={icon} onChange={setIcon} />
+                    <Popover
+                      open={iconPickerOpen}
+                      onOpenChange={setIconPickerOpen}
+                      placement="bottom-start"
+                    >
+                      <Popover.Trigger asChild>
+                        <View
+                          {...({
+                            role: "button",
+                            "aria-label": "Pick an icon...",
+                          } as object)}
+                          cursor="pointer"
+                          height={40}
+                          width={40}
+                          shrink={0}
+                          items="center"
+                          justify="center"
+                          rounded="$lg"
+                          borderWidth={1}
+                          borderColor="$borderColor"
+                          bg="$background"
+                          hoverStyle={{ bg: "$accent" }}
+                        >
+                          <Text fontSize="$6" color="$color">
+                            {icon || "😀"}
+                          </Text>
+                        </View>
+                      </Popover.Trigger>
+                      <Popover.Content
+                        z={200}
+                        width="auto"
+                        p={0}
+                        borderWidth={0}
+                        overflow="hidden"
+                        style={{ boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}
+                      >
+                        <EmojiPicker
+                          width={350}
+                          height={400}
+                          onSelect={(emoji) => {
+                            setIcon(emoji);
+                            setIconPickerOpen(false);
+                          }}
+                        />
+                      </Popover.Content>
+                    </Popover>
                   </View>
                 </YStack>
                 <YStack flex={1}>

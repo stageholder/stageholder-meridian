@@ -34,15 +34,6 @@ function UpgradePage() {
     [plans],
   );
 
-  // Responsive plan-grid template — exact column counts matter, so map the
-  // plan count to a CSS grid template (md+) instead of auto-fit.
-  const planCount = ordered?.length ?? 0;
-  const mdCols =
-    planCount >= 4
-      ? "repeat(2, minmax(0, 1fr))"
-      : `repeat(${Math.max(planCount, 1)}, minmax(0, 1fr))`;
-  const lgCols = planCount >= 4 ? "repeat(4, minmax(0, 1fr))" : undefined;
-
   return (
     // allowlist: billing-paper texture (globals.css, no token equivalent)
     <View
@@ -79,19 +70,15 @@ function UpgradePage() {
 
         {/* Hero */}
         {/* allowlist: billing-reveal/stagger keyframes (globals.css) */}
-        <View
+        <XStack
           tag="header"
           className="billing-reveal billing-stagger-1"
           mb={48}
-          display="grid"
+          flexDirection="column"
           gap="$7"
-          gridTemplateColumns={"1fr" as never}
-          $md={{
-            gridTemplateColumns: "1.6fr 1fr" as never,
-            alignItems: "flex-end",
-          }}
+          $md={{ flexDirection: "row", items: "flex-end" }}
         >
-          <YStack gap="$4.5">
+          <YStack flex={1.6} gap="$4.5">
             {/* allowlist: editorial mono kicker — letter-spacing + foreground tint */}
             <Paragraph className="font-mono text-[11px] uppercase tracking-[0.32em] text-foreground/55">
               Plans
@@ -108,7 +95,12 @@ function UpgradePage() {
               — you can cancel from the billing page.
             </Paragraph>
           </YStack>
-          <YStack items="flex-start" gap="$4.5" $md={{ items: "flex-end" }}>
+          <YStack
+            flex={1}
+            items="flex-start"
+            gap="$4.5"
+            $md={{ items: "flex-end" }}
+          >
             <CycleToggle
               value={cycle}
               onChange={setCycle}
@@ -124,7 +116,7 @@ function UpgradePage() {
               applicable.
             </Paragraph>
           </YStack>
-        </View>
+        </XStack>
 
         {/* Plan grid */}
         <View position="relative">
@@ -148,16 +140,15 @@ function UpgradePage() {
           {isLoading || !ordered || !features ? (
             <PlanGridSkeleton />
           ) : (
-            <View
+            // Flexbox auto-fit: each plan card flexes to fill, wrapping below
+            // minWidth so the row reads single-column on mobile and fans out to
+            // the full set of plans once wide enough.
+            <XStack
               tag="ul"
               position="relative"
-              display="grid"
+              flexWrap="wrap"
               gap="$5"
-              gridTemplateColumns={"1fr" as never}
-              $md={{ gap: "$6", gridTemplateColumns: mdCols as never }}
-              $lg={
-                lgCols ? { gridTemplateColumns: lgCols as never } : undefined
-              }
+              $md={{ gap: "$6" }}
             >
               {ordered.map((plan, i) => {
                 const isCurrent = sub?.plan === plan.slug;
@@ -165,6 +156,8 @@ function UpgradePage() {
                   <View
                     key={plan.id}
                     tag="li"
+                    flex={1}
+                    minW={260}
                     // allowlist: billing-reveal/stagger keyframes; md:-translate-y-6
                     // featured-plan lift (CSS transform, no token equivalent)
                     className={[
@@ -188,7 +181,7 @@ function UpgradePage() {
                   </View>
                 );
               })}
-            </View>
+            </XStack>
           )}
         </View>
 
@@ -277,20 +270,15 @@ function bestYearlyDiscountLabel(
 
 function PlanGridSkeleton() {
   return (
-    <View
-      tag="ul"
-      display="grid"
-      gap="$5"
-      gridTemplateColumns={"1fr" as never}
-      $md={{
-        gap: "$6",
-        gridTemplateColumns: "repeat(3, minmax(0, 1fr))" as never,
-      }}
-    >
+    // Flexbox auto-fit matching the live plan grid: cards flex to fill,
+    // wrapping below minWidth so they read single-column on mobile.
+    <XStack tag="ul" flexWrap="wrap" gap="$5" $md={{ gap: "$6" }}>
       {Array.from({ length: 3 }).map((_, i) => (
         <View
           key={i}
           tag="li"
+          flex={1}
+          minW={260}
           height={520}
           rounded={28}
           borderWidth={1}
@@ -298,6 +286,6 @@ function PlanGridSkeleton() {
           className="animate-pulse border-border/60 bg-card/40"
         />
       ))}
-    </View>
+    </XStack>
   );
 }

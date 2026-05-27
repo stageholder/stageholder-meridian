@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { View } from "@stageholder/ui";
+import { View, YStack } from "@stageholder/ui";
 import { ActivityRings } from "@/components/activity-rings";
 import { useUserLight } from "@/lib/api/light";
 import { LevelProgress } from "@/components/light/level-progress";
@@ -24,60 +24,60 @@ function DashboardPage() {
   const { levelUpTier, dismiss } = useLevelUp(userLight);
 
   return (
-    <View
-      display="grid"
-      gap="$4"
-      p="$4"
-      gridTemplateColumns={"1fr" as never}
-      $md={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" as never }}
-      $lg={{
-        gridTemplateColumns: "repeat(12, minmax(0, 1fr))" as never,
-        p: "$5",
-      }}
-    >
-      {/* Row 1: Greeting */}
-      {/* allowlist: bento-enter keyframe (globals.css); col-span-full = CSS grid placement (no token equivalent) */}
-      <View className="col-span-full animate-[bento-enter_0.4s_ease-out_both]">
+    // Stack-based dashboard: a vertical column of rows. The two paired rows lay
+    // their cards side-by-side (5/7 split) from $md up and stack on phones.
+    // Tamagui is flexbox-only, so this is plain XStack/YStack — no CSS grid.
+    <YStack gap="$4" p="$4" $lg={{ p: "$5" }}>
+      {/* Greeting — full width. Tamagui native staggered mount fade. */}
+      <View enterStyle={{ opacity: 0, y: 12 }} transition="medium">
         <GreetingBar />
       </View>
 
-      {/* Row 2: Activity Rings + Level | Weekly Activity Chart */}
-      <BentoCard index={1} className="md:col-span-1 lg:col-span-5">
-        <Link
-          to="/journey"
-          style={{ display: "block", textDecoration: "none" }}
-        >
-          <ActivityRings date={today} size="xl" showLabels bare />
-          {userLight && (
-            <LevelProgress userLight={userLight} className="mt-4" />
-          )}
-        </Link>
-      </BentoCard>
+      {/* Activity rings + weekly activity */}
+      <YStack gap="$4" $md={{ flexDirection: "row" }}>
+        <View $md={{ flex: 5 }}>
+          <BentoCard index={1}>
+            <Link
+              to="/journey"
+              style={{ display: "block", textDecoration: "none" }}
+            >
+              <ActivityRings date={today} size="xl" showLabels bare />
+              {userLight ? (
+                <LevelProgress userLight={userLight} className="mt-4" />
+              ) : null}
+            </Link>
+          </BentoCard>
+        </View>
+        <View $md={{ flex: 7 }}>
+          <BentoCard title="Weekly Activity" index={2}>
+            <WeeklyActivityChart />
+          </BentoCard>
+        </View>
+      </YStack>
 
-      <BentoCard
-        title="Weekly Activity"
-        index={2}
-        className="md:col-span-1 lg:col-span-7"
-      >
-        <WeeklyActivityChart />
-      </BentoCard>
+      {/* Today's todos + habit summary */}
+      <YStack gap="$4" $md={{ flexDirection: "row" }}>
+        <View $md={{ flex: 5 }}>
+          <TodayTodos index={3} />
+        </View>
+        <View $md={{ flex: 7 }}>
+          <HabitSummary index={4} />
+        </View>
+      </YStack>
 
-      {/* Row 3: Today's Todos | Habit Summary */}
-      <TodayTodos index={3} className="md:col-span-1 lg:col-span-5" />
-      <HabitSummary index={4} className="md:col-span-1 lg:col-span-7" />
-
-      {/* Row 4: Journal Growth | Light Earned */}
-      <BentoCard title="Journal Growth" index={5} className="col-span-full">
+      {/* Journal growth — full width */}
+      <BentoCard title="Journal Growth" index={5}>
         <JournalGrowthChart />
       </BentoCard>
 
-      <BentoCard title="Light Growth" index={6} className="col-span-full">
+      {/* Light growth — full width */}
+      <BentoCard title="Light Growth" index={6}>
         <LightEarnedChart />
       </BentoCard>
 
-      {levelUpTier && (
+      {levelUpTier ? (
         <LevelUpCelebration tier={levelUpTier} onDismiss={dismiss} />
-      )}
-    </View>
+      ) : null}
+    </YStack>
   );
 }

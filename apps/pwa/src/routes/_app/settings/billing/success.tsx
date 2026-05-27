@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Sparkles } from "lucide-react";
 import {
@@ -11,7 +11,15 @@ import {
 } from "@stageholder/sdk/spa";
 import { refreshEntitlement } from "@/lib/entitlement";
 import { tryGetCurrentUserSub } from "@/lib/current-user-sub";
-import { H1, Paragraph, Text, View, XStack, YStack } from "@stageholder/ui";
+import {
+  Button,
+  H1,
+  Paragraph,
+  Text,
+  View,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 
 /** Hard cap on Polar polling — beyond this we run recovery optimistically. */
 const MAX_POLL_DURATION_MS = 15_000;
@@ -65,6 +73,7 @@ export const Route = createFileRoute("/_app/settings/billing/success")({
 });
 
 function BillingSuccessPage() {
+  const navigate = useNavigate();
   const search = Route.useSearch();
   const checkoutId = search.checkout_id ?? null;
   // `?changed=1` signals a plan-change return path (no Polar checkout was
@@ -374,122 +383,48 @@ function BillingSuccessPage() {
           </Paragraph>
 
           <XStack mt="$7" flexWrap="wrap" items="center" gap="$3">
-            {(phase === "ready" ||
-              phase === "timeout" ||
-              phase === "pending") && (
-              <Link to="/settings/billing" style={{ textDecoration: "none" }}>
-                {/* allowlist: group/btn hover-translate on the inner chevron (no token equivalent) */}
-                <XStack
-                  className="group/btn"
-                  height={48}
-                  items="center"
-                  gap="$2"
-                  rounded={9999}
-                  bg="$color"
-                  pl="$5"
-                  pr="$1.5"
-                  transition="quick"
-                  hoverStyle={{ opacity: 0.9 }}
-                >
-                  <Text fontSize="$3" fontWeight="500" color="$background">
-                    View billing
-                  </Text>
-                  <View
-                    items="center"
-                    justify="center"
-                    height={36}
-                    width={36}
-                    rounded={9999}
-                    className="bg-background/15 transition-transform group-hover/btn:translate-x-0.5"
-                  >
-                    <ArrowRight size={14} strokeWidth={2} />
-                  </View>
-                </XStack>
-              </Link>
-            )}
-            {phase === "ready" && (
-              <Link to="/" style={{ textDecoration: "none" }}>
-                <XStack
-                  height={48}
-                  items="center"
-                  rounded={9999}
-                  borderWidth={1}
-                  bg="$background"
-                  px="$5"
-                  transition="quick"
-                  className="border-foreground/80"
-                  hoverStyle={{ bg: "$color" }}
-                >
-                  <Text fontSize="$3" fontWeight="500" color="$color">
-                    Back to dashboard
-                  </Text>
-                </XStack>
-              </Link>
-            )}
-            {phase === "pending" && (
-              <XStack
-                {...({
-                  role: "button",
-                  "aria-label": "Sign out and back in",
-                } as object)}
-                cursor="pointer"
-                height={48}
-                items="center"
-                rounded={9999}
-                borderWidth={1}
-                bg="$background"
-                px="$5"
-                transition="quick"
-                className="border-foreground/80"
-                hoverStyle={{ bg: "$color" }}
+            {phase === "ready" || phase === "timeout" || phase === "pending" ? (
+              <Button
+                onPress={() => void navigate({ to: "/settings/billing" })}
+                iconAfter={<ArrowRight size={14} strokeWidth={2} />}
+              >
+                View billing
+              </Button>
+            ) : null}
+            {phase === "ready" ? (
+              <Button
+                intent="outline"
+                onPress={() => void navigate({ to: "/" })}
+              >
+                Back to dashboard
+              </Button>
+            ) : null}
+            {phase === "pending" ? (
+              <Button
+                intent="outline"
+                aria-label="Sign out and back in"
                 onPress={() => void handleSignOutAndReauth()}
               >
-                <Text fontSize="$3" fontWeight="500" color="$color">
-                  Sign out & back in
-                </Text>
-              </XStack>
-            )}
-            {phase === "session_expired" && (
-              <XStack
-                {...({
-                  role: "button",
-                  "aria-label": "Sign in again",
-                } as object)}
-                cursor="pointer"
-                height={48}
-                items="center"
-                rounded={9999}
-                bg="$color"
-                px="$5"
-                transition="quick"
-                hoverStyle={{ opacity: 0.9 }}
+                Sign out & back in
+              </Button>
+            ) : null}
+            {phase === "session_expired" ? (
+              <Button
+                aria-label="Sign in again"
                 onPress={() => void handleSignOutAndReauth()}
               >
-                <Text fontSize="$3" fontWeight="500" color="$background">
-                  Sign in again
-                </Text>
-              </XStack>
-            )}
-            {phase === "checkout_failed" && (
-              <Link
-                to="/settings/billing/upgrade"
-                style={{ textDecoration: "none" }}
+                Sign in again
+              </Button>
+            ) : null}
+            {phase === "checkout_failed" ? (
+              <Button
+                onPress={() =>
+                  void navigate({ to: "/settings/billing/upgrade" })
+                }
               >
-                <XStack
-                  height={48}
-                  items="center"
-                  rounded={9999}
-                  bg="$color"
-                  px="$5"
-                  transition="quick"
-                  hoverStyle={{ opacity: 0.9 }}
-                >
-                  <Text fontSize="$3" fontWeight="500" color="$background">
-                    Try again
-                  </Text>
-                </XStack>
-              </Link>
-            )}
+                Try again
+              </Button>
+            ) : null}
           </XStack>
 
           {checkoutId && (

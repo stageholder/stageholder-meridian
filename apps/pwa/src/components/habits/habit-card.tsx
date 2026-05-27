@@ -36,9 +36,12 @@ interface HabitCardProps {
   habit: Habit;
   /** When set, the card shows status for this date instead of today */
   selectedDate?: string;
+  /** Flex layout hints forwarded to the card root (auto-fit grid). */
+  flex?: number;
+  minW?: number;
 }
 
-export function HabitCard({ habit, selectedDate }: HabitCardProps) {
+export function HabitCard({ habit, selectedDate, flex, minW }: HabitCardProps) {
   const today = format(new Date(), "yyyy-MM-dd");
   const activeDate = selectedDate || today;
   const isViewingToday = !selectedDate || selectedDate === today;
@@ -278,6 +281,8 @@ export function HabitCard({ habit, selectedDate }: HabitCardProps) {
     <>
       <View
         position="relative"
+        flex={flex}
+        minW={minW}
         rounded="$5"
         borderWidth={1}
         borderColor="$borderColor"

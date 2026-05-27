@@ -47,7 +47,7 @@ function BillingPage() {
               hoverStyle={{ color: "$color" }}
             >
               <ArrowLeft size={16} />
-              Back to settings
+              <Text>Back to settings</Text>
             </XStack>
           </Link>
         </View>

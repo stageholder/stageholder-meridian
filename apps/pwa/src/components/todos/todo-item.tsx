@@ -238,7 +238,7 @@ export function TodoItem({ todo, listId }: TodoItemProps) {
           >
             {todo.title}
           </Text>
-          {todo.description && (
+          {todo.description ? (
             <Text
               mt="$0.5"
               fontSize="$1"
@@ -247,7 +247,7 @@ export function TodoItem({ todo, listId }: TodoItemProps) {
             >
               {todo.description}
             </Text>
-          )}
+          ) : null}
           {(priority.label ||
             formattedDueDate ||
             formattedDoDate ||

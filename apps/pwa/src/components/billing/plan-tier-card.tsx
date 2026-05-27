@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import {
   formatPlanPrice,
   useBillingPortal,
@@ -207,15 +207,14 @@ export function PlanTierCard({
   // plan, different button copy — telling users explicitly that an
   // immediate switch is happening (rather than a fresh trial) reduces
   // surprise when they land on the success page already paying.
-  const ctaLabel = isPending
-    ? hasPolarSubscription
-      ? "Switching plan…"
-      : "Redirecting to checkout…"
-    : hasPolarSubscription
-      ? `Switch to ${plan.displayName}`
-      : hasTrial
-        ? `Start ${plan.trialDays}-day free trial`
-        : `Get ${plan.displayName}`;
+  const ctaLabel = hasPolarSubscription
+    ? `Switch to ${plan.displayName}`
+    : hasTrial
+      ? `Start ${plan.trialDays}-day free trial`
+      : `Get ${plan.displayName}`;
+  const ctaLoadingLabel = hasPolarSubscription
+    ? "Switching plan…"
+    : "Redirecting to checkout…";
 
   return (
     <YStack
@@ -421,64 +420,18 @@ export function PlanTierCard({
         ) : !canManage ? (
           <DisabledChip>Ask your admin to upgrade</DisabledChip>
         ) : (
-          <XStack
-            group="btn"
-            role="button"
-            aria-disabled={isPending}
-            cursor={isPending ? "default" : "pointer"}
-            onPress={() =>
-              void (isPending
-                ? undefined
-                : hasPolarSubscription
-                  ? changePlan()
-                  : startCheckout())
-            }
-            height={48}
+          <Button
+            intent={plan.isFeatured ? "primary" : "outline"}
             width="100%"
-            items="center"
-            justify="space-between"
-            overflow="hidden"
-            rounded={9999}
-            px="$5"
-            opacity={isPending ? 0.5 : 1}
-            transition="medium"
-            borderWidth={plan.isFeatured ? 0 : 1}
-            borderColor="$color"
-            bg={plan.isFeatured ? "$color" : "$background"}
-            hoverStyle={plan.isFeatured ? { opacity: 0.9 } : { bg: "$color" }}
+            loading={isPending}
+            loadingText={ctaLoadingLabel}
+            onPress={() =>
+              void (hasPolarSubscription ? changePlan() : startCheckout())
+            }
+            iconAfter={<ArrowUpRight size={14} strokeWidth={2} />}
           >
-            <Text
-              fontSize="$3"
-              fontWeight="500"
-              color={plan.isFeatured ? "$background" : "$color"}
-              $group-btn-hover={
-                plan.isFeatured ? undefined : { color: "$background" }
-              }
-            >
-              {ctaLabel}
-            </Text>
-            <View
-              width={28}
-              height={28}
-              items="center"
-              justify="center"
-              rounded={9999}
-              borderWidth={1}
-              borderColor="$borderColor"
-              transition="medium"
-              $group-btn-hover={{ x: 4 }}
-            >
-              <Text
-                color={plan.isFeatured ? "$background" : "$color"}
-                lineHeight={0}
-                $group-btn-hover={
-                  plan.isFeatured ? undefined : { color: "$background" }
-                }
-              >
-                <ArrowUpRight size={14} strokeWidth={2} />
-              </Text>
-            </View>
-          </XStack>
+            {ctaLabel}
+          </Button>
         )}
 
         {/* Inline error surface — driven by structured BillingError codes
@@ -532,6 +485,27 @@ function CheckoutErrorBanner({
   );
 }
 
+/**
+ * Follow-up action chip for the BILLING_EMAIL_REJECTED error. Internal nav
+ * to the billing settings page via TanStack's useNavigate (client-side).
+ * Rendered inside the destructive-themed banner, so the outline intent picks
+ * up the danger tint from the surrounding theme.
+ */
+function UpdateBillingEmailButton() {
+  const navigate = useNavigate();
+  return (
+    <XStack self="flex-start">
+      <Button
+        intent="outline"
+        size="sm"
+        onPress={() => void navigate({ to: "/settings/billing" })}
+      >
+        Update billing email
+      </Button>
+    </XStack>
+  );
+}
+
 interface ErrorCopy {
   message: string;
   action?: React.ReactNode;
@@ -543,25 +517,7 @@ function explainBillingError(code: string | null): ErrorCopy | null {
       return {
         message:
           "Your billing email's domain doesn't accept mail, so the payment provider can't send you a receipt. Update it before continuing.",
-        action: (
-          <Link to="/settings/billing" style={{ textDecoration: "none" }}>
-            <XStack
-              height={28}
-              items="center"
-              rounded={9999}
-              borderWidth={1}
-              borderColor="$destructive"
-              bg="$background"
-              px="$2.5"
-              transition="quick"
-              hoverStyle={{ bg: "$destructiveMuted" }}
-            >
-              <Text fontSize="$1" fontWeight="500" color="$destructive">
-                Update billing email
-              </Text>
-            </XStack>
-          </Link>
-        ),
+        action: <UpdateBillingEmailButton />,
       };
     case "PERSONAL_ORG_INELIGIBLE_PLAN":
       return {
@@ -687,27 +643,18 @@ function DisabledChip({ children }: { children: React.ReactNode }) {
 }
 
 function ContactSalesLink() {
-  // External mailto — a native <a> wrapping the styled XStack keeps it a
-  // real navigable link (kit Button is not an anchor).
+  // External mailto — kit Button with a direct top-level navigation, since
+  // the kit Button isn't an anchor and asChild would leak style props.
   return (
-    <a href="mailto:hello@meridian.app" style={{ textDecoration: "none" }}>
-      <XStack
-        height={48}
-        width="100%"
-        items="center"
-        justify="center"
-        rounded={9999}
-        borderWidth={1}
-        borderColor="$color"
-        bg="$background"
-        transition="quick"
-        hoverStyle={{ bg: "$color" }}
-      >
-        <Text fontSize="$3" fontWeight="500" color="$color">
-          Contact sales
-        </Text>
-      </XStack>
-    </a>
+    <Button
+      intent="outline"
+      width="100%"
+      onPress={() => {
+        window.location.href = "mailto:hello@meridian.app";
+      }}
+    >
+      Contact sales
+    </Button>
   );
 }
 

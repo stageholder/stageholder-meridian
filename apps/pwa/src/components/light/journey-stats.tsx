@@ -1,5 +1,5 @@
 import { Sparkles, Calendar, Trophy, Zap } from "lucide-react";
-import { Text, View, XStack, YStack } from "@stageholder/ui";
+import { Grid, Text, XStack, YStack } from "@stageholder/ui";
 import type { UserLight } from "@repo/core/types/light";
 
 interface JourneyStatsProps {
@@ -45,11 +45,9 @@ export function JourneyStats({ userLight }: JourneyStatsProps) {
   ];
 
   return (
-    <View
-      display="grid"
-      gap="$2"
-      style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}
-    >
+    // Fixed 2-up stat cells — the kit Grid (CSS grid on web, flex-wrap on
+    // native) replaces the hand-rolled display:grid + gridTemplateColumns.
+    <Grid columns={2} gap="$2">
       {stats.map((stat) => {
         const Icon = stat.icon;
         return (
@@ -85,6 +83,6 @@ export function JourneyStats({ userLight }: JourneyStatsProps) {
           </XStack>
         );
       })}
-    </View>
+    </Grid>
   );
 }

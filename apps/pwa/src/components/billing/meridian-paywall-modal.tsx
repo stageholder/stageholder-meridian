@@ -12,6 +12,10 @@ import { useCanManageBilling } from "@stageholder/sdk/spa";
 import type { PaywallReason } from "@stageholder/sdk/core";
 import { ArrowUpRight } from "lucide-react";
 import { LimitOrbit } from "./limit-orbit";
+// This modal renders from <PaywallListener> in App.tsx, OUTSIDE <RouterProvider>,
+// so the useNavigate() hook has no router context. Navigate via the router
+// singleton instead — same client-side nav, no React-context dependency.
+import { router } from "@/router";
 
 const PRICING_HREF = "/settings/billing/upgrade";
 
@@ -50,10 +54,18 @@ export function MeridianPaywallModal({
   const planName =
     reason.suggestedPlanName ?? reason.suggestedPlan ?? "Unlimited";
   const pillar = pillarForFeature(reason.feature);
-  const upgradeHref = appendQuery(PRICING_HREF, {
+  // The upgrade route carries query params so it can pre-highlight the gated
+  // feature / suggested plan. Build a typed search object for client-side nav.
+  const upgradeSearch: Record<string, string> = {
     feature: reason.feature,
-    ...(reason.suggestedPlan && { plan: reason.suggestedPlan }),
-  });
+    ...(reason.suggestedPlan ? { plan: reason.suggestedPlan } : {}),
+  };
+
+  // Close the modal, then client-side nav to the upgrade page.
+  const goToUpgrade = () => {
+    close();
+    void router.navigate({ to: PRICING_HREF, search: upgradeSearch });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -271,49 +283,18 @@ export function MeridianPaywallModal({
                   upgrade-prompt layout (Linear, Notion, Stripe): one
                   unmistakable primary action, one quiet text-link exit. */}
               <YStack mt="$8" gap="$3">
-                {canManage && (
-                  // External-style anchor: the upgrade route carries query
-                  // params, so a plain <a> (real link) wraps the styled row.
-                  <a
-                    href={upgradeHref}
-                    onClick={close}
-                    style={{ textDecoration: "none" }}
+                {canManage ? (
+                  // Client-side nav via the router singleton (this modal renders
+                  // outside RouterProvider) — the upgrade route carries query
+                  // params (feature / suggested plan).
+                  <Button
+                    width="100%"
+                    onPress={goToUpgrade}
+                    iconAfter={<ArrowUpRight size={14} strokeWidth={2} />}
                   >
-                    <XStack
-                      group="cta"
-                      height={48}
-                      width="100%"
-                      items="center"
-                      justify="space-between"
-                      gap="$3"
-                      rounded={9999}
-                      bg="$color"
-                      pl="$6"
-                      pr="$1.5"
-                      transition="quick"
-                      hoverStyle={{ opacity: 0.9 }}
-                    >
-                      <Text fontSize="$3" fontWeight="500" color="$background">
-                        Upgrade your plan
-                      </Text>
-                      <View
-                        width={36}
-                        height={36}
-                        items="center"
-                        justify="center"
-                        rounded={9999}
-                        bg="$background"
-                        opacity={0.15}
-                        transition="quick"
-                        $group-cta-hover={{ x: 2 }}
-                      >
-                        <Text color="$color" lineHeight={0}>
-                          <ArrowUpRight size={14} strokeWidth={2} />
-                        </Text>
-                      </View>
-                    </XStack>
-                  </a>
-                )}
+                    Upgrade your plan
+                  </Button>
+                ) : null}
                 <Dialog.Close asChild>
                   <Button intent="ghost" width="100%">
                     Maybe later
@@ -468,19 +449,4 @@ function buildBody(
     return `Your Free plan includes ${currentLimit} ${featureLabel}. Upgrade to ${planName} for unlimited ${featureLabel} and no usage caps.`;
   }
   return `This feature is available on the ${planName} plan. Upgrade to unlock it.`;
-}
-
-function appendQuery(
-  base: string,
-  params: Record<string, string | undefined>,
-): string {
-  const filtered = Object.entries(params).filter(
-    (entry): entry is [string, string] => typeof entry[1] === "string",
-  );
-  if (filtered.length === 0) return base;
-  const qs = filtered
-    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-    .join("&");
-  const separator = base.includes("?") ? "&" : "?";
-  return `${base}${separator}${qs}`;
 }

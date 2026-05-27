@@ -1,5 +1,3 @@
-import { cn } from "@/lib/utils";
-
 /**
  * Diagnostic variant of the {@link OrbitIllustration}. Same three rings
  * (todos / habits / journal) but ONE pillar is highlighted at full
@@ -24,7 +22,10 @@ export function LimitOrbit({
       viewBox="0 0 240 240"
       role="presentation"
       aria-hidden
-      className={cn("h-full w-full text-foreground/80", className)}
+      // allowlist: SVG sizing + foreground-tint utility classes (no kit token; native SVG styling)
+      className={["h-full w-full text-foreground/80", className]
+        .filter(Boolean)
+        .join(" ")}
     >
       {/* Diagonal meridian — the line that gives the product its name. */}
       <line
