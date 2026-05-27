@@ -72,7 +72,7 @@ function UpgradePage() {
               hoverStyle={{ color: "$color" }}
             >
               <ArrowLeft size={16} />
-              Back to billing
+              <Text>Back to billing</Text>
             </XStack>
           </Link>
         </View>

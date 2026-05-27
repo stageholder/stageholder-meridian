@@ -341,8 +341,8 @@ export function PlanTierCard({
       {/* Hairline */}
       <Separator my="$7" />
 
-      {/* Bullets */}
-      <YStack flex={1} gap="$3">
+      {/* Bullets — natural height. */}
+      <YStack gap="$3">
         {bullets.map((b) => (
           <XStack key={b} items="flex-start" gap="$3">
             <View
@@ -368,6 +368,11 @@ export function PlanTierCard({
           </XStack>
         ))}
       </YStack>
+
+      {/* Spacer pushes the CTA to the bottom of equal-height cards. Empty,
+          so flex:1's zero basis can't collapse any content (unlike putting
+          flex={1} on the bullet list itself). */}
+      <View flex={1} />
 
       {/* Active-org label — only when the user has multiple orgs, so they
           know which workspace gets billed. Single-org users see nothing. */}

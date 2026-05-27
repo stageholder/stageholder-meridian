@@ -5,7 +5,7 @@ import {
   useStageholder,
   useSubscription,
 } from "@stageholder/sdk/spa";
-import { Link } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { ArrowUpRight, ExternalLink } from "lucide-react";
 import { OrbitIllustration } from "./orbit-illustration";
 import {
@@ -35,6 +35,7 @@ export function CurrentPlanHero({
 }: {
   changePlanHref?: string;
 }) {
+  const navigate = useNavigate();
   const sub = useSubscription();
   const { state } = useStageholder();
   const { org } = useOrg();
@@ -138,41 +139,13 @@ export function CurrentPlanHero({
           </XStack>
 
           <XStack flexWrap="wrap" gap="$3" pt="$2">
-            {/* Route owned by host; keep <Link> for prefetch + middle-click,
-                style + hover live on the inner XStack. */}
-            <Link to={changePlanHref} style={{ textDecoration: "none" }}>
-              <XStack
-                group
-                height={44}
-                items="center"
-                gap="$2"
-                rounded={9999}
-                bg="$color"
-                pl="$5"
-                pr="$1.5"
-                transition="quick"
-                hoverStyle={{ opacity: 0.9 }}
-              >
-                <Text fontSize="$3" fontWeight="500" color="$background">
-                  {isFree ? "Upgrade your plan" : "Change plan"}
-                </Text>
-                <View
-                  width={32}
-                  height={32}
-                  items="center"
-                  justify="center"
-                  rounded={9999}
-                  bg="$background"
-                  opacity={0.15}
-                  transition="quick"
-                  $group-hover={{ x: 2 }}
-                >
-                  <Text color="$color" lineHeight={0}>
-                    <ArrowUpRight size={14} strokeWidth={2} />
-                  </Text>
-                </View>
-              </XStack>
-            </Link>
+            {/* Client-side nav via TanStack's useNavigate — no page refresh. */}
+            <Button
+              onPress={() => void navigate({ to: changePlanHref })}
+              iconAfter={<ArrowUpRight size={16} strokeWidth={2} />}
+            >
+              {isFree ? "Upgrade your plan" : "Change plan"}
+            </Button>
 
             {canManage && !isFree && org && (
               <Button
