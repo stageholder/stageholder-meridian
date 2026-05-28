@@ -1,4 +1,8 @@
-import { db } from "@repo/offline/db";
+// Use the cross-platform DataStore adapter for sync — same code path will
+// power the future RN mobile app with a SQLite-backed adapter. PWA files that
+// need Dexie-specific power (compound indexes, liveQuery, etc.) keep
+// importing the raw `db` from "@repo/offline/db" directly.
+import { dataStore as db } from "@repo/offline/db/adapter";
 import { fullSync, type SyncConflict } from "@repo/offline/sync/sync-manager";
 import { sendNativeNotification } from "@repo/core/platform/notifications";
 import { logger } from "@repo/core/platform/logger";
@@ -98,7 +102,11 @@ export async function syncAll(): Promise<void> {
       userSub,
       apiClient,
       fetchers as Record<string, (since?: string) => Promise<{ id: string }[]>>,
-      tables as Record<string, (typeof tables)[keyof typeof tables]>,
+      // Cast widens the per-entity store unions to fullSync's generic
+      // `EntityStore<SyncableEntity>`. EntityStore is invariant in T (T appears
+      // in put/update inputs), so the precise per-entity types don't auto-widen;
+      // the runtime types are fine because each store only handles its own row.
+      tables as never,
     );
 
     if (conflicts.length > 0 && onConflicts) {

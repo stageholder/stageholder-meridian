@@ -103,6 +103,8 @@ export interface EntityStore<T, K = string> {
   where(criteria: Partial<T>): Promise<T[]>;
   /** Remove every row in the table. Used on logout / account-switch wipes. */
   clear(): Promise<void>;
+  /** Delete multiple rows by primary key in a single round-trip. */
+  bulkDelete(keys: K[]): Promise<void>;
 }
 
 /**

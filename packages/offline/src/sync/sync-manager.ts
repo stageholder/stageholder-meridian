@@ -1,5 +1,5 @@
-import type { EntityTable } from "dexie";
-import { db } from "../db/index";
+import { dataStore as db } from "../db/adapter";
+import type { DataStore, EntityStore } from "../db/interface";
 import { flush, type MutationApiClient } from "./mutation-queue";
 
 interface SyncableEntity {
@@ -15,15 +15,26 @@ export interface SyncConflict {
 
 let syncing = false;
 
+/**
+ * Pull-side delta sync for one entity type. Reads everything updated on the
+ * server since `lastSyncedAt`, reconciles against local rows, and detects
+ * cases where the server overwrites a pending local mutation (conflict).
+ *
+ * Targets the narrow `DataStore` / `EntityStore` interface so the same
+ * function works on the PWA's Dexie adapter and a future React Native
+ * SQLite implementation — the Dexie chainables (`where(...).equals(...)`
+ * `.filter(...).count()` etc.) were replaced with load-then-filter on
+ * tables small enough (<200 rows typical) that the extra IO is negligible.
+ */
 export async function syncEntity<T extends SyncableEntity>(
   entityType: string,
   userSub: string,
-  table: EntityTable<T, "id">,
+  table: EntityStore<T>,
   fetchFn: (since?: string) => Promise<T[]>,
 ): Promise<SyncConflict[]> {
   const conflicts: SyncConflict[] = [];
 
-  // Read last sync timestamp for delta sync
+  // Read last sync timestamp for delta sync.
   const meta = await db.syncMeta.get([entityType, userSub]);
   const since = meta?.lastSyncedAt;
 
@@ -32,28 +43,28 @@ export async function syncEntity<T extends SyncableEntity>(
 
   await db.transaction(
     "rw",
-    table,
-    db.syncMeta,
-    db.pendingMutations,
+    [entityType as keyof DataStore, "syncMeta", "pendingMutations"],
     async () => {
+      // Snapshot pending mutations for THIS entity type once per sync pass.
+      // We compare each server row against the snapshot — same result as the
+      // previous per-row Dexie `.where(...).equals(...).filter(...).count()`,
+      // just expressible against the narrow cross-platform interface.
+      const pendingForType = await db.pendingMutations.where({ entityType });
+
       for (const item of serverData) {
-        // Handle tombstones: if server says deleted, remove from Dexie
+        // Tombstones: server says deleted → remove locally.
         if (item.deletedAt) {
-          await table.delete(item.id as never);
+          await table.delete(item.id);
           continue;
         }
 
-        // Check if this entity has pending local mutations (potential conflict)
-        const hasPending = await db.pendingMutations
-          .where("entityType")
-          .equals(entityType)
-          .filter((m) => {
+        const hasPending =
+          pendingForType.filter((m) => {
             const entityId = m.entityId || m.tempId;
             return entityId === item.id && m.status !== "in-flight";
-          })
-          .count();
+          }).length > 0;
 
-        const local = await table.get({ id: item.id } as never);
+        const local = await table.get(item.id);
 
         if (!local) {
           await table.put(item);
@@ -61,7 +72,7 @@ export async function syncEntity<T extends SyncableEntity>(
           const localUpdated = (local as SyncableEntity).updatedAt;
           const serverUpdated = item.updatedAt;
           if (serverUpdated && localUpdated && serverUpdated >= localUpdated) {
-            if (hasPending > 0) {
+            if (hasPending) {
               conflicts.push({ entityType, entityId: item.id });
             }
             await table.put(item);
@@ -80,11 +91,16 @@ export async function syncEntity<T extends SyncableEntity>(
   return conflicts;
 }
 
+/**
+ * Flush pending writes, then delta-sync every registered entity type.
+ * `tables` is a name → `EntityStore` map provided by the host app (web
+ * passes the Dexie adapter's stores; mobile will pass its SQLite stores).
+ */
 export async function fullSync(
   userSub: string,
   client: MutationApiClient,
   fetchers: Record<string, (since?: string) => Promise<SyncableEntity[]>>,
-  tables: Record<string, EntityTable<SyncableEntity, "id">>,
+  tables: Record<string, EntityStore<SyncableEntity>>,
 ): Promise<SyncConflict[]> {
   if (syncing) return [];
   syncing = true;

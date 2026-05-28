@@ -81,7 +81,18 @@ What we DON'T share:
 
 - [x] Schema declared (`db/index.ts` Dexie subclass, v5)
 - [x] `DataStore` cross-platform contract (`db/interface.ts`)
-- [ ] `fullSync()` / `flush()` take `db` via DI (sequenced for when mobile
-      starts — refactor is small but cascades to call sites)
-- [ ] `db/index.native.ts` SQLite implementation
+- [x] Dexie → `DataStore` adapter (`db/adapter.ts`) so the engine speaks
+      the interface, not Dexie's chainables
+- [x] `sync-manager.ts` + `mutation-queue.ts` + `id-reconciler.ts`
+      refactored to use the adapter — Dexie-specific `.where().equals()
+    .filter()`, `.anyOf().sortBy()`, `.notEqual()` replaced with
+      load-then-filter expressible against the narrow interface
+- [x] PWA call site (`apps/pwa/src/lib/offline.ts`) feeds adapter-wrapped
+      tables to `fullSync` — web behavior unchanged, code path identical
+      to what mobile will hit
+- [ ] `db/index.native.ts` SQLite implementation (next when mobile starts)
 - [ ] Mobile app `apps/mobile/src/lib/api/*` wiring
+- [ ] Refactor `hooks/index.ts` (`useOfflineQuery` / `useOfflineMutation`)
+      against the interface — currently still uses Dexie types directly;
+      it's a higher-level web abstraction and mobile will likely have its
+      own React Query wrappers, so this is low-priority

@@ -1,4 +1,7 @@
-import { db, type PendingMutation } from "../db/index";
+import { dataStore as db } from "../db/adapter";
+import type { PendingMutation } from "../db/index";
+import { reconcileId } from "./id-reconciler";
+import { logger } from "@repo/core/platform/logger";
 
 /**
  * Structural shape the mutation queue needs from the host's API client.
@@ -16,8 +19,6 @@ export interface MutationApiClient {
   patch(path: string, payload?: unknown): Promise<unknown>;
   delete(path: string): Promise<unknown>;
 }
-import { reconcileId } from "./id-reconciler";
-import { logger } from "@repo/core/platform/logger";
 
 const MAX_RETRIES = 5;
 
@@ -39,6 +40,9 @@ export function registerPayloadTransform(
  * Queue a mutation for the given user. Every mutation is scoped by
  * `userSub` so a sign-out + sign-in as a different account never replays
  * the previous user's writes.
+ *
+ * `pendingMutations` is auto-incremented; the `AutoIncrementStore.put`
+ * adapter unifies Dexie's `.add()` and a SQLite INSERT under one method.
  */
 export async function enqueue(
   userSub: string,
@@ -47,13 +51,13 @@ export async function enqueue(
     "id" | "userSub" | "retryCount" | "status" | "timestamp"
   >,
 ): Promise<void> {
-  await db.pendingMutations.add({
+  await db.pendingMutations.put({
     ...mutation,
     userSub,
     timestamp: Date.now(),
     retryCount: 0,
     status: "pending",
-  } as PendingMutation);
+  });
 }
 
 /**
@@ -61,27 +65,51 @@ export async function enqueue(
  * sync manager to know what to replay against the API.
  */
 export async function listPending(userSub: string): Promise<PendingMutation[]> {
-  return db.pendingMutations.where({ userSub, status: "pending" }).toArray();
+  return db.pendingMutations.where({ userSub, status: "pending" });
 }
 
 /**
  * Delete mutations that belong to any user other than `currentSub`.
  * Called on login when the active user changes so stale writes from a
  * previously signed-in account don't accidentally get flushed.
+ *
+ * The narrow `EntityStore.where` does equality only — no Dexie `notEqual`.
+ * Load all, filter inverse, bulk-delete. The queue per user is small
+ * (typically <100 rows), so the round-trip is negligible.
  */
 export async function clearForOtherSubs(currentSub: string): Promise<number> {
-  return db.pendingMutations.where("userSub").notEqual(currentSub).delete();
+  const all = await db.pendingMutations.toArray();
+  const toDelete = all.filter((m) => m.userSub !== currentSub);
+  if (toDelete.length === 0) return 0;
+  const ids = toDelete
+    .map((m) => m.id)
+    .filter((id): id is number => id !== undefined);
+  await db.pendingMutations.bulkDelete(ids);
+  return toDelete.length;
+}
+
+/**
+ * Load the union of pending + failed mutations, sorted by timestamp.
+ * Replaces Dexie's `.where("status").anyOf("pending", "failed").sortBy(...)`
+ * with two `where({status})` queries + JS sort — same result, expressible
+ * against the narrow interface.
+ */
+async function loadFlushable(): Promise<PendingMutation[]> {
+  const [pending, failed] = await Promise.all([
+    db.pendingMutations.where({ status: "pending" }),
+    db.pendingMutations.where({ status: "failed" }),
+  ]);
+  return [...pending, ...failed].sort((a, b) => a.timestamp - b.timestamp);
 }
 
 export async function flush(
   client: MutationApiClient,
   userSub?: string,
 ): Promise<{ success: number; failed: number }> {
-  const query = db.pendingMutations.where("status").anyOf("pending", "failed");
-  const pendingAll = await query.sortBy("timestamp");
+  const flushable = await loadFlushable();
   const pending = userSub
-    ? pendingAll.filter((m) => m.userSub === userSub)
-    : pendingAll;
+    ? flushable.filter((m) => m.userSub === userSub)
+    : flushable;
 
   let success = 0;
   let failed = 0;
@@ -137,11 +165,12 @@ export async function flush(
 }
 
 export async function getPendingCount(): Promise<number> {
-  return db.pendingMutations.where("status").anyOf("pending", "failed").count();
+  const flushable = await loadFlushable();
+  return flushable.length;
 }
 
 export async function getFailedMutations(): Promise<PendingMutation[]> {
-  return db.pendingMutations.where("status").equals("failed").toArray();
+  return db.pendingMutations.where({ status: "failed" });
 }
 
 export async function dismissMutation(id: number): Promise<void> {
@@ -149,13 +178,11 @@ export async function dismissMutation(id: number): Promise<void> {
 }
 
 export async function dismissAllFailed(): Promise<void> {
-  const failed = await db.pendingMutations
-    .where("status")
-    .equals("failed")
-    .toArray();
-  await db.pendingMutations.bulkDelete(
-    failed.map((m) => m.id!).filter(Boolean),
-  );
+  const failed = await db.pendingMutations.where({ status: "failed" });
+  const ids = failed
+    .map((m) => m.id)
+    .filter((id): id is number => id !== undefined);
+  await db.pendingMutations.bulkDelete(ids);
 }
 
 export async function clear(): Promise<void> {
