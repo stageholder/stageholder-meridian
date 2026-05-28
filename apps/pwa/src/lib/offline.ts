@@ -6,12 +6,14 @@ import { dataStore as db } from "@repo/offline/db/adapter";
 import { fullSync, type SyncConflict } from "@repo/offline/sync/sync-manager";
 import { sendNativeNotification } from "@repo/core/platform/notifications";
 import { logger } from "@repo/core/platform/logger";
-import { createTodosApi } from "@repo/core/api/todos";
-import { createJournalsApi } from "@repo/core/api/journals";
-import { createHabitsApi } from "@repo/core/api/habits";
-import { createTagsApi } from "@repo/core/api/tags";
-import { createNotificationsApi } from "@repo/core/api/notifications";
 import apiClient from "@/lib/api-client";
+import {
+  todosApi,
+  journalsApi,
+  habitsApi,
+  tagsApi,
+  notificationsApi,
+} from "@/lib/api/clients";
 import { useEncryptionStore } from "@/lib/crypto/encryption-store";
 import { decryptJournalList } from "@/lib/crypto/journal-crypto";
 import { registerJournalEncryptionTransform } from "@/lib/crypto/register-transforms";
@@ -20,12 +22,6 @@ import { refreshEntitlement } from "@/lib/entitlement";
 
 // Register encryption transform for offline journal mutations
 registerJournalEncryptionTransform();
-
-const todosApi = createTodosApi(apiClient);
-const journalsApi = createJournalsApi(apiClient);
-const habitsApi = createHabitsApi(apiClient);
-const tagsApi = createTagsApi(apiClient);
-const notificationsApi = createNotificationsApi(apiClient);
 
 let onConflicts: ((conflicts: SyncConflict[]) => void) | null = null;
 

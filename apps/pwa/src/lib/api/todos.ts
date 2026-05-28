@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import apiClient from "@/lib/api-client";
 import type { TodoList, Todo } from "@repo/core/types";
 import {
   useOfflineQuery,
@@ -12,13 +11,13 @@ import { db } from "@repo/offline/db";
 import { useNetworkStatus } from "@repo/offline/network";
 import { getCurrentUserSub } from "@/lib/current-user-sub";
 import { lightKeys } from "./light";
+import { todosApi } from "./clients";
 import { useCallback } from "react";
 
 export function useTodoLists() {
-  return useOfflineQuery<TodoList>(["todoLists"], db.todoLists, async () => {
-    const res = await apiClient.get(`/todo-lists`);
-    return res.data?.data ?? res.data;
-  });
+  return useOfflineQuery<TodoList>(["todoLists"], db.todoLists, () =>
+    todosApi.listLists(),
+  );
 }
 
 export function useTodoList(listId: string) {
@@ -26,10 +25,7 @@ export function useTodoList(listId: string) {
     ["todoList", listId],
     db.todoLists,
     listId,
-    async () => {
-      const res = await apiClient.get(`/todo-lists/${listId}`);
-      return res.data;
-    },
+    () => todosApi.getList(listId),
     { enabled: !!listId },
   );
 }
@@ -43,24 +39,16 @@ export function useTodos(listId: string) {
   return useOfflineQueryFiltered<Todo>(
     ["todos", listId],
     localQueryFn,
-    async () => {
-      const res = await apiClient.get(`/todos`, {
-        params: { listId },
-      });
-      return res.data;
-    },
+    () => todosApi.listTodos(listId),
     db.todos,
     { enabled: !!listId },
   );
 }
 
 export function useAllTodos() {
-  return useOfflineQuery<Todo>(["allTodos"], db.todos, async () => {
-    const res = await apiClient.get(`/todos`, {
-      params: { limit: 500 },
-    });
-    return res.data?.data ?? res.data;
-  });
+  return useOfflineQuery<Todo>(["allTodos"], db.todos, () =>
+    todosApi.listAllTodos({ limit: 500 }),
+  );
 }
 
 export function useCreateTodoList() {
@@ -73,10 +61,7 @@ export function useCreateTodoList() {
       isShared?: boolean;
     }
   >({
-    mutationFn: async (data) => {
-      const res = await apiClient.post(`/todo-lists`, data);
-      return res.data as TodoList;
-    },
+    mutationFn: (data) => todosApi.createList(data),
     table: db.todoLists,
     entityType: "todoLists",
     operation: "create",
@@ -99,10 +84,7 @@ export function useUpdateTodoList() {
       };
     }
   >({
-    mutationFn: async ({ listId, data }) => {
-      const res = await apiClient.patch(`/todo-lists/${listId}`, data);
-      return res.data as TodoList;
-    },
+    mutationFn: ({ listId, data }) => todosApi.updateList(listId, data),
     table: db.todoLists,
     entityType: "todoLists",
     operation: "update",
@@ -116,9 +98,7 @@ export function useUpdateTodoList() {
 
 export function useDeleteTodoList() {
   return useOfflineDeleteMutation<string>({
-    mutationFn: async (listId) => {
-      await apiClient.delete(`/todo-lists/${listId}`);
-    },
+    mutationFn: (listId) => todosApi.deleteList(listId),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     table: db.todoLists as any,
     entityType: "todoLists",
@@ -144,13 +124,7 @@ export function useCreateTodo() {
       };
     }
   >({
-    mutationFn: async ({ listId, data }) => {
-      const res = await apiClient.post(`/todos`, {
-        ...data,
-        listId,
-      });
-      return res.data as Todo;
-    },
+    mutationFn: ({ listId, data }) => todosApi.createTodo(listId, data),
     table: db.todos,
     entityType: "todos",
     operation: "create",
@@ -176,10 +150,8 @@ export function useUpdateTodo() {
       };
     }
   >({
-    mutationFn: async (args) => {
-      const res = await apiClient.patch(`/todos/${args.todoId}`, args.data);
-      return res.data as Todo;
-    },
+    mutationFn: (args) =>
+      todosApi.updateTodo(args.listId, args.todoId, args.data),
     table: db.todos,
     entityType: "todos",
     operation: "update",
@@ -205,9 +177,7 @@ export function useUpdateTodo() {
 
 export function useDeleteTodo() {
   return useOfflineDeleteMutation<{ listId: string; todoId: string }>({
-    mutationFn: async (args) => {
-      await apiClient.delete(`/todos/${args.todoId}`);
-    },
+    mutationFn: (args) => todosApi.deleteTodo(args.listId, args.todoId),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     table: db.todos as any,
     entityType: "todos",
@@ -230,9 +200,7 @@ export function useReorderTodos() {
       items: { id: string; order: number }[];
     }) => {
       if (!isOnline) throw new Error("Reorder requires an internet connection");
-      await apiClient.post(`/todos/reorder`, {
-        items: args.items,
-      });
+      await todosApi.reorderTodos(args.listId, { items: args.items });
     },
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
@@ -254,11 +222,9 @@ export function useReorderSubtasks() {
       items: { id: string; order: number }[];
     }) => {
       if (!isOnline) throw new Error("Reorder requires an internet connection");
-      const res = await apiClient.post(
-        `/todos/${args.todoId}/subtasks/reorder`,
-        { items: args.items },
-      );
-      return res.data as Todo;
+      // Factory `reorderSubtasks` returns the updated Todo from the server;
+      // preserve that return shape.
+      return todosApi.reorderSubtasks(args.todoId, { items: args.items });
     },
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
@@ -273,17 +239,11 @@ export function useAddSubtask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (args: {
+    mutationFn: (args: {
       listId: string;
       todoId: string;
       data: { title: string; priority?: string };
-    }) => {
-      const res = await apiClient.post(
-        `/todos/${args.todoId}/subtasks`,
-        args.data,
-      );
-      return res.data as Todo;
-    },
+    }) => todosApi.addSubtask(args.todoId, args.data),
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
         queryKey: ["todos", variables.listId],
@@ -298,18 +258,12 @@ export function useUpdateSubtask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (args: {
+    mutationFn: (args: {
       listId: string;
       todoId: string;
       subtaskId: string;
       data: { title?: string; status?: string; priority?: string };
-    }) => {
-      const res = await apiClient.patch(
-        `/todos/${args.todoId}/subtasks/${args.subtaskId}`,
-        args.data,
-      );
-      return res.data as Todo;
-    },
+    }) => todosApi.updateSubtask(args.todoId, args.subtaskId, args.data),
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
         queryKey: ["todos", variables.listId],
@@ -329,9 +283,10 @@ export function useRemoveSubtask() {
       todoId: string;
       subtaskId: string;
     }) => {
-      await apiClient.delete(
-        `/todos/${args.todoId}/subtasks/${args.subtaskId}`,
-      );
+      // Factory `removeSubtask` returns the updated Todo. The hook previously
+      // discarded the response (apiClient.delete with no return), so we still
+      // return void here to preserve call-site shape.
+      await todosApi.removeSubtask(args.todoId, args.subtaskId);
     },
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({

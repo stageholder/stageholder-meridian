@@ -82,9 +82,17 @@ export function createTodosApi(client: ApiClientLike) {
     deleteTodo: async (_listId: string, todoId: string): Promise<void> => {
       await client.delete(`/todos/${todoId}`);
     },
+    /**
+     * Reorder todos within a list. Payload mirrors `reorderSubtasks` — an
+     * array of `{ id, order }` pairs (not just an ordered list of ids), so
+     * the server can compute a sparse update without re-numbering rows that
+     * didn't move. `_listId` is kept on the signature so call sites read
+     * symmetrically with the other todo ops, even though the API doesn't
+     * need it in the path or body.
+     */
     reorderTodos: async (
       _listId: string,
-      data: { todoIds: string[] },
+      data: { items: { id: string; order: number }[] },
     ): Promise<void> => {
       await client.post(`/todos/reorder`, data);
     },

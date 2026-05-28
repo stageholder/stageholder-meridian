@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import apiClient from "@/lib/api-client";
 import type { UserLight, LightEvent, LightStats } from "@repo/core/types";
 import { todayLocal } from "@/lib/date";
+import { lightApi } from "./clients";
 
 export const lightKeys = {
   me: ["light", "me"] as const,
@@ -13,10 +13,7 @@ export const lightKeys = {
 export function useUserLight() {
   return useQuery<UserLight>({
     queryKey: lightKeys.me,
-    queryFn: async () => {
-      const res = await apiClient.get("/light/me");
-      return res.data;
-    },
+    queryFn: () => lightApi.me(),
   });
 }
 
@@ -27,10 +24,7 @@ export function useUpdateTargets() {
     Error,
     { todoTargetDaily?: number; journalTargetDailyWords?: number }
   >({
-    mutationFn: async (data) => {
-      const res = await apiClient.patch("/light/targets", data);
-      return res.data;
-    },
+    mutationFn: (data) => lightApi.updateTargets(data),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: lightKeys.me });
     },
@@ -40,13 +34,7 @@ export function useUpdateTargets() {
 export function useLightStats() {
   return useQuery<LightStats>({
     queryKey: lightKeys.stats,
-    queryFn: async () => {
-      const today = todayLocal();
-      const res = await apiClient.get("/light/stats", {
-        params: { today },
-      });
-      return res.data;
-    },
+    queryFn: () => lightApi.stats({ today: todayLocal() }),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
@@ -55,11 +43,6 @@ export function useLightStats() {
 export function useLightEvents(limit?: number, offset?: number) {
   return useQuery<LightEvent[]>({
     queryKey: lightKeys.events(limit, offset),
-    queryFn: async () => {
-      const res = await apiClient.get("/light/events", {
-        params: { limit, offset },
-      });
-      return res.data?.data ?? res.data;
-    },
+    queryFn: () => lightApi.events({ limit, offset }),
   });
 }

@@ -3,8 +3,8 @@ import {
   useInfiniteQuery,
   useQuery,
 } from "@tanstack/react-query";
-import apiClient from "@/lib/api-client";
 import type { Journal, JournalStats } from "@repo/core/types";
+import type { PaginatedJournals } from "@repo/core/api/journals";
 import {
   useOfflineQuerySingle,
   useOfflineQueryFiltered,
@@ -25,11 +25,7 @@ import {
   decryptJournalResponse,
   decryptJournalList,
 } from "@/lib/crypto/journal-crypto";
-
-interface PaginatedResponse {
-  data: Journal[];
-  meta: { total: number; page: number; limit: number; totalPages: number };
-}
+import { journalsApi } from "./clients";
 
 export const journalKeys = {
   all: ["journals"] as const,
@@ -39,11 +35,7 @@ export const journalKeys = {
 export function useJournalStats() {
   return useQuery<JournalStats>({
     queryKey: journalKeys.stats,
-    queryFn: async () => {
-      const today = todayLocal();
-      const res = await apiClient.get(`/journals/stats`, { params: { today } });
-      return res.data;
-    },
+    queryFn: () => journalsApi.stats({ today: todayLocal() }),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
@@ -71,8 +63,7 @@ export function useJournals(
     ["journals", params],
     localQueryFn,
     async () => {
-      const res = await apiClient.get(`/journals`, { params });
-      const journals: Journal[] = res.data?.data ?? res.data;
+      const journals = await journalsApi.list(params);
       if (dek) return decryptJournalList(journals, dek);
       return journals;
     },
@@ -84,13 +75,13 @@ export function useJournals(
 export function useJournalsPaginated(limit = 20) {
   const dek = useEncryptionStore((s) => s.dek);
 
-  return useInfiniteQuery<PaginatedResponse>({
+  return useInfiniteQuery<PaginatedJournals>({
     queryKey: ["journals", "paginated"],
     queryFn: async ({ pageParam }) => {
-      const res = await apiClient.get(`/journals`, {
-        params: { page: pageParam, limit },
+      const page = await journalsApi.listPaginated({
+        page: pageParam as number,
+        limit,
       });
-      const page = res.data as PaginatedResponse;
       if (dek) {
         page.data = await decryptJournalList(page.data, dek);
       }
@@ -116,8 +107,7 @@ export function useJournal(id: string) {
     db.journals,
     id,
     async () => {
-      const res = await apiClient.get(`/journals/${id}`);
-      const journal: Journal = res.data;
+      const journal = await journalsApi.get(id);
       if (dek) return decryptJournalResponse(journal, dek);
       return journal;
     },
@@ -141,8 +131,7 @@ export function useCreateJournal() {
   >({
     mutationFn: async (data) => {
       const payload = dek ? await encryptJournalPayload(data, dek) : data;
-      const res = await apiClient.post(`/journals`, payload);
-      const journal: Journal = res.data;
+      const journal = await journalsApi.create(payload);
       // Decrypt response before it's stored in Dexie
       if (dek) return decryptJournalResponse(journal, dek);
       return journal;
@@ -239,8 +228,7 @@ export function useUpdateJournal() {
             dek,
           )
         : data;
-      const res = await apiClient.patch(`/journals/${id}`, payload);
-      const journal: Journal = res.data;
+      const journal = await journalsApi.update(id, payload);
       // Decrypt response before it's stored in Dexie
       if (dek) return decryptJournalResponse(journal, dek);
       return journal;
@@ -313,9 +301,7 @@ export function useDeleteJournal() {
   const queryClient = useQueryClient();
 
   return useOfflineDeleteMutation<string>({
-    mutationFn: async (id) => {
-      await apiClient.delete(`/journals/${id}`);
-    },
+    mutationFn: (id) => journalsApi.delete(id),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     table: db.journals as any,
     entityType: "journals",

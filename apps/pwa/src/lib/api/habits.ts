@@ -1,4 +1,3 @@
-import apiClient from "@/lib/api-client";
 import type { Habit, HabitEntry } from "@repo/core/types";
 import {
   useOfflineQuery,
@@ -10,13 +9,11 @@ import {
 import { db } from "@repo/offline/db";
 import { getCurrentUserSub } from "@/lib/current-user-sub";
 import { lightKeys } from "./light";
+import { habitsApi } from "./clients";
 import { useCallback } from "react";
 
 export function useHabits() {
-  return useOfflineQuery<Habit>(["habits"], db.habits, async () => {
-    const res = await apiClient.get(`/habits`);
-    return res.data?.data ?? res.data;
-  });
+  return useOfflineQuery<Habit>(["habits"], db.habits, () => habitsApi.list());
 }
 
 export function useHabit(id: string) {
@@ -24,10 +21,7 @@ export function useHabit(id: string) {
     ["habit", id],
     db.habits,
     id,
-    async () => {
-      const res = await apiClient.get(`/habits/${id}`);
-      return res.data;
-    },
+    () => habitsApi.get(id),
     { enabled: !!id },
   );
 }
@@ -44,10 +38,7 @@ export function useHabitEntries(
   return useOfflineQueryFiltered<HabitEntry>(
     ["habitEntries", habitId, params],
     localQueryFn,
-    async () => {
-      const res = await apiClient.get(`/habits/${habitId}/entries`, { params });
-      return res.data;
-    },
+    () => habitsApi.listEntries(habitId, params),
     db.habitEntries,
     { enabled: !!habitId },
   );
@@ -68,10 +59,7 @@ export function useCreateHabit() {
       icon?: string;
     }
   >({
-    mutationFn: async (data) => {
-      const res = await apiClient.post(`/habits`, data);
-      return res.data as Habit;
-    },
+    mutationFn: (data) => habitsApi.create(data),
     table: db.habits,
     entityType: "habits",
     operation: "create",
@@ -99,10 +87,7 @@ export function useUpdateHabit() {
       };
     }
   >({
-    mutationFn: async ({ id, data }) => {
-      const res = await apiClient.patch(`/habits/${id}`, data);
-      return res.data as Habit;
-    },
+    mutationFn: ({ id, data }) => habitsApi.update(id, data),
     table: db.habits,
     entityType: "habits",
     operation: "update",
@@ -114,9 +99,7 @@ export function useUpdateHabit() {
 
 export function useDeleteHabit() {
   return useOfflineDeleteMutation<string>({
-    mutationFn: async (id) => {
-      await apiClient.delete(`/habits/${id}`);
-    },
+    mutationFn: (id) => habitsApi.delete(id),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     table: db.habits as any,
     entityType: "habits",
@@ -147,13 +130,8 @@ export function useUpdateHabitEntry() {
       };
     }
   >({
-    mutationFn: async ({ habitId, entryId, data }) => {
-      const res = await apiClient.patch(
-        `/habits/${habitId}/entries/${entryId}`,
-        data,
-      );
-      return res.data as HabitEntry;
-    },
+    mutationFn: ({ habitId, entryId, data }) =>
+      habitsApi.updateEntry(habitId, entryId, data),
     table: db.habitEntries,
     entityType: "habitEntries",
     operation: "update",
@@ -183,10 +161,7 @@ export function useCreateHabitEntry() {
       };
     }
   >({
-    mutationFn: async ({ habitId, data }) => {
-      const res = await apiClient.post(`/habits/${habitId}/entries`, data);
-      return res.data as HabitEntry;
-    },
+    mutationFn: ({ habitId, data }) => habitsApi.createEntry(habitId, data),
     table: db.habitEntries,
     entityType: "habitEntries",
     operation: "create",
@@ -210,14 +185,18 @@ export function useSkipHabitEntry() {
       data: { date: string; skipReason?: string };
     }
   >({
-    mutationFn: async ({ habitId, data }) => {
-      const res = await apiClient.post(`/habits/${habitId}/entries`, {
+    mutationFn: ({ habitId, data }) => {
+      // Build via a variable so the {type, skipReason} extras flow through
+      // without tripping object-literal excess property checks. The server's
+      // CreateHabitEntryDto accepts these even though the factory's typed
+      // payload doesn't list them — see report on `createEntry` typing.
+      const payload = {
         date: data.date,
         value: 0,
-        type: "skip",
+        type: "skip" as const,
         skipReason: data.skipReason,
-      });
-      return res.data as HabitEntry;
+      };
+      return habitsApi.createEntry(habitId, payload);
     },
     table: db.habitEntries,
     entityType: "habitEntries",
@@ -245,13 +224,13 @@ export function useFailHabitEntry() {
       data: { date: string };
     }
   >({
-    mutationFn: async ({ habitId, data }) => {
-      const res = await apiClient.post(`/habits/${habitId}/entries`, {
+    mutationFn: ({ habitId, data }) => {
+      const payload = {
         date: data.date,
         value: 0,
-        type: "fail",
-      });
-      return res.data as HabitEntry;
+        type: "fail" as const,
+      };
+      return habitsApi.createEntry(habitId, payload);
     },
     table: db.habitEntries,
     entityType: "habitEntries",

@@ -13,6 +13,8 @@ export function createHabitsApi(client: ApiClientLike) {
       description?: string;
       frequency?: string;
       targetCount?: number;
+      scheduledDays?: number[];
+      weeklyTarget?: number;
       unit?: string;
       color?: string;
       icon?: string;
@@ -35,6 +37,8 @@ export function createHabitsApi(client: ApiClientLike) {
         description?: string;
         frequency?: string;
         targetCount?: number;
+        scheduledDays?: number[] | null;
+        weeklyTarget?: number;
         unit?: string;
         color?: string;
         icon?: string;
@@ -54,6 +58,12 @@ export function createHabitsApi(client: ApiClientLike) {
         date: string;
         value: number;
         notes?: string;
+        // `type` discriminates the entry: a normal completion, a skip
+        // (preserves the streak), or a fail (breaks the streak). The
+        // server enforces `value === 0` for skip/fail and clears
+        // `skipReason` for completions.
+        type?: "completion" | "skip" | "fail";
+        skipReason?: string;
       },
     ): Promise<HabitEntry> => {
       const res = await client.post(`/habits/${habitId}/entries`, data);
@@ -74,6 +84,12 @@ export function createHabitsApi(client: ApiClientLike) {
       data: {
         value?: number;
         notes?: string;
+        // Lets callers convert an existing entry between completion / skip /
+        // fail without hitting the per-(habit, date) uniqueness conflict that
+        // a DELETE + POST would cause. The server enforces the value=0
+        // invariant for skip/fail and clears skipReason on completion.
+        type?: "completion" | "skip" | "fail";
+        skipReason?: string;
       },
     ): Promise<HabitEntry> => {
       const res = await client.patch(
