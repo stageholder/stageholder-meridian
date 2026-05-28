@@ -22,8 +22,9 @@ import {
   PanelLeft,
   Moon,
 } from "lucide-react";
-import { useTheme } from "next-themes";
+import { useAppTheme } from "@/lib/platform/theme";
 import { isDesktop } from "@repo/core/platform";
+import { openURL } from "@repo/core/platform/linking";
 import { syncAll } from "@/lib/offline";
 import { subscribeLogout } from "@/lib/auth-broadcast";
 import { useUserLight } from "@/lib/api/light";
@@ -42,7 +43,7 @@ import { FeedbackButton } from "@/components/shared/feedback-button";
 import { CommandPalette } from "@/components/shared/command-palette";
 import { ShortcutsDialog } from "@/components/shared/shortcuts-dialog";
 import { MeridianLogo } from "@/components/shared/meridian-logo";
-import { checkForUpdate } from "@/lib/check-for-updates";
+import { useUpdateStore } from "@/lib/update-store";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 import { CreateTodoDialog } from "@/components/todos/create-todo-dialog";
 import { useUser } from "@/hooks/use-user";
@@ -120,7 +121,7 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
   const { signOut } = useStageholder();
   const { isMobile, setOpenMobile } = useSidebar();
-  const { resolvedTheme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useAppTheme();
   const isDark = resolvedTheme === "dark";
   // One-shot sync on mount. No interval polling, no focus refetch, no
   // /health heartbeat — mutations already invalidate their own caches,
@@ -156,7 +157,7 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
   // runs through the auth proxy and the user lands on /auth/login cleanly.
   useEffect(() => {
     return subscribeLogout(() => {
-      window.location.href = isDesktop() ? "/" : "/auth/login";
+      openURL(isDesktop() ? "/" : "/auth/login");
     });
   }, []);
 
@@ -663,7 +664,9 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
                       {
                         label: "Check for updates",
                         onSelect: () =>
-                          void checkForUpdate({ showWhenUpToDate: true }),
+                          useUpdateStore
+                            .getState()
+                            .requestCheck({ showWhenUpToDate: true }),
                         icon: <RefreshCw size={16} />,
                       },
                     ]

@@ -16,6 +16,7 @@ import {
   Separator,
   TextArea,
   Text,
+  useToast,
   View,
   XStack,
   YStack,
@@ -27,7 +28,6 @@ import {
 // re-exported by the kit yet.
 import { Form, Input as RawInput } from "tamagui";
 import { format } from "date-fns";
-import { toast } from "sonner";
 import { parseDateLocal } from "@/lib/date";
 import type { Todo } from "@repo/core/types";
 
@@ -62,6 +62,7 @@ export function TodoDetailDialog({
   const addSubtask = useAddSubtask();
   const updateSubtask = useUpdateSubtask();
   const removeSubtask = useRemoveSubtask();
+  const toast = useToast();
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -150,11 +151,11 @@ export function TodoDetailDialog({
       { listId, todoId: todo.id },
       {
         onSuccess: () => {
-          toast.success("Todo deleted");
+          toast.show({ title: "Todo deleted", intent: "success" });
           onOpenChange(false);
         },
         onError: () => {
-          toast.error("Failed to delete todo");
+          toast.show({ title: "Failed to delete todo", intent: "danger" });
         },
       },
     );

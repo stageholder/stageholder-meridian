@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useTheme } from "next-themes";
+import { useAppTheme } from "@/lib/platform/theme";
 import {
   Home,
   CalendarDays,
@@ -48,7 +48,7 @@ export function CommandPalette({
   onCreateTodo,
 }: CommandPaletteProps) {
   const navigate = useNavigate();
-  const { setTheme, theme } = useTheme();
+  const { setTheme, theme } = useAppTheme();
 
   // Build the item list inside useMemo so it re-derives when `theme`
   // changes (the Toggle Theme item's icon flips between Sun/Moon and

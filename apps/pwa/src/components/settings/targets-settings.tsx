@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { toast } from "sonner";
 import {
   Button,
   Label,
   NumberInput,
   Select,
   Text,
+  useToast,
   XStack,
   YStack,
 } from "@stageholder/ui";
@@ -22,6 +22,7 @@ const JOURNAL_PRESETS = [
 export function TargetsSettings() {
   const { data: userLight, isLoading } = useUserLight();
   const updateTargets = useUpdateTargets();
+  const toast = useToast();
 
   const [todoTarget, setTodoTarget] = useState(3);
   const [journalTarget, setJournalTarget] = useState(75);
@@ -38,8 +39,10 @@ export function TargetsSettings() {
     updateTargets.mutate(
       { todoTargetDaily: todoTarget, journalTargetDailyWords: journalTarget },
       {
-        onSuccess: () => toast.success("Targets updated"),
-        onError: () => toast.error("Failed to update targets"),
+        onSuccess: () =>
+          toast.show({ title: "Targets updated", intent: "success" }),
+        onError: () =>
+          toast.show({ title: "Failed to update targets", intent: "danger" }),
       },
     );
   }

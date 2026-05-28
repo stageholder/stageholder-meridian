@@ -13,6 +13,7 @@ import {
   Stat,
   StreakBadge,
   Text,
+  useToast,
   View,
   XStack,
   YStack,
@@ -27,14 +28,13 @@ import {
   useFailHabitEntry,
   useDeleteHabit,
 } from "@/lib/api/habits";
-import { toast } from "sonner";
 import type { HabitEntry } from "@repo/core/types";
 import {
   resolveTargetCount,
   isEntryComplete,
   calculateWeeklyStreak,
   weeklyCompletions,
-} from "@/lib/habits/entry-resolution";
+} from "@repo/core/habits/entry-resolution";
 import { startOfWeek, subWeeks } from "date-fns";
 import { parseDateLocal } from "@/lib/date";
 
@@ -52,6 +52,7 @@ function HabitDetailPage() {
   const updateEntry = useUpdateHabitEntry();
   const skipEntryMutation = useSkipHabitEntry();
   const failEntry = useFailHabitEntry();
+  const toast = useToast();
   const [editOpen, setEditOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -335,12 +336,17 @@ function HabitDetailPage() {
       currentEntry?.type !== "fail" &&
       currentVal >= checkTarget
     ) {
-      toast.info("Already completed for this date");
+      toast.show({
+        title: "Already completed for this date",
+        intent: "info",
+      });
       return;
     }
 
-    const onSuccess = () => toast.success(`Recorded for ${dateStr}`);
-    const onError = () => toast.error("Failed to record");
+    const onSuccess = () =>
+      toast.show({ title: `Recorded for ${dateStr}`, intent: "success" });
+    const onError = () =>
+      toast.show({ title: "Failed to record", intent: "danger" });
 
     if (!existing) {
       createEntry.mutate(
@@ -386,8 +392,10 @@ function HabitDetailPage() {
         data: { value: currentVal - 1 },
       },
       {
-        onSuccess: () => toast.success(`Undid for ${dateStr}`),
-        onError: () => toast.error("Failed to undo"),
+        onSuccess: () =>
+          toast.show({ title: `Undid for ${dateStr}`, intent: "success" }),
+        onError: () =>
+          toast.show({ title: "Failed to undo", intent: "danger" }),
       },
     );
   }
@@ -397,8 +405,10 @@ function HabitDetailPage() {
   function handleDateFail(dateStr: string) {
     if (!habit) return;
     const existing = monthEntryObjMap.get(dateStr);
-    const onSuccess = () => toast.success(`Marked failed for ${dateStr}`);
-    const onError = () => toast.error("Failed to update");
+    const onSuccess = () =>
+      toast.show({ title: `Marked failed for ${dateStr}`, intent: "success" });
+    const onError = () =>
+      toast.show({ title: "Failed to update", intent: "danger" });
     if (!existing) {
       failEntry.mutate(
         { habitId: habit.id, data: { date: dateStr } },
@@ -421,8 +431,10 @@ function HabitDetailPage() {
   function handleDateSkip(dateStr: string) {
     if (!habit) return;
     const existing = monthEntryObjMap.get(dateStr);
-    const onSuccess = () => toast.success(`Skipped ${dateStr}`);
-    const onError = () => toast.error("Failed to skip");
+    const onSuccess = () =>
+      toast.show({ title: `Skipped ${dateStr}`, intent: "success" });
+    const onError = () =>
+      toast.show({ title: "Failed to skip", intent: "danger" });
     if (!existing) {
       skipEntryMutation.mutate(
         { habitId: habit.id, data: { date: dateStr } },
@@ -464,8 +476,12 @@ function HabitDetailPage() {
       },
       {
         onSuccess: () =>
-          toast.success(wasFail ? "Cleared fail" : "Cleared skip"),
-        onError: () => toast.error("Failed to undo"),
+          toast.show({
+            title: wasFail ? "Cleared fail" : "Cleared skip",
+            intent: "success",
+          }),
+        onError: () =>
+          toast.show({ title: "Failed to undo", intent: "danger" }),
       },
     );
   }
@@ -475,10 +491,11 @@ function HabitDetailPage() {
   function confirmDelete() {
     deleteHabit.mutate(id, {
       onSuccess: () => {
-        toast.success("Habit deleted");
+        toast.show({ title: "Habit deleted", intent: "success" });
         navigate({ to: "/habits" });
       },
-      onError: () => toast.error("Failed to delete habit"),
+      onError: () =>
+        toast.show({ title: "Failed to delete habit", intent: "danger" }),
     });
     setDeleteOpen(false);
   }

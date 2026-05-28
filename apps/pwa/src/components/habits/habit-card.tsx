@@ -12,13 +12,12 @@ import {
   useHabitEntries,
   useDeleteHabit,
 } from "@/lib/api/habits";
-import { toast } from "sonner";
 import type { Habit, HabitEntry } from "@repo/core/types";
 import {
   resolveTargetCount,
   calculateWeeklyStreak,
   weeklyCompletions,
-} from "@/lib/habits/entry-resolution";
+} from "@repo/core/habits/entry-resolution";
 import {
   AlertDialog,
   Button,
@@ -27,6 +26,7 @@ import {
   IconButton,
   StreakBadge,
   Text,
+  useToast,
   View,
   XStack,
   YStack,
@@ -57,6 +57,7 @@ export function HabitCard({ habit, selectedDate, flex, minW }: HabitCardProps) {
   const skipEntry = useSkipHabitEntry();
   const failEntry = useFailHabitEntry();
   const deleteHabit = useDeleteHabit();
+  const toast = useToast();
   const [editOpen, setEditOpen] = useState(false);
   const [bouncing, setBouncing] = useState(false);
   const [completing, setCompleting] = useState(false);
@@ -147,7 +148,7 @@ export function HabitCard({ habit, selectedDate, flex, minW }: HabitCardProps) {
       ? habit.name
       : `${habit.name} (${activeDate})`;
     const onSuccess = () => {
-      toast.success(`Checked in for ${dateLabel}`);
+      toast.show({ title: `Checked in for ${dateLabel}`, intent: "success" });
       setBouncing(true);
       setTimeout(() => setBouncing(false), 500);
       if (activeDateValue + 1 >= habit.targetCount) {
@@ -159,7 +160,11 @@ export function HabitCard({ habit, selectedDate, flex, minW }: HabitCardProps) {
     if (!activeDateEntry) {
       createEntry.mutate(
         { habitId: habit.id, data: { date: activeDate, value: 1 } },
-        { onSuccess, onError: () => toast.error("Failed to check in") },
+        {
+          onSuccess,
+          onError: () =>
+            toast.show({ title: "Failed to check in", intent: "danger" }),
+        },
       );
       return;
     }
@@ -177,14 +182,20 @@ export function HabitCard({ habit, selectedDate, flex, minW }: HabitCardProps) {
           ? { type: "completion", value: 1 }
           : { value: activeDateValue + 1 },
       },
-      { onSuccess, onError: () => toast.error("Failed to check in") },
+      {
+        onSuccess,
+        onError: () =>
+          toast.show({ title: "Failed to check in", intent: "danger" }),
+      },
     );
   }
 
   function handleSkip() {
     if (isComplete || isSkipped || !isScheduledOnActiveDate) return;
-    const onSuccess = () => toast.success(`Skipped ${habit.name}`);
-    const onError = () => toast.error("Failed to skip");
+    const onSuccess = () =>
+      toast.show({ title: `Skipped ${habit.name}`, intent: "success" });
+    const onError = () =>
+      toast.show({ title: "Failed to skip", intent: "danger" });
     if (!activeDateEntry) {
       skipEntry.mutate(
         { habitId: habit.id, data: { date: activeDate } },
@@ -205,8 +216,10 @@ export function HabitCard({ habit, selectedDate, flex, minW }: HabitCardProps) {
   // Mark today failed — breaks the streak.
   function handleFail() {
     if (isComplete || isFailed || !isScheduledOnActiveDate) return;
-    const onSuccess = () => toast.success(`Marked ${habit.name} failed`);
-    const onError = () => toast.error("Failed to update");
+    const onSuccess = () =>
+      toast.show({ title: `Marked ${habit.name} failed`, intent: "success" });
+    const onError = () =>
+      toast.show({ title: "Failed to update", intent: "danger" });
     if (!activeDateEntry) {
       failEntry.mutate(
         { habitId: habit.id, data: { date: activeDate } },
@@ -235,8 +248,13 @@ export function HabitCard({ habit, selectedDate, flex, minW }: HabitCardProps) {
         data: { value: newValue },
       },
       {
-        onSuccess: () => toast.success(`Undid check-in for ${habit.name}`),
-        onError: () => toast.error("Failed to undo"),
+        onSuccess: () =>
+          toast.show({
+            title: `Undid check-in for ${habit.name}`,
+            intent: "success",
+          }),
+        onError: () =>
+          toast.show({ title: "Failed to undo", intent: "danger" }),
       },
     );
   }
@@ -251,8 +269,10 @@ export function HabitCard({ habit, selectedDate, flex, minW }: HabitCardProps) {
         data: { type: "completion", value: 0 },
       },
       {
-        onSuccess: () => toast.success(`Cleared ${habit.name}`),
-        onError: () => toast.error("Failed to undo"),
+        onSuccess: () =>
+          toast.show({ title: `Cleared ${habit.name}`, intent: "success" }),
+        onError: () =>
+          toast.show({ title: "Failed to undo", intent: "danger" }),
       },
     );
   }
@@ -261,8 +281,10 @@ export function HabitCard({ habit, selectedDate, flex, minW }: HabitCardProps) {
 
   function confirmDelete() {
     deleteHabit.mutate(habit.id, {
-      onSuccess: () => toast.success(`"${habit.name}" deleted`),
-      onError: () => toast.error("Failed to delete habit"),
+      onSuccess: () =>
+        toast.show({ title: `"${habit.name}" deleted`, intent: "success" }),
+      onError: () =>
+        toast.show({ title: "Failed to delete habit", intent: "danger" }),
     });
     setDeleteOpen(false);
   }

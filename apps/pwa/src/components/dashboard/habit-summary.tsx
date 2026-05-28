@@ -6,7 +6,7 @@ import { useHabits } from "@/lib/api/habits";
 import { useCalendarData } from "@/lib/api/calendar";
 import { BentoCard } from "./bento-card";
 import type { Habit } from "@repo/core/types";
-import { resolveTargetCount } from "@/lib/habits/entry-resolution";
+import { resolveTargetCount } from "@repo/core/habits/entry-resolution";
 
 // In-progress habit bar is a generic orange (shadcn bg-orange-500/400). There's
 // no orange kit token, so it lives on the style escape hatch (the completed

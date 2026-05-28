@@ -13,6 +13,7 @@ import {
   Popover,
   Text,
   ToggleGroup,
+  useToast,
   View,
   XStack,
   YStack,
@@ -20,7 +21,6 @@ import {
 import { useJournal, useDeleteJournal } from "@/lib/api/journals";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { useAutosave } from "@/lib/hooks/use-autosave";
-import { toast } from "sonner";
 import type { JournalContent } from "@repo/core/types";
 
 export const Route = createFileRoute("/_app/journal/$id")({
@@ -41,6 +41,7 @@ function JournalEntryPage() {
   const { data: journal, isLoading } = useJournal(id);
   const deleteJournal = useDeleteJournal();
   const isDesktop = useMediaQuery("(min-width: 768px)");
+  const toast = useToast();
 
   const [title, setTitle] = useState("");
   // Dual-format content during Phase 2: legacy entries arrive as HTML
@@ -115,11 +116,14 @@ function JournalEntryPage() {
   function confirmDelete() {
     deleteJournal.mutate(id, {
       onSuccess: () => {
-        toast.success("Journal entry deleted");
+        toast.show({ title: "Journal entry deleted", intent: "success" });
         navigate({ to: "/journal" });
       },
       onError: () => {
-        toast.error("Failed to delete journal entry");
+        toast.show({
+          title: "Failed to delete journal entry",
+          intent: "danger",
+        });
       },
     });
     setDeleteOpen(false);

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useEncryptionStore } from "@/lib/crypto/encryption-store";
+import { writeToClipboard } from "@repo/core/platform/clipboard";
 import {
   Button,
   Checkbox,
@@ -8,12 +9,12 @@ import {
   Input,
   Label,
   Text,
+  useToast,
   XStack,
   YStack,
 } from "@stageholder/ui";
 // Form isn't re-exported by the kit yet; pull it from the shared tamagui dep.
 import { Form } from "tamagui";
-import { toast } from "sonner";
 import { Shield, Copy, Check } from "lucide-react";
 
 export function PassphraseSetupDialog({
@@ -28,6 +29,7 @@ export function PassphraseSetupDialog({
   onComplete: () => void;
 }) {
   const setupPassphrase = useEncryptionStore((s) => s.setupPassphrase);
+  const toast = useToast();
   const [step, setStep] = useState<"create" | "recovery">("create");
   const [passphrase, setPassphrase] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -54,15 +56,15 @@ export function PassphraseSetupDialog({
       setRecoveryCodes(codes);
       setStep("recovery");
     } catch {
-      toast.error("Failed to set up encryption");
+      toast.show({ title: "Failed to set up encryption", intent: "danger" });
     } finally {
       setLoading(false);
     }
   }
 
-  function handleCopy() {
+  async function handleCopy() {
     const text = recoveryCodes.join("\n");
-    navigator.clipboard.writeText(text);
+    await writeToClipboard(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }

@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useCreateTodoList, useUpdateTodoList } from "@/lib/api/todos";
-import { toast } from "sonner";
 import {
   Button,
   Dialog,
   Input,
   Label,
   Text,
+  useToast,
   View,
   XStack,
   YStack,
@@ -43,6 +43,7 @@ export function CreateListDialog({
   const [color, setColor] = useState("#3b82f6");
   const createList = useCreateTodoList();
   const updateList = useUpdateTodoList();
+  const toast = useToast();
   const pending = createList.isPending || updateList.isPending;
 
   // Prefill (edit) / reset (create) whenever the dialog opens.
@@ -60,10 +61,11 @@ export function CreateListDialog({
         { listId: list.id, data: { name: name.trim(), color } },
         {
           onSuccess: () => {
-            toast.success("List updated");
+            toast.show({ title: "List updated", intent: "success" });
             onOpenChange(false);
           },
-          onError: () => toast.error("Failed to update list"),
+          onError: () =>
+            toast.show({ title: "Failed to update list", intent: "danger" }),
         },
       );
       return;
@@ -73,12 +75,13 @@ export function CreateListDialog({
       { name: name.trim(), color },
       {
         onSuccess: () => {
-          toast.success("List created");
+          toast.show({ title: "List created", intent: "success" });
           setName("");
           setColor("#3b82f6");
           onOpenChange(false);
         },
-        onError: () => toast.error("Failed to create list"),
+        onError: () =>
+          toast.show({ title: "Failed to create list", intent: "danger" }),
       },
     );
   }

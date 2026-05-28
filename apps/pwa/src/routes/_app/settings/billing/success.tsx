@@ -11,6 +11,7 @@ import {
 } from "@stageholder/sdk/spa";
 import { refreshEntitlement } from "@/lib/entitlement";
 import { tryGetCurrentUserSub } from "@/lib/current-user-sub";
+import { openURL } from "@repo/core/platform/linking";
 import {
   Button,
   H1,
@@ -256,7 +257,7 @@ function BillingSuccessPage() {
     } catch {
       // Even if the BFF logout call fails, navigate to login — the worst
       // case is the user clicks "Sign in" once more on the next page.
-      window.location.href = "/auth/login";
+      openURL("/auth/login");
     }
   }
 

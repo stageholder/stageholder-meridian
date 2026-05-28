@@ -6,6 +6,7 @@ import {
   useSubscription,
 } from "@stageholder/sdk/spa";
 import { useNavigate } from "@tanstack/react-router";
+import { openURL } from "@repo/core/platform/linking";
 import { ArrowUpRight, ExternalLink } from "lucide-react";
 import { OrbitIllustration } from "./orbit-illustration";
 import {
@@ -159,7 +160,7 @@ export function CurrentPlanHero({
                       returnUrl: `${window.location.origin}/app/settings/billing`,
                     })
                     .then(({ url }) => {
-                      window.location.href = url;
+                      openURL(url);
                     })
                     .catch((err) =>
                       // eslint-disable-next-line no-console

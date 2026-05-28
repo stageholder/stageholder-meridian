@@ -1,7 +1,13 @@
 import { addDays, format, startOfWeek, subWeeks } from "date-fns";
-import type { Habit, HabitEntry } from "@repo/core/types";
+import type { Habit, HabitEntry } from "../types/index.js";
 
 /**
+ * Pure, cross-platform habit entry math. Originally lived in
+ * `apps/pwa/src/lib/habits/entry-resolution.ts`; lifted here so the
+ * future React Native mobile app can reuse the same resolution rules
+ * without duplicating them. No React, no web APIs — just `date-fns`
+ * + the entity types.
+ *
  * Returns the targetCount that was in effect when this entry was recorded.
  * Falls back to the current habit targetCount for entries created before
  * the snapshot feature was introduced.

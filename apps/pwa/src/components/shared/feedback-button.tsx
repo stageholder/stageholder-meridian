@@ -6,7 +6,6 @@ import {
   MessageCircle,
   Send,
 } from "lucide-react";
-import { toast } from "sonner";
 import apiClient from "@/lib/api-client";
 import {
   Button,
@@ -17,6 +16,7 @@ import {
   ToggleGroup,
   YStack,
   useSidebar,
+  useToast,
 } from "@stageholder/ui";
 
 type FeedbackType = "bug" | "feature" | "general";
@@ -61,13 +61,14 @@ export function FeedbackButton() {
   // exclusively inside <Sidebar.Footer> within the app shell. If we ever
   // need this component outside a Sidebar, swap to a guarded version.
   const { setOpenMobile, isMobile } = useSidebar();
+  const toast = useToast();
 
   async function handleSubmit() {
     if (!message.trim()) return;
     setSubmitting(true);
     try {
       await apiClient.post("/feedback", { type, message: message.trim() });
-      toast.success("Thanks for your feedback!");
+      toast.show({ title: "Thanks for your feedback!", intent: "success" });
       setMessage("");
       setType("general");
       setOpen(false);
@@ -75,7 +76,10 @@ export function FeedbackButton() {
       // lands back on whatever screen they were on. No-op on desktop.
       if (isMobile) setOpenMobile(false);
     } catch {
-      toast.error("Failed to send feedback. Please try again.");
+      toast.show({
+        title: "Failed to send feedback. Please try again.",
+        intent: "danger",
+      });
     } finally {
       setSubmitting(false);
     }

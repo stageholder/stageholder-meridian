@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useCreateHabit } from "@/lib/api/habits";
-import { toast } from "sonner";
 import {
   Button,
   Dialog,
@@ -13,6 +12,7 @@ import {
   Text,
   TextArea,
   ToggleGroup,
+  useToast,
   View,
   XStack,
   YStack,
@@ -60,6 +60,7 @@ export function CreateHabitDialog({
   const [scheduledDays, setScheduledDays] = useState<number[]>([]);
   const [weeklyTarget, setWeeklyTarget] = useState(2);
   const createHabit = useCreateHabit();
+  const toast = useToast();
 
   function resetForm() {
     setName("");
@@ -94,12 +95,12 @@ export function CreateHabitDialog({
       },
       {
         onSuccess: () => {
-          toast.success("Habit created");
+          toast.show({ title: "Habit created", intent: "success" });
           resetForm();
           onOpenChange(false);
         },
         onError: () => {
-          toast.error("Failed to create habit");
+          toast.show({ title: "Failed to create habit", intent: "danger" });
         },
       },
     );

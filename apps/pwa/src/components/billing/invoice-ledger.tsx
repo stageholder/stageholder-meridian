@@ -5,6 +5,7 @@ import {
   useInvoices,
   useStageholder,
 } from "@stageholder/sdk/spa";
+import { openURL } from "@repo/core/platform/linking";
 import { Download, Loader2 } from "lucide-react";
 import {
   Button,
@@ -219,7 +220,7 @@ function DownloadButton({
           );
           if (!res.ok) throw new Error(`invoice url failed: ${res.status}`);
           const { url } = (await res.json()) as { url?: string };
-          if (url) window.open(url, "_blank", "noopener,noreferrer");
+          if (url) openURL(url, { newTab: true });
         } catch (err) {
           // eslint-disable-next-line no-console
           console.error("[meridian] invoice download failed:", err);

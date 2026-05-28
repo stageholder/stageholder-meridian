@@ -11,13 +11,13 @@ import {
   Select,
   Text,
   TextArea,
+  useToast,
   View,
   XStack,
   YStack,
 } from "@stageholder/ui";
 // Form isn't re-exported by the kit yet; pull it from the shared tamagui dep.
 import { Form } from "tamagui";
-import { toast } from "sonner";
 import { format } from "date-fns";
 import { parseDateLocal } from "@/lib/date";
 
@@ -88,6 +88,7 @@ export function CreateTodoDialog({
   const queryClient = useQueryClient();
   const createTodo = useCreateTodo();
   const { data: lists } = useTodoLists();
+  const toast = useToast();
 
   const defaultListId =
     lists?.find((l) => l.isDefault)?.id || lists?.[0]?.id || "";
@@ -122,7 +123,7 @@ export function CreateTodoDialog({
       },
       {
         onSuccess: () => {
-          toast.success("Todo created");
+          toast.show({ title: "Todo created", intent: "success" });
           setTitle("");
           setDescription("");
           setPriority("none");
@@ -132,7 +133,7 @@ export function CreateTodoDialog({
           void queryClient.invalidateQueries({ queryKey: ["calendar"] });
         },
         onError: () => {
-          toast.error("Failed to create todo");
+          toast.show({ title: "Failed to create todo", intent: "danger" });
         },
       },
     );

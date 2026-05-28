@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useUpdateHabit } from "@/lib/api/habits";
-import { toast } from "sonner";
 import type { Habit } from "@repo/core/types";
 import {
   Button,
@@ -14,6 +13,7 @@ import {
   Text,
   TextArea,
   ToggleGroup,
+  useToast,
   View,
   XStack,
   YStack,
@@ -65,6 +65,7 @@ export function EditHabitSheet({
   );
   const [weeklyTarget, setWeeklyTarget] = useState(habit.weeklyTarget ?? 2);
   const updateHabit = useUpdateHabit();
+  const toast = useToast();
 
   useEffect(() => {
     if (open) {
@@ -105,11 +106,11 @@ export function EditHabitSheet({
       },
       {
         onSuccess: () => {
-          toast.success("Habit updated");
+          toast.show({ title: "Habit updated", intent: "success" });
           onOpenChange(false);
         },
         onError: () => {
-          toast.error("Failed to update habit");
+          toast.show({ title: "Failed to update habit", intent: "danger" });
         },
       },
     );

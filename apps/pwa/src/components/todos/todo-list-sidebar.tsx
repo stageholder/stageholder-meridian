@@ -18,11 +18,11 @@ import {
   IconButton,
   Separator,
   Text,
+  useToast,
   View,
   XStack,
   YStack,
 } from "@stageholder/ui";
-import { toast } from "sonner";
 import { useAllTodos, useTodoLists, useDeleteTodoList } from "@/lib/api/todos";
 import { CreateListDialog } from "./create-list-dialog";
 import type { Todo, TodoList } from "@repo/core/types";
@@ -110,6 +110,7 @@ function ListMenu({
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const deleteList = useDeleteTodoList();
+  const toast = useToast();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -117,10 +118,11 @@ function ListMenu({
     const viewing = pathname === `/todos/${list.id}`;
     deleteList.mutate(list.id, {
       onSuccess: () => {
-        toast.success(`"${list.name}" deleted`);
+        toast.show({ title: `"${list.name}" deleted`, intent: "success" });
         if (viewing) void navigate({ to: "/todos" });
       },
-      onError: () => toast.error("Failed to delete list"),
+      onError: () =>
+        toast.show({ title: "Failed to delete list", intent: "danger" }),
     });
   }
 

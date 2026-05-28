@@ -1,4 +1,5 @@
 import { createAuthenticatedFetch } from "@stageholder/sdk/spa";
+import { openURL } from "@repo/core/platform/linking";
 import { MERIDIAN_PAYWALL_EVENT } from "@/components/paywall-listener";
 
 interface Api402Body {
@@ -49,7 +50,9 @@ const authFetch = createAuthenticatedFetch({
     if (typeof window === "undefined") return;
     const path = window.location.pathname;
     if (path === "/auth/login" || path.startsWith("/auth/")) return;
-    window.location.href = `/auth/login?returnTo=${encodeURIComponent(path + window.location.search)}`;
+    openURL(
+      `/auth/login?returnTo=${encodeURIComponent(path + window.location.search)}`,
+    );
   },
 });
 

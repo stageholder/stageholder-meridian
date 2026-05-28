@@ -13,6 +13,7 @@ import {
   type ProductFeature,
 } from "@stageholder/sdk/spa";
 import { BillingError } from "@stageholder/sdk/core";
+import { openURL } from "@repo/core/platform/linking";
 import { OrbitIllustration } from "./orbit-illustration";
 import {
   ArrowUpRight,
@@ -105,7 +106,7 @@ export function PlanTierCard({
         billingCycle: cycle,
         returnUrl: `${window.location.origin}/settings/billing/success`,
       });
-      window.location.href = url;
+      openURL(url);
     } catch (err) {
       if (err instanceof BillingError) {
         setErrorState({ code: err.code, message: err.message });
@@ -148,7 +149,7 @@ export function PlanTierCard({
         planSlug: plan.slug,
         billingCycle: cycle,
       });
-      window.location.href = `/settings/billing/success?changed=1`;
+      openURL(`/settings/billing/success?changed=1`);
     } catch (err) {
       if (err instanceof BillingError) {
         setErrorState({ code: err.code, message: err.message });
@@ -178,7 +179,7 @@ export function PlanTierCard({
         orgId: org.id,
         returnUrl: `${window.location.origin}/settings/billing`,
       });
-      window.location.href = url;
+      openURL(url);
     } catch (err) {
       setErrorState({
         code: null,
@@ -650,7 +651,7 @@ function ContactSalesLink() {
       intent="outline"
       width="100%"
       onPress={() => {
-        window.location.href = "mailto:hello@meridian.app";
+        openURL("mailto:hello@meridian.app");
       }}
     >
       Contact sales

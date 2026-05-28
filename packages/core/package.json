@@ -16,13 +16,17 @@
     "./platform/notifications": "./src/platform/notifications.ts",
     "./platform/updater": "./src/platform/updater.ts",
     "./platform/logger": "./src/platform/logger.ts",
-    "./utils/*": "./src/utils/*.ts"
+    "./platform/clipboard": "./src/platform/clipboard.ts",
+    "./platform/linking": "./src/platform/linking.ts",
+    "./utils/*": "./src/utils/*.ts",
+    "./habits/*": "./src/habits/*.ts"
   },
   "peerDependencies": {
     "react": "^19.0.0"
   },
   "dependencies": {
     "axios": "^1.7.9",
+    "date-fns": "^4.1.0",
     "zustand": "^5.0.3"
   },
   "devDependencies": {

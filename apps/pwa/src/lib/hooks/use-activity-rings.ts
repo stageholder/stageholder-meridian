@@ -4,7 +4,7 @@ import type { CalendarDayData } from "@/lib/api/calendar";
 import { useCalendarData } from "@/lib/api/calendar";
 import { useHabits } from "@/lib/api/habits";
 import { useUserLight } from "@/lib/api/light";
-import { countScheduledHabitsForDate } from "@/lib/habits/entry-resolution";
+import { countScheduledHabitsForDate } from "@repo/core/habits/entry-resolution";
 
 /** Per-day completion (0–100) for the three Meridian activity rings. */
 export interface ActivityRingsData {

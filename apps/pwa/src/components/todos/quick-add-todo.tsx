@@ -8,13 +8,13 @@ import {
   Input,
   Popover,
   Text,
+  useToast,
   View,
   XStack,
   YStack,
 } from "@stageholder/ui";
 // Form isn't re-exported by the kit yet; pull it from the shared tamagui dep.
 import { Form } from "tamagui";
-import { toast } from "sonner";
 import { format } from "date-fns";
 import { parseDateLocal } from "@/lib/date";
 import type { TodoList } from "@repo/core/types";
@@ -241,6 +241,7 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const createTodo = useCreateTodo();
   const { data: lists } = useTodoLists();
+  const toast = useToast();
 
   useEffect(() => {
     if (listId && !selectedListId) setSelectedListId(listId);
@@ -278,10 +279,20 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
           setDoDate(getToday());
           setTimeout(() => inputRef.current?.focus(), 0);
         },
-        onError: () => toast.error("Failed to create todo"),
+        onError: () =>
+          toast.show({ title: "Failed to create todo", intent: "danger" }),
       },
     );
-  }, [title, selectedListId, priority, doDate, dueDate, createTodo, resetForm]);
+  }, [
+    title,
+    selectedListId,
+    priority,
+    doDate,
+    dueDate,
+    createTodo,
+    resetForm,
+    toast,
+  ]);
 
   const handleActivate = useCallback(() => {
     setIsEditing(true);

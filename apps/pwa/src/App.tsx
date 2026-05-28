@@ -1,9 +1,10 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { ThemeProvider, useTheme as useNextTheme } from "next-themes";
+import { ThemeProvider } from "next-themes";
+import { useAppTheme } from "@/lib/platform/theme";
 import { RouterProvider } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StageholderSpaProvider, useOrg, useUser } from "@stageholder/sdk/spa";
-import { Toaster } from "sonner";
+import { Toaster, ToastProvider } from "@stageholder/ui";
 import { TamaguiProvider, Theme } from "tamagui";
 import { router } from "./router";
 import { spaConfig } from "./lib/spa-config";
@@ -123,7 +124,7 @@ function InnerApp() {
  * needs to read `resolvedTheme` on every render to stay in sync.
  */
 function TamaguiBridge({ children }: { children: ReactNode }) {
-  const { resolvedTheme } = useNextTheme();
+  const { resolvedTheme } = useAppTheme();
   // `resolvedTheme` is `undefined` on the first render before
   // next-themes hydrates from localStorage. Falling back to "light"
   // keeps the very first paint stable; the re-render after hydration
@@ -165,14 +166,16 @@ export function App() {
              *
              * LogProvider: installs the platform logger's global error capture.
              */}
-            <PaywallListener>
-              <EncryptionStoreInitializer>
-                <LogProvider>
-                  <InnerApp />
-                </LogProvider>
-              </EncryptionStoreInitializer>
-            </PaywallListener>
-            <Toaster />
+            <ToastProvider>
+              <PaywallListener>
+                <EncryptionStoreInitializer>
+                  <LogProvider>
+                    <InnerApp />
+                  </LogProvider>
+                </EncryptionStoreInitializer>
+              </PaywallListener>
+              <Toaster />
+            </ToastProvider>
           </StageholderSpaProvider>
         </QueryClientProvider>
       </TamaguiBridge>
