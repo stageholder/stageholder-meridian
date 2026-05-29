@@ -36,6 +36,32 @@ function buildParams(since?: string): Record<string, string> | undefined {
   return { updatedSince: since, includeSoftDeleted: "true" };
 }
 
+/**
+ * Flatten the results of a `Promise.allSettled` over a fan-out fetch
+ * (one request per parent — list, habit, etc.). Successful sub-fetches
+ * always survive; a single failed sub-fetch is logged with the
+ * supplied label and dropped. Without this, a 5xx on one parent would
+ * `Promise.all`-reject the whole sync step and discard every successful
+ * sibling.
+ */
+function settledFlat<T>(
+  results: PromiseSettledResult<T[]>[],
+  label: (index: number) => string,
+): T[] {
+  const out: T[] = [];
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i]!;
+    if (r.status === "fulfilled") {
+      out.push(...r.value);
+      continue;
+    }
+    const message =
+      r.reason instanceof Error ? r.reason.message : String(r.reason);
+    logger.warn(`[Sync] ${label(i)} failed: ${message}`);
+  }
+  return out;
+}
+
 export async function syncAll(): Promise<void> {
   // Sync is user-scoped now — bail out if the session hasn't resolved yet.
   const userSub = tryGetCurrentUserSub();
@@ -49,10 +75,12 @@ export async function syncAll(): Promise<void> {
         return todosApi.listAllTodos({ ...buildParams(since), limit: 1000 });
       }
       const lists = await todosApi.listLists();
-      const allTodos = await Promise.all(
-        lists.map((list) => todosApi.listTodos(list.id)),
+      return settledFlat(
+        await Promise.allSettled(
+          lists.map((list) => todosApi.listTodos(list.id)),
+        ),
+        (i) => `todos for list ${lists[i]?.id ?? "?"}`,
       );
-      return allTodos.flat();
     },
     journals: async (since?: string) => {
       const { isSetup, isUnlocked, dek } = useEncryptionStore.getState();
@@ -68,10 +96,12 @@ export async function syncAll(): Promise<void> {
         return habitsApi.listAllEntries({ ...buildParams(since), limit: 1000 });
       }
       const habits = await habitsApi.list();
-      const allEntries = await Promise.all(
-        habits.map((habit) => habitsApi.listEntries(habit.id)),
+      return settledFlat(
+        await Promise.allSettled(
+          habits.map((habit) => habitsApi.listEntries(habit.id)),
+        ),
+        (i) => `habit entries for ${habits[i]?.id ?? "?"}`,
       );
-      return allEntries.flat();
     },
     tags: (since?: string) => tagsApi.list(buildParams(since)),
     notifications: async (since?: string) => {

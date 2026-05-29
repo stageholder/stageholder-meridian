@@ -1,60 +1,26 @@
 import { useMemo } from "react";
-import type { ActivityRing } from "@stageholder/ui";
 import type { CalendarDayData } from "@/lib/api/calendar";
 import { useCalendarData } from "@/lib/api/calendar";
 import { useHabits } from "@/lib/api/habits";
 import { useUserLight } from "@/lib/api/light";
 import { countScheduledHabitsForDate } from "@repo/core/habits/entry-resolution";
+import {
+  RING_CATEGORY,
+  activityRingsConfig,
+  type ActivityRingsData,
+  type ActivityRingsDetails,
+} from "@repo/features/activity-rings";
 
-/** Per-day completion (0–100) for the three Meridian activity rings. */
-export interface ActivityRingsData {
-  todo: number;
-  habit: number;
-  journal: number;
-}
-
-/**
- * Meridian's standard category colors — theme-aware CSS vars, shared by the
- * calendar rings, the day panel, and the daily-target header rings. Passed
- * straight through to the kit `<ActivityRings>` as raw SVG stroke colors.
- *   todo = red · habit = orange · journal = yellow
- */
-export const RING_CATEGORY = {
-  todo: { color: "var(--ring-todo)", track: "var(--ring-todo-track)" },
-  habit: { color: "var(--ring-habit)", track: "var(--ring-habit-track)" },
-  journal: { color: "var(--ring-journal)", track: "var(--ring-journal-track)" },
-} as const;
-
-/**
- * Maps computed completion to the kit `<ActivityRings>` ring config. Order is
- * outer→inner: journal, habit, todo (the kit renders rings[0] outermost),
- * preserving the prior Meridian ring stacking.
- */
-export function activityRingsConfig(data: ActivityRingsData): ActivityRing[] {
-  return [
-    {
-      value: data.journal,
-      max: 100,
-      color: RING_CATEGORY.journal.color,
-      trackColor: RING_CATEGORY.journal.track,
-      label: "Journal",
-    },
-    {
-      value: data.habit,
-      max: 100,
-      color: RING_CATEGORY.habit.color,
-      trackColor: RING_CATEGORY.habit.track,
-      label: "Habits",
-    },
-    {
-      value: data.todo,
-      max: 100,
-      color: RING_CATEGORY.todo.color,
-      trackColor: RING_CATEGORY.todo.track,
-      label: "Todos",
-    },
-  ];
-}
+// Re-export the shared activity-rings primitives so legacy PWA call sites
+// that imported them from this hook file keep working. The sources of
+// truth live in `@repo/features/activity-rings` so the future RN mobile
+// app gets the same shape + colors.
+export {
+  RING_CATEGORY,
+  activityRingsConfig,
+  type ActivityRingsData,
+  type ActivityRingsDetails,
+};
 
 interface Targets {
   todoDaily: number;
@@ -63,6 +29,12 @@ interface Targets {
 
 const DEFAULT_TARGETS: Targets = { todoDaily: 3, journalDailyWords: 75 };
 
+/**
+ * Pure computation of the per-day ring percentages from a calendar day +
+ * the scheduled-habit count. Stays in the PWA hook file because it
+ * consumes the PWA-local `CalendarDayData` shape — the mobile app will
+ * write its own equivalent against its own calendar shape.
+ */
 export function computeActivityRings(
   dayData: CalendarDayData | undefined,
   scheduledHabitCount: number,
@@ -99,7 +71,11 @@ export function computeActivityRings(
   return { todo: todoPct, habit: habitPct, journal: journalPct };
 }
 
-export function useActivityRings(date: string) {
+export function useActivityRings(date: string): {
+  data: ActivityRingsData;
+  isLoading: boolean;
+  details: ActivityRingsDetails;
+} {
   const month = date.slice(0, 7); // yyyy-MM
   const {
     data: calendarData,
@@ -142,7 +118,7 @@ export function useActivityRings(date: string) {
     [dayData, scheduledHabitCount, targets, quotaIds],
   );
 
-  const details = useMemo(() => {
+  const details: ActivityRingsDetails = useMemo(() => {
     const todoDone =
       dayData?.todos.filter((t) => t.status === "done").length ?? 0;
     // Exclude quota-habit entries from the daily habit numerator too.

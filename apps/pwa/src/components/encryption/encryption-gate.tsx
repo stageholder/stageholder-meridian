@@ -1,17 +1,37 @@
 import { useEffect, useState } from "react";
-import { Button, Text, XStack, YStack } from "@stageholder/ui";
+import { Button, Text, useToast, XStack, YStack } from "@stageholder/ui";
+import {
+  PassphrasePrompt,
+  PassphraseSetupDialog,
+} from "@repo/features/encryption";
 import { useEncryptionStore } from "@/lib/crypto/encryption-store";
-import { PassphrasePrompt } from "./passphrase-prompt";
-import { PassphraseSetupDialog } from "./passphrase-setup-dialog";
 
+/**
+ * PWA wrapper around the cross-platform `PassphrasePrompt` +
+ * `PassphraseSetupDialog` views from `@repo/features/encryption`.
+ *
+ * Owns the orchestration (`useEncryptionStore` status checks + view
+ * routing) and the floating `<SetupBanner>` — the banner uses
+ * `position:"fixed"`, which is web-only, so it stays PWA-local. The
+ * future mobile app composes the same lifted dialogs with its own
+ * gate + its own kit-`Sheet`-based banner.
+ */
 export function EncryptionGate({ children }: { children: React.ReactNode }) {
-  const { isSetup, isUnlocked, isLoading, checkStatus } = useEncryptionStore();
+  const {
+    isSetup,
+    isUnlocked,
+    isLoading,
+    checkStatus,
+    unlock,
+    setupPassphrase,
+  } = useEncryptionStore();
+  const toast = useToast();
   const [showSetup, setShowSetup] = useState(false);
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
     if (!checked) {
-      checkStatus().then(() => setChecked(true));
+      void checkStatus().then(() => setChecked(true));
     }
   }, [checked, checkStatus]);
 
@@ -25,12 +45,18 @@ export function EncryptionGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Encryption set up but locked — show passphrase prompt
+  // Encryption set up but locked — show the cross-platform unlock prompt.
   if (isSetup && !isUnlocked) {
-    return <PassphrasePrompt />;
+    return (
+      <PassphrasePrompt
+        onUnlock={async (passphrase) => {
+          await unlock(passphrase);
+        }}
+      />
+    );
   }
 
-  // Not set up — show content with a setup banner
+  // Not set up — show content + the floating setup banner.
   if (!isSetup) {
     return (
       <>
@@ -39,15 +65,29 @@ export function EncryptionGate({ children }: { children: React.ReactNode }) {
         <PassphraseSetupDialog
           open={showSetup}
           onComplete={() => setShowSetup(false)}
+          onSetup={(passphrase) => setupPassphrase(passphrase)}
+          onSetupError={() =>
+            toast.show({
+              title: "Failed to set up encryption",
+              intent: "danger",
+            })
+          }
         />
       </>
     );
   }
 
-  // Unlocked — show content
+  // Unlocked — show content.
   return <>{children}</>;
 }
 
+/**
+ * PWA-only floating CTA prompting the user to set up encryption. Stays
+ * here (not lifted) because `position:"fixed"` is a web-only CSS value
+ * — the mobile app renders the same prompt as a kit `Sheet` (or a
+ * persistent toast) instead. The body text + action buttons are the
+ * piece that's portable; the positioning isn't.
+ */
 function SetupBanner({ onSetup }: { onSetup: () => void }) {
   const [dismissed, setDismissed] = useState(false);
 

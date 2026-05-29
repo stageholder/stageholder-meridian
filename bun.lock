@@ -254,6 +254,25 @@
         "typescript-eslint": "^8.50.0",
       },
     },
+    "packages/features": {
+      "name": "@repo/features",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@repo/core": "*",
+        "@repo/eslint-config": "*",
+        "@repo/typescript-config": "*",
+        "@stageholder/ui": "^0.3.0-alpha.5",
+        "lucide-react": "^0.577.0",
+        "react": "^19.2.0",
+        "typescript": "^5",
+      },
+      "peerDependencies": {
+        "@repo/core": "*",
+        "@stageholder/ui": "*",
+        "lucide-react": "*",
+        "react": "^19.0.0",
+      },
+    },
     "packages/offline": {
       "name": "@repo/offline",
       "version": "0.0.0",
@@ -1116,6 +1135,8 @@
     "@repo/crypto": ["@repo/crypto@workspace:packages/crypto"],
 
     "@repo/eslint-config": ["@repo/eslint-config@workspace:packages/eslint-config"],
+
+    "@repo/features": ["@repo/features@workspace:packages/features"],
 
     "@repo/offline": ["@repo/offline@workspace:packages/offline"],
 
@@ -4082,6 +4103,10 @@
     "@repo/crypto/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
     "@repo/eslint-config/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+
+    "@repo/features/react": ["react@19.2.6", "", {}, "sha512-sfWGGfavi0xr8Pg0sVsyHMAOziVYKgPLNrS7ig+ivMNb3wbCBw3KxtflsGBAwD3gYQlE/AEZsTLgToRrSCjb0Q=="],
+
+    "@repo/features/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
     "@repo/offline/react": ["react@19.2.6", "", {}, "sha512-sfWGGfavi0xr8Pg0sVsyHMAOziVYKgPLNrS7ig+ivMNb3wbCBw3KxtflsGBAwD3gYQlE/AEZsTLgToRrSCjb0Q=="],
 

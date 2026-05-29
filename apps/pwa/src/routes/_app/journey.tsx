@@ -2,14 +2,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { useUserLight } from "@/lib/api/light";
 import { ActivityRings } from "@/components/activity-rings";
-import { StarVisual } from "@/components/light/star-visual";
-import { LevelProgress } from "@/components/light/level-progress";
-import { LevelUpCelebration } from "@/components/light/level-up-celebration";
+import {
+  StarVisual,
+  LevelProgress,
+  LevelUpCelebration,
+  JourneyStreaks,
+  JourneyTierMap,
+  JourneyStats,
+} from "@repo/features/light";
 import { useLevelUp } from "@/lib/hooks/use-level-up";
 import { LIGHT_TIERS } from "@repo/core/types/light";
-import { JourneyStreaks } from "@/components/light/journey-streaks";
-import { JourneyTierMap } from "@/components/light/journey-tier-map";
-import { JourneyStats } from "@/components/light/journey-stats";
 import { JourneyFeed } from "@/components/light/journey-feed";
 import { JourneyLightChart } from "@/components/light/journey-light-chart";
 import { Card, H1, H2, Paragraph, View, XStack, YStack } from "@stageholder/ui";

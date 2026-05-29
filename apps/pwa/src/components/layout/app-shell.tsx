@@ -28,7 +28,7 @@ import { openURL } from "@repo/core/platform/linking";
 import { syncAll } from "@/lib/offline";
 import { subscribeLogout } from "@/lib/auth-broadcast";
 import { useUserLight } from "@/lib/api/light";
-import { StarVisual } from "@/components/light/star-visual";
+import { StarVisual } from "@repo/features/light";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import {
   getTierProgress,

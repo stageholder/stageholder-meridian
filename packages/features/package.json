@@ -1,0 +1,47 @@
+{
+  "name": "@repo/features",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "lint": "eslint"
+  },
+  "exports": {
+    "./light": "./src/light/index.ts",
+    "./light/*": "./src/light/*.tsx",
+    "./charts": "./src/charts/index.ts",
+    "./charts/*": "./src/charts/*.tsx",
+    "./onboarding": "./src/onboarding/index.ts",
+    "./onboarding/*": "./src/onboarding/*.tsx",
+    "./settings": "./src/settings/index.ts",
+    "./settings/*": "./src/settings/*.tsx",
+    "./activity-rings": "./src/activity-rings/index.ts",
+    "./activity-rings/*": "./src/activity-rings/*.tsx",
+    "./encryption": "./src/encryption/index.ts",
+    "./encryption/*": "./src/encryption/*.tsx",
+    "./dashboard": "./src/dashboard/index.ts",
+    "./dashboard/*": "./src/dashboard/*.tsx",
+    "./journal": "./src/journal/index.ts",
+    "./journal/*": "./src/journal/*.tsx",
+    "./todos": "./src/todos/index.ts",
+    "./todos/*": "./src/todos/*.tsx",
+    "./habits": "./src/habits/index.ts",
+    "./habits/*": "./src/habits/*.tsx"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "@repo/core": "*",
+    "@stageholder/ui": "*",
+    "lucide-react": "*"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "*",
+    "@repo/typescript-config": "*",
+    "@repo/core": "*",
+    "@stageholder/ui": "^0.3.0-alpha.5",
+    "lucide-react": "^0.577.0",
+    "react": "^19.2.0",
+    "typescript": "^5"
+  }
+}

@@ -1,12 +1,37 @@
 import { useState } from "react";
-import { useEncryptionStore } from "@/lib/crypto/encryption-store";
 import { Button, H2, Input, Text, View, XStack, YStack } from "@stageholder/ui";
 // Form isn't re-exported by the kit yet; pull it from the shared tamagui dep.
 import { Form } from "tamagui";
 import { Lock } from "lucide-react";
 
-export function PassphrasePrompt() {
-  const unlock = useEncryptionStore((s) => s.unlock);
+export interface PassphrasePromptProps {
+  /**
+   * Called when the user submits the form. Resolves on success; throws
+   * on a wrong passphrase / decryption error. The view catches the throw
+   * and surfaces a generic "Wrong passphrase" message — pass `mapError`
+   * to provide a richer mapping (e.g. distinguish network failures from
+   * bad-passphrase failures when the host knows the difference).
+   */
+  onUnlock: (passphrase: string) => Promise<void>;
+  /** Map a thrown error to a user-visible message. Default: generic. */
+  mapError?: (err: unknown) => string;
+}
+
+const DEFAULT_ERROR_MESSAGE = "Wrong passphrase. Please try again.";
+
+/**
+ * Full-page lock screen — rendered when journal encryption is set up but
+ * the passphrase isn't currently in memory. Uses the kit/Tamagui `Form`
+ * so Enter-to-submit works cross-platform without manual `onKeyDown`.
+ *
+ * Presentational only: the host (PWA's `encryption-gate.tsx`, mobile's
+ * equivalent) supplies `onUnlock` wired to its `useEncryptionStore`-side
+ * `unlock` method.
+ */
+export function PassphrasePrompt({
+  onUnlock,
+  mapError,
+}: PassphrasePromptProps) {
   const [passphrase, setPassphrase] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -15,9 +40,9 @@ export function PassphrasePrompt() {
     setError("");
     setLoading(true);
     try {
-      await unlock(passphrase);
-    } catch {
-      setError("Wrong passphrase. Please try again.");
+      await onUnlock(passphrase);
+    } catch (err) {
+      setError(mapError ? mapError(err) : DEFAULT_ERROR_MESSAGE);
       setPassphrase("");
     } finally {
       setLoading(false);

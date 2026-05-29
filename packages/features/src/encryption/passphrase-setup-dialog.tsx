@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useEncryptionStore } from "@/lib/crypto/encryption-store";
 import { writeToClipboard } from "@repo/core/platform/clipboard";
 import {
   Button,
@@ -9,7 +8,6 @@ import {
   Input,
   Label,
   Text,
-  useToast,
   XStack,
   YStack,
 } from "@stageholder/ui";
@@ -17,19 +15,46 @@ import {
 import { Form } from "tamagui";
 import { Shield, Copy, Check } from "lucide-react";
 
+export interface PassphraseSetupDialogProps {
+  /** Controls dialog visibility. */
+  open: boolean;
+  /**
+   * Called when the dialog should close — both on successful flow finish
+   * (Done) AND on user-initiated cancel. The host's gate typically just
+   * flips its local `showSetup` state to false either way, so a single
+   * callback is sufficient.
+   */
+  onComplete: () => void;
+  /**
+   * Generate the user's encryption key + return the recovery codes they
+   * must save (typically 8-12 short strings). The view advances to the
+   * "show recovery codes" step on resolve. Throwing surfaces via
+   * `onSetupError` (the host typically shows a toast).
+   */
+  onSetup: (passphrase: string) => Promise<string[]>;
+  /** Called when `onSetup` throws. Host usually surfaces a toast. */
+  onSetupError?: (err: unknown) => void;
+}
+
+/**
+ * Two-step encryption setup wizard rendered as a kit `Dialog`. Step 1
+ * collects + confirms a passphrase; step 2 shows the recovery codes the
+ * user must save before they can dismiss the dialog.
+ *
+ * Presentational only: the host (PWA's `encryption-gate.tsx`, mobile's
+ * equivalent) supplies `onSetup` wired to its encryption store's
+ * `setupPassphrase` method and (optionally) an `onSetupError` toast.
+ *
+ * `writeToClipboard` is the cross-platform adapter from
+ * `@repo/core/platform/clipboard` — works on web today, falls back to
+ * `expo-clipboard` on the future RN sibling.
+ */
 export function PassphraseSetupDialog({
   open,
   onComplete,
-}: {
-  open: boolean;
-  // Called when the dialog should close — both on successful setup
-  // completion AND on user-initiated cancel. The parent (`encryption-gate`)
-  // just flips its local `showSetup` state to false either way, so a
-  // single "close the dialog" callback is sufficient.
-  onComplete: () => void;
-}) {
-  const setupPassphrase = useEncryptionStore((s) => s.setupPassphrase);
-  const toast = useToast();
+  onSetup,
+  onSetupError,
+}: PassphraseSetupDialogProps) {
   const [step, setStep] = useState<"create" | "recovery">("create");
   const [passphrase, setPassphrase] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -52,11 +77,11 @@ export function PassphraseSetupDialog({
 
     setLoading(true);
     try {
-      const codes = await setupPassphrase(passphrase);
+      const codes = await onSetup(passphrase);
       setRecoveryCodes(codes);
       setStep("recovery");
-    } catch {
-      toast.show({ title: "Failed to set up encryption", intent: "danger" });
+    } catch (err) {
+      onSetupError?.(err);
     } finally {
       setLoading(false);
     }
@@ -78,10 +103,10 @@ export function PassphraseSetupDialog({
     setSaved(false);
   }
 
-  // User-initiated cancel from the "create" step. Resets the form state
-  // (so reopening the dialog starts fresh) then closes via onComplete.
-  // Not exposed on the "recovery" step — once codes have been generated,
-  // the user must complete the flow to avoid losing them.
+  // User-initiated cancel from the "create" step. Resets the form state so
+  // reopening the dialog starts fresh, then closes via `onComplete`. Not
+  // exposed on the "recovery" step — once codes have been generated, the
+  // user must complete the flow to avoid losing them.
   function handleCancel() {
     setStep("create");
     setPassphrase("");
@@ -100,12 +125,12 @@ export function PassphraseSetupDialog({
         >
           {step === "create" ? (
             <>
-              {/* Restructured header: the Shield icon now lives in its own
-                flex row above Dialog.Title, instead of inside Title with
-                flex+gap. Tamagui's Dialog.Title renders as an inline-ish
-                Text on web — putting Description as its sibling caused
-                the two to render on the same line. Splitting the icon
-                out makes the wrapping stacks the block-level boundaries. */}
+              {/* Restructured header: the Shield icon lives in its own flex
+                  row above Dialog.Title, instead of inside Title with flex+gap.
+                  Tamagui's Dialog.Title renders as an inline-ish Text on web —
+                  putting Description as its sibling caused the two to render
+                  on the same line. Splitting the icon out makes the wrapping
+                  stacks the block-level boundaries. */}
               <YStack gap="$2">
                 <XStack items="center" gap="$2">
                   <Text color="$cardForeground" lineHeight={0}>
@@ -149,16 +174,12 @@ export function PassphraseSetupDialog({
                     {error}
                   </Text>
                 ) : null}
-                {/* Dialog-footer convention: right-aligned actions, primary
-                  on the far right, dismissive (Cancel) ghost-styled on the
-                  left of the pair. Both content-sized.
-
-                  Submit is NOT disabled when fields are empty — letting
-                  the user click and see the validation message ("must be
-                  at least 8 characters" / "passphrases do not match") is
-                  a clearer UX than a silently-disabled button that gives
-                  no feedback. We only disable during the in-flight save
-                  to prevent double-submit. */}
+                {/* Dialog-footer convention: right-aligned actions, primary on
+                    the far right, dismissive (Cancel) ghost-styled on the
+                    left. Submit isn't disabled when fields are empty — letting
+                    the user click and see the validation message is clearer
+                    UX than a silently-disabled button. Only disabled during
+                    the in-flight save to prevent double-submit. */}
                 <XStack justify="flex-end" gap="$2">
                   <Button intent="ghost" onPress={handleCancel}>
                     Cancel
@@ -210,7 +231,7 @@ export function PassphraseSetupDialog({
                   intent="outline"
                   width="100%"
                   icon={copied ? <Check size={16} /> : <Copy size={16} />}
-                  onPress={handleCopy}
+                  onPress={() => void handleCopy()}
                 >
                   {copied ? "Copied!" : "Copy to Clipboard"}
                 </Button>

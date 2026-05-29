@@ -1,5 +1,6 @@
 import { encryptJournal, decryptJournal } from "@repo/crypto";
 import { countWordsFromContent, isJsonContent } from "@repo/core/utils/text";
+import { logger } from "@repo/core/platform/logger";
 import type { Journal, JournalContent } from "@repo/core/types";
 
 /**
@@ -76,6 +77,14 @@ export async function decryptJournalResponse(
   dek: CryptoKey,
 ): Promise<Journal> {
   if (!journal.encrypted) return journal;
+  // Defensive: if the payload already looks plaintext (content is a
+  // parsed TipTap object, not a base64 string), the server stamped
+  // `encrypted: true` on a record that was never actually encrypted —
+  // passing it through decrypt would throw on `fromBase64`. Recover
+  // the entry instead of dropping it.
+  if (looksPlaintext(journal)) {
+    return { ...journal, encrypted: false };
+  }
   const decrypted = await decryptJournal(
     {
       title: journal.title,
@@ -95,11 +104,44 @@ export async function decryptJournalResponse(
   };
 }
 
+/**
+ * Decrypt a list of journals tolerantly. `Promise.all` would reject the
+ * whole batch on the first bad entry — a single corrupted / mis-flagged
+ * row would empty the journal list UI. Use `allSettled` so successful
+ * entries always survive; the bad ones are logged and dropped.
+ */
 export async function decryptJournalList(
   journals: Journal[],
   dek: CryptoKey,
 ): Promise<Journal[]> {
-  return Promise.all(journals.map((j) => decryptJournalResponse(j, dek)));
+  const results = await Promise.allSettled(
+    journals.map((j) => decryptJournalResponse(j, dek)),
+  );
+  const out: Journal[] = [];
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i]!;
+    if (r.status === "fulfilled") {
+      out.push(r.value);
+      continue;
+    }
+    const message =
+      r.reason instanceof Error ? r.reason.message : String(r.reason);
+    logger.warn(
+      `[journal-crypto] dropping undecryptable entry ${journals[i]?.id ?? "?"}: ${message}`,
+    );
+  }
+  return out;
+}
+
+function looksPlaintext(journal: Journal): boolean {
+  // Real encrypted content is a base64 string. A non-string content
+  // (e.g. already-parsed TipTap JSON object) is the only reliable
+  // signal that the entry is plaintext mis-flagged as encrypted.
+  // (Tags can't be checked: the server returns encrypted `tags` as an
+  // array containing the ciphertext string, not as the ciphertext
+  // string itself, so `Array.isArray` would false-positive every
+  // genuinely-encrypted entry.)
+  return typeof journal.content !== "string";
 }
 
 /**

@@ -1,30 +1,11 @@
-import { useState, useEffect } from "react";
-import { useCreateTodoList, useUpdateTodoList } from "@/lib/api/todos";
+import { Dialog, useToast } from "@stageholder/ui";
 import {
-  Button,
-  Dialog,
-  Input,
-  Label,
-  Text,
-  useToast,
-  View,
-  XStack,
-  YStack,
-} from "@stageholder/ui";
-// Form isn't re-exported by the kit yet; pull it from the shared tamagui dep.
-import { Form } from "tamagui";
+  TodoListForm,
+  TODO_LIST_FORM_DEFAULTS,
+  type TodoListFormValues,
+} from "@repo/features/todos";
+import { useCreateTodoList, useUpdateTodoList } from "@/lib/api/todos";
 import type { TodoList } from "@repo/core/types";
-
-const colorOptions = [
-  { value: "#ef4444", label: "Red" },
-  { value: "#f97316", label: "Orange" },
-  { value: "#eab308", label: "Yellow" },
-  { value: "#22c55e", label: "Green" },
-  { value: "#3b82f6", label: "Blue" },
-  { value: "#8b5cf6", label: "Purple" },
-  { value: "#ec4899", label: "Pink" },
-  { value: "#6b7280", label: "Gray" },
-];
 
 interface CreateListDialogProps {
   open: boolean;
@@ -33,32 +14,30 @@ interface CreateListDialogProps {
   list?: TodoList;
 }
 
+/**
+ * PWA wrapper: kit `Dialog` chrome + the shared `TodoListForm` view from
+ * `@repo/features/todos`. The form re-mounts on each open (`key={open}`)
+ * so reset / re-seed happens by remount rather than a useEffect dance.
+ */
 export function CreateListDialog({
   open,
   onOpenChange,
   list,
 }: CreateListDialogProps) {
   const isEdit = !!list;
-  const [name, setName] = useState("");
-  const [color, setColor] = useState("#3b82f6");
   const createList = useCreateTodoList();
   const updateList = useUpdateTodoList();
   const toast = useToast();
   const pending = createList.isPending || updateList.isPending;
 
-  // Prefill (edit) / reset (create) whenever the dialog opens.
-  useEffect(() => {
-    if (!open) return;
-    setName(list?.name ?? "");
-    setColor(list?.color ?? "#3b82f6");
-  }, [open, list]);
+  const initial: TodoListFormValues = list
+    ? { name: list.name, color: list.color ?? "#3b82f6" }
+    : TODO_LIST_FORM_DEFAULTS;
 
-  function handleSubmit() {
-    if (!name.trim()) return;
-
+  function handleSubmit(values: TodoListFormValues) {
     if (isEdit && list) {
       updateList.mutate(
-        { listId: list.id, data: { name: name.trim(), color } },
+        { listId: list.id, data: { name: values.name, color: values.color } },
         {
           onSuccess: () => {
             toast.show({ title: "List updated", intent: "success" });
@@ -72,12 +51,10 @@ export function CreateListDialog({
     }
 
     createList.mutate(
-      { name: name.trim(), color },
+      { name: values.name, color: values.color },
       {
         onSuccess: () => {
           toast.show({ title: "List created", intent: "success" });
-          setName("");
-          setColor("#3b82f6");
           onOpenChange(false);
         },
         onError: () =>
@@ -97,62 +74,16 @@ export function CreateListDialog({
               ? "Update this list's name and color."
               : "Name your list and pick a color."}
           </Dialog.Description>
-          <Form onSubmit={handleSubmit} width="100%">
-            <YStack gap="$4">
-              <YStack gap="$1">
-                <Label htmlFor="list-name">Name</Label>
-                <Input
-                  id="list-name"
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="My List"
-                  autoFocus
-                />
-              </YStack>
-
-              <YStack gap="$2">
-                <Text fontSize="$3" fontWeight="500" color="$color">
-                  Color
-                </Text>
-                <XStack gap="$2">
-                  {colorOptions.map((opt) => (
-                    <View
-                      key={opt.value}
-                      onPress={() => setColor(opt.value)}
-                      cursor="pointer"
-                      width={28}
-                      height={28}
-                      rounded={9999}
-                      borderWidth={2}
-                      transition="quick"
-                      borderColor={
-                        color === opt.value ? "$color" : "transparent"
-                      }
-                      scale={color === opt.value ? 1.1 : 1}
-                      style={{ backgroundColor: opt.value }}
-                      aria-label={opt.label}
-                      role="button"
-                    />
-                  ))}
-                </XStack>
-              </YStack>
-
-              <XStack justify="flex-end" gap="$3" pt="$2">
-                <Button intent="outline" onPress={() => onOpenChange(false)}>
-                  Cancel
-                </Button>
-                <Form.Trigger asChild>
-                  <Button
-                    disabled={!name.trim() || pending}
-                    loading={pending}
-                    loadingText={isEdit ? "Saving…" : "Creating…"}
-                  >
-                    {isEdit ? "Save" : "Create"}
-                  </Button>
-                </Form.Trigger>
-              </XStack>
-            </YStack>
-          </Form>
+          <TodoListForm
+            // Re-seed on each open (React idiom — no useEffect needed in the view).
+            key={open ? "open" : "closed"}
+            initial={initial}
+            submitLabel={isEdit ? "Save" : "Create"}
+            submittingLabel={isEdit ? "Saving…" : "Creating…"}
+            isSubmitting={pending}
+            onSubmit={handleSubmit}
+            onCancel={() => onOpenChange(false)}
+          />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog>

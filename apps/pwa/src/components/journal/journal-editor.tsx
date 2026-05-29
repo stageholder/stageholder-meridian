@@ -1,53 +1,49 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { generateJSON } from "@tiptap/html";
 import type { JSONContent } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Placeholder } from "@tiptap/extensions";
-import { RichTextEditor, Text, YStack } from "@stageholder/ui";
-import { countWordsFromContent } from "@repo/core/utils/text";
+import {
+  JournalEditor as JournalEditorView,
+  type JournalProgressState,
+  type SaveStatus,
+} from "@repo/features/journal";
 import type { JournalContent } from "@repo/core/types";
 import { useUserLight } from "@/lib/api/light";
 import { useJournals } from "@/lib/api/journals";
 import { JournalCelebration } from "./journal-celebration";
-import type { SaveStatus } from "@/lib/hooks/use-autosave";
 
 /**
- * Journal-entry rich text editor — wraps `@stageholder/ui`'s
- * `<RichTextEditor>` so meridian gets the kit's toolbar, chrome, and
- * cross-platform parity with mobile/desktop (10tap emits the same JSON).
+ * PWA wrapper around the cross-platform `JournalEditor` view from
+ * `@repo/features/journal`.
  *
- * Phase 2 — Dual-format read, JSON write
- * ───────────────────────────────────────
- * Meridian is migrating journal storage from HTML strings to TipTap JSON
- * via lazy backfill. During the migration window this editor:
+ * Owns three things the view deliberately doesn't:
  *
- *   - **Reads** either format. Legacy entries (`content: string`) are
- *     converted HTML → JSON via `generateJSON()` on first load. New
- *     entries (`content: object`) are passed straight to the editor.
- *   - **Writes** JSON. Every onChange emits a TipTap JSON object; the
- *     parent autosave persists it back as JSON. The next load reads
- *     JSON natively (no more shim) and the row is effectively migrated.
+ *  1. **Legacy HTML → JSON normalization.** Meridian is still in the
+ *     middle of migrating journal storage from HTML strings to TipTap
+ *     JSON via lazy backfill. Doing the import here keeps `@tiptap/html`
+ *     (and the StarterKit + Placeholder used by `generateJSON`) out of
+ *     `@repo/features`. Once the migration completes this normalization
+ *     is deleted and the prop becomes `JSONContent` end-to-end.
  *
- * The encryption layer (`journal-crypto.ts`) does the same discrimination
- * after decrypt — so encrypted legacy entries also lazy-migrate on first
- * save without the user noticing.
+ *  2. **Data wiring** — `useUserLight()` for the daily target,
+ *     `useJournals({ startDate: date, endDate: date })` for the
+ *     same-day-other-entries word count.
  *
- * Kit props in use:
- *   - `toolbar="basic"` — hides round-trip-unsafe features (Highlight,
- *     TextAlign, Sup/Sub, Image) for the legacy-HTML transition window.
- *     Bump to `"full"` once Phase 2 PR4 lands and we drop @tiptap/html.
- *   - `variant="inline"` — drops the kit Frame's bg/border/rounded so the
- *     editor reads as a flowing page composition.
- *   - `toolbarSlot` — autosave status sits inline with the toolbar.
- *
- * Meridian-specific UX preserved as siblings (not inside the kit editor):
- *   - `<JournalCelebration>` — full-screen confetti when crossing daily target
- *   - Word-target progress bar at the bottom — tied to `useUserLight()`
+ *  3. **Web-only visual chrome** — `<MeridianProgress>` (px-precise
+ *     ResizeObserver-driven bar with CSS color-mix gradients) and
+ *     `<JournalCelebration>` (CSS keyframe confetti + fire embers),
+ *     wired in via the view's `renderProgress` / `renderCelebration`
+ *     render-props. Plus the dead-zone click handler that uses DOM
+ *     Selection / Range to put the cursor at the end of the document
+ *     when the user clicks below the text — a Notion/Bear pattern that
+ *     needs the web-specific `document.createRange` API.
  */
+
 interface JournalEditorProps {
   // Dual-format during the Phase 2 migration window — string (legacy HTML)
-  // or JSONContent (new TipTap JSON). The editor handles both on input;
-  // onChange always emits JSON going forward.
+  // or JSONContent (new TipTap JSON). The wrapper normalizes both into
+  // JSON before handing off; onChange always emits JSON going forward.
   content: JournalContent;
   onChange: (content: JSONContent) => void;
   placeholder?: string;
@@ -60,10 +56,7 @@ interface JournalEditorProps {
 // Extensions used by `@tiptap/html`'s `generateJSON` for the legacy-HTML
 // import path. Must be a SUBSET of the kit RichTextEditor's internal
 // extensions so any node/mark in the imported HTML can be parsed back.
-// StarterKit + Placeholder covers the round-trip-safe primitives that
-// the meridian Phase 1 shim emitted (paragraph, heading, list,
-// blockquote, code, bold, italic, code mark, strike). This list is
-// import-only now — we never serialize JSON→HTML again post Phase 2.
+// Import-only — we never serialize JSON → HTML again post Phase 2.
 const LEGACY_HTML_EXTENSIONS = [StarterKit, Placeholder];
 
 const EMPTY_DOC: JSONContent = {
@@ -71,22 +64,14 @@ const EMPTY_DOC: JSONContent = {
   content: [{ type: "paragraph" }],
 };
 
-/**
- * Normalize incoming `content` (either format) into the JSON shape the
- * kit editor expects. Legacy HTML strings go through `generateJSON`
- * once; JSON objects pass straight through (no copy).
- */
 function normalizeToJson(content: JournalContent): JSONContent {
   if (content === null || content === undefined) return EMPTY_DOC;
   if (typeof content === "object") return content as JSONContent;
-  // string from here on — legacy HTML
   if (!content || content.trim() === "") return EMPTY_DOC;
   try {
     return generateJSON(content, LEGACY_HTML_EXTENSIONS) as JSONContent;
   } catch {
     // Malformed legacy HTML — fall back to empty doc rather than crash.
-    // Shouldn't happen in practice (Phase 1 always emitted valid HTML),
-    // but defensive coding around user-content storage is worth it.
     return EMPTY_DOC;
   }
 }
@@ -102,14 +87,7 @@ export function JournalEditor({
 }: JournalEditorProps) {
   const { data: userLight } = useUserLight();
   const target = userLight?.journalTargetDailyWords ?? 75;
-  // Word count works across both formats via the shared dispatcher in
-  // @repo/core/utils/text — string → strip HTML tags; JSONContent →
-  // walk the ProseMirror tree.
-  const [wordCount, setWordCount] = useState(() =>
-    countWordsFromContent(content),
-  );
 
-  // Fetch all entries for the same day to compute cumulative word count
   const { data: dailyEntries } = useJournals(
     date ? { startDate: date, endDate: date } : undefined,
   );
@@ -121,115 +99,31 @@ export function JournalEditor({
       .reduce((sum, entry) => sum + entry.wordCount, 0);
   }, [dailyEntries, excludeJournalId]);
 
-  const totalWords = wordCount + otherWordsToday;
-
-  // Track target celebration — fire once per crossing
-  const prevMetRef = useRef(false);
-  const [celebrationTrigger, setCelebrationTrigger] = useState(0);
-  const [showGlow, setShowGlow] = useState(false);
-
-  useEffect(() => {
-    const nowMet = totalWords >= target && target > 0;
-    if (nowMet && !prevMetRef.current) {
-      prevMetRef.current = true;
-      setCelebrationTrigger((n) => n + 1);
-      setShowGlow(true);
-      const timer = setTimeout(() => setShowGlow(false), 2500);
-      return () => clearTimeout(timer);
-    }
-    prevMetRef.current = nowMet;
-  }, [totalWords, target]);
-
-  // The editor OWNS its content after mount (uncontrolled). We capture the
-  // initial value exactly once — `normalizeToJson` accepts either a legacy
-  // HTML string or TipTap JSON. We deliberately never push the live
-  // `content` prop back in as `value`: that round-trip (value → the kit's
-  // `setContent`) collapses the cursor and blinks the editor mid-typing,
-  // especially when an autosave triggers a re-render. To load a *different*
-  // entry, the parent remounts this component via `key` (see the routes).
-  const [initialValue] = useState<JSONContent>(() => normalizeToJson(content));
-
-  const handleEditorChange = useCallback(
-    (next: JSONContent) => {
-      setWordCount(countWordsFromContent(next));
-      // Emit JSON for the parent's autosave; the editor keeps its own state.
-      onChange(next);
-    },
-    [onChange],
+  // Normalize once at mount — the view is uncontrolled and stores its
+  // own document, so a new `content` prop on every parent re-render
+  // would never reach the editor anyway. Re-mount via `key` to load a
+  // different entry (the routes already do this).
+  const [initialContent] = useState<JSONContent>(() =>
+    normalizeToJson(content),
   );
 
-  const pct = Math.min(100, (totalWords / target) * 100);
-  const metTarget = totalWords >= target;
-
-  // Toolbar-right slot: just save status. The word count moved out — it
-  // now travels along the meridian line as the moving label (see
-  // `MeridianProgress` below), making the visual indicator itself
-  // textually informative. No duplicate count in the toolbar.
-  const headerCluster =
-    saveStatus && saveStatus !== "idle" ? (
-      <Text
-        fontSize={11}
-        color={saveStatus === "error" ? "$destructive" : "$mutedForeground"}
-      >
-        {saveStatus === "saving" && "Saving…"}
-        {saveStatus === "saved" && "✓ Saved"}
-        {saveStatus === "error" && "Save failed"}
-      </Text>
-    ) : null;
-
   return (
-    <YStack position="relative" flex={1} overflow="hidden">
-      {/* Celebration overlay — covers the entire editor */}
-      <JournalCelebration trigger={celebrationTrigger} />
-
-      {/* HERO: the meridian line + traveling label. Reads as the day's
-          progress narrative — a horizon you cross as you write. The
-          word count is *embedded* in the indicator itself (the label
-          moves along the line), so the count is both the visual and the
-          information. Brand-aligned: Meridian = the line the sun
-          crosses at noon. */}
-      <MeridianProgress
-        percent={pct}
-        glow={showGlow}
-        met={metTarget}
-        current={totalWords}
-        target={target}
-      />
-
-      {/* Kit editor — toolbar (with formatting + the compact count/save
-          cluster on the right) above the writing body. variant="inline"
-          so the frame stays borderless and flows into the page chrome.
-          The `journal-editor-body` className scopes CSS overrides in
-          globals.css (padding alignment + text cursor over empty space).
-
-          onPress: clicking anywhere in the editor body area (including
-          the empty space below the text content) focuses the
-          contenteditable and places the cursor at the end. This is the
-          standard Notion/Bear/Day One behavior — the entire writing
-          panel feels like one typing surface, not a tiny clickable box.
-          Toolbar buttons + ProseMirror itself are excluded so they
-          handle their own click semantics. */}
-      {/* allowlist: journal-editor-body scopes globals.css overrides for the
-          TipTap/ProseMirror editor chrome (padding alignment + text cursor
-          over the empty dead-zone) — editor-specific CSS, no token equiv. */}
-      <YStack
-        flex={1}
-        overflow="scroll"
-        className="journal-editor-body"
-        onPress={focusEditorOnDeadZoneClick}
-      >
-        <RichTextEditor
-          value={initialValue}
-          onChange={handleEditorChange}
-          placeholder={placeholder ?? "Write your thoughts..."}
-          autoFocus={autoFocus}
-          minHeight={300}
-          toolbar="basic"
-          variant="inline"
-          toolbarSlot={headerCluster}
-        />
-      </YStack>
-    </YStack>
+    <JournalEditorView
+      initialContent={initialContent}
+      onChange={onChange}
+      placeholder={placeholder}
+      autoFocus={autoFocus}
+      saveStatus={saveStatus}
+      target={target}
+      otherWordsToday={otherWordsToday}
+      // allowlist: journal-editor-body scopes globals.css overrides for the
+      // TipTap/ProseMirror editor chrome (padding alignment + text cursor
+      // over the empty dead-zone) — editor-specific CSS, no token equiv.
+      editorBodyClassName="journal-editor-body"
+      onEditorBodyPress={focusEditorOnDeadZoneClick}
+      renderCelebration={(trigger) => <JournalCelebration trigger={trigger} />}
+      renderProgress={(state) => <MeridianProgress {...state} />}
+    />
   );
 }
 
@@ -244,8 +138,9 @@ export function JournalEditor({
  *      to the END of the content — matching how Notion/Bear/Day One
  *      treat clicks in the area below the text.
  *
- * Tamagui's onPress on web maps to a DOM event; we cast through
- * `unknown` to keep the assertion localised.
+ * Web-only — uses `document.createRange` + `window.getSelection`. Mobile
+ * doesn't need this (taps inside the editor always land on text via
+ * the native 10tap input handlers).
  */
 function focusEditorOnDeadZoneClick(event: unknown): void {
   const e = event as {
@@ -281,16 +176,17 @@ function focusEditorOnDeadZoneClick(event: unknown): void {
  *
  * Crossing the daily target: chip flips to brand color + bold + soft
  * glow halo, trail fills solid, track thickens. Pairs with the
- * `JournalCelebration` overlay below.
+ * `JournalCelebration` overlay.
  *
  * Position clamping: the chip's CENTER is clamped to [10%, 90%] so the
  * pill never clips off the page edges at the extremes. The trail's
  * actual end stays at the true `percent` — visual progress accuracy
  * is preserved even when the chip is clamped.
  *
- * The metaphor: Meridian is the line the sun crosses at noon. The chip
- * is your travelling marker — sunrise at the left edge, the meridian
- * crossing at the right edge.
+ * Web-only — uses ResizeObserver for pixel-precise positioning, CSS
+ * color-mix for the trail gradient, and CSS transitions on measured
+ * px values. Mobile will ship a kit-Progress equivalent (or omit the
+ * progress visual entirely on small screens).
  */
 function MeridianProgress({
   percent,
@@ -298,25 +194,13 @@ function MeridianProgress({
   met,
   current,
   target,
-}: {
-  percent: number;
-  glow: boolean;
-  met: boolean;
-  current: number;
-  target: number;
-}) {
+}: JournalProgressState) {
   const clamped = Math.min(100, Math.max(0, percent));
   const trackHeight = glow ? 5 : 3;
 
-  // The thumb is part of the bar itself — a pill-shaped indicator that
-  // sits ON the track at the trail's leading edge, colored to match
-  // the trail so the trail visually "ends" at the thumb. Two-line
-  // content: count on the top line, "Words" beneath. Sized for that
-  // two-line layout (taller, slightly wider).
   const THUMB_WIDTH = 64;
   const THUMB_HEIGHT = 36;
 
-  // Measure the strip width so positions are pixel-precise.
   const stripRef = useRef<HTMLDivElement>(null);
   const [stripWidth, setStripWidth] = useState(0);
 
@@ -332,15 +216,8 @@ function MeridianProgress({
     return () => ro.disconnect();
   }, []);
 
-  // Trail's leading edge in pixels — where the colored fill ends.
   const trailLeadingPx = stripWidth === 0 ? 0 : (clamped / 100) * stripWidth;
 
-  // Thumb's CENTER position. Conceptually it sits at the trail's leading
-  // edge. Clamped to keep the thumb fully visible:
-  //   - min: THUMB_WIDTH/2 (thumb's left edge stays at strip's left)
-  //   - max: stripWidth - THUMB_WIDTH/2 (thumb's right edge stays at
-  //     strip's right edge → no right buffer needed, the thumb
-  //     naturally has space because it's clamped)
   const thumbCenterPx =
     stripWidth === 0
       ? THUMB_WIDTH / 2
@@ -362,7 +239,7 @@ function MeridianProgress({
       className="relative shrink-0 w-full overflow-visible"
       style={{ height: 48, marginBottom: 12 }}
     >
-      {/* Track — gray rail spanning full width, vertically centered. */}
+      {/* Track */}
       <div
         className="absolute left-0 right-0 rounded-full bg-border/40"
         style={{
@@ -373,8 +250,7 @@ function MeridianProgress({
         }}
       />
 
-      {/* Filled trail — colored fill from 0 to trailLeadingPx, ends
-          exactly where the thumb's center sits. */}
+      {/* Filled trail */}
       <div
         className="absolute left-0 rounded-full"
         style={{
@@ -393,10 +269,7 @@ function MeridianProgress({
         }}
       />
 
-      {/* Thumb — a pill embedded in the bar at the trail's leading
-          edge. Two-line content: count on top, "Words" beneath.
-          Colored to match the trail so they read as one continuous
-          element. */}
+      {/* Thumb pill — count + "Words" */}
       <div
         className="absolute"
         style={{

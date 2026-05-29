@@ -4,11 +4,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button, View, XStack, YStack } from "@stageholder/ui";
 import { useUser } from "@/hooks/use-user";
 import { apiClient } from "@/lib/api-client";
-import { WelcomeStep } from "@/components/onboarding/welcome-step";
+import {
+  WelcomeStep,
+  GoalsStep,
+  CompleteStep,
+  TourStep,
+} from "@repo/features/onboarding";
 import { ProfileStep } from "@/components/onboarding/profile-step";
-import { GoalsStep } from "@/components/onboarding/goals-step";
-import { TourStep } from "@/components/onboarding/tour-step";
-import { CompleteStep } from "@/components/onboarding/complete-step";
 
 export const Route = createFileRoute("/_auth/onboarding")({
   component: OnboardingPage,
