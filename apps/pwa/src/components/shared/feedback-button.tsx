@@ -13,7 +13,7 @@ import {
   Sidebar,
   Text,
   TextArea,
-  ToggleGroup,
+  XStack,
   YStack,
   useSidebar,
   useToast,
@@ -92,49 +92,61 @@ export function FeedbackButton() {
           Feedback
         </Sidebar.MenuButton>
       </Popover.Trigger>
-      <Popover.Content width={320} p={0}>
-        <YStack p="$4">
+      {/* `Popover.Content size="$3"` uses the kit/Tamagui-idiomatic
+          sizing token — that drives default padding & borderRadius
+          consistently with the rest of the design system, instead of
+          us hand-picking `p` values. Width stays explicit because
+          SizableStack doesn't infer width from the size token. */}
+      <Popover.Content size="$3" width={340}>
+        <YStack gap="$3" width="100%">
           <Text fontSize="$3" fontWeight="600" color="$color">
-            How can we improve?
-          </Text>
-          <Text mt="$0.5" fontSize="$1" color="$mutedForeground">
-            We&apos;d love to hear from you
+            Send us feedback
           </Text>
 
-          {/* Type selector — kit ToggleGroup cards, single-select.
-              Three cards in a row, so `columns={3}` overrides the default
-              2-col grid. Card chrome (border/bg/hover/active) comes from
-              the kit; we keep the per-type icon color so users still
-              identify types by color even when inactive. */}
-          <ToggleGroup
-            variant="cards"
-            type="single"
-            columns={3}
-            value={type}
-            onValueChange={(v) => v && setType(v as FeedbackType)}
-            mt="$3"
-          >
+          {/* Type picker — three kit `Button` chips in an XStack with
+              `flex={1}`. We dropped `ToggleGroup` here: Tamagui's
+              `Toggle` primitive (which ToggleGroup.Item extends) bakes
+              a fixed `width`/`height` into its `size: '$true'` default
+              variant (see @tamagui/toggle-group Toggle.tsx), so
+              `flex={1}` can't distribute width across items. Plain
+              `Button` doesn't set a width, so `flex={1}` works.
+              Active state is signalled by a brand-tinted background +
+              brand border on top of the `outline` intent; the icon
+              keeps its semantic colour in both states so the type
+              identity reads even when inactive. */}
+          <XStack gap="$2">
             {feedbackTypes.map((ft) => {
+              const isActive = type === ft.value;
               const Icon = ft.icon;
               return (
-                <ToggleGroup.Item key={ft.value} value={ft.value}>
-                  <YStack items="center" gap="$1.5">
-                    {/* icon inherits the semantic token via currentColor */}
-                    <Text color={ft.iconColor}>
-                      <Icon size={16} />
+                <Button
+                  key={ft.value}
+                  flex={1}
+                  size="sm"
+                  intent="outline"
+                  bg={isActive ? "$primaryMuted" : "$background"}
+                  borderColor={isActive ? "$primary" : "$borderColor"}
+                  onPress={() => setType(ft.value)}
+                >
+                  <XStack items="center" gap="$1.5">
+                    {/* Icon inherits semantic colour via currentColor
+                        from the wrapping Text token. `as never` is the
+                        codebase's established escape hatch for theme
+                        tokens whose TS type is narrower than the
+                        runtime accepts. */}
+                    <Text color={ft.iconColor as never} lineHeight={0}>
+                      <Icon size={13} />
                     </Text>
-                    <Text fontSize={11} fontWeight="500" color="$color">
+                    <Text fontSize="$2" fontWeight="500" color="$color">
                       {ft.label}
                     </Text>
-                  </YStack>
-                </ToggleGroup.Item>
+                  </XStack>
+                </Button>
               );
             })}
-          </ToggleGroup>
+          </XStack>
 
-          {/* Message */}
           <TextArea
-            mt="$3"
             value={message}
             onChangeText={setMessage}
             placeholder={
@@ -142,24 +154,27 @@ export function FeedbackButton() {
                 ? "What happened? What did you expect?"
                 : type === "feature"
                   ? "What would you like to see?"
-                  : "Tell us what you think..."
+                  : "Tell us what you think…"
             }
-            rows={3}
+            minH={88}
           />
 
-          <Button
-            size="sm"
-            icon={<Send size={14} />}
-            mt="$2.5"
-            width="100%"
-            gap="$2"
-            disabled={!message.trim() || submitting}
-            loading={submitting}
-            loadingText="Sending…"
-            onPress={handleSubmit}
-          >
-            Send Feedback
-          </Button>
+          {/* Right-aligned submit — feels like sending a message rather
+              than committing to a form. Matches the conversational
+              tone of a sidebar feedback widget. */}
+          <XStack justify="flex-end">
+            <Button
+              size="sm"
+              intent="primary"
+              icon={<Send size={13} />}
+              disabled={!message.trim() || submitting}
+              loading={submitting}
+              loadingText="Sending…"
+              onPress={handleSubmit}
+            >
+              Send
+            </Button>
+          </XStack>
         </YStack>
       </Popover.Content>
     </Popover>
