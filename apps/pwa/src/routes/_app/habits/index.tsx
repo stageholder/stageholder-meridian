@@ -84,14 +84,19 @@ function HabitsPage() {
       </XStack>
 
       {isLoading ? (
-        // Flexbox auto-fit: cards flex to fill, wrapping below minWidth so the
-        // row reads ~1 col on mobile, ~2–3 as width grows.
+        // Responsive grid: 1 col mobile, 2 col tablet (≥ $md), 3 col
+        // desktop (≥ $lg). Cards have an explicit width per breakpoint
+        // rather than `flex={1}` so they DON'T stretch to fill the row —
+        // a single card sits in the top-left at its natural column width
+        // (and the right two slots stay empty), matching how the cards
+        // would lay out if more were present.
         <XStack flexWrap="wrap" gap="$4">
           {[1, 2, 3].map((i) => (
             <YStack
               key={i}
-              flex={1}
-              minW={220}
+              width="100%"
+              $md={{ width: "49%" }}
+              $lg={{ width: "32%" }}
               rounded="$6"
               borderWidth={1}
               borderColor="$borderColor"
@@ -173,17 +178,28 @@ function HabitsPage() {
           ))}
         </XStack>
       ) : habits && habits.length > 0 ? (
-        // Flexbox auto-fit: cards flex to fill, wrapping below minWidth so the
-        // row reads ~1 col on mobile, ~2–3 as width grows.
+        // Responsive grid: 1 col mobile, 2 col tablet (≥ $md), 3 col
+        // desktop (≥ $lg). Each card is wrapped in a sized View — the
+        // HabitCard view itself stays platform-agnostic (its only layout
+        // hints are `flex` + `minW`), and the host owns the column
+        // strategy. `flex={1}` inside the View makes the card fill its
+        // assigned column; without it the card would size to its content
+        // and leave whitespace inside each column.
         <XStack flexWrap="wrap" gap="$4">
           {habits.map((habit: Habit) => (
-            <HabitCard
+            <View
               key={habit.id}
-              habit={habit}
-              flex={1}
-              minW={220}
-              selectedDate={isViewingToday ? undefined : selectedDate}
-            />
+              width="100%"
+              $md={{ width: "49%" }}
+              $lg={{ width: "32%" }}
+            >
+              <HabitCard
+                habit={habit}
+                flex={1}
+                minW={0}
+                selectedDate={isViewingToday ? undefined : selectedDate}
+              />
+            </View>
           ))}
         </XStack>
       ) : (
