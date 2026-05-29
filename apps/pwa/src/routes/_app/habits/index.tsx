@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { Plus, Target } from "lucide-react";
+import { LayoutGrid, List as ListIcon, Plus, Target } from "lucide-react";
 import {
   Button,
   DatePicker,
   EmptyState,
+  IconButton,
   Text,
   View,
   XStack,
@@ -13,9 +14,20 @@ import {
 } from "@stageholder/ui";
 import { useHabits } from "@/lib/api/habits";
 import { HabitCard } from "@/components/habits/habit-card";
+import { HabitListItem } from "@/components/habits/habit-list-item";
 import { CreateHabitDialog } from "@/components/habits/create-habit-dialog";
 import { parseDateLocal } from "@/lib/date";
 import type { Habit } from "@repo/core/types";
+
+type HabitViewMode = "card" | "list";
+
+/**
+ * `useState` rather than localStorage for now — most users stick with
+ * one mode per session. Promoting to a persisted preference is a one-line
+ * change (swap to a Zustand slice or a `useLocalStorage` hook) once
+ * habits + view-mode telemetry justifies it.
+ */
+const DEFAULT_VIEW_MODE: HabitViewMode = "card";
 
 export const Route = createFileRoute("/_app/habits/")({
   component: HabitsPage,
@@ -26,12 +38,13 @@ function HabitsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const [selectedDate, setSelectedDate] = useState(todayStr);
+  const [viewMode, setViewMode] = useState<HabitViewMode>(DEFAULT_VIEW_MODE);
 
   const isViewingToday = selectedDate === todayStr;
 
   return (
     <YStack gap="$6" p="$4">
-      {/* Header — the date filter (left) sits on the same row as New Habit
+      {/* Header — the date filter (left), view-mode toggle + New Habit
           (right). No page title; the app bar already reads "Habits". */}
       <XStack items="center" justify="space-between" gap="$3" flexWrap="wrap">
         <XStack items="center" gap="$3" flexWrap="wrap">
@@ -62,146 +75,264 @@ function HabitsPage() {
             </Text>
           )}
         </XStack>
-        <Button
-          borderWidth={0}
-          color={"#ffffff" as never}
-          icon={<Plus size={16} color="#ffffff" />}
-          style={{ backgroundColor: "var(--ring-habit)" }}
-          hoverStyle={
-            { backgroundColor: "var(--ring-habit)", opacity: 0.9 } as never
-          }
-          pressStyle={
-            {
-              backgroundColor: "var(--ring-habit)",
-              opacity: 0.82,
-              scale: 0.96,
-            } as never
-          }
-          onPress={() => setShowCreateDialog(true)}
-        >
-          New Habit
-        </Button>
+        <XStack items="center" gap="$2">
+          {/* View toggle — segmented "popped" control: two IconButtons
+              in a tinted track, where the active one fills with $card
+              so it visually lifts out of the track. Built with raw
+              IconButtons rather than the kit's ToggleGroup because the
+              ToggleGroup's `Toggle` primitive bakes a `size`-based
+              fixed width AND its row variant's `activeStyle` paints a
+              chunky boxShadow ring that stacked oddly over the track
+              chrome. Manual state is fine — we already own viewMode. */}
+          <XStack
+            items="center"
+            bg="$accent"
+            borderWidth={1}
+            borderColor="$borderColor"
+            rounded="$md"
+            p={2}
+            gap={2}
+          >
+            <IconButton
+              size="sm"
+              variant={viewMode === "card" ? "solid" : "ghost"}
+              bg={viewMode === "card" ? "$card" : "transparent"}
+              borderWidth={0}
+              aria-label="Card view"
+              onPress={() => setViewMode("card")}
+            >
+              <LayoutGrid
+                size={14}
+                color={
+                  viewMode === "card"
+                    ? "var(--color)"
+                    : "var(--mutedForeground)"
+                }
+              />
+            </IconButton>
+            <IconButton
+              size="sm"
+              variant={viewMode === "list" ? "solid" : "ghost"}
+              bg={viewMode === "list" ? "$card" : "transparent"}
+              borderWidth={0}
+              aria-label="List view"
+              onPress={() => setViewMode("list")}
+            >
+              <ListIcon
+                size={14}
+                color={
+                  viewMode === "list"
+                    ? "var(--color)"
+                    : "var(--mutedForeground)"
+                }
+              />
+            </IconButton>
+          </XStack>
+          <Button
+            borderWidth={0}
+            color={"#ffffff" as never}
+            icon={<Plus size={16} color="#ffffff" />}
+            style={{ backgroundColor: "var(--ring-habit)" }}
+            hoverStyle={
+              { backgroundColor: "var(--ring-habit)", opacity: 0.9 } as never
+            }
+            pressStyle={
+              {
+                backgroundColor: "var(--ring-habit)",
+                opacity: 0.82,
+                scale: 0.96,
+              } as never
+            }
+            onPress={() => setShowCreateDialog(true)}
+          >
+            New Habit
+          </Button>
+        </XStack>
       </XStack>
 
       {isLoading ? (
-        // Responsive grid: 1 col mobile, 2 col tablet (≥ $md), 3 col
-        // desktop (≥ $lg). Cards have an explicit width per breakpoint
-        // rather than `flex={1}` so they DON'T stretch to fill the row —
-        // a single card sits in the top-left at its natural column width
-        // (and the right two slots stay empty), matching how the cards
-        // would lay out if more were present.
-        <XStack flexWrap="wrap" gap="$4">
-          {[1, 2, 3].map((i) => (
-            <YStack
-              key={i}
-              width="100%"
-              $md={{ width: "49%" }}
-              $lg={{ width: "32%" }}
-              rounded="$6"
-              borderWidth={1}
-              borderColor="$borderColor"
-              bg="$card"
-              p="$5"
-            >
-              <XStack items="center" gap="$3">
-                {/* allowlist: animate-pulse keyframe (Tailwind/globals) */}
-                <View
-                  height={40}
-                  width={40}
-                  rounded="$lg"
-                  bg="$muted"
-                  className="animate-pulse"
-                />
-                <YStack gap="$2">
+        viewMode === "card" ? (
+          // Card-mode skeleton — responsive grid: 1 col mobile, 2 col
+          // tablet (≥ $md), 3 col desktop (≥ $lg). Explicit per-breakpoint
+          // width (not `flex={1}`) so a single card sits in the top-left
+          // at its natural column width, matching the loaded state.
+          <XStack flexWrap="wrap" gap="$4">
+            {[1, 2, 3].map((i) => (
+              <YStack
+                key={i}
+                width="100%"
+                $md={{ width: "49%" }}
+                $lg={{ width: "32%" }}
+                rounded="$6"
+                borderWidth={1}
+                borderColor="$borderColor"
+                bg="$card"
+                p="$5"
+              >
+                <XStack items="center" gap="$3">
+                  {/* allowlist: animate-pulse keyframe (Tailwind/globals) */}
                   <View
-                    height={16}
-                    width={96}
-                    rounded="$sm"
+                    height={40}
+                    width={40}
+                    rounded="$lg"
                     bg="$muted"
                     className="animate-pulse"
                   />
-                  <View
-                    height={13}
-                    width={128}
-                    rounded="$sm"
-                    bg="$muted"
-                    className="animate-pulse"
-                  />
-                </YStack>
-              </XStack>
-              <YStack mt="$4" gap="$2">
-                <View
-                  height={8}
-                  width="100%"
-                  rounded={9999}
-                  bg="$muted"
-                  className="animate-pulse"
-                />
-              </YStack>
-              <XStack mt="$3" justify="space-between">
-                {[1, 2, 3, 4, 5, 6, 7].map((d) => (
-                  <YStack key={d} items="center" gap="$1">
+                  <YStack gap="$2">
                     <View
-                      height={10}
-                      width={10}
+                      height={16}
+                      width={96}
                       rounded="$sm"
                       bg="$muted"
                       className="animate-pulse"
                     />
                     <View
-                      height={14}
-                      width={14}
-                      rounded={9999}
+                      height={13}
+                      width={128}
+                      rounded="$sm"
                       bg="$muted"
                       className="animate-pulse"
                     />
                   </YStack>
-                ))}
-              </XStack>
-              <XStack mt="$4" items="center" justify="space-between">
+                </XStack>
+                <YStack mt="$4" gap="$2">
+                  <View
+                    height={8}
+                    width="100%"
+                    rounded={9999}
+                    bg="$muted"
+                    className="animate-pulse"
+                  />
+                </YStack>
+                <XStack mt="$3" justify="space-between">
+                  {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+                    <YStack key={d} items="center" gap="$1">
+                      <View
+                        height={10}
+                        width={10}
+                        rounded="$sm"
+                        bg="$muted"
+                        className="animate-pulse"
+                      />
+                      <View
+                        height={14}
+                        width={14}
+                        rounded={9999}
+                        bg="$muted"
+                        className="animate-pulse"
+                      />
+                    </YStack>
+                  ))}
+                </XStack>
+                <XStack mt="$4" items="center" justify="space-between">
+                  <View
+                    height={13}
+                    width={64}
+                    rounded="$sm"
+                    bg="$muted"
+                    className="animate-pulse"
+                  />
+                  <View
+                    height={28}
+                    width={64}
+                    rounded="$lg"
+                    bg="$muted"
+                    className="animate-pulse"
+                  />
+                </XStack>
+              </YStack>
+            ))}
+          </XStack>
+        ) : (
+          // List-mode skeleton — 3 short rows so the loading layout
+          // matches the loaded list layout.
+          <YStack gap="$2">
+            {[1, 2, 3].map((i) => (
+              <XStack
+                key={i}
+                items="center"
+                gap="$3"
+                py="$3"
+                px="$3.5"
+                rounded="$4"
+                borderWidth={1}
+                borderColor="$borderColor"
+                bg="$card"
+              >
                 <View
-                  height={13}
-                  width={64}
-                  rounded="$sm"
+                  width={36}
+                  height={36}
+                  rounded="$lg"
                   bg="$muted"
                   className="animate-pulse"
                 />
+                <YStack flex={1} gap="$1.5">
+                  <View
+                    height={14}
+                    width={160}
+                    rounded="$sm"
+                    bg="$muted"
+                    className="animate-pulse"
+                  />
+                  <View
+                    height={10}
+                    width={100}
+                    rounded="$sm"
+                    bg="$muted"
+                    className="animate-pulse"
+                  />
+                </YStack>
                 <View
                   height={28}
-                  width={64}
+                  width={88}
                   rounded="$lg"
                   bg="$muted"
                   className="animate-pulse"
                 />
               </XStack>
-            </YStack>
-          ))}
-        </XStack>
+            ))}
+          </YStack>
+        )
       ) : habits && habits.length > 0 ? (
-        // Responsive grid: 1 col mobile, 2 col tablet (≥ $md), 3 col
-        // desktop (≥ $lg). Each card is wrapped in a sized View — the
-        // HabitCard view itself stays platform-agnostic (its only layout
-        // hints are `flex` + `minW`), and the host owns the column
-        // strategy. `flex={1}` inside the View makes the card fill its
-        // assigned column; without it the card would size to its content
-        // and leave whitespace inside each column.
-        <XStack flexWrap="wrap" gap="$4">
-          {habits.map((habit: Habit) => (
-            <View
-              key={habit.id}
-              width="100%"
-              $md={{ width: "49%" }}
-              $lg={{ width: "32%" }}
-            >
-              <HabitCard
+        viewMode === "card" ? (
+          // Card mode — responsive grid: 1 col mobile, 2 col tablet
+          // (≥ $md), 3 col desktop (≥ $lg). Each card is wrapped in a
+          // sized View — the HabitCard view itself stays platform-
+          // agnostic (its only layout hints are `flex` + `minW`), and
+          // the host owns the column strategy. `flex={1}` inside the
+          // View makes the card fill its assigned column.
+          <XStack flexWrap="wrap" gap="$4">
+            {habits.map((habit: Habit) => (
+              <View
+                key={habit.id}
+                width="100%"
+                $md={{ width: "49%" }}
+                $lg={{ width: "32%" }}
+              >
+                <HabitCard
+                  habit={habit}
+                  flex={1}
+                  minW={0}
+                  selectedDate={isViewingToday ? undefined : selectedDate}
+                />
+              </View>
+            ))}
+          </XStack>
+        ) : (
+          // List mode — vertical stack of compact rows. One row per
+          // habit, full content width. Density wins over visuals; the
+          // weekly dot strip + burst animations from the card view are
+          // traded for scannability.
+          <YStack gap="$2">
+            {habits.map((habit: Habit) => (
+              <HabitListItem
+                key={habit.id}
                 habit={habit}
-                flex={1}
-                minW={0}
                 selectedDate={isViewingToday ? undefined : selectedDate}
               />
-            </View>
-          ))}
-        </XStack>
+            ))}
+          </YStack>
+        )
       ) : (
         <EmptyState>
           <EmptyState.IconSlot>
