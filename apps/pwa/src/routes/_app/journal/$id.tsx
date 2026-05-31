@@ -8,6 +8,7 @@ import { TagInput } from "@/components/journal/tag-input";
 import {
   AlertDialog,
   Button,
+  Hide,
   IconButton,
   Input,
   Popover,
@@ -19,7 +20,6 @@ import {
   YStack,
 } from "@stageholder/ui";
 import { useJournal, useDeleteJournal } from "@/lib/api/journals";
-import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { useAutosave } from "@/lib/hooks/use-autosave";
 import type { JournalContent } from "@repo/core/types";
 
@@ -40,7 +40,6 @@ function JournalEntryPage() {
   const navigate = useNavigate();
   const { data: journal, isLoading } = useJournal(id);
   const deleteJournal = useDeleteJournal();
-  const isDesktop = useMediaQuery("(min-width: 768px)");
   const toast = useToast();
 
   const [title, setTitle] = useState("");
@@ -161,7 +160,7 @@ function JournalEntryPage() {
     // breathing room on both sides).
     <YStack flex={1} height="100%" overflow="hidden">
       <YStack shrink={0} px="$4" pt="$4" overflow="hidden">
-        {!isDesktop && (
+        <Hide above="md">
           <View mb="$5">
             <Button
               intent="ghost"
@@ -172,7 +171,7 @@ function JournalEntryPage() {
               Back
             </Button>
           </View>
-        )}
+        </Hide>
 
         {/* Title + delete */}
         <XStack mb="$3" items="center" gap="$2">

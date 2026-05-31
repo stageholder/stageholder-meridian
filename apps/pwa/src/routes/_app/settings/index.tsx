@@ -14,10 +14,10 @@ import {
   Tabs,
   XStack,
   YStack,
+  useMedia,
 } from "@stageholder/ui";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { TargetsSettings } from "@/components/settings/targets-settings";
-import { useMediaQuery } from "@/lib/hooks/use-media-query";
 
 const HUB_URL = import.meta.env.VITE_HUB_URL ?? "https://id.stageholder.com";
 
@@ -42,7 +42,7 @@ const FLAT_CONTENT = {
 
 function SettingsPage() {
   const navigate = useNavigate();
-  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const isDesktop = useMedia().md;
 
   return (
     // Centered, width-capped column (Stripe / Linear settings pattern) so the

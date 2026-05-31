@@ -115,9 +115,9 @@ export default defineConfig({
   resolve: {
     alias: [
       // Redirect every import of `@tamagui/react-native-web-lite` to the
-      // full `react-native-web` package. Tamagui rc.42's lite build
-      // still imports `unmountComponentAtNode` from `react-dom`, which
-      // React 19 removed — see
+      // full `react-native-web` package. Tamagui's lite build — verified
+      // still on tamagui@2.0.0 stable — imports `unmountComponentAtNode`
+      // from `react-dom`, which React 19 removed — see
       // https://react.dev/blog/2024/04/25/react-19-upgrade-guide#removed-unmountcomponentatnode.
       // `@tamagui/core` depends on the lite package directly, so the
       // plugin's `react-native → react-native-web` alias alone doesn't

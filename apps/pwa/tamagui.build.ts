@@ -29,12 +29,16 @@ export default {
   // that pre-bundles `tamagui.config.ts` for HMR. Its esbuild config
   // hardcodes an alias of `react-native` → `@tamagui/react-native-web-lite`
   // (see node_modules/@tamagui/static-worker/.../bundleConfig.cjs:438),
-  // and rc.42's lite package imports `unmountComponentAtNode` from
-  // `react-dom` — an API React 19 removed. There is no plugin option
-  // in rc.42 to make the worker use the full `react-native-web` instead.
+  // and the lite package STILL imports `unmountComponentAtNode` from
+  // `react-dom` — an API React 19 removed. Verified still present in
+  // tamagui@2.0.0 stable:
+  // node_modules/@tamagui/react-native-web-lite/src/AppRegistry/index.tsx.
+  // There is no plugin option to make the worker use the full
+  // `react-native-web` instead.
   //
   // Tradeoff: editing `tamagui.config.ts` (tokens, themes, fonts)
   // requires a `dev:pwa` restart. Component code still hot-reloads
-  // normally. Re-enable when Tamagui ships a worker fix in rc.43+.
+  // normally. Re-enable once Tamagui's lite package drops the
+  // `unmountComponentAtNode` import (still broken as of tamagui@2.0.0).
   disableWatchTamaguiConfig: true,
 } satisfies TamaguiBuildOptions;

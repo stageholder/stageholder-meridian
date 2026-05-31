@@ -8,6 +8,7 @@ import { TagInput } from "@/components/journal/tag-input";
 import {
   Button,
   Calendar,
+  Hide,
   Input,
   Popover,
   Text,
@@ -17,7 +18,6 @@ import {
   YStack,
 } from "@stageholder/ui";
 import { useJournals } from "@/lib/api/journals";
-import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { useAutosave } from "@/lib/hooks/use-autosave";
 import type { JournalContent } from "@repo/core/types";
 import { countWordsFromContent } from "@repo/core/utils/text";
@@ -75,7 +75,6 @@ function NewJournalPage() {
   const [mood, setMood] = useState<number | undefined>(undefined);
   const [tags, setTags] = useState<string[]>([]);
   const [date, setDate] = useState(dateParam || today);
-  const isDesktop = useMediaQuery("(min-width: 768px)");
   const { data: existingEntries } = useJournals({
     startDate: date,
     endDate: date,
@@ -144,7 +143,7 @@ function NewJournalPage() {
     // full design reasoning.
     <YStack flex={1} height="100%">
       <YStack shrink={0} px="$4" pt="$4">
-        {!isDesktop && (
+        <Hide above="md">
           <View mb="$5">
             <Button
               intent="ghost"
@@ -155,7 +154,7 @@ function NewJournalPage() {
               Back
             </Button>
           </View>
-        )}
+        </Hide>
 
         {/* Title — `px={0}` strips the kit Input's internal horizontal inset
             that survives `unstyled`. Without it, the title text starts

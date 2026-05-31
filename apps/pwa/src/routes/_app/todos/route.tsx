@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { ListFilter } from "lucide-react";
-import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { TodoListSidebar } from "@/components/todos/todo-list-sidebar";
 import {
   Button,
   Drawer,
+  Hide,
+  Show,
   View,
   VisuallyHidden,
   XStack,
@@ -17,13 +18,12 @@ export const Route = createFileRoute("/_app/todos")({
 });
 
 function TodosLayout() {
-  const isDesktop = useMediaQuery("(min-width: 768px)");
   const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
     <XStack height="100%">
       {/* Desktop sidebar */}
-      {isDesktop && (
+      <Show above="md">
         <View
           height="100%"
           width={256}
@@ -33,10 +33,10 @@ function TodosLayout() {
         >
           <TodoListSidebar />
         </View>
-      )}
+      </Show>
 
       {/* Mobile sheet sidebar */}
-      {!isDesktop && (
+      <Hide above="md">
         <Drawer open={sheetOpen} onOpenChange={setSheetOpen}>
           <Drawer.Portal>
             <Drawer.Overlay />
@@ -48,12 +48,12 @@ function TodosLayout() {
             </Drawer.Content>
           </Drawer.Portal>
         </Drawer>
-      )}
+      </Hide>
 
       {/* Main content */}
       <YStack flex={1} minH={0}>
         {/* Mobile sidebar trigger */}
-        {!isDesktop && (
+        <Hide above="md">
           <XStack
             height={40}
             shrink={0}
@@ -71,7 +71,7 @@ function TodosLayout() {
               Lists
             </Button>
           </XStack>
-        )}
+        </Hide>
         <Outlet />
       </YStack>
     </XStack>

@@ -6,8 +6,7 @@ import {
 } from "@tanstack/react-router";
 import { JournalSidebar } from "@/components/journal/journal-sidebar";
 import { EncryptionGate } from "@/components/encryption/encryption-gate";
-import { useMediaQuery } from "@/lib/hooks/use-media-query";
-import { View, XStack, YStack } from "@stageholder/ui";
+import { View, XStack, YStack, useMedia } from "@stageholder/ui";
 
 export const Route = createFileRoute("/_app/journal")({
   component: JournalLayout,
@@ -17,7 +16,7 @@ function JournalLayout() {
   const { pathname } = useLocation();
   // Read `id` non-strictly — only the $id child route provides it.
   const params = useParams({ strict: false }) as { id?: string };
-  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const isDesktop = useMedia().md;
 
   const isChildRoute = pathname !== "/journal" && pathname !== "/journal/";
 
