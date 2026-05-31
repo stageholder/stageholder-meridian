@@ -6,7 +6,7 @@ import {
   Button,
   DatePicker,
   EmptyState,
-  IconButton,
+  SegmentedControl,
   Text,
   View,
   XStack,
@@ -76,58 +76,26 @@ function HabitsPage() {
           )}
         </XStack>
         <XStack items="center" gap="$2">
-          {/* View toggle — segmented "popped" control: two IconButtons
-              in a tinted track, where the active one fills with $card
-              so it visually lifts out of the track. Built with raw
-              IconButtons rather than the kit's ToggleGroup because the
-              ToggleGroup's `Toggle` primitive bakes a `size`-based
-              fixed width AND its row variant's `activeStyle` paints a
-              chunky boxShadow ring that stacked oddly over the track
-              chrome. Manual state is fine — we already own viewMode. */}
-          <XStack
-            items="center"
-            bg="$accent"
-            borderWidth={1}
-            borderColor="$borderColor"
-            rounded="$md"
-            p={2}
-            gap={2}
+          {/* View toggle — kit SegmentedControl. Its animated underlay
+              (an absolute-positioned pill that translateX-slides between
+              items) replaces the old manual active-fill, and it sidesteps
+              the ToggleGroup `Toggle` size/boxShadow quirks since items
+              render transparent and the pill is the only chrome. The icons
+              inherit the label color, so the active item picks up
+              $primaryForeground and the inactive one $mutedForeground. */}
+          <SegmentedControl
+            size="$2"
+            fitContent
+            value={viewMode}
+            onValueChange={(v) => setViewMode(v as HabitViewMode)}
           >
-            <IconButton
-              size="sm"
-              variant={viewMode === "card" ? "solid" : "ghost"}
-              bg={viewMode === "card" ? "$card" : "transparent"}
-              borderWidth={0}
-              aria-label="Card view"
-              onPress={() => setViewMode("card")}
-            >
-              <LayoutGrid
-                size={14}
-                color={
-                  viewMode === "card"
-                    ? "var(--color)"
-                    : "var(--mutedForeground)"
-                }
-              />
-            </IconButton>
-            <IconButton
-              size="sm"
-              variant={viewMode === "list" ? "solid" : "ghost"}
-              bg={viewMode === "list" ? "$card" : "transparent"}
-              borderWidth={0}
-              aria-label="List view"
-              onPress={() => setViewMode("list")}
-            >
-              <ListIcon
-                size={14}
-                color={
-                  viewMode === "list"
-                    ? "var(--color)"
-                    : "var(--mutedForeground)"
-                }
-              />
-            </IconButton>
-          </XStack>
+            <SegmentedControl.Item value="card" aria-label="Card view">
+              <LayoutGrid size={14} color="currentColor" />
+            </SegmentedControl.Item>
+            <SegmentedControl.Item value="list" aria-label="List view">
+              <ListIcon size={14} color="currentColor" />
+            </SegmentedControl.Item>
+          </SegmentedControl>
           <Button
             borderWidth={0}
             color={"#ffffff" as never}

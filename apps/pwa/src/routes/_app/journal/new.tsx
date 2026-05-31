@@ -1,18 +1,18 @@
 import { useState, useEffect, useRef } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { format, addDays, nextMonday } from "date-fns";
+import { format } from "date-fns";
 import { parseDateLocal } from "@/lib/date";
-import { ArrowLeft, CalendarDays, X } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import { JournalEditor } from "@/components/journal/journal-editor";
 import { TagInput } from "@/components/journal/tag-input";
 import {
   Button,
-  Calendar,
   Hide,
   Input,
+  MoodPicker,
   Popover,
+  QuickDatePicker,
   Text,
-  ToggleGroup,
   View,
   XStack,
   YStack,
@@ -45,25 +45,6 @@ function formatDefaultTitle(isoDate: string): string {
   return format(parseDateLocal(isoDate), "MMMM d, yyyy");
 }
 
-// Semantic date-status colors (today=green, tomorrow=amber, past=red,
-// future=blue). No kit token equivalent — fixed 500-level hexes that read
-// in both light and dark.
-function getDateInfo(dateStr: string) {
-  const today = format(new Date(), "yyyy-MM-dd");
-  const tomorrow = format(addDays(new Date(), 1), "yyyy-MM-dd");
-  if (dateStr === today) return { label: "Today", color: "#16a34a" };
-  if (dateStr === tomorrow) return { label: "Tomorrow", color: "#d97706" };
-  if (dateStr < today)
-    return {
-      label: format(parseDateLocal(dateStr), "MMM d"),
-      color: "#dc2626",
-    };
-  return {
-    label: format(parseDateLocal(dateStr), "MMM d"),
-    color: "#2563eb",
-  };
-}
-
 function NewJournalPage() {
   const navigate = useNavigate();
   const { date: dateParam } = Route.useSearch();
@@ -81,7 +62,6 @@ function NewJournalPage() {
   });
 
   const effectiveTitle = title.trim() || formatDefaultTitle(date);
-  const dateInfo = getDateInfo(date);
   const currentMood = moods.find((m) => m.value === mood);
 
   // No URL rewrite on first save. TanStack Router intercepts
@@ -178,70 +158,17 @@ function NewJournalPage() {
 
         {/* Metadata pills row */}
         <XStack mb="$4" flexWrap="wrap" items="center" gap="$2">
-          {/* Date pill */}
-          <Popover placement="bottom-start">
-            <Popover.Trigger asChild>
-              <Button intent="ghost" size="sm" gap="$1">
-                {/* semantic date-status color (no kit token) — raw hex via style */}
-                <Text lineHeight={0} style={{ color: dateInfo.color }}>
-                  <CalendarDays size={12} />
-                </Text>
-                <Text fontSize="$1" style={{ color: dateInfo.color }}>
-                  {dateInfo.label}
-                </Text>
-              </Button>
-            </Popover.Trigger>
-            <Popover.Content width="auto" p="$2">
-              <XStack flexWrap="wrap" gap="$1" pb="$2">
-                {[
-                  { label: "Today", date: new Date() },
-                  { label: "Tomorrow", date: addDays(new Date(), 1) },
-                  { label: "Next Week", date: nextMonday(new Date()) },
-                ].map((shortcut) => {
-                  const iso = format(shortcut.date, "yyyy-MM-dd");
-                  const isActive = date === iso;
-                  return (
-                    <XStack
-                      key={shortcut.label}
-                      {...({
-                        role: "button",
-                        "aria-pressed": isActive,
-                        "aria-label": shortcut.label,
-                      } as object)}
-                      cursor="pointer"
-                      rounded={9999}
-                      borderWidth={1}
-                      px="$2.5"
-                      py="$0.5"
-                      transition="quick"
-                      borderColor={isActive ? "$primary" : "$borderColor"}
-                      bg={isActive ? "$primary" : undefined}
-                      hoverStyle={isActive ? undefined : { bg: "$accent" }}
-                      onPress={() => setDate(iso)}
-                    >
-                      <Text
-                        fontSize="$1"
-                        fontWeight="500"
-                        color={
-                          isActive ? "$primaryForeground" : "$mutedForeground"
-                        }
-                      >
-                        {shortcut.label}
-                      </Text>
-                    </XStack>
-                  );
-                })}
-              </XStack>
-              <Calendar
-                mode="single"
-                value={parseDateLocal(date)}
-                onChange={(d) => {
-                  if (d) setDate(format(d, "yyyy-MM-dd"));
-                }}
-                initialMonth={parseDateLocal(date)}
-              />
-            </Popover.Content>
-          </Popover>
+          {/* Date pill — kit QuickDatePicker (smart label + quick presets +
+              calendar). A journal always has a date, so clearable is off. The
+              previous semantic date-status colors (today=green, etc.) are not
+              reproduced by the kit picker — accepted tradeoff. */}
+          <QuickDatePicker
+            value={parseDateLocal(date)}
+            onChange={(d) => {
+              if (d) setDate(format(d, "yyyy-MM-dd"));
+            }}
+            clearable={false}
+          />
 
           {/* Mood pill */}
           <Popover placement="bottom-start">
@@ -273,24 +200,15 @@ function NewJournalPage() {
                 )}
               </Button>
             </Popover.Trigger>
-            <Popover.Content width="auto" p="$1">
-              <ToggleGroup
-                type="single"
-                value={mood ? String(mood) : ""}
-                onValueChange={(v: string) =>
-                  setMood(v ? Number(v) : undefined)
-                }
-              >
-                {moods.map((m) => (
-                  <ToggleGroup.Item
-                    key={m.value}
-                    value={String(m.value)}
-                    aria-label={m.label}
-                  >
-                    <Text fontSize="$5">{m.emoji}</Text>
-                  </ToggleGroup.Item>
-                ))}
-              </ToggleGroup>
+            <Popover.Content width="auto" p="$2">
+              {/* kit MoodPicker — preserves the local emoji glyphs/labels via
+                  `options`. State stays number|undefined; bridge to the kit's
+                  number|null at the value/onChange boundary. */}
+              <MoodPicker
+                options={moods}
+                value={mood ?? null}
+                onChange={(v) => setMood(v ?? undefined)}
+              />
             </Popover.Content>
           </Popover>
 

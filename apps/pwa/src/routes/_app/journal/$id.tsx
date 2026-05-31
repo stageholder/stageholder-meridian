@@ -11,9 +11,9 @@ import {
   Hide,
   IconButton,
   Input,
+  MoodPicker,
   Popover,
   Text,
-  ToggleGroup,
   useToast,
   View,
   XStack,
@@ -229,24 +229,13 @@ function JournalEntryPage() {
                 </Text>
               </Button>
             </Popover.Trigger>
-            <Popover.Content width="auto" p="$1">
-              <ToggleGroup
-                type="single"
-                value={mood ? String(mood) : ""}
-                onValueChange={(v: string) =>
-                  setMood(v ? Number(v) : undefined)
-                }
-              >
-                {moods.map((m) => (
-                  <ToggleGroup.Item
-                    key={m.value}
-                    value={String(m.value)}
-                    aria-label={m.label}
-                  >
-                    <Text fontSize="$5">{m.emoji}</Text>
-                  </ToggleGroup.Item>
-                ))}
-              </ToggleGroup>
+            <Popover.Content width="auto" p="$2">
+              <MoodPicker
+                value={mood ?? null}
+                onChange={(v) => setMood(v ?? undefined)}
+                options={moods}
+                clearable
+              />
             </Popover.Content>
           </Popover>
 
@@ -298,32 +287,37 @@ function JournalEntryPage() {
         />
       )}
 
-      <AlertDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        disableRemoveScroll
-      >
-        <AlertDialog.Portal>
-          <AlertDialog.Overlay />
-          <AlertDialog.Content>
-            <AlertDialog.Title>Delete this entry?</AlertDialog.Title>
-            <AlertDialog.Description>
-              This journal entry will be permanently removed. This cannot be
-              undone.
-            </AlertDialog.Description>
-            <XStack gap="$2" justify="flex-end" mt="$4">
-              <AlertDialog.Cancel asChild>
-                <Button intent="outline">Cancel</Button>
-              </AlertDialog.Cancel>
-              <AlertDialog.Action asChild>
-                <Button intent="destructive" onPress={confirmDelete}>
-                  Delete
-                </Button>
-              </AlertDialog.Action>
-            </XStack>
-          </AlertDialog.Content>
-        </AlertDialog.Portal>
-      </AlertDialog>
+      {/* Conditionally mounted so CLOSING UNMOUNTS the dialog (overlay removed
+          instantly). The kit's exit-presence (<Animate presence> →
+          onExitComplete) doesn't fire under this app's runtime-CSS setup
+          (Tailwind coexistence forces disableExtraction, so the CSS driver's
+          exit transitionend never lands) — closing via state alone left the
+          scrim stuck. A full unmount, which the delete-mutation path already
+          triggers, clears it reliably. */}
+      {deleteOpen && (
+        <AlertDialog open onOpenChange={setDeleteOpen} disableRemoveScroll>
+          <AlertDialog.Portal>
+            <AlertDialog.Overlay />
+            <AlertDialog.Content>
+              <AlertDialog.Title>Delete this entry?</AlertDialog.Title>
+              <AlertDialog.Description>
+                This journal entry will be permanently removed. This cannot be
+                undone.
+              </AlertDialog.Description>
+              <XStack gap="$2" justify="flex-end" mt="$4">
+                <AlertDialog.Cancel asChild>
+                  <Button intent="outline">Cancel</Button>
+                </AlertDialog.Cancel>
+                <AlertDialog.Action asChild>
+                  <Button intent="destructive" onPress={confirmDelete}>
+                    Delete
+                  </Button>
+                </AlertDialog.Action>
+              </XStack>
+            </AlertDialog.Content>
+          </AlertDialog.Portal>
+        </AlertDialog>
+      )}
     </YStack>
   );
 }

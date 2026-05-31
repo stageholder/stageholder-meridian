@@ -9,10 +9,11 @@ import {
 } from "@/lib/api/todos";
 import {
   Button,
-  DatePicker,
   Dialog,
+  DropdownMenu,
   IconButton,
   Input,
+  QuickDatePicker,
   Separator,
   TextArea,
   Text,
@@ -64,15 +65,12 @@ export function TodoDetailDialog({
   const removeSubtask = useRemoveSubtask();
   const toast = useToast();
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
-  const [priorityOpen, setPriorityOpen] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(todo.title);
   const titleRef = useRef<HTMLInputElement>(null);
   const titleCancelledRef = useRef(false);
   const [editingDesc, setEditingDesc] = useState(false);
   const [descDraft, setDescDraft] = useState(todo.description ?? "");
-  const descRef = useRef<HTMLTextAreaElement>(null);
-  const priorityRef = useRef<HTMLDivElement>(null);
   const isDone = todo.status === "done";
   const priority = priorityConfig[todo.priority] ?? priorityConfig.none!;
 
@@ -92,25 +90,6 @@ export function TodoDetailDialog({
       titleRef.current.selectionStart = titleRef.current.value.length;
     }
   }, [editingTitle]);
-
-  useEffect(() => {
-    if (editingDesc && descRef.current) {
-      descRef.current.focus();
-      descRef.current.selectionStart = descRef.current.value.length;
-    }
-  }, [editingDesc]);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (
-        priorityRef.current &&
-        !priorityRef.current.contains(e.target as Node)
-      )
-        setPriorityOpen(false);
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   function handleUpdateField(data: Record<string, unknown>) {
     updateTodo.mutate({ listId, todoId: todo.id, data });
@@ -180,7 +159,12 @@ export function TodoDetailDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    // disableRemoveScroll: the kit's modal scroll-lock sets overflow:hidden +
+    // scrollbar-gutter:stable on <html>, but this PWA scrolls in an inner
+    // container (app-shell's <main>), so the lock just reserves a phantom
+    // gutter and shifts the background when the dialog opens. The full-screen
+    // scrim already blocks background interaction, so the lock is redundant.
+    <Dialog open={open} onOpenChange={onOpenChange} disableRemoveScroll>
       <Dialog.Portal>
         <Dialog.Overlay />
         <Dialog.Content
@@ -313,7 +297,7 @@ export function TodoDetailDialog({
                   mx={-4}
                   transition="quick"
                   hoverStyle={{ bg: "$accent" }}
-                  title="Click to edit title"
+                  {...({ title: "Click to edit title" } as object)}
                 >
                   {titleDraft}
                 </Text>
@@ -382,7 +366,7 @@ export function TodoDetailDialog({
                 {editingDesc ? (
                   <YStack mt="$1.5">
                     <TextArea
-                      ref={descRef as never}
+                      autoFocus
                       value={descDraft}
                       onChangeText={setDescDraft}
                       {...({
@@ -630,12 +614,10 @@ export function TodoDetailDialog({
               width="100%"
               gap="$1"
               p="$3"
-              $md={{ width: 240, flexShrink: 0 }}
+              $md={{ width: 240, shrink: 0 }}
             >
               {/* Priority */}
-              {/* DOM ref drives click-outside (.contains); Tamagui forwards the
-                real node on web, so cast past the TamaguiElement ref type. */}
-              <View ref={priorityRef as never} position="relative">
+              <View>
                 <Text
                   px="$2"
                   fontSize={10}
@@ -646,80 +628,61 @@ export function TodoDetailDialog({
                 >
                   Priority
                 </Text>
-                <XStack
-                  onPress={() => setPriorityOpen(!priorityOpen)}
-                  cursor="pointer"
-                  mt="$0.5"
-                  width="100%"
-                  items="center"
-                  gap="$2"
-                  rounded="$md"
-                  px="$2"
-                  py="$1.5"
-                  transition="quick"
-                  hoverStyle={{ bg: "$accent" }}
-                >
-                  {priority.dot ? (
-                    <View
-                      width={10}
-                      height={10}
-                      rounded={9999}
-                      style={{ backgroundColor: priority.dot }}
-                    />
-                  ) : (
-                    <View
-                      width={10}
-                      height={10}
-                      rounded={9999}
-                      bg="$mutedForeground"
-                    />
-                  )}
-                  <Text fontSize="$3" color="$color">
-                    {priority.label}
-                  </Text>
-                  <Text ml="auto" color="$mutedForeground" lineHeight={0}>
-                    <ChevronDown size={12} />
-                  </Text>
-                </XStack>
-                {priorityOpen && (
-                  <YStack
-                    position="absolute"
-                    l={0}
-                    r={0}
-                    z={10}
-                    mt="$1"
-                    rounded="$lg"
-                    borderWidth={1}
-                    borderColor="$borderColor"
-                    bg="$popover"
-                    p="$1"
-                    boxShadow="0 8px 24px rgba(0,0,0,0.18)"
-                  >
+                <DropdownMenu>
+                  <DropdownMenu.Trigger asChild>
+                    <XStack
+                      cursor="pointer"
+                      mt="$0.5"
+                      width="100%"
+                      items="center"
+                      gap="$2"
+                      rounded="$md"
+                      px="$2"
+                      py="$1.5"
+                      transition="quick"
+                      hoverStyle={{ bg: "$accent" }}
+                      aria-label="Set priority"
+                    >
+                      {priority.dot ? (
+                        <View
+                          width={10}
+                          height={10}
+                          rounded={9999}
+                          style={{ backgroundColor: priority.dot }}
+                        />
+                      ) : (
+                        <View
+                          width={10}
+                          height={10}
+                          rounded={9999}
+                          bg="$mutedForeground"
+                        />
+                      )}
+                      <Text fontSize="$3" color="$color">
+                        {priority.label}
+                      </Text>
+                      <Text ml="auto" color="$mutedForeground" lineHeight={0}>
+                        <ChevronDown size={12} />
+                      </Text>
+                    </XStack>
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Content minW={200}>
                     {priorityOptions.map((key) => {
                       const p = priorityConfig[key]!;
                       return (
-                        <XStack
+                        <DropdownMenu.Item
                           key={key}
-                          onPress={() => {
-                            handleUpdateField({ priority: key });
-                            setPriorityOpen(false);
-                          }}
-                          cursor="pointer"
-                          width="100%"
                           items="center"
                           gap="$2"
-                          rounded="$md"
-                          px="$2"
-                          py="$1.5"
-                          transition="quick"
                           bg={todo.priority === key ? "$accent" : "transparent"}
-                          hoverStyle={{ bg: "$accent" }}
+                          onPress={() => handleUpdateField({ priority: key })}
                         >
                           {p.dot ? (
                             <View
                               width={10}
                               height={10}
                               rounded={9999}
+                              shrink={0}
                               style={{ backgroundColor: p.dot }}
                             />
                           ) : (
@@ -727,22 +690,21 @@ export function TodoDetailDialog({
                               width={10}
                               height={10}
                               rounded={9999}
+                              shrink={0}
                               bg="$mutedForeground"
                             />
                           )}
-                          <Text fontSize="$3" color="$color">
-                            {p.label}
-                          </Text>
+                          <DropdownMenu.Label>{p.label}</DropdownMenu.Label>
                           {todo.priority === key && (
-                            <Text ml="auto" color="$primary" lineHeight={0}>
+                            <Text color="$primary" lineHeight={0}>
                               <Check size={12} strokeWidth={2.5} />
                             </Text>
                           )}
-                        </XStack>
+                        </DropdownMenu.Item>
                       );
                     })}
-                  </YStack>
-                )}
+                  </DropdownMenu.Content>
+                </DropdownMenu>
               </View>
 
               <Separator mt="$3" />
@@ -760,7 +722,7 @@ export function TodoDetailDialog({
                   Due Date
                 </Text>
                 <View mt="$0.5" px="$1">
-                  <DatePicker
+                  <QuickDatePicker
                     value={todo.dueDate ? parseDateLocal(todo.dueDate) : null}
                     onChange={(d) =>
                       handleUpdateField({
@@ -768,9 +730,6 @@ export function TodoDetailDialog({
                       })
                     }
                     placeholder="Set due date"
-                    presets={["today", "tomorrow", "next-week"]}
-                    headerStyle="compact"
-                    showClear
                   />
                 </View>
               </YStack>
@@ -788,7 +747,7 @@ export function TodoDetailDialog({
                   Do Date
                 </Text>
                 <View mt="$0.5" px="$1">
-                  <DatePicker
+                  <QuickDatePicker
                     value={todo.doDate ? parseDateLocal(todo.doDate) : null}
                     onChange={(d) =>
                       handleUpdateField({
@@ -796,9 +755,6 @@ export function TodoDetailDialog({
                       })
                     }
                     placeholder="Set do date"
-                    presets={["today", "tomorrow", "next-week"]}
-                    headerStyle="compact"
-                    showClear
                   />
                 </View>
               </YStack>

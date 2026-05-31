@@ -4,9 +4,9 @@ import { Inbox, CalendarClock, Clock } from "lucide-react";
 import { Form } from "tamagui";
 import {
   Button,
-  DatePicker,
   Input,
   Label,
+  QuickDatePicker,
   Select,
   Text,
   TextArea,
@@ -94,13 +94,10 @@ function DateField({
           {label}
         </Text>
       </XStack>
-      <DatePicker
+      <QuickDatePicker
         value={value ? parseLocalDay(value) : null}
         onChange={(d) => onChange(d ? format(d, "yyyy-MM-dd") : "")}
         placeholder={`No ${label.toLowerCase()}`}
-        presets={["today", "tomorrow", "next-week"]}
-        headerStyle="compact"
-        showClear
       />
     </YStack>
   );

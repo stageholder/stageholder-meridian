@@ -1,20 +1,20 @@
 import { useRef, useState, useEffect, useCallback } from "react";
-import { Plus, Maximize2, Flag, Inbox, List } from "lucide-react";
+import { Plus, Maximize2, Flag, Inbox, Check } from "lucide-react";
 import { useCreateTodo, useTodoLists } from "@/lib/api/todos";
 import { CreateTodoDialog } from "./create-todo-dialog";
 import {
   Button,
-  DatePicker,
+  DropdownMenu,
   Input,
-  Popover,
+  QuickDatePicker,
   Text,
   useToast,
   View,
   XStack,
   YStack,
 } from "@stageholder/ui";
-// Form isn't re-exported by the kit yet; pull it from the shared tamagui dep.
-import { Form } from "tamagui";
+// Form + styled aren't re-exported by the kit yet; pull from the shared tamagui dep.
+import { Form, styled } from "tamagui";
 import { format } from "date-fns";
 import { parseDateLocal } from "@/lib/date";
 import type { TodoList } from "@repo/core/types";
@@ -33,18 +33,23 @@ const PRIORITIES = [
   { value: "urgent", label: "Urgent", color: "#ef4444" },
 ] as const;
 
-const PRIORITY_BADGE: Record<
-  string,
-  { label: string; bg: string; color: string }
-> = {
-  urgent: { label: "Urgent", bg: "$destructiveMuted", color: "$destructive" },
-  high: { label: "High", bg: "$warningMuted", color: "$warning" },
-  medium: { label: "Medium", bg: "$warningMuted", color: "$warning" },
-  low: { label: "Low", bg: "$primaryMuted", color: "$primary" },
-};
-
-// Quick-pick shortcuts wired into the kit DatePicker's preset strip.
-const DATE_PRESETS = ["today", "tomorrow", "next-week"] as const;
+// Shared metadata-row trigger pill — matches the kit QuickDatePicker's md pill
+// (same height / padding / radius / border / hover) so the priority, date, and
+// list pills read as one consistent set.
+const MetaPill = styled(XStack, {
+  name: "MetaPill",
+  items: "center",
+  gap: "$2",
+  px: "$3",
+  py: "$2",
+  rounded: 999,
+  borderWidth: 1,
+  borderColor: "$borderColor",
+  bg: "$background",
+  cursor: "pointer",
+  transition: "quick",
+  hoverStyle: { bg: "$secondary" },
+});
 
 function getToday() {
   return format(new Date(), "yyyy-MM-dd");
@@ -58,7 +63,7 @@ function dateToIso(date: Date | null): string {
   return date ? format(date, "yyyy-MM-dd") : "";
 }
 
-// Priority trigger pill + popover.
+// Priority trigger pill + dropdown menu.
 function PriorityChip({
   value,
   onChange,
@@ -66,60 +71,37 @@ function PriorityChip({
   value: string;
   onChange: (value: string) => void;
 }) {
-  const badge = PRIORITY_BADGE[value];
+  const [open, setOpen] = useState(false);
+  const current = PRIORITIES.find((p) => p.value === value) ?? PRIORITIES[0];
+  const isSet = value !== "none" && !!current.color;
   return (
-    <Popover placement="bottom-start">
-      <Popover.Trigger asChild>
-        <XStack cursor="pointer" items="center">
-          {badge ? (
-            <Text
-              bg={badge.bg}
-              color={badge.color}
-              rounded={9999}
-              px="$2"
-              py="$1"
-              fontSize="$1"
-              fontWeight="500"
-            >
-              {badge.label}
-            </Text>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu.Trigger asChild>
+        <MetaPill>
+          {isSet ? (
+            <Flag size={16} color={current.color ?? undefined} />
           ) : (
-            <XStack
-              items="center"
-              gap="$1"
-              rounded={9999}
-              borderWidth={1}
-              borderStyle="dashed"
-              borderColor="$borderColor"
-              px="$2"
-              py="$1"
-              transition="quick"
-              hoverStyle={{ borderColor: "$mutedForeground" }}
-            >
-              <Text color="$mutedForeground" lineHeight={0}>
-                <Flag size={11} />
-              </Text>
-              <Text fontSize="$1" fontWeight="500" color="$mutedForeground">
-                Priority
-              </Text>
-            </XStack>
+            <Text color="$mutedForeground" lineHeight={0}>
+              <Flag size={16} />
+            </Text>
           )}
-        </XStack>
-      </Popover.Trigger>
-      <Popover.Content width={168} p="$1">
+          <Text
+            fontSize="$3"
+            fontWeight="500"
+            color={isSet ? "$color" : "$mutedForeground"}
+          >
+            {isSet ? current.label : "Priority"}
+          </Text>
+        </MetaPill>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Content>
         {PRIORITIES.map((p) => (
-          <XStack
+          <DropdownMenu.Item
             key={p.value}
-            onPress={() => onChange(p.value)}
-            cursor="pointer"
-            items="center"
-            gap="$2"
-            rounded="$sm"
-            px="$2"
-            py="$1.5"
-            transition="quick"
-            bg={value === p.value ? "$accent" : "transparent"}
-            hoverStyle={{ bg: "$accent" }}
+            onPress={() => {
+              onChange(p.value);
+              setOpen(false);
+            }}
           >
             {p.color ? (
               <View
@@ -131,21 +113,20 @@ function PriorityChip({
             ) : (
               <View width={8} height={8} />
             )}
-            <Text
-              fontSize="$1"
-              fontWeight={value === p.value ? "500" : "400"}
-              color="$color"
-            >
-              {p.label}
-            </Text>
-          </XStack>
+            <DropdownMenu.Label>{p.label}</DropdownMenu.Label>
+            {value === p.value ? (
+              <Text color="$primary" lineHeight={0}>
+                <Check size={15} />
+              </Text>
+            ) : null}
+          </DropdownMenu.Item>
         ))}
-      </Popover.Content>
-    </Popover>
+      </DropdownMenu.Content>
+    </DropdownMenu>
   );
 }
 
-// List trigger pill + popover (only rendered when there's more than one list).
+// List trigger pill + dropdown menu (only rendered when there's more than one list).
 function ListChip({
   lists,
   value,
@@ -155,58 +136,46 @@ function ListChip({
   value: string;
   onChange: (id: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
   const selected = lists.find((l) => l.id === value);
+  const isCustom = !!selected && !selected.isDefault;
   return (
-    <Popover placement="bottom-start">
-      <Popover.Trigger asChild>
-        <XStack
-          cursor="pointer"
-          items="center"
-          gap="$1"
-          rounded={9999}
-          borderWidth={1}
-          borderStyle="dashed"
-          borderColor="$borderColor"
-          px="$2"
-          py="$1"
-          transition="quick"
-          hoverStyle={{ borderColor: "$mutedForeground" }}
-        >
-          {selected && !selected.isDefault ? (
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu.Trigger asChild>
+        <MetaPill>
+          {isCustom ? (
             <View
-              width={8}
-              height={8}
+              width={10}
+              height={10}
               rounded={9999}
-              style={{ backgroundColor: selected.color || "#6b7280" }}
+              style={{ backgroundColor: selected!.color || "#6b7280" }}
             />
           ) : (
             <Text color="$mutedForeground" lineHeight={0}>
-              <List size={11} />
+              <Inbox size={16} />
             </Text>
           )}
-          <Text fontSize="$1" fontWeight="500" color="$mutedForeground">
+          <Text
+            fontSize="$3"
+            fontWeight="500"
+            color={isCustom ? "$color" : "$mutedForeground"}
+          >
             {selected?.name || "List"}
           </Text>
-        </XStack>
-      </Popover.Trigger>
-      <Popover.Content width={184} p="$1">
+        </MetaPill>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Content>
         {lists.map((list) => (
-          <XStack
+          <DropdownMenu.Item
             key={list.id}
-            onPress={() => onChange(list.id)}
-            cursor="pointer"
-            items="center"
-            gap="$2"
-            rounded="$sm"
-            px="$2"
-            py="$1.5"
-            transition="quick"
-            bg={value === list.id ? "$accent" : "transparent"}
-            hoverStyle={{ bg: "$accent" }}
+            onPress={() => {
+              onChange(list.id);
+              setOpen(false);
+            }}
           >
             {list.isDefault ? (
               <Text color="$primary" lineHeight={0}>
-                <Inbox size={12} />
+                <Inbox size={14} />
               </Text>
             ) : (
               <View
@@ -216,17 +185,16 @@ function ListChip({
                 style={{ backgroundColor: list.color || "#6b7280" }}
               />
             )}
-            <Text
-              fontSize="$1"
-              fontWeight={value === list.id ? "500" : "400"}
-              color="$color"
-            >
-              {list.name}
-            </Text>
-          </XStack>
+            <DropdownMenu.Label>{list.name}</DropdownMenu.Label>
+            {value === list.id ? (
+              <Text color="$primary" lineHeight={0}>
+                <Check size={15} />
+              </Text>
+            ) : null}
+          </DropdownMenu.Item>
         ))}
-      </Popover.Content>
-    </Popover>
+      </DropdownMenu.Content>
+    </DropdownMenu>
   );
 }
 
@@ -392,25 +360,19 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
           />
         </Form>
 
-        {/* Metadata — priority pill + kit date pickers (Notion-style, with
-            preset shortcuts) + list pill. */}
+        {/* Metadata — priority pill + kit quick date pickers (pill-style,
+            Todoist-style quick-pick rows) + list pill. */}
         <XStack flexWrap="wrap" items="center" gap="$2">
           <PriorityChip value={priority} onChange={setPriority} />
-          <DatePicker
+          <QuickDatePicker
             value={isoToDate(doDate)}
             onChange={(d) => setDoDate(dateToIso(d))}
             placeholder="Do date"
-            presets={[...DATE_PRESETS]}
-            headerStyle="compact"
-            showClear
           />
-          <DatePicker
+          <QuickDatePicker
             value={isoToDate(dueDate)}
             onChange={(d) => setDueDate(dateToIso(d))}
             placeholder="Due date"
-            presets={[...DATE_PRESETS]}
-            headerStyle="compact"
-            showClear
           />
           {lists && lists.length > 1 ? (
             <ListChip
@@ -428,7 +390,7 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
               size="sm"
               type="button"
               borderWidth={0}
-              color={"#ffffff" as never}
+              {...({ color: "#ffffff" } as object)}
               icon={<Plus size={15} color="#ffffff" />}
               style={{ backgroundColor: "var(--ring-todo)" }}
               hoverStyle={

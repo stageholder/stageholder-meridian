@@ -56,7 +56,12 @@ export function ShortcutsDialog({ open, onOpenChange }: ShortcutsDialogProps) {
   const isMac = useIsMac();
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    // disableRemoveScroll: the kit's modal scroll-lock sets overflow:hidden +
+    // scrollbar-gutter:stable on <html>, but this PWA scrolls in an inner
+    // container (app-shell's <main>), so the lock only reserves a phantom gutter
+    // and shifts the background when the dialog opens. The full-screen scrim
+    // already blocks background interaction, so the lock is redundant.
+    <Dialog open={open} onOpenChange={onOpenChange} disableRemoveScroll>
       <Dialog.Portal>
         <Dialog.Overlay />
         <Dialog.Content maxW={448}>

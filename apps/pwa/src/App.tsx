@@ -4,8 +4,12 @@ import { useAppTheme } from "@/lib/platform/theme";
 import { RouterProvider } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StageholderSpaProvider, useOrg, useUser } from "@stageholder/sdk/spa";
-import { Toaster, ToastProvider } from "@stageholder/ui";
-import { TamaguiProvider, Theme } from "tamagui";
+import {
+  TamaguiProvider,
+  Theme,
+  Toaster,
+  ToastProvider,
+} from "@stageholder/ui";
 import { router } from "./router";
 import { spaConfig } from "./lib/spa-config";
 import { useMeridianUserMeta } from "./lib/me-query";

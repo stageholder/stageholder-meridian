@@ -116,7 +116,12 @@ export function PassphraseSetupDialog({
   }
 
   return (
-    <Dialog open={open}>
+    // disableRemoveScroll: the kit's modal scroll-lock sets overflow:hidden +
+    // scrollbar-gutter:stable on <html>, but this PWA scrolls in an inner
+    // container (app-shell's <main>), so the lock just reserves a phantom
+    // gutter and shifts the background when the dialog opens. The full-screen
+    // scrim already blocks background interaction, so the lock is redundant.
+    <Dialog open={open} disableRemoveScroll>
       <Dialog.Portal>
         <Dialog.Overlay />
         <Dialog.Content

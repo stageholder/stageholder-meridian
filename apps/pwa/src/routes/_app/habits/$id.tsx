@@ -1039,34 +1039,39 @@ function HabitDetailPage() {
         onOpenChange={setEditOpen}
       />
 
-      <AlertDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        disableRemoveScroll
-      >
-        <AlertDialog.Portal>
-          <AlertDialog.Overlay />
-          <AlertDialog.Content>
-            <AlertDialog.Title>
-              Delete &ldquo;{habit.name}&rdquo;?
-            </AlertDialog.Title>
-            <AlertDialog.Description>
-              This cannot be undone. All check-ins for this habit will be
-              permanently removed.
-            </AlertDialog.Description>
-            <XStack gap="$2" justify="flex-end" mt="$4">
-              <AlertDialog.Cancel asChild>
-                <Button intent="outline">Cancel</Button>
-              </AlertDialog.Cancel>
-              <AlertDialog.Action asChild>
-                <Button intent="destructive" onPress={confirmDelete}>
-                  Delete
-                </Button>
-              </AlertDialog.Action>
-            </XStack>
-          </AlertDialog.Content>
-        </AlertDialog.Portal>
-      </AlertDialog>
+      {/* Conditionally mounted so CLOSING UNMOUNTS the dialog (overlay removed
+          instantly). The kit's exit-presence (<Animate presence> →
+          onExitComplete) doesn't fire under this app's runtime-CSS setup
+          (Tailwind coexistence forces disableExtraction, so the CSS driver's
+          exit transitionend never lands) — closing via state alone left the
+          scrim stuck. A full unmount, which the delete-mutation path already
+          triggers, clears it reliably. */}
+      {deleteOpen && (
+        <AlertDialog open onOpenChange={setDeleteOpen} disableRemoveScroll>
+          <AlertDialog.Portal>
+            <AlertDialog.Overlay />
+            <AlertDialog.Content>
+              <AlertDialog.Title>
+                Delete &ldquo;{habit.name}&rdquo;?
+              </AlertDialog.Title>
+              <AlertDialog.Description>
+                This cannot be undone. All check-ins for this habit will be
+                permanently removed.
+              </AlertDialog.Description>
+              <XStack gap="$2" justify="flex-end" mt="$4">
+                <AlertDialog.Cancel asChild>
+                  <Button intent="outline">Cancel</Button>
+                </AlertDialog.Cancel>
+                <AlertDialog.Action asChild>
+                  <Button intent="destructive" onPress={confirmDelete}>
+                    Delete
+                  </Button>
+                </AlertDialog.Action>
+              </XStack>
+            </AlertDialog.Content>
+          </AlertDialog.Portal>
+        </AlertDialog>
+      )}
     </YStack>
   );
 }
