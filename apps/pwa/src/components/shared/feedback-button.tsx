@@ -88,8 +88,22 @@ export function FeedbackButton() {
   return (
     <Popover open={open} onOpenChange={setOpen} placement="right-end">
       <Popover.Trigger asChild>
-        <Sidebar.MenuButton icon={<MessageSquarePlus size={16} />}>
-          Feedback
+        <Sidebar.MenuButton
+          icon={<MessageSquarePlus size={18} />}
+          height={40}
+          rounded="$3"
+          gap="$2.5"
+        >
+          <Text
+            flex={1}
+            fontSize={14}
+            fontWeight="500"
+            color="$sidebarForeground"
+            numberOfLines={1}
+            text="left"
+          >
+            Feedback
+          </Text>
         </Sidebar.MenuButton>
       </Popover.Trigger>
       {/* `Popover.Content size="$3"` uses the kit/Tamagui-idiomatic

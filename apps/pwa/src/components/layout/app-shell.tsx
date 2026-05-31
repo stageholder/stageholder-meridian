@@ -92,6 +92,43 @@ function isNavActive(pathname: string, href: string) {
 }
 
 /**
+ * Keyboard-shortcut keycap for the sidebar nav trailing slot. A quiet filled
+ * chip (muted bg, no border) so it hints rather than competes with the label;
+ * the fixed min-width keeps the G / → / key trio aligned down the column.
+ */
+function ShortcutKeycap({ children }: { children: React.ReactNode }) {
+  return (
+    <Text
+      fontFamily="$mono"
+      fontSize={10}
+      fontWeight="500"
+      lineHeight={16}
+      color="$mutedForeground"
+      bg="$muted"
+      rounded="$2"
+      px={5}
+      minW={18}
+      text="center"
+    >
+      {children}
+    </Text>
+  );
+}
+
+/** The "G → X" two-key chord shown on the right of each nav row. */
+function NavShortcut({ shortcutKey }: { shortcutKey: string }) {
+  return (
+    <XStack items="center" gap={4}>
+      <ShortcutKeycap>G</ShortcutKeycap>
+      <Text fontSize={10} color="$mutedForeground" opacity={0.5}>
+        →
+      </Text>
+      <ShortcutKeycap>{shortcutKey}</ShortcutKeycap>
+    </XStack>
+  );
+}
+
+/**
  * Outer shell: owns the Sidebar.Provider so every child component (including
  * the inner body, the nav items, the footer FeedbackButton) can call
  * `useSidebar()` to read state and close the mobile drawer on navigation.
@@ -217,49 +254,39 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
         </Sidebar.Header>
 
         <Sidebar.Content>
-          <Sidebar.Menu>
+          {/* Refined product-sidebar nav (Linear/Vercel density): the kit Menu
+              gets horizontal padding so the active/hover pill floats inset off
+              the rail edges — the old full-bleed highlight read as "no padding
+              x". Rows are 40px with a 14px medium label (passed as a custom
+              <Text> child because the kit's plain-string label caps at 13px) +
+              an 18px icon, on a tight 4px row rhythm. The kit still owns the row
+              frame, icon + trailing slots, press/hover/active-bg, and the
+              icon-rail collapse. */}
+          <Sidebar.Menu px="$2" gap={4}>
             {navItems.map((item) => {
               const isActive = isNavActive(pathname, item.href);
               const Icon = item.icon;
               return (
                 <Sidebar.MenuItem key={item.href}>
                   <Sidebar.MenuButton
-                    icon={<Icon size={16} />}
+                    icon={<Icon size={18} />}
                     isActive={isActive}
-                    trailing={
-                      <XStack items="center" gap="$1">
-                        <Text
-                          fontFamily="$mono"
-                          fontSize={10}
-                          fontWeight="500"
-                          color="$mutedForeground"
-                          px="$1"
-                          rounded="$sm"
-                          borderWidth={1}
-                          borderColor="$sidebarBorder"
-                        >
-                          G
-                        </Text>
-                        <Text fontSize={9} color="$mutedForeground">
-                          →
-                        </Text>
-                        <Text
-                          fontFamily="$mono"
-                          fontSize={10}
-                          fontWeight="500"
-                          color="$mutedForeground"
-                          px="$1"
-                          rounded="$sm"
-                          borderWidth={1}
-                          borderColor="$sidebarBorder"
-                        >
-                          {item.shortcutKey}
-                        </Text>
-                      </XStack>
-                    }
+                    height={40}
+                    rounded="$3"
+                    gap="$2.5"
+                    trailing={<NavShortcut shortcutKey={item.shortcutKey} />}
                     onPress={() => handleNavigate(item.href)}
                   >
-                    {item.label}
+                    <Text
+                      flex={1}
+                      fontSize={14}
+                      fontWeight={isActive ? "600" : "500"}
+                      color="$sidebarForeground"
+                      numberOfLines={1}
+                      text="left"
+                    >
+                      {item.label}
+                    </Text>
                   </Sidebar.MenuButton>
                 </Sidebar.MenuItem>
               );
@@ -268,27 +295,28 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
         </Sidebar.Content>
 
         <Sidebar.Footer>
-          <Sidebar.Menu>
+          {/* Footer rows mirror the nav rows (inset pills, 40px, 14px label,
+              18px icon) so the rail reads as one cohesive system. */}
+          <Sidebar.Menu px="$2" gap={4}>
             <Sidebar.MenuItem>
               <Sidebar.MenuButton
-                icon={<Keyboard size={16} />}
+                icon={<Keyboard size={18} />}
                 onPress={() => setShortcutsDialogOpen(true)}
-                trailing={
-                  <Text
-                    fontFamily="$mono"
-                    fontSize={10}
-                    fontWeight="500"
-                    color="$mutedForeground"
-                    px="$1"
-                    rounded="$sm"
-                    borderWidth={1}
-                    borderColor="$sidebarBorder"
-                  >
-                    ?
-                  </Text>
-                }
+                height={40}
+                rounded="$3"
+                gap="$2.5"
+                trailing={<ShortcutKeycap>?</ShortcutKeycap>}
               >
-                Shortcuts
+                <Text
+                  flex={1}
+                  fontSize={14}
+                  fontWeight="500"
+                  color="$sidebarForeground"
+                  numberOfLines={1}
+                  text="left"
+                >
+                  Shortcuts
+                </Text>
               </Sidebar.MenuButton>
             </Sidebar.MenuItem>
             <Sidebar.MenuItem>
@@ -685,7 +713,7 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
 
         {/* Page content */}
         <View
-          tag="main"
+          render="main"
           flex={1}
           overflowY={"auto" as never}
           overflowX={"hidden" as never}
