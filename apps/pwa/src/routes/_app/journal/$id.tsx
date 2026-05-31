@@ -2,9 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { parseDateLocal } from "@/lib/date";
-import { ArrowLeft, CalendarDays, Trash2, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, Trash2 } from "lucide-react";
 import { JournalEditor } from "@/components/journal/journal-editor";
-import { TagInput } from "@/components/journal/tag-input";
 import {
   AlertDialog,
   Button,
@@ -13,6 +12,7 @@ import {
   Input,
   MoodPicker,
   Popover,
+  TagInput,
   Text,
   useToast,
   View,
@@ -239,41 +239,8 @@ function JournalEntryPage() {
             </Popover.Content>
           </Popover>
 
-          {/* Tag pills */}
-          {tags.map((tag) => (
-            <XStack
-              key={tag}
-              items="center"
-              gap="$1"
-              rounded={9999}
-              bg="$accent"
-              px="$2"
-              py="$0.5"
-            >
-              <Text fontSize="$1" color="$accentForeground">
-                {tag}
-              </Text>
-              <View
-                {...({
-                  role: "button",
-                  "aria-label": `Remove ${tag}`,
-                } as object)}
-                cursor="pointer"
-                onPress={() => setTags(tags.filter((t) => t !== tag))}
-              >
-                <Text
-                  color="$accentForeground"
-                  lineHeight={0}
-                  hoverStyle={{ opacity: 0.6 }}
-                >
-                  <X size={12} />
-                </Text>
-              </View>
-            </XStack>
-          ))}
-
-          {/* Add tag pill */}
-          <TagInput tags={tags} onChange={setTags} inline />
+          {/* Tags — kit TagInput inline mode renders the chips + a "+ Tag" pill */}
+          <TagInput value={tags} onChange={setTags} inline />
         </XStack>
       </YStack>
 

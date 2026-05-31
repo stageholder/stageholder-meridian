@@ -71,6 +71,7 @@ export function TodoDetailDialog({
   const titleCancelledRef = useRef(false);
   const [editingDesc, setEditingDesc] = useState(false);
   const [descDraft, setDescDraft] = useState(todo.description ?? "");
+  const descRef = useRef<HTMLTextAreaElement>(null);
   const isDone = todo.status === "done";
   const priority = priorityConfig[todo.priority] ?? priorityConfig.none!;
 
@@ -90,6 +91,13 @@ export function TodoDetailDialog({
       titleRef.current.selectionStart = titleRef.current.value.length;
     }
   }, [editingTitle]);
+
+  useEffect(() => {
+    if (editingDesc && descRef.current) {
+      descRef.current.focus();
+      descRef.current.selectionStart = descRef.current.value.length;
+    }
+  }, [editingDesc]);
 
   function handleUpdateField(data: Record<string, unknown>) {
     updateTodo.mutate({ listId, todoId: todo.id, data });
@@ -366,7 +374,7 @@ export function TodoDetailDialog({
                 {editingDesc ? (
                   <YStack mt="$1.5">
                     <TextArea
-                      autoFocus
+                      ref={descRef}
                       value={descDraft}
                       onChangeText={setDescDraft}
                       {...({
@@ -394,7 +402,7 @@ export function TodoDetailDialog({
                       // resize: web-only CSS, no Tamagui prop equivalent.
                       style={{ resize: "none" }}
                     />
-                    <XStack mt="$1.5" items="center" gap="$2">
+                    <XStack mt="$3" items="center" gap="$2">
                       <Button
                         size="sm"
                         type="button"

@@ -143,7 +143,7 @@
         "@repo/offline": "*",
         "@repo/ui": "*",
         "@stageholder/sdk": "^1.0.0-alpha.47",
-        "@stageholder/ui": "^0.3.0-alpha.6",
+        "@stageholder/ui": "^0.3.0-alpha.7",
         "@tamagui/config": "2.0.0",
         "@tamagui/lucide-icons-2": "2.0.0",
         "@tamagui/toast": "2.0.0",
@@ -245,7 +245,7 @@
         "@repo/core": "*",
         "@repo/eslint-config": "*",
         "@repo/typescript-config": "*",
-        "@stageholder/ui": "^0.3.0-alpha.6",
+        "@stageholder/ui": "^0.3.0-alpha.7",
         "lucide-react": "^0.577.0",
         "react": "^19.2.0",
         "typescript": "^5",
@@ -4102,6 +4102,8 @@
 
     "@repo/eslint-config/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
+    "@repo/features/@stageholder/ui": ["@stageholder/ui@0.3.0-alpha.7", "https://npm.pkg.github.com/download/@stageholder/ui/0.3.0-alpha.7/e2d4b63a6aa4ac8e7f41bce09aa388fac6336489", { "dependencies": { "@tamagui/config": "^2.0.0", "@tamagui/helpers-icon": "^2.0.0", "@tamagui/linear-gradient": "^2.0.0", "@tamagui/themes": "^2.0.0", "@tanstack/react-table": "^8.21.3", "@tanstack/react-virtual": "^3", "@tiptap/extension-highlight": "^3.23.4", "@tiptap/extension-image": "^3.23.4", "@tiptap/extension-mention": "^3", "@tiptap/extension-subscript": "^3.23.4", "@tiptap/extension-superscript": "^3.23.4", "@tiptap/extension-text-align": "^3.23.4", "@tiptap/html": "^3.23.4", "marked": "^14" }, "peerDependencies": { "@10play/tentap-editor": "^1.0.1", "@hiraku-ai/react-native-emoji-picker": ">=1.0.0", "@shopify/flash-list": ">=2.0.0", "@tamagui/lucide-icons-2": "^2.0.0", "@tamagui/toast": "^2.0.0", "@tiptap/core": ">=3.0.0", "@tiptap/extensions": ">=3.0.0", "@tiptap/pm": ">=3.0.0", "@tiptap/react": ">=3.0.0", "@tiptap/starter-kit": ">=3.0.0", "expo": ">=52.0.0", "expo-audio": ">=0.3.0", "expo-video": ">=2.0.0", "react": ">=19.0.0", "react-native": ">=0.81.0", "react-native-gesture-handler": ">=2.0.0", "react-native-reanimated": ">=3.10.0", "react-native-svg": ">=15.0.0", "react-native-web": "latest", "tamagui": "^2.0.0" } }, "sha512-i02ciemf3sPwPRTTCQX1okJ2bPjrLlxSfaG2PzQsgU+9UAu33J2zvlpzA2IAGr8ewkqHVH0Nq6kdBTwGdU20WQ=="],
+
     "@repo/features/react": ["react@19.2.6", "", {}, "sha512-sfWGGfavi0xr8Pg0sVsyHMAOziVYKgPLNrS7ig+ivMNb3wbCBw3KxtflsGBAwD3gYQlE/AEZsTLgToRrSCjb0Q=="],
 
     "@repo/features/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
@@ -4407,6 +4409,8 @@
     "pretty-format/ansi-styles": ["ansi-styles@5.2.0", "", {}, "sha512-Cxwpt2SfTzTtXcfOlzGEee8O+c+MmUgGrNiBcXnuWxuFJHe6a5Hz7qwhwe5OgaSYI0IJvkLqWX1ASG+cJOkEiA=="],
 
     "prop-types/react-is": ["react-is@16.13.1", "", {}, "sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ=="],
+
+    "pwa/@stageholder/ui": ["@stageholder/ui@0.3.0-alpha.7", "https://npm.pkg.github.com/download/@stageholder/ui/0.3.0-alpha.7/e2d4b63a6aa4ac8e7f41bce09aa388fac6336489", { "dependencies": { "@tamagui/config": "^2.0.0", "@tamagui/helpers-icon": "^2.0.0", "@tamagui/linear-gradient": "^2.0.0", "@tamagui/themes": "^2.0.0", "@tanstack/react-table": "^8.21.3", "@tanstack/react-virtual": "^3", "@tiptap/extension-highlight": "^3.23.4", "@tiptap/extension-image": "^3.23.4", "@tiptap/extension-mention": "^3", "@tiptap/extension-subscript": "^3.23.4", "@tiptap/extension-superscript": "^3.23.4", "@tiptap/extension-text-align": "^3.23.4", "@tiptap/html": "^3.23.4", "marked": "^14" }, "peerDependencies": { "@10play/tentap-editor": "^1.0.1", "@hiraku-ai/react-native-emoji-picker": ">=1.0.0", "@shopify/flash-list": ">=2.0.0", "@tamagui/lucide-icons-2": "^2.0.0", "@tamagui/toast": "^2.0.0", "@tiptap/core": ">=3.0.0", "@tiptap/extensions": ">=3.0.0", "@tiptap/pm": ">=3.0.0", "@tiptap/react": ">=3.0.0", "@tiptap/starter-kit": ">=3.0.0", "expo": ">=52.0.0", "expo-audio": ">=0.3.0", "expo-video": ">=2.0.0", "react": ">=19.0.0", "react-native": ">=0.81.0", "react-native-gesture-handler": ">=2.0.0", "react-native-reanimated": ">=3.10.0", "react-native-svg": ">=15.0.0", "react-native-web": "latest", "tamagui": "^2.0.0" } }, "sha512-i02ciemf3sPwPRTTCQX1okJ2bPjrLlxSfaG2PzQsgU+9UAu33J2zvlpzA2IAGr8ewkqHVH0Nq6kdBTwGdU20WQ=="],
 
     "pwa/react": ["react@19.2.6", "", {}, "sha512-sfWGGfavi0xr8Pg0sVsyHMAOziVYKgPLNrS7ig+ivMNb3wbCBw3KxtflsGBAwD3gYQlE/AEZsTLgToRrSCjb0Q=="],
 

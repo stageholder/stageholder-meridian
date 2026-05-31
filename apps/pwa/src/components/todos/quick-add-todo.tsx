@@ -206,9 +206,9 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
   const [dueDate, setDueDate] = useState("");
   const [priority, setPriority] = useState("none");
   const [selectedListId, setSelectedListId] = useState(listId);
-  // The kit Input forwards no ref, so we focus it the kit way: `autoFocus`
-  // plus this nonce as a remount `key` (bump it to re-fire autoFocus).
-  const [focusNonce, setFocusNonce] = useState(0);
+  // Ref to the title input — kit Input forwards refs as of alpha.7, so we
+  // re-focus the composer after each submit without remounting.
+  const inputRef = useRef<HTMLInputElement>(null);
   const createTodo = useCreateTodo();
   const { data: lists } = useTodoLists();
   const toast = useToast();
@@ -247,7 +247,7 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
           // Keep the composer open and refocused for rapid entry.
           resetForm();
           setDoDate(getToday());
-          setFocusNonce((n) => n + 1);
+          inputRef.current?.focus();
         },
         onError: () =>
           toast.show({ title: "Failed to create todo", intent: "danger" }),
@@ -268,7 +268,7 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
     setIsEditing(true);
     setSelectedListId(listId);
     setDoDate(getToday());
-    setFocusNonce((n) => n + 1);
+    inputRef.current?.focus();
   }, [listId]);
 
   // Escape closes the composer.
@@ -343,10 +343,10 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
             button below shares the same handleSubmit. */}
         <Form onSubmit={() => handleSubmit()} width="100%">
           {/* Kit Input, `standard` variant = clean bottom-border focus (no box
-              / ring, per the kit docs), sized up to $5. autoFocus + the remount
-              key focus it the kit way (the kit Input forwards no ref). */}
+              / ring, per the kit docs), sized up to $5. autoFocus handles the
+              initial focus; the forwarded ref re-focuses after each submit. */}
           <Input
-            key={focusNonce}
+            ref={inputRef}
             autoFocus
             value={title}
             onChangeText={setTitle}
