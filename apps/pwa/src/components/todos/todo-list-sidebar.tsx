@@ -1,4 +1,4 @@
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { format } from "date-fns";
 import {
@@ -16,12 +16,11 @@ import {
   Button,
   DropdownMenu,
   IconButton,
-  Separator,
+  Sidebar,
   Text,
   useToast,
   View,
   XStack,
-  YStack,
 } from "@stageholder/ui";
 import { useAllTodos, useTodoLists, useDeleteTodoList } from "@/lib/api/todos";
 import { CreateListDialog } from "./create-list-dialog";
@@ -31,67 +30,68 @@ interface TodoListSidebarProps {
   onNavigate?: () => void;
 }
 
-const linkStyle = { textDecoration: "none" } as const;
+// Shared row dimensions — kept in lock-step with the main app rail
+// (app-shell.tsx) so both sidebars read as one system: 40px rows, 14px
+// medium labels, $3-rounded inset pills, $2.5 icon→label gap.
+const ROW_PROPS = {
+  height: 40,
+  rounded: "$3",
+  gap: "$2.5",
+} as const;
 
-// One nav row: leading icon (inherits the row's color), label, optional
-// trailing count. Active vs idle drives bg/color; the lucide icon follows
-// the row color via currentColor.
-function NavRow({
-  active,
+const LABEL_PROPS = {
+  flex: 1,
+  fontSize: 14,
+  color: "$sidebarForeground",
+  numberOfLines: 1,
+  text: "left",
+} as const;
+
+/** Trailing pending-count, right-aligned, tabular so digits don't jitter. */
+function RowCount({ value }: { value: number }) {
+  return (
+    <Text
+      fontSize={12}
+      color="$mutedForeground"
+      style={{ fontVariantNumeric: "tabular-nums" }}
+    >
+      {value}
+    </Text>
+  );
+}
+
+/**
+ * One primary nav row (Today / Upcoming / Inbox / Completed) built on the kit
+ * `Sidebar.MenuButton` — the kit owns the frame, press/hover/active-bg; we pass
+ * a custom 14px label child (the kit's plain-string label caps at 13px).
+ */
+function NavButton({
   icon,
   label,
   count,
+  active,
+  onPress,
 }: {
-  active: boolean;
   icon: ReactNode;
   label: string;
   count?: number;
+  active: boolean;
+  onPress: () => void;
 }) {
-  const rowColor = active ? "$color" : "$mutedForeground";
   return (
-    <XStack
-      group
-      items="center"
-      gap="$2.5"
-      rounded="$md"
-      px="$2.5"
-      py="$2"
-      transition="quick"
-      bg={active ? "$accent" : "transparent"}
-      hoverStyle={active ? undefined : { bg: "$accent" }}
-    >
-      <Text
-        shrink={0}
-        items="center"
-        justify="center"
-        width={18}
-        height={18}
-        lineHeight={0}
-        color={rowColor}
-        $group-hover={active ? undefined : { color: "$color" }}
+    <Sidebar.MenuItem>
+      <Sidebar.MenuButton
+        icon={icon}
+        isActive={active}
+        onPress={onPress}
+        trailing={count && count > 0 ? <RowCount value={count} /> : undefined}
+        {...ROW_PROPS}
       >
-        {icon}
-      </Text>
-      <Text
-        flex={1}
-        fontSize="$3"
-        fontWeight={active ? "600" : "500"}
-        numberOfLines={1}
-        color={rowColor}
-        $group-hover={active ? undefined : { color: "$color" }}
-      >
-        {label}
-      </Text>
-      {count && count > 0 ? (
-        <Text
-          fontSize="$1"
-          color="$mutedForeground"
-          style={{ fontVariantNumeric: "tabular-nums" }}
-        >
-          {count}
+        <Text {...LABEL_PROPS} fontWeight={active ? "600" : "500"}>
+          {label}
         </Text>
-      ) : null}
-    </XStack>
+      </Sidebar.MenuButton>
+    </Sidebar.MenuItem>
   );
 }
 
@@ -202,9 +202,13 @@ function ListMenu({
   );
 }
 
-// Custom-list row: tappable Link (color dot + name) plus a hover-revealed
-// kebab menu. The kebab is a sibling of the Link (not nested) so opening it
-// never navigates, and it overlays the count so the row doesn't shift.
+/**
+ * Custom-list row: a kit `Sidebar.MenuButton` (color dot + name + idle count)
+ * with the kebab menu overlaid as a SIBLING (absolutely positioned over the
+ * trailing area) rather than nested inside the button — keeping the kebab's
+ * DropdownMenu out of the navigable `<button>` so opening it never navigates.
+ * The count fades out / the kebab fades in on row hover (or while open).
+ */
 function ListNavRow({
   list,
   active,
@@ -216,24 +220,12 @@ function ListNavRow({
   count?: number;
   onNavigate?: () => void;
 }) {
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   return (
-    <XStack
-      group
-      items="center"
-      rounded="$md"
-      pr="$2.5"
-      transition="quick"
-      bg={active ? "$accent" : "transparent"}
-      hoverStyle={active ? undefined : { bg: "$accent" }}
-    >
-      <Link
-        to="/todos/$listId"
-        params={{ listId: list.id }}
-        onClick={onNavigate}
-        style={{ flex: 1, minWidth: 0, textDecoration: "none" }}
-      >
-        <XStack items="center" gap="$2.5" px="$2.5" py="$2" minW={0}>
+    <Sidebar.MenuItem group>
+      <Sidebar.MenuButton
+        icon={
           <View
             width={10}
             height={10}
@@ -241,55 +233,53 @@ function ListNavRow({
             shrink={0}
             style={{ backgroundColor: list.color || "#6b7280" }}
           />
-          <Text
-            flex={1}
-            fontSize="$3"
-            fontWeight={active ? "600" : "500"}
-            numberOfLines={1}
-            color={active ? "$color" : "$mutedForeground"}
-            $group-hover={active ? undefined : { color: "$color" }}
-          >
-            {list.name}
-          </Text>
-        </XStack>
-      </Link>
+        }
+        isActive={active}
+        onPress={() => {
+          void navigate({ to: "/todos/$listId", params: { listId: list.id } });
+          onNavigate?.();
+        }}
+        trailing={
+          count && count > 0 ? (
+            <Text
+              fontSize={12}
+              color="$mutedForeground"
+              transition="quick"
+              opacity={menuOpen ? 0 : 1}
+              $group-hover={{ opacity: 0 }}
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              {count}
+            </Text>
+          ) : undefined
+        }
+        {...ROW_PROPS}
+      >
+        <Text {...LABEL_PROPS} fontWeight={active ? "600" : "500"}>
+          {list.name}
+        </Text>
+      </Sidebar.MenuButton>
 
-      {/* trailing: count (idle) ↔ kebab (hover / menu open) */}
+      {/* Kebab overlay — sibling of the button, fades in on hover / when open. */}
       <View
-        width={28}
-        height={28}
-        shrink={0}
+        position="absolute"
+        r="$2"
+        t={0}
+        b={0}
         items="center"
         justify="center"
-        position="relative"
+        transition="quick"
+        opacity={menuOpen ? 1 : 0}
+        $group-hover={{ opacity: 1 }}
       >
-        {count && count > 0 ? (
-          <Text
-            position="absolute"
-            fontSize="$1"
-            color="$mutedForeground"
-            transition="quick"
-            opacity={menuOpen ? 0 : 1}
-            $group-hover={{ opacity: 0 }}
-            style={{ fontVariantNumeric: "tabular-nums" }}
-          >
-            {count}
-          </Text>
-        ) : null}
-        <View
-          position="absolute"
-          transition="quick"
-          opacity={menuOpen ? 1 : 0}
-          $group-hover={{ opacity: 1 }}
-        >
-          <ListMenu list={list} open={menuOpen} onOpenChange={setMenuOpen} />
-        </View>
+        <ListMenu list={list} open={menuOpen} onOpenChange={setMenuOpen} />
       </View>
-    </XStack>
+    </Sidebar.MenuItem>
   );
 }
 
 export function TodoListSidebar({ onNavigate }: TodoListSidebarProps = {}) {
+  const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data: lists, isLoading } = useTodoLists();
   const { data: allTodos } = useAllTodos();
@@ -329,121 +319,97 @@ export function TodoListSidebar({ onNavigate }: TodoListSidebarProps = {}) {
       )
     : [];
 
+  const go = (onPress: () => void) => () => {
+    onPress();
+    onNavigate?.();
+  };
+
   return (
-    <YStack height="100%" width="100%" bg="$card">
-      <YStack
-        tag="nav"
-        flex={1}
-        gap="$0.5"
-        overflowY={"auto" as never}
-        p="$2"
-        pt="$3"
-      >
+    // The todo panel is a SECONDARY sidebar that renders inside the app shell's
+    // own <Sidebar.Provider>. We scope it in its own inert provider
+    // (collapsible="none") so the kit MenuButtons read THIS context — never the
+    // main rail's collapse state — and never iconify. No <Sidebar> frame is
+    // rendered; we only use the Menu/Group primitives.
+    <Sidebar.Provider
+      collapsible="none"
+      bg="$sidebar"
+      height="100%"
+      width="100%"
+    >
+      <Sidebar.Content px="$2" pt="$3" pb="$2" gap="$1">
         {isLoading && (
           <Text px="$3" py="$2" fontSize="$1" color="$mutedForeground">
             Loading…
           </Text>
         )}
 
-        <Link to={basePath} onClick={onNavigate} style={linkStyle}>
-          <NavRow
-            active={pathname === basePath}
+        <Sidebar.Menu gap={2}>
+          <NavButton
             icon={<Sun size={18} />}
             label="Today"
             count={todayCount}
+            active={pathname === basePath}
+            onPress={go(() => void navigate({ to: "/todos" }))}
           />
-        </Link>
-
-        <Link
-          to={`${basePath}/upcoming`}
-          onClick={onNavigate}
-          style={linkStyle}
-        >
-          <NavRow
-            active={pathname === `${basePath}/upcoming`}
+          <NavButton
             icon={<CalendarClock size={18} />}
             label="Upcoming"
             count={upcomingCount}
+            active={pathname === `${basePath}/upcoming`}
+            onPress={go(() => void navigate({ to: "/todos/upcoming" }))}
           />
-        </Link>
-
-        <Link to={`${basePath}/inbox`} onClick={onNavigate} style={linkStyle}>
-          <NavRow
-            active={pathname === `${basePath}/inbox`}
+          <NavButton
             icon={<Inbox size={18} />}
             label="Inbox"
             count={inboxCount}
+            active={pathname === `${basePath}/inbox`}
+            onPress={go(() => void navigate({ to: "/todos/inbox" }))}
           />
-        </Link>
-
-        <Link
-          to={`${basePath}/completed`}
-          onClick={onNavigate}
-          style={linkStyle}
-        >
-          <NavRow
-            active={pathname === `${basePath}/completed`}
+          <NavButton
             icon={<CheckCircle2 size={18} />}
             label="Completed"
+            active={pathname === `${basePath}/completed`}
+            onPress={go(() => void navigate({ to: "/todos/completed" }))}
           />
-        </Link>
+        </Sidebar.Menu>
 
-        <Separator mx="$2" my="$2" />
+        <Sidebar.Separator mx={0} my="$2" />
 
-        <XStack items="center" justify="space-between" px="$2.5" py="$1.5">
-          <Text
-            fontSize="$1"
-            fontWeight="600"
-            letterSpacing={0.5}
-            color="$mutedForeground"
-            textTransform="uppercase"
-          >
-            Lists
-          </Text>
-          <View
-            group
+        {/* LISTS group header + create action. */}
+        <XStack items="center" justify="space-between" pr="$1">
+          <Sidebar.GroupLabel>Lists</Sidebar.GroupLabel>
+          <IconButton
+            variant="ghost"
+            size="sm"
+            aria-label="Create list"
             onPress={() => {
               setShowCreateDialog(true);
               onNavigate?.();
             }}
-            width={22}
-            height={22}
-            items="center"
-            justify="center"
-            rounded="$sm"
-            cursor="pointer"
-            transition="quick"
-            hoverStyle={{ bg: "$accent" }}
-            aria-label="Create list"
-            role="button"
           >
-            <Text
-              lineHeight={0}
-              color="$mutedForeground"
-              $group-hover={{ color: "$color" }}
-            >
-              <Plus size={15} />
-            </Text>
-          </View>
+            <Plus size={16} />
+          </IconButton>
         </XStack>
 
-        {sortedLists
-          .filter((list: TodoList) => !list.isDefault)
-          .map((list: TodoList) => (
-            <ListNavRow
-              key={list.id}
-              list={list}
-              active={pathname === `${basePath}/${list.id}`}
-              count={listCounts.get(list.id)}
-              onNavigate={onNavigate}
-            />
-          ))}
-      </YStack>
+        <Sidebar.Menu gap={2}>
+          {sortedLists
+            .filter((list: TodoList) => !list.isDefault)
+            .map((list: TodoList) => (
+              <ListNavRow
+                key={list.id}
+                list={list}
+                active={pathname === `${basePath}/${list.id}`}
+                count={listCounts.get(list.id)}
+                onNavigate={onNavigate}
+              />
+            ))}
+        </Sidebar.Menu>
+      </Sidebar.Content>
 
       <CreateListDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
       />
-    </YStack>
+    </Sidebar.Provider>
   );
 }
