@@ -171,33 +171,49 @@ function ListMenu({
         list={list}
       />
 
-      <AlertDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        disableRemoveScroll
-      >
-        <AlertDialog.Portal>
-          <AlertDialog.Overlay />
-          <AlertDialog.Content>
-            <AlertDialog.Title>
-              Delete &ldquo;{list.name}&rdquo;?
-            </AlertDialog.Title>
-            <AlertDialog.Description>
-              This permanently deletes the list and can&apos;t be undone.
-            </AlertDialog.Description>
-            <XStack gap="$2" justify="flex-end" mt="$4">
-              <AlertDialog.Cancel asChild>
-                <Button intent="outline">Cancel</Button>
-              </AlertDialog.Cancel>
-              <AlertDialog.Action asChild>
-                <Button intent="destructive" onPress={confirmDelete}>
+      {/* Conditionally mounted so CLOSING UNMOUNTS the dialog (overlay removed
+          instantly). The kit's exit-presence (<Animate presence> →
+          onExitComplete) doesn't fire under this app's runtime-CSS setup
+          (Tailwind coexistence forces disableExtraction, so the CSS driver's
+          exit transitionend never lands) — closing via state alone left the
+          scrim stuck. A full unmount, which the delete-mutation path already
+          triggers, clears it reliably. */}
+      {deleteOpen && (
+        <AlertDialog open onOpenChange={setDeleteOpen} disableRemoveScroll>
+          <AlertDialog.Portal>
+            <AlertDialog.Overlay />
+            <AlertDialog.Content>
+              <AlertDialog.Title>
+                Delete &ldquo;{list.name}&rdquo;?
+              </AlertDialog.Title>
+              <AlertDialog.Description>
+                This permanently deletes the list and can&apos;t be undone.
+              </AlertDialog.Description>
+              {/* Close via the kit Button's own onPress + the controlled open
+                state (the proven update-checker.tsx pattern). Wrapping a kit
+                Button in AlertDialog.Cancel/Action asChild left the overlay
+                stuck after Cancel: DialogClose's slotted close handler didn't
+                reliably drive our controlled onOpenChange, so the dialog state
+                never flipped to closed and the scrim stayed up. Driving the
+                close from onPress makes it deterministic. */}
+              <XStack gap="$2" justify="flex-end" mt="$4">
+                <Button intent="outline" onPress={() => setDeleteOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  intent="destructive"
+                  onPress={() => {
+                    setDeleteOpen(false);
+                    confirmDelete();
+                  }}
+                >
                   Delete
                 </Button>
-              </AlertDialog.Action>
-            </XStack>
-          </AlertDialog.Content>
-        </AlertDialog.Portal>
-      </AlertDialog>
+              </XStack>
+            </AlertDialog.Content>
+          </AlertDialog.Portal>
+        </AlertDialog>
+      )}
     </>
   );
 }

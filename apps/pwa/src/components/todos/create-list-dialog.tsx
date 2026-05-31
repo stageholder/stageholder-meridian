@@ -64,7 +64,12 @@ export function CreateListDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    // disableRemoveScroll: the kit's modal scroll-lock sets scrollbar-gutter +
+    // overflow:hidden on <html>, but this PWA scrolls in an inner container
+    // (app-shell's <main>), so the lock just reserves a phantom gutter and
+    // shifts the background on open. The full-screen scrim already blocks
+    // background interaction, so the lock is redundant here.
+    <Dialog open={open} onOpenChange={onOpenChange} disableRemoveScroll>
       <Dialog.Portal>
         <Dialog.Overlay />
         <Dialog.Content width="90%" maxW={420}>
