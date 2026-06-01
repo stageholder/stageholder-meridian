@@ -51,7 +51,9 @@ function HabitsPage() {
           <DatePicker
             value={selectedDate ? parseDateLocal(selectedDate) : null}
             onChange={(d) =>
-              setSelectedDate(d ? format(d, "yyyy-MM-dd") : todayStr)
+              setSelectedDate(
+                d instanceof Date ? format(d, "yyyy-MM-dd") : todayStr,
+              )
             }
             placeholder="Select date"
             isDateDisabled={(d) => d > new Date()}
@@ -76,29 +78,49 @@ function HabitsPage() {
           )}
         </XStack>
         <XStack items="center" gap="$2">
-          {/* View toggle — kit SegmentedControl. Its animated underlay
-              (an absolute-positioned pill that translateX-slides between
-              items) replaces the old manual active-fill, and it sidesteps
-              the ToggleGroup `Toggle` size/boxShadow quirks since items
-              render transparent and the pill is the only chrome. The icons
-              inherit the label color, so the active item picks up
-              $primaryForeground and the inactive one $mutedForeground. */}
+          {/* View toggle — kit SegmentedControl (alpha.8 renders icon-only
+              segments un-clamped; `currentColor` icons inherit the active
+              $primaryForeground / inactive $mutedForeground color).
+              · `height="$md"` matches the New Habit button's height token
+                exactly, so the two controls share a baseline.
+              · `display:block` drops each SVG's inline baseline gap so it sits
+                dead-center — the kit wraps icon children in a Text, which would
+                otherwise baseline-align (push) the glyph upward. `px` gives the
+                active pill horizontal breathing room; vertical centering comes
+                from the fixed Frame height + the segment's `items:center`. */}
           <SegmentedControl
-            size="$2"
+            size="$3"
+            height="$md"
             fitContent
             value={viewMode}
             onValueChange={(v) => setViewMode(v as HabitViewMode)}
           >
-            <SegmentedControl.Item value="card" aria-label="Card view">
-              <LayoutGrid size={14} color="currentColor" />
+            <SegmentedControl.Item
+              value="card"
+              aria-label="Card view"
+              px="$2.5"
+            >
+              <LayoutGrid
+                size={16}
+                color="currentColor"
+                style={{ display: "block" }}
+              />
             </SegmentedControl.Item>
-            <SegmentedControl.Item value="list" aria-label="List view">
-              <ListIcon size={14} color="currentColor" />
+            <SegmentedControl.Item
+              value="list"
+              aria-label="List view"
+              px="$2.5"
+            >
+              <ListIcon
+                size={16}
+                color="currentColor"
+                style={{ display: "block" }}
+              />
             </SegmentedControl.Item>
           </SegmentedControl>
           <Button
             borderWidth={0}
-            color={"#ffffff" as never}
+            {...({ color: "#ffffff" } as object)}
             icon={<Plus size={16} color="#ffffff" />}
             style={{ backgroundColor: "var(--ring-habit)" }}
             hoverStyle={

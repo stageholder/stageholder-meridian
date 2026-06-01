@@ -9,6 +9,7 @@ import {
   Button,
   DateRangePicker,
   Popover,
+  ScrollArea,
   Select,
   Text,
   XStack,
@@ -94,7 +95,7 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
             borderWidth={0}
             // Journal identity = yellow; it's a light hue, so the label/icon
             // go near-black for contrast (mirrors the todo-red Add button).
-            color={"#1c1917" as never}
+            {...({ color: "#1c1917" } as object)}
             icon={<Plus size={15} color="#1c1917" />}
             style={{ backgroundColor: "var(--ring-journal)" }}
             hoverStyle={
@@ -201,28 +202,31 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
         </XStack>
       </YStack>
 
-      {/* Scrollable list */}
-      <YStack flex={1} overflow="scroll" p="$3">
-        <JournalList
-          journals={filteredJournals}
-          isLoading={isLoading}
-          activeId={activeId}
-        />
-        {!hasDateFilter && paginatedQuery.hasNextPage && (
-          <XStack mt="$2" justify="center">
-            <Button
-              intent="ghost"
-              size="sm"
-              onPress={() => paginatedQuery.fetchNextPage()}
-              disabled={paginatedQuery.isFetchingNextPage}
-              loading={paginatedQuery.isFetchingNextPage}
-              loadingText="Loading…"
-            >
-              Load more
-            </Button>
-          </XStack>
-        )}
-      </YStack>
+      {/* Scrollable list — kit ScrollArea (slim themed scrollbar; shows no
+          empty track when the list is short, unlike raw overflow:scroll). */}
+      <ScrollArea flex={1}>
+        <YStack p="$3">
+          <JournalList
+            journals={filteredJournals}
+            isLoading={isLoading}
+            activeId={activeId}
+          />
+          {!hasDateFilter && paginatedQuery.hasNextPage && (
+            <XStack mt="$2" justify="center">
+              <Button
+                intent="ghost"
+                size="sm"
+                onPress={() => paginatedQuery.fetchNextPage()}
+                disabled={paginatedQuery.isFetchingNextPage}
+                loading={paginatedQuery.isFetchingNextPage}
+                loadingText="Loading…"
+              >
+                Load more
+              </Button>
+            </XStack>
+          )}
+        </YStack>
+      </ScrollArea>
     </YStack>
   );
 }

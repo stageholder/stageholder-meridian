@@ -253,6 +253,11 @@ export function HabitCard({
       <View
         position="relative"
         flex={flex}
+        // flex with v5's default flexBasis:0 collapses the card to min-content
+        // inside the responsive width-grid wrapper (the rest of the card then
+        // overflows below the border). flexBasis:"auto" restores content sizing
+        // while still growing to equal height with sibling cards.
+        flexBasis="auto"
         minW={minW}
         rounded="$5"
         borderWidth={1}
