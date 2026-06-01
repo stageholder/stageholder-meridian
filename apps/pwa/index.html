@@ -24,30 +24,35 @@
 
     <!--
       Resolve the theme synchronously before first paint so the splash
-      doesn't flash light-then-dark on dark-mode users. `next-themes`
-      does the same on the React side once it mounts; this just covers
-      the gap before hydration.
+      doesn't flash light-then-dark. This MIRRORS the resolution + class
+      logic in src/lib/platform/theme.ts (the app's theme store), which
+      re-applies the same classes the instant its module evaluates — this
+      script only covers the window before the JS bundle runs. Keep the two
+      in sync: same localStorage key ("theme"), same prefers-color-scheme
+      fallback, same .dark/.light + colorScheme writes on <html>.
     -->
     <script>
       (function () {
+        var resolved = "light";
         try {
           var stored = localStorage.getItem("theme");
           var prefersDark = window.matchMedia(
             "(prefers-color-scheme: dark)",
           ).matches;
-          var resolved =
+          resolved =
             stored === "dark" || stored === "light"
               ? stored
               : prefersDark
                 ? "dark"
                 : "light";
-          document.documentElement.dataset.splashTheme = resolved;
-          if (resolved === "dark") {
-            document.documentElement.classList.add("dark");
-          }
         } catch (e) {
-          document.documentElement.dataset.splashTheme = "light";
+          resolved = "light";
         }
+        var root = document.documentElement;
+        root.dataset.splashTheme = resolved;
+        root.classList.toggle("dark", resolved === "dark");
+        root.classList.toggle("light", resolved === "light");
+        root.style.colorScheme = resolved;
       })();
     </script>
 

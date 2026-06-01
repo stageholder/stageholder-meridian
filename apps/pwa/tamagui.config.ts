@@ -30,10 +30,11 @@ export const config = createTamagui({
   defaultProps,
   settings: {
     ...defaultConfig.settings,
-    // We drive light/dark via <Theme name={mode}> from next-themes (see
-    // App.tsx). Letting Tamagui also bind to OS prefers-color-scheme
-    // creates a second source of truth and the toggle stops being
-    // authoritative.
+    // light/dark is driven by <Theme name={resolvedTheme}> fed by the app's
+    // own theme store (src/lib/platform/theme.ts) via TamaguiBridge in
+    // App.tsx. Keep this `false` so Tamagui doesn't ALSO bind to OS
+    // prefers-color-scheme — that would be a competing source of truth and
+    // the toggle would stop being authoritative.
     shouldAddPrefersColorThemes: false,
   },
 });

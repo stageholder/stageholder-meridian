@@ -50,7 +50,7 @@ const MAX_POLL_DURATION_MS = 15_000;
  *    has landed — without this, the user can pay and still see "Free" on
  *    the next page (the original race that motivated this whole flow).
  * 2. **Rotate the access token** (`refreshSession`) so the new
- *    `subscriptions` claim lands in the BFF session.
+ *    `subscriptions` claim lands in the refreshed session token.
  * 3. **Bust cached billing data** (Dexie entitlement + React Query) so
  *    every consumer that depends on plan data picks up the new value
  *    without waiting for a stale-time tick.
@@ -255,7 +255,7 @@ function BillingSuccessPage() {
     try {
       await signOut();
     } catch {
-      // Even if the BFF logout call fails, navigate to login — the worst
+      // Even if the sign-out call fails, navigate to login — the worst
       // case is the user clicks "Sign in" once more on the next page.
       openURL("/auth/login");
     }

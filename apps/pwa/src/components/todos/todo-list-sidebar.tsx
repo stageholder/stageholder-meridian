@@ -147,7 +147,9 @@ function ListMenu({
               setEditOpen(true);
             }}
           >
-            <Pencil size={15} />
+            <Text color="$color" lineHeight={0}>
+              <Pencil size={15} />
+            </Text>
             <DropdownMenu.Label>Edit</DropdownMenu.Label>
           </DropdownMenu.Item>
           <DropdownMenu.Item
@@ -159,7 +161,9 @@ function ListMenu({
               setDeleteOpen(true);
             }}
           >
-            <Trash2 size={15} />
+            <Text color="$destructive" lineHeight={0}>
+              <Trash2 size={15} />
+            </Text>
             <DropdownMenu.Label>Delete</DropdownMenu.Label>
           </DropdownMenu.Item>
         </DropdownMenu.Content>
