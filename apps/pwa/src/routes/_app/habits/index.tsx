@@ -4,10 +4,8 @@ import { format } from "date-fns";
 import { LayoutGrid, List as ListIcon, Plus, Target } from "lucide-react";
 import {
   Button,
-  DatePicker,
   EmptyState,
   SegmentedControl,
-  Text,
   View,
   XStack,
   YStack,
@@ -15,6 +13,7 @@ import {
 import { useHabits } from "@/lib/api/habits";
 import { HabitCard } from "@/components/habits/habit-card";
 import { HabitListItem } from "@/components/habits/habit-list-item";
+import { HabitDateNav } from "@/components/habits/habit-date-nav";
 import { CreateHabitDialog } from "@/components/habits/create-habit-dialog";
 import { parseDateLocal } from "@/lib/date";
 import type { Habit } from "@repo/core/types";
@@ -48,15 +47,9 @@ function HabitsPage() {
           (right). No page title; the app bar already reads "Habits". */}
       <XStack items="center" justify="space-between" gap="$3" flexWrap="wrap">
         <XStack items="center" gap="$3" flexWrap="wrap">
-          <DatePicker
-            value={selectedDate ? parseDateLocal(selectedDate) : null}
-            onChange={(d) =>
-              setSelectedDate(
-                d instanceof Date ? format(d, "yyyy-MM-dd") : todayStr,
-              )
-            }
-            placeholder="Select date"
-            isDateDisabled={(d) => d > new Date()}
+          <HabitDateNav
+            value={parseDateLocal(selectedDate)}
+            onChange={(d) => setSelectedDate(format(d, "yyyy-MM-dd"))}
           />
           {!isViewingToday && (
             <Button
@@ -66,15 +59,6 @@ function HabitsPage() {
             >
               Back to today
             </Button>
-          )}
-          {!isViewingToday && (
-            <Text fontSize="$1" color="$mutedForeground">
-              Viewing:{" "}
-              {format(
-                new Date(selectedDate + "T00:00:00"),
-                "EEEE, MMM d, yyyy",
-              )}
-            </Text>
           )}
         </XStack>
         <XStack items="center" gap="$2">
