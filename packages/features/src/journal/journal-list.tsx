@@ -1,6 +1,13 @@
 import { useMemo } from "react";
 import { format, isToday, isYesterday, isThisWeek, isThisYear } from "date-fns";
-import { Text, View, XStack, YStack, usePressScale } from "@stageholder/ui";
+import {
+  Badge,
+  Text,
+  View,
+  XStack,
+  YStack,
+  usePressScale,
+} from "@stageholder/ui";
 import type { Journal, JournalContent } from "@repo/core/types";
 import { MoodDisplay } from "./mood-display";
 
@@ -211,17 +218,12 @@ function JournalListItem({ journal, isActive, onPress }: JournalListItemProps) {
       {Array.isArray(journal.tags) && journal.tags.length > 0 ? (
         <XStack mt="$1.5" flexWrap="wrap" gap="$1">
           {(journal.tags as string[]).map((tag: string) => (
-            <Text
-              key={tag}
-              rounded={9999}
-              bg="$accent"
-              px="$1.5"
-              py="$0.5"
-              fontSize={10}
-              color="$accentForeground"
-            >
-              {tag}
-            </Text>
+            // Kit Badge (read-only category tag) — soft/neutral matches the
+            // former hand-rolled $accent pill. Removable tags (the editor's
+            // TagInput) use Tag; interactive ones use Pill.
+            <Badge key={tag} intent="neutral" variant="soft" size="$2">
+              <Badge.Label>{tag}</Badge.Label>
+            </Badge>
           ))}
         </XStack>
       ) : null}
