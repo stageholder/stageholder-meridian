@@ -9,7 +9,6 @@ import {
   Button,
   Hide,
   IconButton,
-  Input,
   MoodPicker,
   Popover,
   TagInput,
@@ -19,6 +18,8 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
+// The title uses a raw tamagui Input (see below) — bare, no kit Frame chrome.
+import { Input as BareInput } from "tamagui";
 import { useJournal, useDeleteJournal } from "@/lib/api/journals";
 import { useAutosave } from "@/lib/hooks/use-autosave";
 import type { JournalContent } from "@repo/core/types";
@@ -175,22 +176,26 @@ function JournalEntryPage() {
 
         {/* Title + delete */}
         <XStack mb="$3" items="center" gap="$2">
-          {/* `paddingHorizontal={0}` strips the kit Input's internal
-              horizontal inset that survives `unstyled`. Keeps the title
-              text aligned with the pills row below. */}
-          <Input
+          {/* Bare title — a raw tamagui Input, not the kit Input: the kit
+              wraps its field in a bordered Frame whose focus ring (the boxed
+              outline) can't be reached from call-site props. `px={0}` keeps
+              the text aligned with the pills row below; border + outline are
+              zeroed so focusing shows just the caret, no box. */}
+          <BareInput
             value={title}
             onChangeText={setTitle}
             placeholder="Untitled"
-            unstyled
             flex={1}
             minW={0}
             px={0}
             bg="transparent"
+            borderWidth={0}
+            outlineWidth={0}
             fontSize={24}
             fontWeight="700"
             color="$color"
             placeholderTextColor="$mutedForeground"
+            focusStyle={{ borderWidth: 0, outlineWidth: 0 }}
             focusVisibleStyle={{ outlineWidth: 0 }}
           />
           <IconButton
