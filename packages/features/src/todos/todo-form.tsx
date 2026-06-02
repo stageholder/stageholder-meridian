@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { format } from "date-fns";
-import { Inbox, CalendarClock, Clock } from "lucide-react";
+import { Inbox, CalendarClock, Clock, Flag } from "lucide-react";
 import { Form } from "tamagui";
 import {
   Button,
@@ -85,7 +85,7 @@ function DateField({
   onChange: (iso: string) => void;
 }) {
   return (
-    <YStack gap="$1.5">
+    <YStack gap="$1.5" flex={1} minW={120}>
       <XStack items="center" gap="$2">
         <Text color="$mutedForeground" lineHeight={0}>
           {icon}
@@ -214,34 +214,43 @@ export function TodoForm({
           />
         </YStack>
 
-        <YStack gap="$1">
-          <Text fontSize="$3" fontWeight="500" color="$color">
-            Priority
-          </Text>
-          <Select value={priority} onValueChange={setPriority}>
-            <Select.Trigger placeholder="None" width="100%" />
-            <Select.Content>
-              <Select.Item value="none">None</Select.Item>
-              {(["low", "medium", "high", "urgent"] as const).map((key) => (
-                <Select.Item key={key} value={key}>
-                  <XStack items="center" gap="$2">
-                    <View
-                      width={8}
-                      height={8}
-                      rounded={9999}
-                      style={{ backgroundColor: PRIORITY_DOT[key] }}
-                    />
-                    <Select.ItemText>
-                      {key.charAt(0).toUpperCase() + key.slice(1)}
-                    </Select.ItemText>
-                  </XStack>
-                </Select.Item>
-              ))}
-            </Select.Content>
-          </Select>
-        </YStack>
+        {/* Priority + dates as one compact, equal-width row. `flexWrap`
+            lets the three columns reflow on narrow widths (e.g. the mobile
+            sheet); Priority picks up the dates' icon+label header so the
+            trio reads as one set. */}
+        <XStack gap="$3" flexWrap="wrap">
+          <YStack gap="$1.5" flex={1} minW={120}>
+            <XStack items="center" gap="$2">
+              <Text color="$mutedForeground" lineHeight={0}>
+                <Flag size={14} />
+              </Text>
+              <Text fontSize="$3" fontWeight="500" color="$color">
+                Priority
+              </Text>
+            </XStack>
+            <Select value={priority} onValueChange={setPriority}>
+              <Select.Trigger placeholder="None" width="100%" />
+              <Select.Content>
+                <Select.Item value="none">None</Select.Item>
+                {(["low", "medium", "high", "urgent"] as const).map((key) => (
+                  <Select.Item key={key} value={key}>
+                    <XStack items="center" gap="$2">
+                      <View
+                        width={8}
+                        height={8}
+                        rounded={9999}
+                        style={{ backgroundColor: PRIORITY_DOT[key] }}
+                      />
+                      <Select.ItemText>
+                        {key.charAt(0).toUpperCase() + key.slice(1)}
+                      </Select.ItemText>
+                    </XStack>
+                  </Select.Item>
+                ))}
+              </Select.Content>
+            </Select>
+          </YStack>
 
-        <YStack gap="$3">
           <DateField
             label="Due Date"
             icon={<CalendarClock size={14} />}
@@ -254,7 +263,7 @@ export function TodoForm({
             value={doDate}
             onChange={setDoDate}
           />
-        </YStack>
+        </XStack>
 
         <XStack justify="flex-end" gap="$3" pt="$2">
           <Button intent="outline" type="button" onPress={onCancel}>

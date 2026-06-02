@@ -383,44 +383,49 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
           ) : null}
         </XStack>
 
-        {/* Footer — [Add Todo] [More] … [Cancel] */}
-        <XStack items="center" justify="space-between">
-          <XStack items="center" gap="$2">
-            <Button
-              size="sm"
-              type="button"
-              borderWidth={0}
-              {...({ color: "#ffffff" } as object)}
-              icon={<Plus size={15} color="#ffffff" />}
-              style={{ backgroundColor: "var(--ring-todo)" }}
-              hoverStyle={
-                { backgroundColor: "var(--ring-todo)", opacity: 0.9 } as never
-              }
-              pressStyle={
-                {
-                  backgroundColor: "var(--ring-todo)",
-                  opacity: 0.82,
-                  scale: 0.96,
-                } as never
-              }
-              onPress={handleSubmit}
-              disabled={!title.trim() || createTodo.isPending}
-              loading={createTodo.isPending}
-              loadingText="Adding…"
-            >
-              Add Todo
-            </Button>
-            <Button
-              intent="outline"
-              size="sm"
-              type="button"
-              icon={<Maximize2 size={15} />}
-              onPress={() => setShowFullDialog(true)}
-            >
-              More
-            </Button>
-          </XStack>
-          <Button intent="ghost" size="sm" type="button" onPress={handleCancel}>
+        {/* Footer — [Add Todo] [More] [Cancel] grouped at the left. Cancel
+            sits next to More and shares its `outline` size so the two
+            secondary actions read as one matched pair. */}
+        <XStack items="center" gap="$2">
+          <Button
+            size="sm"
+            type="button"
+            borderWidth={0}
+            {...({ color: "#ffffff" } as object)}
+            icon={<Plus size={15} color="#ffffff" />}
+            style={{ backgroundColor: "var(--ring-todo)" }}
+            hoverStyle={
+              { backgroundColor: "var(--ring-todo)", opacity: 0.9 } as never
+            }
+            pressStyle={
+              {
+                backgroundColor: "var(--ring-todo)",
+                opacity: 0.82,
+                scale: 0.96,
+              } as never
+            }
+            onPress={handleSubmit}
+            disabled={!title.trim() || createTodo.isPending}
+            loading={createTodo.isPending}
+            loadingText="Adding…"
+          >
+            Add Todo
+          </Button>
+          <Button
+            intent="outline"
+            size="sm"
+            type="button"
+            icon={<Maximize2 size={15} />}
+            onPress={() => setShowFullDialog(true)}
+          >
+            More
+          </Button>
+          <Button
+            intent="outline"
+            size="sm"
+            type="button"
+            onPress={handleCancel}
+          >
             Cancel
           </Button>
         </XStack>

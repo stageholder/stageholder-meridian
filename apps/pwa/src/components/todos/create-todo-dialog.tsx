@@ -90,7 +90,10 @@ export function CreateTodoDialog({
         <Dialog.Overlay />
         <Dialog.Content
           width="90%"
-          maxW={448}
+          // 560 (not the old 448) so the Priority · Due · Do row sits three
+          // across with each date pill wide enough to keep "No due date" on a
+          // single line. `width="90%"` still caps it on small screens.
+          maxW={560}
           maxH={"86vh" as never}
           overflow={"auto" as never}
           onPointerDownOutside={(e: {
