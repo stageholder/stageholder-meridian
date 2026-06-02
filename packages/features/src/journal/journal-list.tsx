@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { format, isToday, isYesterday, isThisWeek, isThisYear } from "date-fns";
-import { Text, View, XStack, YStack } from "@stageholder/ui";
+import { Text, View, XStack, YStack, usePressScale } from "@stageholder/ui";
 import type { Journal, JournalContent } from "@repo/core/types";
 import { MoodDisplay } from "./mood-display";
 
@@ -125,81 +125,106 @@ export function JournalList({
             {group.label}
           </Text>
           <YStack gap="$2">
-            {group.entries.map((journal) => {
-              const dateLabel = format(
-                parseDateLocal(journal.date),
-                "EEE, MMM d",
-              );
-              const isActive = journal.id === activeId;
-              const plainText = extractPlainPreview(journal.content);
-              const preview =
-                plainText.length > 120
-                  ? plainText.slice(0, 120) + "..."
-                  : plainText;
-
-              return (
-                <YStack
-                  key={journal.id}
-                  onPress={() => onJournalPress?.(journal.id)}
-                  cursor={onJournalPress ? "pointer" : undefined}
-                  rounded="$lg"
-                  borderWidth={1}
-                  p="$3"
-                  transition="quick"
-                  borderColor={isActive ? "$primary" : "$borderColor"}
-                  bg={isActive ? "$primaryMuted" : "$card"}
-                  hoverStyle={isActive ? undefined : { bg: "$accent" }}
-                  role={onJournalPress ? "button" : undefined}
-                >
-                  <XStack items="center" gap="$2">
-                    <Text
-                      flex={1}
-                      minW={0}
-                      fontSize="$3"
-                      fontWeight="500"
-                      color="$color"
-                      numberOfLines={1}
-                    >
-                      {journal.title}
-                    </Text>
-                    <MoodDisplay mood={journal.mood} />
-                  </XStack>
-                  <Text mt="$0.5" fontSize="$1" color="$mutedForeground">
-                    {dateLabel}
-                  </Text>
-                  {preview ? (
-                    <Text
-                      mt="$1.5"
-                      fontSize="$1"
-                      color="$mutedForeground"
-                      numberOfLines={2}
-                    >
-                      {preview}
-                    </Text>
-                  ) : null}
-                  {Array.isArray(journal.tags) && journal.tags.length > 0 ? (
-                    <XStack mt="$1.5" flexWrap="wrap" gap="$1">
-                      {(journal.tags as string[]).map((tag: string) => (
-                        <Text
-                          key={tag}
-                          rounded={9999}
-                          bg="$accent"
-                          px="$1.5"
-                          py="$0.5"
-                          fontSize={10}
-                          color="$accentForeground"
-                        >
-                          {tag}
-                        </Text>
-                      ))}
-                    </XStack>
-                  ) : null}
-                </YStack>
-              );
-            })}
+            {group.entries.map((journal) => (
+              <JournalListItem
+                key={journal.id}
+                journal={journal}
+                isActive={journal.id === activeId}
+                onPress={
+                  onJournalPress ? () => onJournalPress(journal.id) : undefined
+                }
+              />
+            ))}
           </YStack>
         </View>
       ))}
+    </YStack>
+  );
+}
+
+interface JournalListItemProps {
+  journal: Journal;
+  isActive: boolean;
+  /** Bound nav callback, or undefined when the list isn't interactive. */
+  onPress?: () => void;
+}
+
+/**
+ * One journal row — split out of the list `.map` so each row can own a
+ * `usePressScale` hook (hooks can't run inside a loop). The kit hook latches
+ * the pressed flag ~220ms past release, so a *quick* nav tap still paints the
+ * full scale animation that a CSS `pressStyle` (`:active`) drops the instant
+ * the pointer lifts. `transition="quick"` supplies the easing; `haptic: "none"`
+ * follows the kit's list-row guidance (no buzz on every row tap).
+ */
+function JournalListItem({ journal, isActive, onPress }: JournalListItemProps) {
+  const dateLabel = format(parseDateLocal(journal.date), "EEE, MMM d");
+  const plainText = extractPlainPreview(journal.content);
+  const preview =
+    plainText.length > 120 ? plainText.slice(0, 120) + "..." : plainText;
+  const { handlers, pressProps } = usePressScale({
+    onPress,
+    disabled: !onPress,
+    haptic: "none",
+  });
+
+  return (
+    <YStack
+      {...handlers}
+      {...pressProps}
+      cursor={onPress ? "pointer" : undefined}
+      rounded="$lg"
+      borderWidth={1}
+      p="$3"
+      transition="quick"
+      borderColor={isActive ? "$primary" : "$borderColor"}
+      bg={isActive ? "$primaryMuted" : "$card"}
+      hoverStyle={isActive ? undefined : { bg: "$accent" }}
+      role={onPress ? "button" : undefined}
+    >
+      <XStack items="center" gap="$2">
+        <Text
+          flex={1}
+          minW={0}
+          fontSize="$3"
+          fontWeight="500"
+          color="$color"
+          numberOfLines={1}
+        >
+          {journal.title}
+        </Text>
+        <MoodDisplay mood={journal.mood} />
+      </XStack>
+      <Text mt="$0.5" fontSize="$1" color="$mutedForeground">
+        {dateLabel}
+      </Text>
+      {preview ? (
+        <Text
+          mt="$1.5"
+          fontSize="$1"
+          color="$mutedForeground"
+          numberOfLines={2}
+        >
+          {preview}
+        </Text>
+      ) : null}
+      {Array.isArray(journal.tags) && journal.tags.length > 0 ? (
+        <XStack mt="$1.5" flexWrap="wrap" gap="$1">
+          {(journal.tags as string[]).map((tag: string) => (
+            <Text
+              key={tag}
+              rounded={9999}
+              bg="$accent"
+              px="$1.5"
+              py="$0.5"
+              fontSize={10}
+              color="$accentForeground"
+            >
+              {tag}
+            </Text>
+          ))}
+        </XStack>
+      ) : null}
     </YStack>
   );
 }
