@@ -5,36 +5,21 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import {
-  Home,
-  CalendarDays,
-  CheckSquare,
-  BookOpen,
-  Target,
-  Settings,
-  LogOut,
   Search,
   Keyboard,
-  CreditCard,
-  UserCog,
   ChevronLeft,
   ChevronRight,
-  RefreshCw,
   PanelLeft,
-  Moon,
-} from "lucide-react";
-import { useAppTheme } from "@/lib/platform/theme";
+} from "@tamagui/lucide-icons-2";
 import { isDesktop } from "@repo/core/platform";
 import { openURL } from "@repo/core/platform/linking";
 import { syncAll } from "@/lib/offline";
 import { subscribeLogout } from "@/lib/auth-broadcast";
 import { useUserLight } from "@/lib/api/light";
-import { StarVisual } from "@repo/features/light";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
-import {
-  getTierProgress,
-  getNextTier,
-  LIGHT_TIERS,
-} from "@repo/core/types/light";
+import { JourneyTierBadge } from "@/components/layout/journey-tier-badge";
+import { navItems, isNavActive } from "@/components/layout/nav-items";
+import { useUserMenuItems } from "@/components/layout/use-user-menu";
 import { OfflineIndicator } from "@/components/shared/offline-indicator";
 import { SyncConflictListener } from "@/components/shared/sync-conflict-toast";
 import { UpdateChecker } from "@/components/shared/update-checker";
@@ -43,11 +28,9 @@ import { FeedbackButton } from "@/components/shared/feedback-button";
 import { CommandPalette } from "@/components/shared/command-palette";
 import { ShortcutsDialog } from "@/components/shared/shortcuts-dialog";
 import { MeridianLogo } from "@/components/shared/meridian-logo";
-import { useUpdateStore } from "@/lib/update-store";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
 import { CreateTodoDialog } from "@/components/todos/create-todo-dialog";
 import { useUser } from "@/hooks/use-user";
-import { useStageholder } from "@stageholder/sdk/spa";
 import { LocalUserButton } from "@/components/layout/local-user-button";
 
 import { TrialPill } from "@/components/billing/trial-pill";
@@ -56,40 +39,12 @@ import {
   Header,
   IconButton,
   MacTrafficLightSpacer,
-  Popover,
-  Progress,
-  ProgressRing,
   Sidebar,
   Text,
   View,
   XStack,
-  YStack,
   useSidebar,
 } from "@stageholder/ui";
-
-const navItems = [
-  { href: "/", label: "Dashboard", icon: Home, shortcutKey: "D" },
-  {
-    href: "/calendar",
-    label: "Today",
-    icon: CalendarDays,
-    shortcutKey: "C",
-  },
-  { href: "/todos", label: "Todos", icon: CheckSquare, shortcutKey: "T" },
-  { href: "/habits", label: "Habits", icon: Target, shortcutKey: "H" },
-  { href: "/journal", label: "Journal", icon: BookOpen, shortcutKey: "J" },
-  {
-    href: "/settings",
-    label: "Settings",
-    icon: Settings,
-    shortcutKey: "S",
-  },
-];
-
-function isNavActive(pathname: string, href: string) {
-  if (href === "/") return pathname === "/";
-  return pathname === href || pathname.startsWith(href + "/");
-}
 
 /**
  * Keyboard-shortcut keycap for the sidebar nav trailing slot. A quiet filled
@@ -139,12 +94,7 @@ function NavShortcut({ shortcutKey }: { shortcutKey: string }) {
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    // allowlist: safe-area-top env inset (no token equivalent)
-    <View
-      height={"100dvh" as never}
-      overflow="hidden"
-      className="safe-area-top"
-    >
+    <View height={"100dvh" as never} overflow="hidden">
       <Sidebar.Provider defaultOpen height="100%">
         <AppShellBody>{children}</AppShellBody>
       </Sidebar.Provider>
@@ -156,10 +106,10 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const { user } = useUser();
-  const { signOut } = useStageholder();
   const { isMobile, setOpenMobile } = useSidebar();
-  const { resolvedTheme, setTheme } = useAppTheme();
-  const isDark = resolvedTheme === "dark";
+  // Account/user menu — shared with the mobile bottom-nav Profile sheet so the
+  // two never drift (see use-user-menu.ts).
+  const menuItems = useUserMenuItems();
   // One-shot sync on mount. No interval polling, no focus refetch, no
   // /health heartbeat — mutations already invalidate their own caches,
   // and the rest stays hydrated from Dexie until the user explicitly
@@ -197,14 +147,6 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
       openURL(isDesktop() ? "/" : "/auth/login");
     });
   }, []);
-
-  async function handleLogout() {
-    // SDK signOut runs the SPA logout flow (revokes tokens, clears storage,
-    // hits the Hub's end-session endpoint, and lands on /goodbye). The
-    // /goodbye route owns the cross-tab broadcast — broadcasting here
-    // would race the Hub session and peer tabs could silent-SSO back in.
-    await signOut();
-  }
 
   // Imperative nav for sidebar menu rows. asChild support on
   // Sidebar.MenuButton isn't shipped yet in the kit; once it lands we can
@@ -246,15 +188,21 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
         onOpenChange={setCreateTodoDialogOpen}
       />
 
-      <Sidebar collapsible="icon" collapsedWidth={80}>
-        <Sidebar.Header>
-          {/* macOS Tauri traffic-light clearance. Renders 28 px of draggable
+      {/* Desktop rail only — deliberately NOT mounted on mobile so the
+          off-canvas drawer is genuinely unreachable there (not merely
+          trigger-hidden): the kit Provider's global Cmd/Ctrl+B then has no
+          drawer to open. `isMobile` is the kit's SSR-safe signal (defaults to
+          desktop pre-hydration), so the rail never flashes in. */}
+      {!isMobile && (
+        <Sidebar collapsible="icon" collapsedWidth={80}>
+          <Sidebar.Header>
+            {/* macOS Tauri traffic-light clearance. Renders 28 px of draggable
               space on Tauri-macOS, null everywhere else. */}
-          <MacTrafficLightSpacer />
-        </Sidebar.Header>
+            <MacTrafficLightSpacer />
+          </Sidebar.Header>
 
-        <Sidebar.Content>
-          {/* Refined product-sidebar nav (Linear/Vercel density): the kit Menu
+          <Sidebar.Content>
+            {/* Refined product-sidebar nav (Linear/Vercel density): the kit Menu
               gets horizontal padding so the active/hover pill floats inset off
               the rail edges — the old full-bleed highlight read as "no padding
               x". Rows are 40px with a 14px medium label (passed as a custom
@@ -262,87 +210,102 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
               an 18px icon, on a tight 4px row rhythm. The kit still owns the row
               frame, icon + trailing slots, press/hover/active-bg, and the
               icon-rail collapse. */}
-          <Sidebar.Menu px="$2" gap={4}>
-            {navItems.map((item) => {
-              const isActive = isNavActive(pathname, item.href);
-              const Icon = item.icon;
-              return (
-                <Sidebar.MenuItem key={item.href}>
-                  <Sidebar.MenuButton
-                    icon={<Icon size={18} />}
-                    isActive={isActive}
-                    height={40}
-                    rounded="$3"
-                    gap="$2.5"
-                    trailing={<NavShortcut shortcutKey={item.shortcutKey} />}
-                    onPress={() => handleNavigate(item.href)}
-                  >
-                    <Text
-                      flex={1}
-                      fontSize={14}
-                      fontWeight={isActive ? "600" : "500"}
-                      color="$sidebarForeground"
-                      numberOfLines={1}
-                      text="left"
+            <Sidebar.Menu px="$2" gap={4}>
+              {navItems.map((item) => {
+                const isActive = isNavActive(pathname, item.href);
+                const Icon = item.icon;
+                return (
+                  <Sidebar.MenuItem key={item.href}>
+                    <Sidebar.MenuButton
+                      icon={<Icon size={18} />}
+                      isActive={isActive}
+                      height={40}
+                      rounded="$3"
+                      gap="$2.5"
+                      trailing={<NavShortcut shortcutKey={item.shortcutKey} />}
+                      onPress={() => handleNavigate(item.href)}
                     >
-                      {item.label}
-                    </Text>
-                  </Sidebar.MenuButton>
-                </Sidebar.MenuItem>
-              );
-            })}
-          </Sidebar.Menu>
-        </Sidebar.Content>
+                      <Text
+                        flex={1}
+                        fontSize={14}
+                        fontWeight={isActive ? "600" : "500"}
+                        color="$sidebarForeground"
+                        numberOfLines={1}
+                        text="left"
+                      >
+                        {item.label}
+                      </Text>
+                    </Sidebar.MenuButton>
+                  </Sidebar.MenuItem>
+                );
+              })}
+            </Sidebar.Menu>
+          </Sidebar.Content>
 
-        <Sidebar.Footer>
-          {/* Footer rows mirror the nav rows (inset pills, 40px, 14px label,
+          <Sidebar.Footer>
+            {/* Footer rows mirror the nav rows (inset pills, 40px, 14px label,
               18px icon) so the rail reads as one cohesive system. */}
-          <Sidebar.Menu px="$2" gap={4}>
-            <Sidebar.MenuItem>
-              <Sidebar.MenuButton
-                icon={<Keyboard size={18} />}
-                onPress={() => setShortcutsDialogOpen(true)}
-                height={40}
-                rounded="$3"
-                gap="$2.5"
-                trailing={<ShortcutKeycap>?</ShortcutKeycap>}
-              >
-                <Text
-                  flex={1}
-                  fontSize={14}
-                  fontWeight="500"
-                  color="$sidebarForeground"
-                  numberOfLines={1}
-                  text="left"
+            <Sidebar.Menu px="$2" gap={4}>
+              <Sidebar.MenuItem>
+                <Sidebar.MenuButton
+                  icon={<Keyboard size={18} />}
+                  onPress={() => setShortcutsDialogOpen(true)}
+                  height={40}
+                  rounded="$3"
+                  gap="$2.5"
+                  trailing={<ShortcutKeycap>?</ShortcutKeycap>}
                 >
-                  Shortcuts
-                </Text>
-              </Sidebar.MenuButton>
-            </Sidebar.MenuItem>
-            <Sidebar.MenuItem>
-              <FeedbackButton />
-            </Sidebar.MenuItem>
-          </Sidebar.Menu>
-          {/* Brand sits at the very bottom of the sidebar. */}
-          <SidebarBrand />
-        </Sidebar.Footer>
-      </Sidebar>
+                  <Text
+                    flex={1}
+                    fontSize={14}
+                    fontWeight="500"
+                    color="$sidebarForeground"
+                    numberOfLines={1}
+                    text="left"
+                  >
+                    Shortcuts
+                  </Text>
+                </Sidebar.MenuButton>
+              </Sidebar.MenuItem>
+              <Sidebar.MenuItem>
+                <FeedbackButton />
+              </Sidebar.MenuItem>
+            </Sidebar.Menu>
+            {/* Brand sits at the very bottom of the sidebar. */}
+            <SidebarBrand />
+          </Sidebar.Footer>
+        </Sidebar>
+      )}
 
       <Sidebar.Inset>
         {/* Top bar — kit <Header> owns the chrome (height, bg, border,
             sticky position, translucent backdrop-blur, justify/gap/px).
-            The kit Header doesn't expose a tauri-drag prop, so we keep the
-            data-tauri-drag-region attribute via Tamagui's prop forwarding —
-            same pattern <MacTrafficLightSpacer /> uses — to preserve macOS
-            window dragging from the bar. */}
-        <Header bordered {...({ "data-tauri-drag-region": "" } as object)}>
+            `safeAreaInset` adds the notch / Dynamic Island top inset to the
+            header region only (no-op on desktop) — scoped here instead of on the
+            whole shell so the mobile drawer isn't pushed down. `tauriDragRegion`
+            forwards data-tauri-drag-region so macOS users drag the window by the
+            bar. */}
+        <Header bordered safeAreaInset tauriDragRegion>
           {/* LEFT group — sidebar toggle + browser-style nav + page title. */}
           <XStack items="center" gap="$2" shrink={0}>
-            {/* Sidebar toggle — collapses the desktop rail / opens the mobile
-                drawer. Replaces the previous custom mobile-only Drawer wrapper. */}
-            <Sidebar.Trigger aria-label="Toggle navigation">
-              <PanelLeft size={16} />
-            </Sidebar.Trigger>
+            {/* Sidebar toggle — desktop only (collapses the rail). Hidden on
+                mobile: the off-canvas drawer is intentionally unreachable there,
+                so the floating BottomNav is the sole mobile navigation. */}
+            <View display="none" $md={{ display: "flex" }}>
+              <Sidebar.Trigger aria-label="Toggle navigation">
+                <PanelLeft size={16} />
+              </Sidebar.Trigger>
+            </View>
+
+            {/* Mobile only — the Dashboard ("/") isn't a bottom-nav destination,
+                so the brand mark doubles as the home affordance. Desktop reaches
+                home via the sidebar brand instead. */}
+            <Header.Logo
+              onPress={() => void navigate({ to: "/" })}
+              $md={{ display: "none" }}
+            >
+              <MeridianLogo size="sm" />
+            </Header.Logo>
 
             {/* Browser-style nav, desktop only. Forward is always enabled —
                 HTML5 history has no canGoForward signal; clicking when
@@ -377,10 +340,13 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
               </XStack>
             )}
 
-            {/* Page title */}
+            {/* Page title. The muted color goes ON the icon (a v2
+                @tamagui/lucide-icons-2 component resolves the token) rather than
+                cascading from the XStack — v2 themed icons read their own
+                `color`, not inherited CSS, and `color` isn't a valid Stack prop. */}
             {currentPage && (
-              <XStack items="center" gap="$2" color="$mutedForeground">
-                <currentPage.icon size={16} />
+              <XStack items="center" gap="$2">
+                <currentPage.icon size={16} color="$mutedForeground" />
                 <Text
                   fontSize="$3"
                   fontWeight="500"
@@ -403,12 +369,15 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
               size="sm"
               onPress={() => setCommandPaletteOpen(true)}
               gap="$2"
-              color="$mutedForeground"
               display="none"
               $sm={{ display: "flex" }}
-              icon={<Search size={14} />}
+              // Muted tint set on the v2 icon directly (it reads its own color,
+              // not the Button's) — `color` isn't a valid Button prop anyway.
+              icon={<Search size={14} color="$mutedForeground" />}
             >
-              <Text fontSize="$1">Search...</Text>
+              <Text fontSize="$1" color="$mutedForeground">
+                Search...
+              </Text>
               <Text
                 ml="$1"
                 px="$1.5"
@@ -449,265 +418,20 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
             <OfflineIndicator />
             <TrialPill />
 
-            {/* Journey / tier progress (desktop only). shrink={0} on the
-                wrapper AND on the trigger keeps the control at its content
-                width so it never collapses under the flex row's shrink
-                pressure. */}
-            <XStack
-              items="center"
-              shrink={0}
-              display="none"
-              $md={{ display: "flex" }}
-            >
-              {userLight &&
-                (() => {
-                  const progress = getTierProgress(
-                    userLight.totalLight,
-                    userLight.currentTier,
-                  );
-                  const nextTier = getNextTier(userLight.currentTier);
-                  // COLOR VALUES per tier. `ring` is the brightest mid-stop —
-                  // applied as a SOLID color via Tamagui's `color`/`fillColor`
-                  // props (no gradient text clip). `track` is the unfilled ring.
-                  const tierColors: Record<
-                    number,
-                    { ring: string; track: string }
-                  > = {
-                    1: { ring: "#cbd5e1", track: "rgba(148,163,184,0.15)" },
-                    2: { ring: "#ef4444", track: "rgba(239,68,68,0.15)" },
-                    3: { ring: "#f59e0b", track: "rgba(245,158,11,0.15)" },
-                    4: { ring: "#f97316", track: "rgba(249,115,22,0.15)" },
-                    5: { ring: "#f97316", track: "rgba(249,115,22,0.15)" },
-                    6: { ring: "#eab308", track: "rgba(234,179,8,0.15)" },
-                    7: { ring: "#fbbf24", track: "rgba(251,191,36,0.15)" },
-                    8: { ring: "#fde68a", track: "rgba(253,230,138,0.15)" },
-                    9: { ring: "#eab308", track: "rgba(234,179,8,0.15)" },
-                    10: { ring: "#fbbf24", track: "rgba(251,191,36,0.15)" },
-                  };
-                  const colors = (tierColors[userLight.currentTier] ??
-                    tierColors[1])!;
-                  return (
-                    <Popover placement="bottom-end">
-                      <Popover.Trigger asChild>
-                        <Button
-                          intent="ghost"
-                          size="sm"
-                          shrink={0}
-                          gap={6}
-                          py="$1"
-                          px="$2"
-                          height="auto"
-                          aria-label="Journey progress"
-                        >
-                          <Text
-                            fontSize={11}
-                            fontWeight="600"
-                            letterSpacing={0.5}
-                            color={colors.ring}
-                          >
-                            {userLight.currentTitle}
-                          </Text>
-                          <ProgressRing
-                            value={progress}
-                            size={28}
-                            thickness={2.5}
-                            fillColor={colors.ring}
-                            trackColor={colors.track}
-                            shrink={0}
-                          >
-                            <StarVisual
-                              tier={userLight.currentTier}
-                              size="xs"
-                            />
-                          </ProgressRing>
-                        </Button>
-                      </Popover.Trigger>
-                      <Popover.Content
-                        width={256}
-                        maxW="calc(100vw - 2rem)"
-                        p={0}
-                      >
-                        <YStack items="center" gap="$2" px="$4" pt="$4" pb="$3">
-                          <ProgressRing
-                            value={progress}
-                            size={72}
-                            thickness={4}
-                            fillColor={colors.ring}
-                            trackColor={colors.track}
-                            animate
-                          >
-                            <StarVisual
-                              tier={userLight.currentTier}
-                              size="md"
-                              animate
-                            />
-                          </ProgressRing>
-                          <Text fontSize="$3" fontWeight="700">
-                            {userLight.currentTitle}
-                          </Text>
-                          <Text
-                            fontSize={11}
-                            color="$mutedForeground"
-                            text="center"
-                            lineHeight={15}
-                            px="$1"
-                          >
-                            {
-                              LIGHT_TIERS[userLight.currentTier - 1]
-                                ?.shortDescription
-                            }
-                          </Text>
-                          {nextTier ? (
-                            <YStack width="100%" gap="$0.5">
-                              <Progress
-                                value={progress}
-                                height={6}
-                                width="100%"
-                                bg="$muted"
-                                rounded={9999}
-                              >
-                                <Progress.Indicator
-                                  bg="$warning"
-                                  transition="quick"
-                                />
-                              </Progress>
-                              <Text
-                                text="center"
-                                fontSize={11}
-                                color="$mutedForeground"
-                              >
-                                <Text fontWeight="500" color="$color">
-                                  {userLight.totalLight}
-                                </Text>
-                                {" / "}
-                                {nextTier.lightRequired} Light
-                              </Text>
-                            </YStack>
-                          ) : (
-                            <Text fontSize={11} color="$mutedForeground">
-                              {userLight.totalLight.toLocaleString()} Light —
-                              Max tier reached
-                            </Text>
-                          )}
-                        </YStack>
-                        <XStack
-                          width="100%"
-                          py="$2.5"
-                          borderTopWidth={1}
-                          borderColor="$borderColor"
-                        >
-                          <YStack flex={1} items="center" gap="$0.5">
-                            <Text fontSize="$1" fontWeight="700">
-                              {userLight.perfectDayStreak}d
-                            </Text>
-                            <Text fontSize={10} color="$mutedForeground">
-                              Streak
-                            </Text>
-                          </YStack>
-                          <YStack flex={1} items="center" gap="$0.5">
-                            <Text fontSize="$1" fontWeight="700">
-                              {userLight.perfectDaysTotal}
-                            </Text>
-                            <Text fontSize={10} color="$mutedForeground">
-                              Perfect
-                            </Text>
-                          </YStack>
-                          <YStack flex={1} items="center" gap="$0.5">
-                            <Text fontSize="$1" fontWeight="700">
-                              {userLight.longestPerfectStreak}d
-                            </Text>
-                            <Text fontSize={10} color="$mutedForeground">
-                              Best
-                            </Text>
-                          </YStack>
-                        </XStack>
-                        {/* Popover.Close dismisses the popover on click; the
-                          Button's onPress still navigates (handlers compose). */}
-                        <Popover.Close asChild>
-                          <Button
-                            intent="ghost"
-                            size="sm"
-                            width="100%"
-                            height="auto"
-                            py="$2.5"
-                            rounded={0}
-                            borderTopWidth={1}
-                            borderColor="$borderColor"
-                            color="$mutedForeground"
-                            hoverStyle={{ bg: "$accent", color: "$color" }}
-                            onPress={() => navigate({ to: "/journey" })}
-                          >
-                            My Journey →
-                          </Button>
-                        </Popover.Close>
-                      </Popover.Content>
-                    </Popover>
-                  );
-                })()}
-            </XStack>
+            {/* Journey / tier progress. Renders a compact ring (mobile) or
+                the full title + popover (desktop), gated internally by media
+                props — see journey-tier-badge.tsx. */}
+            {userLight && <JourneyTierBadge userLight={userLight} />}
 
-            {/* User menu — local replacement for the SDK's UserButton
-                (which is BFF-only / unreachable under SPA). Same menu
-                contract; sign-out always routes through our handleLogout
-                so any future desktop branch is preserved. The theme
-                switcher lives inside this menu instead of as a separate
-                header icon — fewer header elements competing for
-                attention, and theme preference is a per-account setting
-                anyway. */}
-            <LocalUserButton
-              hideSignOut
-              menuItems={[
-                {
-                  // Profile editing lives in-app via the SDK's
-                  // <ProfileSettings>. Security operations (password,
-                  // MFA, sessions, account deletion) still live on Hub
-                  // and are reachable from /settings → Account tab.
-                  label: "Account settings",
-                  href: "/settings",
-                  icon: <UserCog size={16} />,
-                },
-                {
-                  // Single billing entry — matches every major SaaS
-                  // (Notion, Linear, Stripe, Vercel, GitHub, Slack: one
-                  // item that navigates to the billing page). The dialog
-                  // stays in the codebase but only fires CONTEXTUALLY
-                  // when a user hits a feature limit — not from menu nav.
-                  label: "Plans & billing",
-                  href: "/settings/billing",
-                  icon: <CreditCard size={16} />,
-                },
-                {
-                  kind: "switch",
-                  label: "Dark mode",
-                  value: isDark,
-                  onChange: (next) => setTheme(next ? "dark" : "light"),
-                  icon: <Moon size={16} />,
-                },
-                // Manual trigger for the same updater the auto-poll uses
-                // (UpdateChecker runs check() on launch + every 30 min
-                // silently). Desktop-only — the updater plugin isn't
-                // available on web.
-                ...(isDesktop()
-                  ? [
-                      {
-                        label: "Check for updates",
-                        onSelect: () =>
-                          useUpdateStore
-                            .getState()
-                            .requestCheck({ showWhenUpToDate: true }),
-                        icon: <RefreshCw size={16} />,
-                      },
-                    ]
-                  : []),
-                {
-                  label: "Sign out",
-                  onSelect: () => void handleLogout(),
-                  icon: <LogOut size={16} />,
-                },
-              ]}
-            />
-            {/* hideSignOut is accepted for API parity but is a no-op —
-                LocalUserButton never renders a built-in sign-out. */}
+            {/* User menu — local replacement for the SDK's UserButton (BFF-only
+                under SPA). DESKTOP ONLY: on mobile the same account menu is
+                reached via the bottom-nav Profile item, so the header avatar
+                would be redundant. Items come from the shared useUserMenuItems
+                hook (also used by the mobile Profile sheet) so the two stay in
+                lockstep. hideSignOut is a no-op — sign-out is a menu item. */}
+            <View display="none" $md={{ display: "flex" }}>
+              <LocalUserButton hideSignOut menuItems={menuItems} />
+            </View>
           </Header.Actions>
         </Header>
 
@@ -717,8 +441,14 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
           flex={1}
           overflowY={"auto" as never}
           overflowX={"hidden" as never}
+          // Clearance for the floating BottomNav capsule (mobile only). The
+          // capsule (~66px) sits ~12px above the bottom edge, so the content's
+          // last rows need ≈5.5rem + the home-indicator inset to clear it. The
+          // safe-area inset lives ONLY here (the kit owns the capsule's own
+          // offset), so it isn't double-counted. Removed at md+ where the rail
+          // replaces the bottom nav.
           // allowlist: env safe-area inset on the bottom padding (no token equivalent)
-          className="pb-[calc(3.5rem+max(0.5rem,env(safe-area-inset-bottom,0px)))]"
+          className="pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))]"
           $md={{ pb: 0 }}
         >
           {children}
