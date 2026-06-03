@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { Plus, SlidersHorizontal } from "lucide-react";
 import { useJournals, useJournalsPaginated } from "@/lib/api/journals";
 import { JournalList } from "@/components/journal/journal-list";
+import { CreateFab } from "@/components/shared/create-fab";
 import type { Journal } from "@repo/core/types";
 import {
   Button,
@@ -89,9 +90,12 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
         borderColor="$borderColor"
       >
         <XStack items="center" gap="$2">
+          {/* Desktop only — on mobile the create affordance is the FAB. */}
           <Button
             size="sm"
             flex={1}
+            display="none"
+            $md={{ display: "flex" }}
             borderWidth={0}
             // Journal identity = yellow; it's a light hue, so the label/icon
             // go near-black for contrast (mirrors the todo-red Add button).
@@ -227,6 +231,15 @@ export function JournalSidebar({ activeId }: JournalSidebarProps) {
           )}
         </YStack>
       </ScrollArea>
+
+      {/* Mobile create affordance — same destination as the desktop button.
+          Journal's yellow ring is a light hue, so the icon goes near-black. */}
+      <CreateFab
+        label="New journal"
+        tintVar="--ring-journal"
+        iconColor="#1c1917"
+        onPress={() => void navigate({ to: "/journal/new" })}
+      />
     </YStack>
   );
 }

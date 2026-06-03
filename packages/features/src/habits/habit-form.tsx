@@ -235,6 +235,12 @@ export function HabitForm({
             onChangeText={setDescription}
             placeholder="Optional details"
             rows={2}
+            // Tamagui sizes a `rows` textarea to `rows × lineHeight` but then
+            // adds vertical padding under border-box, so the content area ends
+            // up shorter than `rows` lines → a permanent scrollbar even when
+            // empty. Drop that fixed height and let the native `rows` attribute
+            // (forwarded to the DOM <textarea>) size it, padding-aware.
+            height={"auto" as never}
           />
         </YStack>
 

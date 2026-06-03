@@ -15,6 +15,7 @@ import { HabitCard } from "@/components/habits/habit-card";
 import { HabitListItem } from "@/components/habits/habit-list-item";
 import { HabitDateNav } from "@/components/habits/habit-date-nav";
 import { CreateHabitDialog } from "@/components/habits/create-habit-dialog";
+import { CreateFab } from "@/components/shared/create-fab";
 import { parseDateLocal } from "@/lib/date";
 import type { Habit } from "@repo/core/types";
 
@@ -102,7 +103,10 @@ function HabitsPage() {
               />
             </SegmentedControl.Item>
           </SegmentedControl>
+          {/* Desktop only — on mobile the create affordance is the FAB below. */}
           <Button
+            display="none"
+            $md={{ display: "flex" }}
             borderWidth={0}
             {...({ color: "#ffffff" } as object)}
             icon={<Plus size={16} color="#ffffff" />}
@@ -318,6 +322,13 @@ function HabitsPage() {
           </EmptyState.Description>
         </EmptyState>
       )}
+
+      {/* Mobile create affordance — opens the same dialog as the desktop button. */}
+      <CreateFab
+        label="New habit"
+        tintVar="--ring-habit"
+        onPress={() => setShowCreateDialog(true)}
+      />
 
       <CreateHabitDialog
         open={showCreateDialog}

@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { Plus, Maximize2, Flag, Inbox, Check } from "lucide-react";
 import { useCreateTodo, useTodoLists } from "@/lib/api/todos";
 import { CreateTodoDialog } from "./create-todo-dialog";
+import { CreateFab } from "@/components/shared/create-fab";
 import {
   Button,
   DropdownMenu,
@@ -294,38 +295,61 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
 
   if (!isEditing) {
     return (
-      <XStack
-        group
-        onPress={handleActivate}
-        cursor="pointer"
-        width="100%"
-        items="center"
-        gap="$2"
-        rounded="$lg"
-        borderWidth={1}
-        borderStyle="dashed"
-        borderColor="$borderColor"
-        px="$3"
-        py="$2.5"
-        transition="quick"
-        hoverStyle={{ borderColor: "$primary" }}
-        role="button"
-      >
-        <Text
-          color="$mutedForeground"
-          lineHeight={0}
-          $group-hover={{ color: "$color" }}
+      <>
+        {/* Desktop: the inline "Add a todo…" trigger expands the composer.
+            Hidden on mobile — the FAB below opens the full create dialog. */}
+        <XStack
+          group
+          onPress={handleActivate}
+          cursor="pointer"
+          width="100%"
+          items="center"
+          gap="$2"
+          rounded="$lg"
+          borderWidth={1}
+          borderStyle="dashed"
+          borderColor="$borderColor"
+          px="$3"
+          py="$2.5"
+          transition="quick"
+          hoverStyle={{ borderColor: "$primary" }}
+          role="button"
+          display="none"
+          $md={{ display: "flex" }}
         >
-          <Plus size={16} />
-        </Text>
-        <Text
-          fontSize="$3"
-          color="$mutedForeground"
-          $group-hover={{ color: "$color" }}
-        >
-          Add a todo…
-        </Text>
-      </XStack>
+          <Text
+            color="$mutedForeground"
+            lineHeight={0}
+            $group-hover={{ color: "$color" }}
+          >
+            <Plus size={16} />
+          </Text>
+          <Text
+            fontSize="$3"
+            color="$mutedForeground"
+            $group-hover={{ color: "$color" }}
+          >
+            Add a todo…
+          </Text>
+        </XStack>
+
+        {/* Mobile: a FAB opens the full create dialog (the inline quick-add
+            composer is desktop-only). Reuses this component's own dialog +
+            list context, so it lands the todo in the current list. */}
+        <CreateFab
+          label="New todo"
+          tintVar="--ring-todo"
+          onPress={() => {
+            setSelectedListId(listId);
+            setShowFullDialog(true);
+          }}
+        />
+        <CreateTodoDialog
+          open={showFullDialog}
+          onOpenChange={setShowFullDialog}
+          listId={selectedListId}
+        />
+      </>
     );
   }
 

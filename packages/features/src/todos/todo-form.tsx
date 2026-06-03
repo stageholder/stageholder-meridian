@@ -211,6 +211,10 @@ export function TodoForm({
             onChangeText={setDescription}
             placeholder="Add details..."
             rows={3}
+            // See habit-form: Tamagui's `rows × lineHeight` height ignores the
+            // textarea's padding under border-box, leaving a permanent
+            // scrollbar. `height="auto"` lets the native `rows` size it.
+            height={"auto" as never}
           />
         </YStack>
 
