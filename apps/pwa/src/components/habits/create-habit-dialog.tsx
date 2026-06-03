@@ -1,4 +1,5 @@
 import { Dialog, useToast } from "@stageholder/ui";
+import { DialogSheetAdapt } from "@/components/shared/dialog-sheet-adapt";
 import {
   HabitForm,
   HABIT_FORM_DEFAULTS,
@@ -59,6 +60,8 @@ export function CreateHabitDialog({
     // and shifts the background when the dialog opens. The full-screen scrim
     // already blocks background interaction, so the lock is redundant.
     <Dialog open={open} onOpenChange={onOpenChange} disableRemoveScroll>
+      {/* Opens as a bottom sheet on mobile (<md), a centered dialog at md+. */}
+      <DialogSheetAdapt />
       <Dialog.Portal>
         <Dialog.Overlay />
         <Dialog.Content

@@ -1,4 +1,5 @@
 import { Dialog, useToast } from "@stageholder/ui";
+import { DialogSheetAdapt } from "@/components/shared/dialog-sheet-adapt";
 import {
   TodoListForm,
   TODO_LIST_FORM_DEFAULTS,
@@ -70,6 +71,8 @@ export function CreateListDialog({
     // shifts the background on open. The full-screen scrim already blocks
     // background interaction, so the lock is redundant here.
     <Dialog open={open} onOpenChange={onOpenChange} disableRemoveScroll>
+      {/* Opens as a bottom sheet on mobile (<md), a centered dialog at md+. */}
+      <DialogSheetAdapt />
       <Dialog.Portal>
         <Dialog.Overlay />
         <Dialog.Content width="90%" maxW={420}>

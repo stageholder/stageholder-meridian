@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { DialogSheetAdapt } from "@/components/shared/dialog-sheet-adapt";
 import { Dialog, useToast } from "@stageholder/ui";
 import {
   TodoForm,
@@ -86,6 +87,8 @@ export function CreateTodoDialog({
     // and shifts the background when the dialog opens. The full-screen scrim
     // already blocks background interaction, so the lock is redundant.
     <Dialog open={open} onOpenChange={onOpenChange} disableRemoveScroll>
+      {/* Opens as a bottom sheet on mobile (<md), a centered dialog at md+. */}
+      <DialogSheetAdapt />
       <Dialog.Portal>
         <Dialog.Overlay />
         <Dialog.Content

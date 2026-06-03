@@ -1,4 +1,5 @@
 import { Dialog, useToast } from "@stageholder/ui";
+import { DialogSheetAdapt } from "@/components/shared/dialog-sheet-adapt";
 import { HabitForm, type HabitFormValues } from "@repo/features/habits";
 import { useUpdateHabit } from "@/lib/api/habits";
 import type { Habit } from "@repo/core/types";
@@ -76,6 +77,8 @@ export function EditHabitSheet({
     // gutter and shifts the background on open. The full-screen scrim already
     // blocks background interaction, so the lock is redundant.
     <Dialog open={open} onOpenChange={onOpenChange} disableRemoveScroll>
+      {/* Opens as a bottom sheet on mobile (<md), a centered dialog at md+. */}
+      <DialogSheetAdapt />
       <Dialog.Portal>
         <Dialog.Overlay />
         <Dialog.Content
