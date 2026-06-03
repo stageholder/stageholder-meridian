@@ -6,7 +6,7 @@ import {
   AlertDialog,
   Button,
   DropdownMenu,
-  IconButton,
+  RippleButton,
   Text,
   View,
   XStack,
@@ -337,9 +337,17 @@ export function HabitListItem({ habit, selectedDate }: HabitListItemProps) {
             for the destructive action, `<DropdownMenu.Label>` for text. */}
         <DropdownMenu>
           <DropdownMenu.Trigger asChild>
-            <IconButton variant="ghost" size="sm" aria-label="Habit options">
+            {/* RippleButton (not IconButton): ripple press feedback instead of
+                a press-scale that would shift the menu's anchor as it opens. */}
+            <RippleButton
+              intent="ghost"
+              size="sm"
+              iconOnly
+              width="$sm"
+              aria-label="Habit options"
+            >
               <MoreHorizontal size={16} />
-            </IconButton>
+            </RippleButton>
           </DropdownMenu.Trigger>
           <DropdownMenu.Content>
             <DropdownMenu.Item onPress={() => setEditOpen(true)}>

@@ -16,6 +16,7 @@ import {
   Button,
   DropdownMenu,
   IconButton,
+  RippleButton,
   Sidebar,
   Text,
   useToast,
@@ -134,9 +135,17 @@ function ListMenu({
         placement="bottom-end"
       >
         <DropdownMenu.Trigger asChild>
-          <IconButton variant="ghost" size="sm" aria-label="List options">
+          {/* RippleButton (not IconButton): ripple press feedback instead of a
+              press-scale that would shift the menu's anchor as it opens. */}
+          <RippleButton
+            intent="ghost"
+            size="sm"
+            iconOnly
+            width="$sm"
+            aria-label="List options"
+          >
             <MoreHorizontal size={15} />
-          </IconButton>
+          </RippleButton>
         </DropdownMenu.Trigger>
         <DropdownMenu.Content minW={160}>
           <DropdownMenu.Item

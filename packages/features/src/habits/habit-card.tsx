@@ -7,6 +7,7 @@ import {
   DropdownMenu,
   H3,
   IconButton,
+  RippleButton,
   StreakBadge,
   Text,
   View,
@@ -327,9 +328,17 @@ export function HabitCard({
           {streak > 0 ? <StreakBadge count={streak} size="$2" /> : null}
           <DropdownMenu>
             <DropdownMenu.Trigger asChild>
-              <IconButton variant="ghost" size="sm" aria-label="Habit options">
+              {/* RippleButton (not IconButton): ripple press feedback instead of
+                  a press-scale that would shift the menu's anchor as it opens. */}
+              <RippleButton
+                intent="ghost"
+                size="sm"
+                iconOnly
+                width="$sm"
+                aria-label="Habit options"
+              >
                 <MoreHorizontal size={16} />
-              </IconButton>
+              </RippleButton>
             </DropdownMenu.Trigger>
             <DropdownMenu.Content>
               <DropdownMenu.Item onPress={onEdit}>
