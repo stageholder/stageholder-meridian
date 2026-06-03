@@ -119,12 +119,22 @@ export function TodoListForm({
           </XStack>
         </YStack>
 
-        <XStack justify="flex-end" gap="$3" pt="$2">
-          <Button intent="outline" type="button" onPress={onCancel}>
+        {/* Full-width buttons on mobile (the bottom sheet); right-aligned,
+            content-width at md+ (the desktop dialog). */}
+        <XStack gap="$3" pt="$2" $md={{ justify: "flex-end" }}>
+          <Button
+            intent="outline"
+            type="button"
+            flex={1}
+            $md={{ flexBasis: "auto", flexGrow: 0 }}
+            onPress={onCancel}
+          >
             Cancel
           </Button>
           <Form.Trigger asChild>
             <Button
+              flex={1}
+              $md={{ flexBasis: "auto", flexGrow: 0 }}
               disabled={!name.trim() || isSubmitting}
               loading={isSubmitting}
               loadingText={submittingLabel}

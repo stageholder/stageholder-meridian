@@ -35,12 +35,17 @@ export function DialogSheetAdapt() {
         disableRemoveScroll
       >
         <Sheet.Overlay />
-        <Sheet.Frame>
+        {/* Override the kit Sheet.Frame's default p="$5"/gap="$4": NO horizontal
+            frame padding, a small top inset (the grabber already supplies top
+            space), and only a slim gap below the handle. */}
+        <Sheet.Frame px={0} pt="$2" pb="$5" gap="$2">
           <Sheet.ScrollView>
-            {/* Padding/gap live on the inner stack so the scrollbar hugs the
-                sheet edge and the teleported title + form stay spaced (the
-                Dialog.Content gap doesn't come along with the children). */}
-            <YStack p="$4" gap="$4">
+            {/* Horizontal padding lives INSIDE the ScrollView (on this stack),
+                NOT on the Frame — otherwise the inputs sit flush with the
+                ScrollView's clip edge and their focus ring / borders get cut off
+                at the left/right. This stack also owns the gap between the
+                teleported title + form (so the Frame padding isn't doubled). */}
+            <YStack px="$5" gap="$4">
               <Adapt.Contents />
             </YStack>
           </Sheet.ScrollView>
