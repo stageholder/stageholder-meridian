@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Form } from "tamagui";
+import { Form, useMedia } from "tamagui";
 import {
   Button,
   EmojiPicker,
+  EmojiPickerSheet,
   Input,
   Label,
   NumberInput,
@@ -111,8 +112,10 @@ export interface HabitFormProps {
  * Cross-platform notes:
  *  - `<Form>` from tamagui gives us native Enter-to-submit on web + the
  *    same trigger semantics on native via `Form.Trigger`.
- *  - Kit `EmojiPicker` is backed by a truly cross-platform picker
- *    (`@hiraku-ai/react-native-emoji-picker`); no platform-split needed.
+ *  - Kit `EmojiPicker` is a pure-Tamagui grid. To stay clickable when the
+ *    host chrome is a Dialog/Sheet, it's shown in an anchored Popover at md+
+ *    and in the kit `EmojiPickerSheet` (a modal Sheet) below md — a Popover
+ *    opened inside a Sheet renders *behind* it (sheets sit at zIndex 1e5).
  *  - All chrome (Popover, Select, ToggleGroup, NumberInput, Input,
  *    TextArea, Label) is from the kit and runs on both targets.
  */
@@ -139,6 +142,42 @@ export function HabitForm({
     initial.scheduledDays ?? [],
   );
   const [weeklyTarget, setWeeklyTarget] = useState(initial.weeklyTarget ?? 2);
+
+  // <md the create form is itself a bottom Sheet; a Popover opened inside a
+  // Sheet renders behind it, so the emoji picker switches to a modal Sheet
+  // (EmojiPickerSheet) on mobile and stays an anchored Popover at md+.
+  const media = useMedia();
+
+  const handlePickIcon = (emoji: string) => {
+    setIcon(emoji);
+    setIconPickerOpen(false);
+  };
+
+  // Shared 40×40 icon-box trigger. The Popover (asChild) path passes NO
+  // onPress — the trigger slot supplies it, and a manual handler would fight
+  // the slot handler on controlled state; the Sheet path passes its own.
+  const renderIconTrigger = (onPress?: () => void) => (
+    <View
+      role="button"
+      aria-label="Pick an icon"
+      cursor="pointer"
+      height={40}
+      width={40}
+      shrink={0}
+      items="center"
+      justify="center"
+      rounded="$lg"
+      borderWidth={1}
+      borderColor="$borderColor"
+      bg="$background"
+      hoverStyle={{ bg: "$accent" }}
+      {...(onPress ? { onPress } : {})}
+    >
+      <Text fontSize="$6" color="$color">
+        {icon || "😀"}
+      </Text>
+    </View>
+  );
 
   function handleSubmit() {
     if (!name.trim()) return;
@@ -167,50 +206,45 @@ export function HabitForm({
               Icon
             </Text>
             <View mt="$1">
-              <Popover
-                open={iconPickerOpen}
-                onOpenChange={setIconPickerOpen}
-                placement="bottom-start"
-              >
-                <Popover.Trigger asChild>
-                  <View
-                    role="button"
-                    aria-label="Pick an icon"
-                    cursor="pointer"
-                    height={40}
-                    width={40}
-                    shrink={0}
-                    items="center"
-                    justify="center"
-                    rounded="$lg"
-                    borderWidth={1}
-                    borderColor="$borderColor"
-                    bg="$background"
-                    hoverStyle={{ bg: "$accent" }}
-                  >
-                    <Text fontSize="$6" color="$color">
-                      {icon || "😀"}
-                    </Text>
-                  </View>
-                </Popover.Trigger>
-                <Popover.Content
-                  z={200}
-                  width="auto"
-                  p={0}
-                  borderWidth={0}
-                  overflow="hidden"
-                  style={{ boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}
+              {media.md ? (
+                // Desktop: anchored Popover. No explicit low `z` — the kit's
+                // own Popover-based pickers (Select, DropdownMenu) render above
+                // the Dialog at their default z; the previous `z={200}` was what
+                // pushed this one *under* the dialog.
+                <Popover
+                  open={iconPickerOpen}
+                  onOpenChange={setIconPickerOpen}
+                  placement="bottom-start"
                 >
-                  <EmojiPicker
-                    width={350}
-                    height={400}
-                    onSelect={(emoji) => {
-                      setIcon(emoji);
-                      setIconPickerOpen(false);
-                    }}
+                  <Popover.Trigger asChild>
+                    {renderIconTrigger()}
+                  </Popover.Trigger>
+                  <Popover.Content
+                    width="auto"
+                    p={0}
+                    borderWidth={0}
+                    overflow="hidden"
+                    style={{ boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}
+                  >
+                    <EmojiPicker
+                      width={350}
+                      height={400}
+                      onSelect={handlePickIcon}
+                    />
+                  </Popover.Content>
+                </Popover>
+              ) : (
+                // Mobile: a modal Sheet (zIndex 1e5) that stacks correctly above
+                // the create form's own bottom sheet.
+                <>
+                  {renderIconTrigger(() => setIconPickerOpen(true))}
+                  <EmojiPickerSheet
+                    open={iconPickerOpen}
+                    onClose={() => setIconPickerOpen(false)}
+                    onSelect={handlePickIcon}
                   />
-                </Popover.Content>
-              </Popover>
+                </>
+              )}
             </View>
           </YStack>
           <YStack flex={1}>

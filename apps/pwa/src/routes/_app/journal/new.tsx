@@ -125,10 +125,16 @@ function NewJournalPage() {
     <YStack flex={1} height="100%">
       <YStack shrink={0} px="$4" pt="$4">
         <Hide above="md">
-          <View mb="$5">
+          <View mb="$3">
+            {/* `self="flex-start"` stops the ghost button from stretching
+                full-width (which centered its label — the "strange" look);
+                `ml="$-2"` pulls the icon out to the content gutter so the
+                "←" lines up with the date title's left edge below it. */}
             <Button
               intent="ghost"
               size="sm"
+              self="flex-start"
+              ml="$-2"
               icon={<ArrowLeft size={16} />}
               onPress={() => navigate({ to: "/journal" })}
             >

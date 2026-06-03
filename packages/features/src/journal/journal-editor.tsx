@@ -217,6 +217,10 @@ export function JournalEditor({
           autoFocus={autoFocus}
           minHeight={300}
           toolbar="basic"
+          // Single-row toolbar that scrolls horizontally on narrow screens
+          // (mobile) instead of wrapping onto a second row. On wide screens
+          // the basic toolbar fits, so it reads as a normal row.
+          toolbarScrollable
           variant="inline"
           toolbarSlot={headerCluster}
         />
