@@ -1,4 +1,8 @@
-export { ActivityRings, type ActivityRingsSize } from "./activity-rings";
+export {
+  ActivityRings,
+  ActivityRingsBreakdown,
+  type ActivityRingsSize,
+} from "./activity-rings";
 export {
   computeActivityRings,
   activityRingsConfig,

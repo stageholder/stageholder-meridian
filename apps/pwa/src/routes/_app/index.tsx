@@ -1,7 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { View, YStack } from "@stageholder/ui";
-import { ActivityRings } from "@/components/activity-rings";
+import { View, XStack, YStack } from "@stageholder/ui";
+import {
+  ActivityRings,
+  ActivityRingsBreakdown,
+} from "@/components/activity-rings";
 import { useUserLight } from "@/lib/api/light";
 import { LevelProgress, LevelUpCelebration } from "@repo/features/light";
 import { useLevelUp } from "@/lib/hooks/use-level-up";
@@ -32,23 +35,45 @@ function DashboardPage() {
         <GreetingBar />
       </View>
 
-      {/* Activity rings + weekly activity */}
+      {/* Daily progress + weekly activity. Left column stacks two cards:
+          the overview (combined rings + level) and the per-category
+          breakdown. They stack under the weekly chart on phones. */}
       <YStack gap="$4" $md={{ flexDirection: "row" }}>
         <View $md={{ flex: 5 }}>
-          <BentoCard index={1}>
-            <Link
-              to="/journey"
-              style={{ display: "block", textDecoration: "none" }}
-            >
-              <ActivityRings date={today} size="xl" showLabels bare />
-              {userLight ? (
-                <LevelProgress userLight={userLight} className="mt-4" />
-              ) : null}
-            </Link>
-          </BentoCard>
+          <YStack gap="$4">
+            {/* Overview — combined rings (centered) + level progress. */}
+            <BentoCard index={1}>
+              <Link
+                to="/journey"
+                style={{ display: "block", textDecoration: "none" }}
+              >
+                {/* The bare ring is content-width; center it in the card. */}
+                <XStack justify="center">
+                  <ActivityRings date={today} size="xl" bare />
+                </XStack>
+                {userLight ? (
+                  // LevelProgress owns no margin (its only prop is `userLight`);
+                  // space it from the rings with a Tamagui margin wrapper.
+                  <View mt="$5">
+                    <LevelProgress userLight={userLight} />
+                  </View>
+                ) : null}
+              </Link>
+            </BentoCard>
+
+            {/* Breakdown — one row per category, ring on the trailing edge. */}
+            <BentoCard index={2}>
+              <Link
+                to="/journey"
+                style={{ display: "block", textDecoration: "none" }}
+              >
+                <ActivityRingsBreakdown date={today} />
+              </Link>
+            </BentoCard>
+          </YStack>
         </View>
         <View $md={{ flex: 7 }}>
-          <BentoCard title="Weekly Activity" index={2}>
+          <BentoCard title="Weekly Activity" index={3}>
             <WeeklyActivityChart />
           </BentoCard>
         </View>
@@ -57,20 +82,20 @@ function DashboardPage() {
       {/* Today's todos + habit summary */}
       <YStack gap="$4" $md={{ flexDirection: "row" }}>
         <View $md={{ flex: 5 }}>
-          <TodayTodos index={3} />
+          <TodayTodos index={4} />
         </View>
         <View $md={{ flex: 7 }}>
-          <HabitSummary index={4} />
+          <HabitSummary index={5} />
         </View>
       </YStack>
 
       {/* Journal growth — full width */}
-      <BentoCard title="Journal Growth" index={5}>
+      <BentoCard title="Journal Growth" index={6}>
         <JournalGrowthChart />
       </BentoCard>
 
       {/* Light growth — full width */}
-      <BentoCard title="Light Growth" index={6}>
+      <BentoCard title="Light Growth" index={7}>
         <LightEarnedChart />
       </BentoCard>
 

@@ -1,5 +1,6 @@
 import {
   ActivityRings as ActivityRingsView,
+  ActivityRingsBreakdown as ActivityRingsBreakdownView,
   type ActivityRingsSize,
 } from "@repo/features/activity-rings";
 import { useActivityRings } from "@/lib/hooks/use-activity-rings";
@@ -26,6 +27,29 @@ export function ActivityRings({ date, ...rest }: ActivityRingsProps) {
       details={details}
       isLoading={isLoading}
       {...rest}
+    />
+  );
+}
+
+/**
+ * PWA wrapper for the per-category breakdown (the companion card to the
+ * combined rings). Shares the cached `useActivityRings(date)` query with
+ * `<ActivityRings>` above, so rendering both cards costs one fetch.
+ */
+export function ActivityRingsBreakdown({
+  date,
+  className,
+}: {
+  date: string;
+  className?: string;
+}) {
+  const { data, isLoading, details } = useActivityRings(date);
+  return (
+    <ActivityRingsBreakdownView
+      data={data}
+      details={details}
+      isLoading={isLoading}
+      className={className}
     />
   );
 }

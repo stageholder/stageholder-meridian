@@ -6,7 +6,9 @@
 
 export {
   ActivityRings,
+  ActivityRingsBreakdown,
   type ActivityRingsProps,
+  type ActivityRingsBreakdownProps,
   type ActivityRingsSize,
 } from "./activity-rings";
 

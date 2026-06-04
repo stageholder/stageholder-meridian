@@ -1,6 +1,7 @@
 import { CheckSquare, Target, BookOpen } from "lucide-react";
 import {
   ActivityRings as KitActivityRings,
+  ProgressRing,
   Skeleton,
   Text,
   View,
@@ -136,9 +137,24 @@ export function ActivityRings({
       p={bare ? undefined : "$5"}
     >
       {/* Column on phone, row at sm+ (Tamagui media — same on web + RN). */}
-      <YStack items="center" gap="$5" $sm={{ flexDirection: "row" }}>
+      <YStack
+        width="100%"
+        items="center"
+        gap="$5"
+        $sm={{ flexDirection: "row" }}
+      >
         {ring}
-        <YStack minW={0} flex={1} gap="$3">
+        {/* Phone (column): full-width so the legend rows span the card and
+            don't collapse to a centered content-width block. sm+ (row): drop
+            the explicit width and flex-fill the space beside the ring.
+            `flex={1}`'s flexBasis:0% alone left it content-width in the column,
+            which is what made the rows pile up / overlap on mobile. */}
+        <YStack
+          minW={0}
+          width="100%"
+          gap="$3"
+          $sm={{ width: "auto", flexGrow: 1, flexShrink: 1, flexBasis: 0 }}
+        >
           {CATEGORIES.map(({ key, label, color, icon: Icon }) => (
             <XStack key={key} items="center" gap="$3">
               {/* Ring colors are viz CSS vars — kept via the style hatch so the
@@ -163,5 +179,97 @@ export function ActivityRings({
         </YStack>
       </YStack>
     </View>
+  );
+}
+
+export interface ActivityRingsBreakdownProps {
+  data: ActivityRingsData;
+  details: ActivityRingsDetails;
+  isLoading?: boolean;
+  className?: string;
+}
+
+/**
+ * Companion to `<ActivityRings>`: a vertical, per-category breakdown meant
+ * for its own card (below the combined rings + level progress). Each row
+ * pairs the category label + `fraction · %` on the left with a small
+ * single-category `<ProgressRing>` on the right — the same row pattern as
+ * the header's daily-target popover, flipped so the ring trails the text.
+ *
+ * Presentational only: the host feeds the same `data`/`details` it passes
+ * to `<ActivityRings>` (the per-day hook is cached, so calling it for both
+ * cards is free). Cross-platform — kit primitives only, no `.native.tsx`.
+ */
+export function ActivityRingsBreakdown({
+  data,
+  details,
+  isLoading,
+  className,
+}: ActivityRingsBreakdownProps) {
+  if (isLoading) {
+    return (
+      <YStack gap="$4" className={className}>
+        {[0, 1, 2].map((i) => (
+          <XStack key={i} items="center" gap="$3">
+            <YStack flex={1} gap="$1.5">
+              <Skeleton height={16} width={84} />
+              <Skeleton height={12} width={132} />
+            </YStack>
+            <Skeleton height={48} width={48} rounded={9999} />
+          </XStack>
+        ))}
+      </YStack>
+    );
+  }
+
+  const fractions: Record<string, string> = {
+    todo: `${details.todoDone}/${details.todoTarget}`,
+    habit: `${details.habitDone}/${details.habitTotal}`,
+    journal: `${details.journalWords}/${details.journalTarget} words`,
+  };
+  const percentages: Record<string, number> = {
+    todo: Math.round(data.todo),
+    habit: Math.round(data.habit),
+    journal: Math.round(data.journal),
+  };
+
+  return (
+    <YStack gap="$4" className={className}>
+      {CATEGORIES.map(({ key, label, color, icon: Icon }) => {
+        const pct = percentages[key];
+        return (
+          <XStack key={key} items="center" gap="$3" width="100%">
+            {/* Label + value fill the row; minW:0 lets the value truncate
+                instead of pushing the ring off the edge on narrow cards. */}
+            <YStack flex={1} minW={0} gap={2}>
+              <Text fontSize="$4" fontWeight="600" color="$color">
+                {label}
+              </Text>
+              <Text
+                fontSize="$2"
+                color="$mutedForeground"
+                style={{ fontVariantNumeric: "tabular-nums" }}
+              >
+                {fractions[key]} · {pct}%
+              </Text>
+            </YStack>
+            {/* Single-category ring on the trailing edge — same viz colors as
+                the combined <ActivityRings>, via the kit ProgressRing. */}
+            <ProgressRing
+              value={pct}
+              size={48}
+              thickness={4}
+              fillColor={color}
+              trackColor={RING_CATEGORY[key].track}
+            >
+              {/* Ring color flows to the lucide icon via currentColor. */}
+              <Text shrink={0} lineHeight={0} style={{ color }}>
+                <Icon size={18} />
+              </Text>
+            </ProgressRing>
+          </XStack>
+        );
+      })}
+    </YStack>
   );
 }
