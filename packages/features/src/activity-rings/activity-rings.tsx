@@ -241,7 +241,7 @@ export function ActivityRingsBreakdown({
           <XStack key={key} items="center" gap="$3" width="100%">
             {/* Label + value fill the row; minW:0 lets the value truncate
                 instead of pushing the ring off the edge on narrow cards. */}
-            <YStack flex={1} minW={0} gap={2}>
+            <YStack flex={1} minW={0} gap="$0.5">
               <Text fontSize="$4" fontWeight="600" color="$color">
                 {label}
               </Text>
