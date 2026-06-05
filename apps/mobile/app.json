@@ -4,6 +4,7 @@
     "slug": "meridian-mobile",
     "version": "0.0.1",
     "orientation": "portrait",
+    "platforms": ["ios", "android"],
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "scheme": "meridian",

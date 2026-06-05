@@ -34,7 +34,12 @@ import { MoodDisplay } from "@repo/features/journal";
 import type { Journal } from "@repo/core/types";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+
+import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
 
 import { useJournal } from "@/lib/api";
 import {
@@ -51,6 +56,7 @@ function parseDateLocal(input: string): Date {
 }
 
 export default function JournalDetailScreen() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const journalQuery = useJournal(id);
@@ -201,7 +207,13 @@ export default function JournalDetailScreen() {
     <YStack flex={1} bg="$background">
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
         {backBar}
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          // Clearance for the floating BottomNav capsule (PWA shell parity).
+          contentContainerStyle={{
+            paddingBottom: BOTTOM_NAV_CLEARANCE + insets.bottom,
+          }}
+        >
           <YStack gap="$4" px="$4" pt="$2" pb="$10">
             <YStack gap="$2">
               <H1 fontSize="$8" fontWeight="700" color="$color">

@@ -32,7 +32,12 @@ import {
   useToast,
 } from "@stageholder/ui";
 import Constants from "expo-constants";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+
+import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
 
 import { useAppTheme, type ThemePreference } from "@/lib/platform/theme";
 
@@ -43,6 +48,7 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
 ];
 
 export default function SettingsScreen() {
+  const insets = useSafeAreaInsets();
   const { user, isLoading: userLoading } = useUser();
   const { signOut } = useStageholder();
   const { theme, setTheme } = useAppTheme();
@@ -72,7 +78,13 @@ export default function SettingsScreen() {
   return (
     <YStack flex={1} bg="$background">
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          // Clearance for the floating BottomNav capsule (PWA shell parity).
+          contentContainerStyle={{
+            paddingBottom: BOTTOM_NAV_CLEARANCE + insets.bottom,
+          }}
+        >
           <YStack gap="$5" px="$4" pt="$4" pb="$10">
             <Text fontSize="$8" fontWeight="700" color="$color">
               Settings

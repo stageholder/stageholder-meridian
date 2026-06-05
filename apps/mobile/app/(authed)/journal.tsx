@@ -23,7 +23,6 @@ import {
   Banner,
   Button,
   EmptyState,
-  FAB,
   PullToRefresh,
   Spinner,
   Text,
@@ -31,14 +30,19 @@ import {
   YStack,
   useToast,
 } from "@stageholder/ui";
-import { Plus } from "@tamagui/lucide-icons-2";
 import { JournalList } from "@repo/features/journal";
 import { PassphrasePrompt } from "@repo/features/encryption";
 import type { Journal } from "@repo/core/types";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
+import { CreateFab } from "@/components/create-fab";
+import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
+import { IGNITION } from "@/lib/ignition-palette";
 import { useJournals } from "@/lib/api";
 import {
   checkJournalStatus,
@@ -51,6 +55,7 @@ import {
 export default function JournalScreen() {
   const router = useRouter();
   const toast = useToast();
+  const insets = useSafeAreaInsets();
   const journalsQuery = useJournals();
   const { isSetup, isUnlocked, isLoading: statusLoading } = useJournalCrypto();
 
@@ -156,7 +161,10 @@ export default function JournalScreen() {
         <PullToRefresh
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          contentContainerStyle={{ paddingBottom: 40 }}
+          // Clearance for the floating BottomNav capsule (PWA shell parity).
+          contentContainerStyle={{
+            paddingBottom: BOTTOM_NAV_CLEARANCE + insets.bottom,
+          }}
         >
           <YStack gap="$4" px="$4" pt="$4" pb="$10">
             <Text fontSize="$8" fontWeight="700" color="$color">
@@ -206,12 +214,12 @@ export default function JournalScreen() {
         </PullToRefresh>
       </SafeAreaView>
 
-      {/* Creation deferred — rich editing is web-only this pass. */}
-      <FAB
-        icon={<Plus size={24} color="#ffffff" />}
-        placement="bottom-right"
+      {/* Creation deferred — rich editing is web-only this pass. CreateFab
+          mirrors the PWA's: lifted above the capsule, journal-yellow tint. */}
+      <CreateFab
+        label="New journal entry"
+        tint={IGNITION.journal.base}
         onPress={deferCreate}
-        b={96}
       />
     </YStack>
   );

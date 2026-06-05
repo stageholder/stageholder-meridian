@@ -41,7 +41,12 @@ import type { HabitEntry, Todo } from "@repo/core/types";
 import { useQueries } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+
+import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
 
 import {
   apiClient,
@@ -81,6 +86,7 @@ function todayLabel(): string {
 }
 
 export default function TodayScreen() {
+  const insets = useSafeAreaInsets();
   const { user } = useUser();
   const router = useRouter();
   const today = localDateKey();
@@ -249,7 +255,10 @@ export default function TodayScreen() {
         <PullToRefresh
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          contentContainerStyle={{ paddingBottom: 32 }}
+          // Clearance for the floating BottomNav capsule (PWA shell parity).
+          contentContainerStyle={{
+            paddingBottom: BOTTOM_NAV_CLEARANCE + insets.bottom,
+          }}
         >
           <YStack gap="$5" px="$4" pt="$4" pb="$8">
             {/* ---- Header: date + greeting ---- */}

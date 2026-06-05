@@ -20,10 +20,21 @@ import "@tamagui/native/setup-teleport"
 // the hood (which we already have installed for SwipeableRow etc).
 import "@tamagui/native/setup-gesture-handler"
 
-// Native menu support for ContextMenu / DropdownMenu via zeego. Tamagui v2
-// requires this opt-in import; without it, every render of a menu primitive
-// logs a warning about it not being set up.
-import "@tamagui/native/setup-zeego"
+// LinearGradient driver for the kit's GradientSurface on native (the level
+// progress bar's gold fill, etc). Required at root or every GradientSurface
+// render warns "Must call import '@tamagui/native/setup-expo-linear-gradient'
+// at root". Backed by expo-linear-gradient (an install dep).
+import "@tamagui/native/setup-expo-linear-gradient"
+
+// setup-zeego intentionally SKIPPED — matches the kit reference app
+// (stageholder-ui/apps/docs-expo/index.ts). It enables zeego-backed menus
+// for TAMAGUI'S OWN menu primitives, which @stageholder/ui doesn't use:
+// the kit's DropdownMenu/ContextMenu are built on Popover + Adapt→Sheet
+// (pure Tamagui, cross-platform). Importing it without the `zeego` package
+// installed just logs "Error setting up Zeego" at every startup.
+// If a future feature wants real native menus: `bun add zeego` (+ its
+// native deps + prebuild), then restore:
+// import "@tamagui/native/setup-zeego"
 
 // Now hand off to Expo Router. Order is critical — the imports above set
 // up module-level state that the router's screens depend on.

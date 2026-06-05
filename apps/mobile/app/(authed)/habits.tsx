@@ -9,16 +9,16 @@
 // `useHabitEntries` query + several mutation hooks, and React hooks can't run
 // inside a `.map`. The row owns its own mutation wiring; the screen just lists.
 //
-// Creation/editing is DEFERRED this pass — the habit form (icon picker, day
-// scheduler, quota config) is a substantial surface that lives on the web app
-// for now. The FAB surfaces that intent with a toast rather than a dead button,
-// so the affordance is discoverable but honest about where to create.
+// Creation uses the SAME cross-platform flow as the PWA: the kit Dialog adapts
+// to a bottom Sheet on mobile and hosts the shared HabitForm (icon picker via
+// the kit EmojiPickerSheet, day scheduler, quota config) — see
+// components/create-habit-dialog.tsx. The FAB opens it. EDIT/detail of an
+// existing habit is still deferred (the per-card menu nudges to the web app).
 
 import {
   Banner,
   Button,
   EmptyState,
-  FAB,
   PullToRefresh,
   Spinner,
   Text,
@@ -26,14 +26,17 @@ import {
   YStack,
   useToast,
 } from "@stageholder/ui";
-// Icons come straight from @tamagui/lucide-icons-2 (the kit doesn't re-export
-// them) — they read their OWN `color` prop, so tint goes directly on the icon.
-import { Plus } from "@tamagui/lucide-icons-2";
 import { HabitCard } from "@repo/features/habits";
 import type { Habit } from "@repo/core/types";
 import { useMemo, useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
+import { CreateFab } from "@/components/create-fab";
+import { CreateHabitDialog } from "@/components/create-habit-dialog";
+import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
 import {
   useCheckInHabit,
   useDeleteHabit,
@@ -49,7 +52,9 @@ import { localDateKey } from "@/lib/streak";
 export default function HabitsScreen() {
   const habitsQuery = useHabits();
   const toast = useToast();
+  const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -66,11 +71,13 @@ export default function HabitsScreen() {
     [habits],
   );
 
-  function notifyManageOnWeb() {
+  // Edit/detail of an EXISTING habit isn't built on mobile yet — the per-card
+  // menu nudges to the web app. (Creation IS native — see the FAB below.)
+  function notifyEditOnWeb() {
     toast.show({
-      title: "Create habits on the web app",
+      title: "Edit on the web app",
       message:
-        "Habit creation (schedule, icon, quota) lives on the web app for now.",
+        "Editing a habit's schedule, icon, and quota lives on the web app for now.",
       intent: "info",
     });
   }
@@ -83,7 +90,11 @@ export default function HabitsScreen() {
         <PullToRefresh
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          contentContainerStyle={{ paddingBottom: 40 }}
+          // Clearance for the floating BottomNav capsule — same contract as
+          // the PWA shell's pb-[calc(5.5rem+env(safe-area-inset-bottom))].
+          contentContainerStyle={{
+            paddingBottom: BOTTOM_NAV_CLEARANCE + insets.bottom,
+          }}
         >
           <YStack gap="$4" px="$4" pt="$4" pb="$10">
             <Text fontSize="$8" fontWeight="700" color="$color">
@@ -123,12 +134,11 @@ export default function HabitsScreen() {
                 <EmptyState.Title>No habits yet</EmptyState.Title>
                 <EmptyState.Description>
                   Add a daily ritual you want to keep — a walk, a few pages, ten
-                  minutes of stillness. Create your first habit on the web app,
-                  then check in here.
+                  minutes of stillness.
                 </EmptyState.Description>
                 <EmptyState.Actions>
-                  <Button intent="outline" onPress={notifyManageOnWeb}>
-                    How to add a habit
+                  <Button intent="primary" onPress={() => setCreateOpen(true)}>
+                    Create your first habit
                   </Button>
                 </EmptyState.Actions>
               </EmptyState>
@@ -139,22 +149,23 @@ export default function HabitsScreen() {
               <HabitCardRow
                 key={habit.id}
                 habit={habit}
-                onManageOnWeb={notifyManageOnWeb}
+                onManageOnWeb={notifyEditOnWeb}
               />
             ))}
           </YStack>
         </PullToRefresh>
       </SafeAreaView>
 
-      {/* Creation deferred — the FAB nudges toward the web app via a toast
-          instead of opening a (not-yet-built) mobile habit form. Lifted above
-          the tab bar so it isn't covered. */}
-      <FAB
-        icon={<Plus size={24} color="#ffffff" />}
-        placement="bottom-right"
-        onPress={notifyManageOnWeb}
-        b={96}
+      {/* Create — opens the shared HabitForm in a bottom Sheet (same flow as
+          the PWA). CreateFab mirrors the PWA's: lifted above the capsule,
+          habit-orange tint. */}
+      <CreateFab
+        label="New habit"
+        tint={IGNITION.habit.base}
+        onPress={() => setCreateOpen(true)}
       />
+
+      <CreateHabitDialog open={createOpen} onOpenChange={setCreateOpen} />
     </YStack>
   );
 }

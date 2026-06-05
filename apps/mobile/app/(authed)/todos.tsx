@@ -6,11 +6,15 @@
 // (the todos hooks expose `useCreateTodo`, so we surface it rather than
 // deferring).
 //
+// Two create affordances mirror the PWA: the quick-add row captures a
+// title-only todo fast, and the FAB opens the full CreateTodoDialog (priority,
+// due/do dates, list) as a bottom Sheet — same shared TodoForm the PWA uses.
+//
 // Grouping is kept trivial: open todos first (the working set), a thin
 // "Completed" section after. The web app owns the richer two-axis
 // list/time filtering; mobile is a focused capture + complete surface this
-// pass. Detail editing (priority, due date, subtasks) is deferred — tapping a
-// row opens the web app for now via a toast.
+// pass. Detail editing of an existing todo (subtasks, etc.) is deferred —
+// tapping a row opens the web app for now via a toast.
 
 import {
   Banner,
@@ -30,7 +34,15 @@ import { Plus } from "@tamagui/lucide-icons-2";
 import { TodoItem } from "@repo/features/todos";
 import type { Todo } from "@repo/core/types";
 import { useMemo, useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+
+import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
+import { CreateFab } from "@/components/create-fab";
+import { CreateTodoDialog } from "@/components/create-todo-dialog";
+import { IGNITION } from "@/lib/ignition-palette";
 
 import {
   useCreateTodo,
@@ -40,6 +52,7 @@ import {
 } from "@/lib/api";
 
 export default function TodosScreen() {
+  const insets = useSafeAreaInsets();
   const todosQuery = useTodos();
   const createTodo = useCreateTodo();
   const toggleTodo = useToggleTodo();
@@ -48,6 +61,7 @@ export default function TodosScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
   const [draft, setDraft] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -137,7 +151,10 @@ export default function TodosScreen() {
         <PullToRefresh
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          contentContainerStyle={{ paddingBottom: 40 }}
+          // Clearance for the floating BottomNav capsule (PWA shell parity).
+          contentContainerStyle={{
+            paddingBottom: BOTTOM_NAV_CLEARANCE + insets.bottom,
+          }}
         >
           <YStack gap="$2" px="$4" pt="$3" pb="$10">
             {/* Error */}
@@ -170,8 +187,8 @@ export default function TodosScreen() {
                 </EmptyState.IconSlot>
                 <EmptyState.Title>Nothing to do</EmptyState.Title>
                 <EmptyState.Description>
-                  Capture the next thing on your mind in the box above. You can
-                  set priority and due dates on the web app.
+                  Capture the next thing on your mind in the box above, or tap
+                  the + button to set priority and dates.
                 </EmptyState.Description>
               </EmptyState>
             ) : null}
@@ -222,6 +239,17 @@ export default function TodosScreen() {
           </YStack>
         </PullToRefresh>
       </SafeAreaView>
+
+      {/* Full create — priority, due/do dates, list — in a bottom Sheet, the
+          same shared TodoForm the PWA opens. Quick-add above stays for
+          title-only capture. todo-red tint, lifted above the capsule. */}
+      <CreateFab
+        label="New todo"
+        tint={IGNITION.todo.base}
+        onPress={() => setCreateOpen(true)}
+      />
+
+      <CreateTodoDialog open={createOpen} onOpenChange={setCreateOpen} />
     </YStack>
   );
 }
