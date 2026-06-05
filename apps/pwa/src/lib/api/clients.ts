@@ -1,9 +1,9 @@
 /**
  * Single Source of Truth for instantiating the framework-agnostic
- * `@repo/core/api/*` factories. Hooks (`lib/api/*.ts`) and the offline
- * sync manager (`lib/offline.ts`) both import the *instances* from here
- * instead of constructing factories or calling `apiClient.get/post/...`
- * inline with hand-rolled paths and response unwrapping.
+ * `@repo/core/api/*` factories. The hooks (`lib/api/*.ts`) import the
+ * *instances* from here instead of constructing factories or calling
+ * `apiClient.get/post/...` inline with hand-rolled paths and response
+ * unwrapping.
  *
  * Mirror this file in `apps/mobile/src/lib/api/clients.ts` with mobile's
  * `apiClient` — the only difference between the two apps is the underlying

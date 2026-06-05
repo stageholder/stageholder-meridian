@@ -11,5 +11,10 @@
     }
   },
   "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+  // The package's tsc check is WEB-oriented (it resolves @stageholder/ui's web
+  // entry, not its react-native condition, and doesn't have react-native /
+  // react-native-svg types installed). The `.native.*` siblings are RN-typed
+  // and only compiled by the mobile app's Metro/tsc — exclude them here so the
+  // web check doesn't try (and fail) to type them.
+  "exclude": ["node_modules", "dist", "**/*.native.ts", "**/*.native.tsx"]
 }

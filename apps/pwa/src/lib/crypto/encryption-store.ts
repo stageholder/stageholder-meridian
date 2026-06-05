@@ -10,8 +10,8 @@ import {
   saltFromBase64,
   generateRecoveryCodes,
 } from "@repo/crypto";
-import { db } from "@repo/offline/db";
 import apiClient from "@/lib/api-client";
+import { queryClient } from "@/lib/query-client";
 
 export interface EncryptionState {
   dek: CryptoKey | null;
@@ -51,7 +51,6 @@ export const useEncryptionStore = create<EncryptionState>()((set, get) => ({
   },
 
   checkStatus: async () => {
-    const { userSub } = get();
     set({ isLoading: true });
     try {
       const res = await apiClient.get("/journal-security/keys");
@@ -61,31 +60,22 @@ export const useEncryptionStore = create<EncryptionState>()((set, get) => ({
         wrappedDek: wrappedDek ?? null,
         salt: salt ?? null,
       });
-      // Cache the wrapped blob so the unlock flow works offline on the
-      // next load. We only cache when the server confirms encryption is
-      // set up and we have both halves of the material.
-      if (encryptionEnabled && wrappedDek && salt && userSub) {
-        await db.journalSecurityCache.put({
-          userSub,
-          passphraseWrappedDek: wrappedDek,
-          passphraseSalt: salt,
-          updatedAt: Date.now(),
-        });
-      }
+      // (Previously the wrapped blob was also cached to Dexie so the
+      // unlock flow worked offline on the next load. Offline storage is
+      // gone — keys come from the server on every load now.)
     } catch {
-      // Offline fallback — use the cache if present
-      if (userSub) {
-        const cached = await db.journalSecurityCache.get(userSub);
-        if (cached) {
-          set({
-            isSetup: true,
-            wrappedDek: cached.passphraseWrappedDek,
-            salt: cached.passphraseSalt,
-          });
-          return;
-        }
-      }
-      set({ isSetup: false });
+      // The /journal-security/keys call failed (offline or 5xx). Without
+      // the old Dexie fallback we can't know the encryption state, so
+      // treat it as not-set-up; the next successful checkStatus corrects it.
+      //
+      // Reset dek/isUnlocked too — not just isSetup. set() is a shallow merge,
+      // so a transient failure AFTER the user unlocked would otherwise leave a
+      // null-but-stale combination: isSetup=false makes isLocked compute false
+      // in the journal hooks (so queries fire), but if a stale dek lingered the
+      // queryFn's `if (dek)` branch could still mishandle the boundary. Forcing
+      // the fully-locked state keeps every consumer on the safe path until the
+      // next successful checkStatus.
+      set({ isSetup: false, dek: null, isUnlocked: false });
     } finally {
       set({ isLoading: false });
     }
@@ -120,13 +110,6 @@ export const useEncryptionStore = create<EncryptionState>()((set, get) => ({
       salt: passphraseSalt,
     });
 
-    await db.journalSecurityCache.put({
-      userSub,
-      passphraseWrappedDek,
-      passphraseSalt,
-      updatedAt: Date.now(),
-    });
-
     return recoveryCodes;
   },
 
@@ -145,10 +128,22 @@ export const useEncryptionStore = create<EncryptionState>()((set, get) => ({
 
   lock: () => {
     set({ dek: null, isUnlocked: false });
+    // Drop the DECRYPTED journal data from the query cache. Without the DEK
+    // we can no longer read it, and leaving plaintext journals cached for a
+    // now-locked session would defeat at-rest locking. Previously the offline
+    // layer wiped Dexie journal rows on lock; the react-query cache is the
+    // equivalent surface now. `removeQueries` (not invalidate) so the data is
+    // gone immediately rather than refetched-and-re-cached while still locked.
+    // `queryClient` is the live module-level singleton the app's
+    // `<QueryClientProvider>` renders, so this eviction hits the same cache the
+    // UI reads (the old `getQueryClient()` indirection always returned null
+    // because its provider was never mounted, making this a silent no-op).
+    queryClient.removeQueries({ queryKey: ["journals"] });
+    queryClient.removeQueries({ queryKey: ["journal"] });
   },
 
   changePassphrase: async (oldPassphrase: string, newPassphrase: string) => {
-    const { wrappedDek, salt, userSub } = get();
+    const { wrappedDek, salt } = get();
     if (!wrappedDek || !salt) {
       throw new Error("Encryption keys not loaded.");
     }
@@ -174,15 +169,6 @@ export const useEncryptionStore = create<EncryptionState>()((set, get) => ({
       wrappedDek: newWrappedDek,
       salt: newSaltStr,
     });
-
-    if (userSub) {
-      await db.journalSecurityCache.put({
-        userSub,
-        passphraseWrappedDek: newWrappedDek,
-        passphraseSalt: newSaltStr,
-        updatedAt: Date.now(),
-      });
-    }
   },
 
   recoverWithCodes: async (
@@ -219,13 +205,6 @@ export const useEncryptionStore = create<EncryptionState>()((set, get) => ({
       isSetup: true,
       wrappedDek: newPassphraseWrappedDek,
       salt: saltToBase64(newSalt),
-    });
-
-    await db.journalSecurityCache.put({
-      userSub,
-      passphraseWrappedDek: newPassphraseWrappedDek,
-      passphraseSalt: saltToBase64(newSalt),
-      updatedAt: Date.now(),
     });
 
     return newCodes;

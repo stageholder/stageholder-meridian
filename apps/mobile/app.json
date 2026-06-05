@@ -24,13 +24,7 @@
         {
           "action": "VIEW",
           "category": ["BROWSABLE", "DEFAULT"],
-          "data": [
-            {
-              "scheme": "meridian",
-              "host": "auth",
-              "pathPrefix": "/callback"
-            }
-          ]
+          "data": [{ "scheme": "meridian" }]
         }
       ]
     },

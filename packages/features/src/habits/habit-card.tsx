@@ -1,6 +1,12 @@
 import { useState, type ReactNode } from "react";
 import { format, subDays, startOfWeek, addDays } from "date-fns";
-import { Check, MoreHorizontal, SkipForward, Undo2, X } from "lucide-react";
+import {
+  Check,
+  MoreHorizontal,
+  SkipForward,
+  Undo2,
+  X,
+} from "@tamagui/lucide-icons-2";
 import {
   AlertDialog,
   Button,
@@ -88,8 +94,9 @@ export interface HabitCardProps {
  *
  * Cross-platform:
  *  - All chrome via the kit (`@stageholder/ui`).
- *  - `lucide-react` icons (already shared; planned swap to
- *    `lucide-react-native` on mobile via the platform-suffix split).
+ *  - `@tamagui/lucide-icons-2` icons (cross-platform: HTML SVG on web,
+ *    react-native-svg on native; they read their OWN `color` prop, not the
+ *    CSS cascade, so tints go directly on the icon).
  *  - The web-only `habit-card-completing` CSS keyframe stays as a
  *    `className`; on native this is a noop and the host can layer a
  *    Reanimated alternative through `renderCompletionEffect`.
@@ -448,9 +455,8 @@ export function HabitCard({
                 transition="quick"
                 scale={bouncing ? 1.1 : 1}
               >
-                <Text color="$success" lineHeight={0}>
-                  <Check size={14} />
-                </Text>
+                {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
+                <Check size={14} color="$success" />
                 <Text fontSize="$1" fontWeight="600" color="$success">
                   Logged
                 </Text>
@@ -510,9 +516,8 @@ export function HabitCard({
                 transition="quick"
                 scale={bouncing ? 1.1 : 1}
               >
-                <Text color="$success" lineHeight={0}>
-                  <Check size={14} />
-                </Text>
+                {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
+                <Check size={14} color="$success" />
                 <Text fontSize="$1" fontWeight="600" color="$success">
                   Complete
                 </Text>
@@ -526,9 +531,8 @@ export function HabitCard({
                 py="$1.5"
                 bg="$muted"
               >
-                <Text color="$mutedForeground" lineHeight={0}>
-                  <SkipForward size={12} />
-                </Text>
+                {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
+                <SkipForward size={12} color="$mutedForeground" />
                 <Text fontSize="$1" fontWeight="600" color="$mutedForeground">
                   Skipped
                 </Text>
@@ -542,9 +546,8 @@ export function HabitCard({
                 py="$1.5"
                 bg="$destructiveMuted"
               >
-                <Text color="$destructive" lineHeight={0}>
-                  <X size={12} />
-                </Text>
+                {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
+                <X size={12} color="$destructive" />
                 <Text fontSize="$1" fontWeight="600" color="$destructive">
                   Failed
                 </Text>

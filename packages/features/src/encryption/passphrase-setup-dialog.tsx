@@ -13,7 +13,7 @@ import {
 } from "@stageholder/ui";
 // Form isn't re-exported by the kit yet; pull it from the shared tamagui dep.
 import { Form } from "tamagui";
-import { Shield, Copy, Check } from "lucide-react";
+import { Shield, Copy, Check } from "@tamagui/lucide-icons-2";
 
 export interface PassphraseSetupDialogProps {
   /** Controls dialog visibility. */
@@ -138,9 +138,9 @@ export function PassphraseSetupDialog({
                   stacks the block-level boundaries. */}
               <YStack gap="$2">
                 <XStack items="center" gap="$2">
-                  <Text color="$cardForeground" lineHeight={0}>
-                    <Shield size={20} />
-                  </Text>
+                  {/* lucide-icons-2 reads its own `color` (no CSS cascade) —
+                      tint the icon directly, dropping the tint-only Text. */}
+                  <Shield size={20} color="$cardForeground" />
                   <Dialog.Title>Set Up Journal Encryption</Dialog.Title>
                 </XStack>
                 <Dialog.Description>

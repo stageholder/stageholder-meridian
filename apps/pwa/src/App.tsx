@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { useAppTheme } from "@/lib/platform/theme";
 import { RouterProvider } from "@tanstack/react-router";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { StageholderSpaProvider, useOrg, useUser } from "@stageholder/sdk/spa";
 import {
   TamaguiProvider,
@@ -19,13 +19,8 @@ import {
 import { PaywallListener } from "@/components/paywall-listener";
 import { EncryptionStoreInitializer } from "@/components/providers/encryption-store-initializer";
 import { LogProvider } from "@/components/shared/log-provider";
+import { queryClient } from "@/lib/query-client";
 import tamaguiConfig from "../tamagui.config";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { retry: 1, refetchOnWindowFocus: false, staleTime: 30_000 },
-  },
-});
 
 function InnerApp() {
   const { user, isLoading: userLoading } = useUser();
@@ -154,8 +149,7 @@ export function App() {
            * the Meridian API's own 402 paywall responses.
            *
            * EncryptionStoreInitializer: hydrates journal-encryption store
-           * from OIDC `sub` once authenticated; drops queued offline
-           * mutations from any previously signed-in user.
+           * from OIDC `sub` once authenticated.
            *
            * LogProvider: installs the platform logger's global error capture.
            */}

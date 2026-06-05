@@ -13,15 +13,12 @@ import {
 } from "@tamagui/lucide-icons-2";
 import { isDesktop } from "@repo/core/platform";
 import { openURL } from "@repo/core/platform/linking";
-import { syncAll } from "@/lib/offline";
 import { subscribeLogout } from "@/lib/auth-broadcast";
 import { useUserLight } from "@/lib/api/light";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { JourneyTierBadge } from "@/components/layout/journey-tier-badge";
 import { navItems, isNavActive } from "@/components/layout/nav-items";
 import { useUserMenuItems } from "@/components/layout/use-user-menu";
-import { OfflineIndicator } from "@/components/shared/offline-indicator";
-import { SyncConflictListener } from "@/components/shared/sync-conflict-toast";
 import { UpdateChecker } from "@/components/shared/update-checker";
 import { DailyTargetRings } from "@/components/shared/daily-target-rings";
 import { FeedbackButton } from "@/components/shared/feedback-button";
@@ -110,13 +107,6 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
   // Account/user menu — shared with the mobile bottom-nav Profile sheet so the
   // two never drift (see use-user-menu.ts).
   const menuItems = useUserMenuItems();
-  // One-shot sync on mount. No interval polling, no focus refetch, no
-  // /health heartbeat — mutations already invalidate their own caches,
-  // and the rest stays hydrated from Dexie until the user explicitly
-  // refreshes.
-  useEffect(() => {
-    void syncAll();
-  }, []);
 
   const { data: userLight } = useUserLight();
 
@@ -171,7 +161,6 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <SyncConflictListener />
       <UpdateChecker />
       <CommandPalette
         open={commandPaletteOpen}
@@ -404,7 +393,7 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
               — without collapsing the cluster, since shrink={0} fixes its
               width. Popover/menu dropdowns are portalled, so they're unaffected. */}
           <Header.Actions shrink={0} overflow="hidden">
-            {/* Decorative — desktop only so the essentials (offline / trial /
+            {/* Decorative — desktop only so the essentials (trial /
                 user menu) always fit and never clip on narrow widths. */}
             <XStack
               items="center"
@@ -415,7 +404,6 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
               <DailyTargetRings />
               <View width={1} height={16} bg="$borderColor" mx="$1" />
             </XStack>
-            <OfflineIndicator />
             <TrialPill />
 
             {/* Journey / tier progress. Renders a compact ring (mobile) or

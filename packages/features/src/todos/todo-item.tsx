@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { Calendar, Check, Clock, ListChecks, Trash2 } from "lucide-react";
+import {
+  Calendar,
+  Check,
+  Clock,
+  ListChecks,
+  Trash2,
+} from "@tamagui/lucide-icons-2";
 import { IconButton, Text, View, XStack, YStack } from "@stageholder/ui";
 import type { Todo } from "@repo/core/types";
 
@@ -102,11 +108,12 @@ export interface TodoItemProps {
  * `onToggle` to `useUpdateTodo`, `onDelete` to `useDeleteTodo`, and
  * `onOpenDetail` to its detail-dialog open state.
  *
- * Cross-platform: raw `<svg>` checkmark + meta icons swapped for
- * `lucide-react` icons (the same dep already pulled in everywhere). The
- * burn animation uses Tamagui's `enterStyle`+`transition` which run on
- * both web (CSS driver) and native (Reanimated). `window.setTimeout`
- * replaced with `setTimeout` (available on both runtimes).
+ * Cross-platform: meta + checkmark icons are `@tamagui/lucide-icons-2`
+ * (HTML SVG on web, react-native-svg on native; they read their OWN `color`
+ * prop, not the CSS cascade). The burn animation uses Tamagui's
+ * `enterStyle`+`transition` which run on both web (CSS driver) and native
+ * (Reanimated). `window.setTimeout` replaced with `setTimeout` (available on
+ * both runtimes).
  */
 export function TodoItem({
   todo,
@@ -216,9 +223,8 @@ export function TodoItem({
               transition="bouncy"
               enterStyle={burning ? { scale: 0, opacity: 0 } : undefined}
             >
-              <Text color="$primaryForeground" lineHeight={0}>
-                <Check size={14} strokeWidth={3} />
-              </Text>
+              {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
+              <Check size={14} strokeWidth={3} color="$primaryForeground" />
             </View>
           ) : null}
         </View>
@@ -283,12 +289,11 @@ export function TodoItem({
             ) : null}
             {formattedDueDate ? (
               <XStack items="center" gap="$1">
-                <Text
+                {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
+                <Calendar
+                  size={12}
                   color={isOverdue ? "$destructive" : "$mutedForeground"}
-                  lineHeight={0}
-                >
-                  <Calendar size={12} />
-                </Text>
+                />
                 <Text
                   fontSize="$1"
                   color={isOverdue ? "$destructive" : "$mutedForeground"}
@@ -299,9 +304,8 @@ export function TodoItem({
             ) : null}
             {formattedDoDate ? (
               <XStack items="center" gap="$1">
-                <Text color="$mutedForeground" lineHeight={0}>
-                  <Clock size={12} />
-                </Text>
+                {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
+                <Clock size={12} color="$mutedForeground" />
                 <Text fontSize="$1" color="$mutedForeground">
                   {formattedDoDate}
                 </Text>
@@ -309,9 +313,8 @@ export function TodoItem({
             ) : null}
             {todo.subtasks && todo.subtasks.length > 0 ? (
               <XStack items="center" gap="$1">
-                <Text color="$mutedForeground" lineHeight={0}>
-                  <ListChecks size={12} />
-                </Text>
+                {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
+                <ListChecks size={12} color="$mutedForeground" />
                 <Text fontSize="$1" color="$mutedForeground">
                   {todo.subtasks.filter((s) => s.status === "done").length}/
                   {todo.subtasks.length}

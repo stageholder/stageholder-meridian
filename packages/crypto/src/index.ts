@@ -9,6 +9,7 @@ export {
   fromBase64,
   saltToBase64,
   saltFromBase64,
+  type PortableKey,
 } from "./keys";
 
 export {

@@ -1,59 +1,60 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+// Todos data layer — ONLINE-ONLY.
+//
+// The offline feature (Dexie cache + mutation queue) was removed wholesale and
+// will be rebuilt from scratch later. These hooks used to wrap the now-deleted
+// `@repo/offline` helpers; this layer is now plain `@tanstack/react-query`.
+// Every read hits the API; every write goes straight to the server.
+//
+// The one interaction that needs to feel instant — toggling a todo
+// done/undone — keeps its optimism via the standard TanStack cancel → snapshot
+// → setQueryData → rollback-on-error → invalidate pattern (it replaces the old
+// optimistic Dexie write). The remaining create/delete/reorder/subtask
+// mutations had no UI optimism before (the offline layer only wrote optimistic
+// Dexie records on the *offline* branch), so they just invalidate on success.
+//
+// When the offline rebuild lands it will reintroduce caching BEHIND these same
+// hook names + signatures, so consumers should not need to change again.
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { TodoList, Todo } from "@repo/core/types";
-import {
-  useOfflineQuery,
-  useOfflineQuerySingle,
-  useOfflineQueryFiltered,
-  useOfflineMutation,
-  useOfflineDeleteMutation,
-} from "@repo/offline/hooks";
-import { db } from "@repo/offline/db";
-import { useNetworkStatus } from "@repo/offline/network";
-import { getCurrentUserSub } from "@/lib/current-user-sub";
 import { lightKeys } from "./light";
 import { todosApi } from "./clients";
-import { useCallback } from "react";
 
 export function useTodoLists() {
-  return useOfflineQuery<TodoList>(["todoLists"], db.todoLists, () =>
-    todosApi.listLists(),
-  );
+  return useQuery<TodoList[]>({
+    queryKey: ["todoLists"],
+    queryFn: () => todosApi.listLists(),
+  });
 }
 
 export function useTodoList(listId: string) {
-  return useOfflineQuerySingle<TodoList>(
-    ["todoList", listId],
-    db.todoLists,
-    listId,
-    () => todosApi.getList(listId),
-    { enabled: !!listId },
-  );
+  return useQuery<TodoList>({
+    queryKey: ["todoList", listId],
+    queryFn: () => todosApi.getList(listId),
+    enabled: !!listId,
+  });
 }
 
 export function useTodos(listId: string) {
-  const localQueryFn = useCallback(
-    () => db.todos.where("listId").equals(listId).toArray(),
-    [listId],
-  );
-
-  return useOfflineQueryFiltered<Todo>(
-    ["todos", listId],
-    localQueryFn,
-    () => todosApi.listTodos(listId),
-    db.todos,
-    { enabled: !!listId },
-  );
+  return useQuery<Todo[]>({
+    queryKey: ["todos", listId],
+    queryFn: () => todosApi.listTodos(listId),
+    enabled: !!listId,
+  });
 }
 
 export function useAllTodos() {
-  return useOfflineQuery<Todo>(["allTodos"], db.todos, () =>
-    todosApi.listAllTodos({ limit: 500 }),
-  );
+  return useQuery<Todo[]>({
+    queryKey: ["allTodos"],
+    queryFn: () => todosApi.listAllTodos({ limit: 500 }),
+  });
 }
 
 export function useCreateTodoList() {
-  return useOfflineMutation<
+  const queryClient = useQueryClient();
+
+  return useMutation<
     TodoList,
+    Error,
     {
       name: string;
       color?: string;
@@ -62,18 +63,18 @@ export function useCreateTodoList() {
     }
   >({
     mutationFn: (data) => todosApi.createList(data),
-    table: db.todoLists,
-    entityType: "todoLists",
-    operation: "create",
-    buildPath: () => `/todo-lists`,
-    getUserSub: getCurrentUserSub,
-    invalidateKeys: [["todoLists"]],
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["todoLists"] });
+    },
   });
 }
 
 export function useUpdateTodoList() {
-  return useOfflineMutation<
+  const queryClient = useQueryClient();
+
+  return useMutation<
     TodoList,
+    Error,
     {
       listId: string;
       data: {
@@ -85,33 +86,29 @@ export function useUpdateTodoList() {
     }
   >({
     mutationFn: ({ listId, data }) => todosApi.updateList(listId, data),
-    table: db.todoLists,
-    entityType: "todoLists",
-    operation: "update",
-    buildPath: ({ listId }) => `/todo-lists/${listId}`,
-    getEntityId: ({ listId }) => listId,
-    getPatch: ({ data }) => data as Partial<TodoList>,
-    getUserSub: getCurrentUserSub,
-    invalidateKeys: [["todoLists"]],
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["todoLists"] });
+    },
   });
 }
 
 export function useDeleteTodoList() {
-  return useOfflineDeleteMutation<string>({
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, string>({
     mutationFn: (listId) => todosApi.deleteList(listId),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    table: db.todoLists as any,
-    entityType: "todoLists",
-    buildPath: (listId) => `/todo-lists/${listId}`,
-    getEntityId: (listId) => listId,
-    getUserSub: getCurrentUserSub,
-    invalidateKeys: [["todoLists"]],
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["todoLists"] });
+    },
   });
 }
 
 export function useCreateTodo() {
-  return useOfflineMutation<
+  const queryClient = useQueryClient();
+
+  return useMutation<
     Todo,
+    Error,
     {
       listId: string;
       data: {
@@ -125,18 +122,24 @@ export function useCreateTodo() {
     }
   >({
     mutationFn: ({ listId, data }) => todosApi.createTodo(listId, data),
-    table: db.todos,
-    entityType: "todos",
-    operation: "create",
-    buildPath: () => `/todos`,
-    getUserSub: getCurrentUserSub,
-    invalidateKeys: [["todos"], ["allTodos"], ["calendar"]],
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["todos"] });
+      void queryClient.invalidateQueries({ queryKey: ["allTodos"] });
+      void queryClient.invalidateQueries({ queryKey: ["calendar"] });
+    },
   });
 }
 
+// Snapshot of every cached todo list (per-list `["todos", listId]` variants +
+// the flat `["allTodos"]`) so the optimistic toggle can roll back on error.
+type TodosSnapshot = Array<[readonly unknown[], Todo[] | undefined]>;
+
 export function useUpdateTodo() {
-  return useOfflineMutation<
+  const queryClient = useQueryClient();
+
+  return useMutation<
     Todo,
+    Error,
     {
       listId: string;
       todoId: string;
@@ -148,58 +151,95 @@ export function useUpdateTodo() {
         dueDate?: string | null;
         doDate?: string | null;
       };
-    }
+    },
+    { previous: TodosSnapshot }
   >({
     mutationFn: (args) =>
       todosApi.updateTodo(args.listId, args.todoId, args.data),
-    table: db.todos,
-    entityType: "todos",
-    operation: "update",
-    buildPath: (args) => `/todos/${args.todoId}`,
-    getEntityId: (args) => args.todoId,
-    getPatch: (args) => {
-      const patch: Record<string, unknown> = {};
-      for (const [key, value] of Object.entries(args.data)) {
-        patch[key] = value === null ? undefined : value;
+    onMutate: async ({ todoId, data }) => {
+      // Patch both the per-list cache and the flat all-todos cache so the
+      // checkbox flips instantly wherever the row is rendered (list view,
+      // today/inbox/upcoming dashboards). Nulls coming from the form clear a
+      // field; mirror the old getPatch's null→undefined normalization so the
+      // optimistic record matches what the server will store.
+      const patch: Partial<Todo> = {};
+      for (const [key, value] of Object.entries(data)) {
+        (patch as Record<string, unknown>)[key] =
+          value === null ? undefined : value;
       }
-      return patch as Partial<Todo>;
+
+      await queryClient.cancelQueries({ queryKey: ["todos"] });
+      await queryClient.cancelQueries({ queryKey: ["allTodos"] });
+
+      const previous: TodosSnapshot = [
+        ...queryClient.getQueriesData<Todo[]>({
+          queryKey: ["todos"],
+          exact: false,
+        }),
+        ...queryClient.getQueriesData<Todo[]>({
+          queryKey: ["allTodos"],
+          exact: false,
+        }),
+      ];
+
+      for (const [key, list] of previous) {
+        if (!Array.isArray(list)) continue;
+        queryClient.setQueryData<Todo[]>(
+          key,
+          list.map((t) =>
+            t.id === todoId
+              ? { ...t, ...patch, updatedAt: new Date().toISOString() }
+              : t,
+          ),
+        );
+      }
+
+      return { previous };
     },
-    getUserSub: getCurrentUserSub,
-    invalidateKeys: [
-      ["todos"],
-      ["allTodos"],
-      [...lightKeys.me],
-      [...lightKeys.stats],
-      ["calendar"],
-    ],
+    onError: (_err, _vars, context) => {
+      if (!context?.previous) return;
+      for (const [key, list] of context.previous) {
+        queryClient.setQueryData(key, list);
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["todos"] });
+      void queryClient.invalidateQueries({ queryKey: ["allTodos"] });
+      void queryClient.invalidateQueries({ queryKey: lightKeys.me });
+      void queryClient.invalidateQueries({ queryKey: lightKeys.stats });
+      void queryClient.invalidateQueries({ queryKey: ["calendar"] });
+    },
   });
 }
 
 export function useDeleteTodo() {
-  return useOfflineDeleteMutation<{ listId: string; todoId: string }>({
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, { listId: string; todoId: string }>({
     mutationFn: (args) => todosApi.deleteTodo(args.listId, args.todoId),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    table: db.todos as any,
-    entityType: "todos",
-    buildPath: (args) => `/todos/${args.todoId}`,
-    getEntityId: (args) => args.todoId,
-    getUserSub: getCurrentUserSub,
-    invalidateKeys: [["todos"], ["allTodos"], ["calendar"]],
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["todos"] });
+      void queryClient.invalidateQueries({ queryKey: ["allTodos"] });
+      void queryClient.invalidateQueries({ queryKey: ["calendar"] });
+    },
   });
 }
 
 // --- Online-only operations (complex embedded structures) ---
+//
+// These were always online-only (the offline layer never queued them). With
+// the offline package gone the explicit `isOnline` guards drop away — the whole
+// app is online-only now, so a thrown "requires connection" error would be
+// dead code. They keep their per-list + all-todos (+ calendar) invalidations.
 
 export function useReorderTodos() {
   const queryClient = useQueryClient();
-  const isOnline = useNetworkStatus();
 
   return useMutation({
     mutationFn: async (args: {
       listId: string;
       items: { id: string; order: number }[];
     }) => {
-      if (!isOnline) throw new Error("Reorder requires an internet connection");
       await todosApi.reorderTodos(args.listId, { items: args.items });
     },
     onSuccess: (_data, variables) => {
@@ -213,15 +253,13 @@ export function useReorderTodos() {
 
 export function useReorderSubtasks() {
   const queryClient = useQueryClient();
-  const isOnline = useNetworkStatus();
 
   return useMutation({
-    mutationFn: async (args: {
+    mutationFn: (args: {
       listId: string;
       todoId: string;
       items: { id: string; order: number }[];
     }) => {
-      if (!isOnline) throw new Error("Reorder requires an internet connection");
       // Factory `reorderSubtasks` returns the updated Todo from the server;
       // preserve that return shape.
       return todosApi.reorderSubtasks(args.todoId, { items: args.items });

@@ -5,15 +5,12 @@ export const Route = createFileRoute("/_app")({
   beforeLoad: ({ context, location }) => {
     if (context.auth.isBootstrapping) return;
 
-    // Offline grace: when the browser is offline, the Hub is unreachable for
-    // (re)authentication AND /auth/login is network-only, so an expired
-    // session would lock the user out of their fully-cached Dexie data.
-    // Skip the auth/onboarding redirects while offline and let the route
-    // render against local data. Online behavior is unchanged.
-    const isOffline =
-      typeof navigator !== "undefined" && navigator.onLine === false;
-    if (isOffline) return;
-
+    // (There used to be an "offline grace" branch here that skipped the
+    // auth/onboarding redirects while `navigator.onLine === false` so the
+    // route could render against fully-cached Dexie data. The offline cache
+    // is gone — with no local data to fall back to, rendering an
+    // unauthenticated shell is strictly worse than redirecting to login, so
+    // the gate now always runs.)
     if (!context.auth.isAuthenticated) {
       throw redirect({
         to: "/auth/login",

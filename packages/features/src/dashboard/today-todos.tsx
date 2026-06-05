@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import { Text, View, XStack, YStack } from "@stageholder/ui";
 import type { Todo } from "@repo/core/types";
 import { BentoCard } from "./bento-card";
+import { tabularNums } from "../_internal/text-styles";
 
 // Priority dot tokens. shadcn used per-color bg-{red/orange/yellow/blue};
 // mapped onto the kit intent palette (urgent→destructive, high/medium→warning
@@ -110,11 +111,7 @@ export function TodayTodos({
               style={{ width: `${percentage}%` }}
             />
           </View>
-          <Text
-            fontSize="$1"
-            color="$mutedForeground"
-            style={{ fontVariant: ["tabular-nums"] }}
-          >
+          <Text fontSize="$1" color="$mutedForeground" style={tabularNums}>
             {percentage}%
           </Text>
         </XStack>

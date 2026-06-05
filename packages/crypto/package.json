@@ -13,6 +13,17 @@
     "./cipher": "./src/cipher.ts",
     "./recovery": "./src/recovery.ts"
   },
+  "dependencies": {
+    "@noble/ciphers": "^1.3.0"
+  },
+  "peerDependencies": {
+    "react-native-quick-crypto": "*"
+  },
+  "peerDependenciesMeta": {
+    "react-native-quick-crypto": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",

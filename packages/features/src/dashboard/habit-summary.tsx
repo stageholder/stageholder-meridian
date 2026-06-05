@@ -2,6 +2,7 @@ import { Progress, Text, XStack, YStack } from "@stageholder/ui";
 import type { Habit } from "@repo/core/types";
 import { resolveTargetCount } from "@repo/core/habits/entry-resolution";
 import { BentoCard } from "./bento-card";
+import { tabularNums } from "../_internal/text-styles";
 
 // In-progress habit bar is a generic orange (shadcn bg-orange-500/400). There's
 // no orange kit token, so it lives on the style escape hatch (the completed
@@ -174,7 +175,7 @@ export function HabitSummary({
                     shrink={0}
                     fontSize="$1"
                     color="$mutedForeground"
-                    style={{ fontVariant: ["tabular-nums"] }}
+                    style={tabularNums}
                   >
                     {value}/{target}
                   </Text>

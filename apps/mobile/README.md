@@ -1,8 +1,9 @@
 # @meridian/mobile
 
 Expo (SDK 54) app for Meridian, with auth + token lifecycle handled entirely by
-`@stageholder/sdk/react-native`. The auth shell is done — drop product screens
-under `app/(authed)/`.
+`@stageholder/sdk/react-native`. The app shell — root providers, theme, fonts,
+sign-in, and the auth-gated tab bar — is done. Product screens live under
+`app/(authed)/` (currently spinner placeholders awaiting their real UI).
 
 ## What the SDK already handles
 
@@ -23,15 +24,28 @@ Your job: build product screens and read from those hooks.
 
 ```
 app/
-  _layout.tsx          ← StageholderProvider mount
-  sign-in.tsx          ← Pre-auth landing
+  _layout.tsx          ← Root providers: GestureHandler → SafeArea → UIProvider
+                          (themed light/dark via lib/platform/theme) → Haptic →
+                          Toast → StageholderProvider → QueryProvider → <Stack>.
+                          Holds the splash until fonts + theme hydrate.
+  sign-in.tsx          ← Pre-auth landing (OIDC system-browser sign-in)
   (authed)/
-    _layout.tsx        ← Auth gate. Add screens beside index.tsx.
-    index.tsx          ← Authenticated landing — replace with real product UI
+    _layout.tsx        ← Auth gate + bottom <Tabs> (5 tabs, theme-tinted chrome)
+    index.tsx          ← "Today"    (placeholder — real UI lands later)
+    habits.tsx         ← "Habits"   (placeholder)
+    todos.tsx          ← "Todos"    (placeholder)
+    journal.tsx        ← "Journal"  (placeholder)
+    settings.tsx       ← "Settings" (placeholder)
 ```
 
-`(authed)/_layout.tsx` redirects to `/sign-in` for any unauthenticated request.
-Every screen you add under `(authed)/` is auth-gated automatically.
+`(authed)/_layout.tsx` shows a spinner while the SDK session hydrates, redirects
+to `/sign-in` for any unauthenticated request, and otherwise renders the tab
+bar. Every screen under `(authed)/` is auth-gated automatically.
+
+Theme: the app supports light/dark/system via `lib/platform/theme.ts` (a
+`useSyncExternalStore` store persisted to AsyncStorage under the `theme` key,
+mirroring the PWA's contract). The root layout awaits `initTheme()` alongside
+font loading before hiding the splash, so there's no theme/font flash.
 
 ## Prerequisites
 
@@ -92,11 +106,13 @@ secret is sent — PKCE protects the code exchange.
 ### 3. Environment
 
 ```bash
-cp .env.local.example .env.local
+cp .env.example .env.local
 ```
 
-Adjust `EXPO_PUBLIC_STAGEHOLDER_ISSUER_URL` for your platform (the example file
-has notes for Simulator / emulator / real device).
+`.env.example` documents all three `EXPO_PUBLIC_*` vars the app reads, with
+per-platform host notes (Simulator / emulator / real device). At minimum,
+adjust `EXPO_PUBLIC_STAGEHOLDER_ISSUER_URL` and `EXPO_PUBLIC_MERIDIAN_API_URL`
+for your platform.
 
 ## Install + run
 
@@ -117,19 +133,26 @@ same Wi-Fi need the issuer URL set to your dev machine's LAN IP.
 
 ## Adding product screens
 
-```tsx
-// app/(authed)/dashboard.tsx
-import { useFeature, useUser } from "@stageholder/sdk/react-native";
+The five tab screens already exist as spinner placeholders under `(authed)/` —
+replace a placeholder's body with real UI (don't add a new tab unless you also
+register it in `(authed)/_layout.tsx`'s `<Tabs>`). Data comes from the hooks in
+`lib/api` (TanStack Query) and auth/claims from the SDK:
 
-export default function Dashboard() {
+```tsx
+// app/(authed)/index.tsx — replace the placeholder body
+import { useFeature, useUser } from "@stageholder/sdk/react-native";
+import { useToday } from "@/lib/api";
+
+export default function TodayScreen() {
   const { user } = useUser();
   const hasAdvancedExport = useFeature("advanced_export");
+  const today = useToday();
   // ...build product UI here
 }
 ```
 
-That's it — auth state, token refresh, claims, and gating are already on the
-context. The route is automatically gated via `(authed)/_layout.tsx`.
+Auth state, token refresh, claims, and gating are already on the context, and
+every screen under `(authed)/` is auth-gated automatically.
 
 ## Renaming / re-using
 

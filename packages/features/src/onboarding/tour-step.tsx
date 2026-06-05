@@ -5,7 +5,7 @@ import {
   Target,
   CalendarDays,
   Home,
-} from "lucide-react";
+} from "@tamagui/lucide-icons-2";
 import { Button, Paragraph, Text, XStack, YStack } from "@stageholder/ui";
 
 interface Feature {
@@ -110,9 +110,8 @@ export function TourStep({
                 rounded="$md"
                 bg="$primaryMuted"
               >
-                <Text color="$primary">
-                  <Icon size={16} />
-                </Text>
+                {/* lucide-icons-2 reads its own `color` prop (no CSS cascade). */}
+                <Icon size={16} color="$primary" />
               </XStack>
               <YStack>
                 <Text fontSize="$3" fontWeight="500" color="$color">

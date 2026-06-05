@@ -1,4 +1,4 @@
-import { CheckSquare, Heart, BookOpen, Target } from "lucide-react";
+import { CheckSquare, Heart, BookOpen, Target } from "@tamagui/lucide-icons-2";
 import { Button, Paragraph, Text, ToggleGroup, YStack } from "@stageholder/ui";
 
 const GOALS = [
@@ -65,10 +65,8 @@ export function GoalsStep({
           return (
             <ToggleGroup.Item key={goal.id} value={goal.id}>
               <YStack items="center" gap="$2">
-                {/* Icon wrapped in Text to relay currentColor via CSS */}
-                <Text color="$mutedForeground">
-                  <Icon size={24} />
-                </Text>
+                {/* lucide-icons-2 reads its own `color` prop (no CSS cascade). */}
+                <Icon size={24} color="$mutedForeground" />
                 <Text fontSize="$3" fontWeight="500" color="$color">
                   {goal.label}
                 </Text>

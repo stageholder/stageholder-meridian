@@ -33,14 +33,14 @@
     "react": "^19.0.0",
     "@repo/core": "*",
     "@stageholder/ui": "*",
-    "lucide-react": "*"
+    "@tamagui/lucide-icons-2": "*"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
     "@repo/core": "*",
     "@stageholder/ui": "^0.3.0-alpha.20",
-    "lucide-react": "^0.577.0",
+    "@tamagui/lucide-icons-2": "^2.0.0",
     "react": "^19.2.0",
     "typescript": "^5"
   }

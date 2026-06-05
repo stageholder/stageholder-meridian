@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { format } from "date-fns";
-import { Inbox, CalendarClock, Clock, Flag } from "lucide-react";
+import { Inbox, CalendarClock, Clock, Flag } from "@tamagui/lucide-icons-2";
 import { Form } from "tamagui";
 import {
   Button,
@@ -87,9 +87,9 @@ function DateField({
   return (
     <YStack gap="$1.5" flex={1} minW={120}>
       <XStack items="center" gap="$2">
-        <Text color="$mutedForeground" lineHeight={0}>
-          {icon}
-        </Text>
+        {/* `icon` is a lucide-icons-2 element that carries its own `color`
+            (no CSS cascade), so it's rendered directly — no tint wrapper. */}
+        {icon}
         <Text fontSize="$3" fontWeight="500" color="$color">
           {label}
         </Text>
@@ -167,9 +167,8 @@ export function TodoForm({
                         justify="center"
                       >
                         {list.isDefault ? (
-                          <Text color="$primary" lineHeight={0}>
-                            <Inbox size={12} />
-                          </Text>
+                          // lucide-icons-2 reads its own `color` (no cascade).
+                          <Inbox size={12} color="$primary" />
                         ) : (
                           <View
                             width={8}
@@ -225,9 +224,8 @@ export function TodoForm({
         <XStack gap="$3" flexWrap="wrap">
           <YStack gap="$1.5" flex={1} minW={120}>
             <XStack items="center" gap="$2">
-              <Text color="$mutedForeground" lineHeight={0}>
-                <Flag size={14} />
-              </Text>
+              {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
+              <Flag size={14} color="$mutedForeground" />
               <Text fontSize="$3" fontWeight="500" color="$color">
                 Priority
               </Text>
@@ -257,13 +255,13 @@ export function TodoForm({
 
           <DateField
             label="Due Date"
-            icon={<CalendarClock size={14} />}
+            icon={<CalendarClock size={14} color="$mutedForeground" />}
             value={dueDate}
             onChange={setDueDate}
           />
           <DateField
             label="Do Date"
-            icon={<Clock size={14} />}
+            icon={<Clock size={14} color="$mutedForeground" />}
             value={doDate}
             onChange={setDoDate}
           />

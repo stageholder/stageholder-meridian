@@ -1,7 +1,17 @@
+// src/light/journey-tier-map.tsx
+//
+// WEB journey tier map. This file is web-only — it drives the horizontal rail
+// with DOM machinery (`useRef<HTMLDivElement>`, `offsetLeft/offsetWidth`,
+// `container.scrollTo`) and CSS scroll-snap / hidden-scrollbar style hatches,
+// none of which exist on React Native. Native resolves the sibling
+// `journey-tier-map.native.tsx` (a horizontal <FlatList>) via the platform-
+// suffix split; keep the `{ currentTier }` contract in sync across both.
+
 import { useRef, useEffect } from "react";
 import { Text, View, XStack, YStack } from "@stageholder/ui";
 import { StarVisual } from "./star-visual";
 import { LIGHT_TIERS } from "@repo/core/types/light";
+import { tabularNums } from "../_internal/text-styles";
 
 interface JourneyTierMapProps {
   currentTier: number;
@@ -115,7 +125,7 @@ export function JourneyTierMap({ currentTier }: JourneyTierMapProps) {
                   fontSize={10}
                   color="$mutedForeground"
                   text="center"
-                  style={{ fontVariantNumeric: "tabular-nums" }}
+                  style={tabularNums}
                 >
                   {tier.lightRequired.toLocaleString()} Light
                 </Text>

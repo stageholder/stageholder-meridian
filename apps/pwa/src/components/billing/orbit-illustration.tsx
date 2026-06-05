@@ -12,20 +12,22 @@
  */
 export function OrbitIllustration({
   tier,
-  className,
 }: {
   tier: "rest" | "practice" | "conduct";
-  className?: string;
 }) {
   return (
     <svg
       viewBox="0 0 240 240"
       role="presentation"
       aria-hidden
-      // allowlist: SVG sizing + foreground-tint utility classes (no kit token; native SVG styling)
-      className={["h-full w-full text-foreground/80", className]
-        .filter(Boolean)
-        .join(" ")}
+      width="100%"
+      height="100%"
+      // The SVG fills its (sized) container — `viewBox` keeps it square +
+      // centered. `currentColor` (grid dots, meridian line, ticks) resolves
+      // from the inline `color`; the rings set their own `--ring-*` strokes.
+      // Native <svg> has no kit equivalent, so this stays raw — just no
+      // Tailwind: sizing + tint are inline, not utility classes.
+      style={{ display: "block", color: "var(--foreground)" }}
     >
       {/* paper grid — barely there, gives the feeling of a planner page */}
       <defs>

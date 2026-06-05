@@ -7,9 +7,10 @@ import {
   Star,
   Flame,
   CircleDot,
-} from "lucide-react";
+} from "@tamagui/lucide-icons-2";
 import { Button, Text, View, XStack, YStack } from "@stageholder/ui";
 import type { LightEvent } from "@repo/core/types/light";
+import { tabularNums } from "../_internal/text-styles";
 
 /**
  * Per-action accent colors. These decorative hues (blue/orange/emerald/amber/
@@ -102,7 +103,14 @@ export function JourneyFeed({
   }
 
   const grouped = events.reduce<Record<string, LightEvent[]>>((acc, event) => {
-    const dateKey = format(new Date(event.createdAt), "yyyy-MM-dd");
+    // Group by `event.date` — the server's canonical `yyyy-MM-dd` day bucket
+    // for the event — NOT `format(new Date(createdAt), …)`. `new Date(iso)`
+    // parses the createdAt timestamp in UTC, so in Americas (negative-offset)
+    // zones a 23:30-local event lands on the NEXT calendar day and groups under
+    // tomorrow, disagreeing with the local-anchored display date below. The
+    // `date` field is already the day-key the rest of Light uses, and the
+    // header re-parses it locally via parseDateLocal, so bucket and label match.
+    const dateKey = event.date;
     if (!acc[dateKey]) acc[dateKey] = [];
     acc[dateKey].push(event);
     return acc;
@@ -140,10 +148,7 @@ export function JourneyFeed({
                 <Text
                   fontSize="$1"
                   fontWeight="600"
-                  style={{
-                    color: "#b45309",
-                    fontVariantNumeric: "tabular-nums",
-                  }}
+                  style={{ color: "#b45309", ...tabularNums }}
                 >
                   +{dayTotal} Light
                 </Text>
@@ -168,16 +173,14 @@ export function JourneyFeed({
                     px="$1"
                     py="$1"
                   >
-                    {/* Tinted category icon (style hatch for non-token hues);
-                        falls back to the muted-foreground token. */}
-                    <Text
+                    {/* Tinted category icon — lucide-icons-2 reads its own
+                        `color` (no CSS cascade). Non-token hex accents fall
+                        back to the muted-foreground token. */}
+                    <Icon
+                      size={14}
                       shrink={0}
-                      lineHeight={0}
-                      color={config.color ? undefined : "$mutedForeground"}
-                      style={config.color ? { color: config.color } : undefined}
-                    >
-                      <Icon size={14} />
-                    </Text>
+                      color={config.color ?? "$mutedForeground"}
+                    />
                     <Text flex={1} fontSize="$3" color="$color">
                       {config.label}
                     </Text>
@@ -185,7 +188,7 @@ export function JourneyFeed({
                       shrink={0}
                       fontSize="$3"
                       color="$mutedForeground"
-                      style={{ fontVariantNumeric: "tabular-nums" }}
+                      style={tabularNums}
                     >
                       {event.baseLight} x {event.multiplier} ={" "}
                       <Text fontSize="$3" fontWeight="500" color="$color">

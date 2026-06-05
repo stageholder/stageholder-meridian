@@ -1,6 +1,7 @@
-import { Sparkles, Calendar, Trophy, Zap } from "lucide-react";
+import { Sparkles, Calendar, Trophy, Zap } from "@tamagui/lucide-icons-2";
 import { Grid, Text, XStack, YStack } from "@stageholder/ui";
 import type { UserLight } from "@repo/core/types/light";
+import { tabularNums } from "../_internal/text-styles";
 
 interface JourneyStatsProps {
   userLight: UserLight;
@@ -62,9 +63,10 @@ export function JourneyStats({ userLight }: JourneyStatsProps) {
             px="$3"
             py="$2.5"
           >
-            <Text shrink={0} lineHeight={0} style={{ color: stat.color }}>
-              <Icon size={16} />
-            </Text>
+            {/* lucide-icons-2 reads its own `color` (no CSS cascade); the
+                decorative accent hue is a raw hex, not a kit token. */}
+            <Icon size={16} shrink={0} color={stat.color} />
+
             <YStack minW={0}>
               <Text
                 fontSize="$3"
@@ -72,7 +74,7 @@ export function JourneyStats({ userLight }: JourneyStatsProps) {
                 lineHeight={20}
                 color="$color"
                 numberOfLines={1}
-                style={{ fontVariantNumeric: "tabular-nums" }}
+                style={tabularNums}
               >
                 {stat.value}
               </Text>

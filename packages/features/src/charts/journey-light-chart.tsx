@@ -7,6 +7,7 @@ import {
   type ChartDatum,
 } from "@stageholder/ui";
 import type { LightTrendDay } from "./light-earned-chart";
+import { tabularNums } from "../_internal/text-styles";
 
 /**
  * The journey-page variant of the light trend chart — adds a header
@@ -52,7 +53,7 @@ export function JourneyLightChart({ data, isLoading }: JourneyLightChartProps) {
         <Text
           fontSize="$1"
           fontWeight="500"
-          style={{ color: "#d97706", fontVariantNumeric: "tabular-nums" }}
+          style={{ color: "#d97706", ...tabularNums }}
         >
           +{totalRecent} Light
         </Text>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button, H2, Input, Text, View, XStack, YStack } from "@stageholder/ui";
 // Form isn't re-exported by the kit yet; pull it from the shared tamagui dep.
 import { Form } from "tamagui";
-import { Lock } from "lucide-react";
+import { Lock } from "@tamagui/lucide-icons-2";
 
 export interface PassphrasePromptProps {
   /**
@@ -61,9 +61,9 @@ export function PassphrasePrompt({
           rounded={9999}
           bg="$muted"
         >
-          <Text color="$mutedForeground" lineHeight={0}>
-            <Lock size={32} />
-          </Text>
+          {/* lucide-icons-2 reads its own `color` prop (no CSS cascade), so
+              tint the icon directly instead of wrapping it in a tinted Text. */}
+          <Lock size={32} color="$mutedForeground" />
         </View>
         <YStack>
           <H2 fontSize="$6" fontWeight="600" color="$color" text="center">

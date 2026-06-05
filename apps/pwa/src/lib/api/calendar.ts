@@ -1,10 +1,19 @@
+// Calendar data layer — ONLINE-ONLY.
+//
+// The offline feature (Dexie cache + local calendar assembly) was removed
+// wholesale and will be rebuilt from scratch later. These hooks used to fall
+// back to `assembleCalendarDataLocally` (from the now-deleted `@repo/offline`)
+// whenever the browser was offline; that local-assembly branch and its
+// `useNetworkStatus` gate are gone. Both hooks now always fetch from `/calendar`
+// via plain `@tanstack/react-query`, and their return shapes are unchanged.
+//
+// When the offline rebuild lands it will reintroduce the local fallback BEHIND
+// these same hook names, so consumers should not need to change again.
 import { useQuery, useQueries } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { addMonths, format } from "date-fns";
 import type { CalendarEvent } from "@stageholder/ui";
 import apiClient from "@/lib/api-client";
-import { useNetworkStatus } from "@repo/offline/network";
-import { assembleCalendarDataLocally } from "@repo/offline/hooks/use-offline-calendar";
 import { parseDateLocal } from "@/lib/date";
 
 export interface CalendarDayData {
@@ -38,14 +47,9 @@ export interface CalendarDayData {
 export type CalendarData = Record<string, CalendarDayData>;
 
 export function useCalendarData(month: string) {
-  const isOnline = useNetworkStatus();
-
   return useQuery<CalendarData>({
     queryKey: ["calendar", month],
     queryFn: async () => {
-      if (!isOnline) {
-        return assembleCalendarDataLocally(month);
-      }
       const res = await apiClient.get(`/calendar`, { params: { month } });
       return res.data?.data ?? res.data;
     },
@@ -63,11 +67,9 @@ export function useCalendarData(month: string) {
  * dataset lets its built-in prev/next roam freely across the realistic range
  * without a per-page refetch. Each month stays an independently-cached
  * react-query entry (same key as `useCalendarData`), so navigating elsewhere
- * and back is instant and offline assembly still works per-month.
+ * and back is instant.
  */
 export function useCalendarRange(center: Date = new Date(), radius = 3) {
-  const isOnline = useNetworkStatus();
-
   const monthKeys = useMemo(() => {
     const keys: string[] = [];
     for (let i = -radius; i <= radius; i++) {
@@ -83,7 +85,6 @@ export function useCalendarRange(center: Date = new Date(), radius = 3) {
     queries: monthKeys.map((month) => ({
       queryKey: ["calendar", month],
       queryFn: async (): Promise<CalendarData> => {
-        if (!isOnline) return assembleCalendarDataLocally(month);
         const res = await apiClient.get(`/calendar`, { params: { month } });
         return res.data?.data ?? res.data;
       },

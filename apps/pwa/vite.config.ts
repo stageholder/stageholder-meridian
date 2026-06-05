@@ -3,7 +3,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { TanStackRouterVite } from "@tanstack/router-vite-plugin";
-import { VitePWA } from "vite-plugin-pwa";
 import { tamaguiPlugin } from "@tamagui/vite-plugin";
 
 export default defineConfig({
@@ -64,52 +63,6 @@ export default defineConfig({
       disableExtraction: true,
       disableDebugAttr: true,
       disableWatchTamaguiConfig: true,
-    }),
-    VitePWA({
-      registerType: "autoUpdate",
-      includeAssets: ["favicon/*", "logo/*", "robots.txt"],
-      // We register the SW manually from main.tsx so we can gate it on
-      // `window.location.protocol` — WebKit rejects ServiceWorker.register()
-      // on non-http(s) origins (Tauri's tauri:// scheme), and the default
-      // auto-injected registerSW.js doesn't check first.
-      injectRegister: false,
-      // Explicitly disable the PWA plugin in dev. The default already
-      // skips SW generation in `vite dev`, but a stale SW from a previous
-      // dev session can still be active in the browser — adding this
-      // makes the no-SW-in-dev guarantee structural rather than implicit.
-      devOptions: { enabled: false },
-      manifest: {
-        name: "Meridian",
-        short_name: "Meridian",
-        description: "Manage your todos, journal, and habits with Meridian",
-        theme_color: "#0e7490",
-        background_color: "#0a0a0a",
-        display: "standalone",
-        start_url: "/",
-        icons: [
-          {
-            src: "/favicon/web-app-manifest-192x192.png",
-            sizes: "192x192",
-            type: "image/png",
-          },
-          {
-            src: "/favicon/web-app-manifest-512x512.png",
-            sizes: "512x512",
-            type: "image/png",
-          },
-          {
-            src: "/favicon/web-app-manifest-512x512.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "maskable",
-          },
-        ],
-      },
-      workbox: {
-        // Don't precache API calls or the auth catch-all — only the static shell.
-        navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/auth\//, /^\/api\//],
-      },
     }),
   ],
   resolve: {

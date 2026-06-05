@@ -51,7 +51,7 @@ const MAX_POLL_DURATION_MS = 15_000;
  *    the next page (the original race that motivated this whole flow).
  * 2. **Rotate the access token** (`refreshSession`) so the new
  *    `subscriptions` claim lands in the refreshed session token.
- * 3. **Bust cached billing data** (Dexie entitlement + React Query) so
+ * 3. **Bust cached billing data** (in-memory entitlement + React Query) so
  *    every consumer that depends on plan data picks up the new value
  *    without waiting for a stale-time tick.
  */
@@ -152,7 +152,7 @@ function BillingSuccessPage() {
     let cancelled = false;
 
     /**
-     * Bust the React Query billing caches AND Meridian's local Dexie
+     * Bust the React Query billing caches AND Meridian's in-memory
      * entitlement cache. Done independent of refreshSession because these
      * caches are local-only — they need busting whether or not the session
      * could be refreshed against Hub.

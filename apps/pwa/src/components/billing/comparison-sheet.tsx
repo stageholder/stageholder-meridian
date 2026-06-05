@@ -1,18 +1,17 @@
 import type { PricingPlan, ProductFeature } from "@stageholder/sdk/spa";
 import { Check, Minus } from "lucide-react";
-import { H2, Text, View, YStack } from "@stageholder/ui";
+import { H2, Text, View, XStack, YStack, useMedia } from "@stageholder/ui";
 
 /**
- * Spec-sheet style comparison table. Reads like a printed datasheet —
- * monospaced category labels, hairline rules, no zebra rows, just type
- * and rules doing the work. Sticky header column lets the values scroll
- * laterally on narrow viewports without losing context.
+ * Feature comparison. Two layouts, picked by breakpoint — no raw <table>,
+ * no horizontal scroll, no Tailwind:
+ *   - mobile (`< md`): one card per plan, features grouped by category with
+ *     the value right-aligned. The best-practice mobile pattern (no tiny
+ *     sideways-scrolling grid).
+ *   - `md+`: a real side-by-side spec sheet built from flex rows (feature
+ *     column + one equal column per plan), grouped by category.
  *
- * The `<table>` subtree stays real HTML: sticky-left feature column +
- * horizontal scroll + variable column widths + rowspan have no kit `Table`
- * equivalent (its cells are equal-flex), so the structural wrappers are
- * Tamagui primitives and the table semantics/layout classes are kept as a
- * functional unit. Cell typography/color is carried by nested `<Text>`.
+ * Both share the `Cell` value renderer and the `groupByCategory` grouping.
  */
 export function ComparisonSheet({
   plans,
@@ -21,6 +20,7 @@ export function ComparisonSheet({
   plans: PricingPlan[];
   features: ProductFeature[];
 }) {
+  const media = useMedia();
   if (plans.length === 0 || features.length === 0) return null;
 
   const grouped = groupByCategory(features);
@@ -48,132 +48,205 @@ export function ComparisonSheet({
         </Text>
       </YStack>
 
-      {/* allowlist: overflow-x-auto — horizontal scroll for the wide spec
-          table on narrow viewports; the sticky-left column needs the
-          scroll container as its positioning context. */}
-      <View mx={-8} pb="$4" className="overflow-x-auto">
-        <table className="w-full min-w-[640px] border-separate border-spacing-0">
-          <thead>
-            <tr>
-              <th className="sticky left-0 z-10 w-[34%] bg-background px-3 pb-4 text-left">
-                <Text
-                  fontSize="$1"
-                  fontWeight="500"
-                  color="$mutedForeground"
-                  textTransform="uppercase"
-                  letterSpacing={0.5}
-                >
-                  Feature
-                </Text>
-              </th>
-              {plans.map((p) => (
-                <th
-                  key={p.id}
-                  className="w-auto px-3 pb-4 text-left align-bottom"
-                >
-                  <YStack gap="$1">
-                    <Text
-                      fontSize="$5"
-                      lineHeight={16}
-                      letterSpacing={-0.3}
-                      color="$color"
-                      style={{
-                        fontFamily: "var(--font-display)",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {p.displayName}
-                    </Text>
-                    {p.isFeatured && (
-                      <Text
-                        fontSize="$1"
-                        fontWeight="500"
-                        color="$mutedForeground"
-                        textTransform="uppercase"
-                        letterSpacing={0.5}
-                      >
-                        Most popular
-                      </Text>
-                    )}
-                  </YStack>
-                </th>
-              ))}
-            </tr>
-          </thead>
-
-          <tbody>
-            {grouped.map(([category, group]) => (
-              <CategoryRows
-                key={category ?? "_uncat"}
-                category={category}
-                group={group}
-                plans={plans}
-              />
-            ))}
-          </tbody>
-        </table>
-      </View>
+      {media.md ? (
+        <ComparisonTable plans={plans} grouped={grouped} />
+      ) : (
+        <ComparisonStacked plans={plans} grouped={grouped} />
+      )}
     </View>
   );
 }
 
-function CategoryRows({
-  category,
-  group,
+type Grouped = Array<[string | null, ProductFeature[]]>;
+
+/* ── md+ : side-by-side flex spec sheet ─────────────────────────────────── */
+
+function ComparisonTable({
   plans,
+  grouped,
 }: {
-  category: string | null;
-  group: ProductFeature[];
   plans: PricingPlan[];
+  grouped: Grouped;
 }) {
   return (
-    <>
-      <tr>
-        <td
-          colSpan={1 + plans.length}
-          className="border-t-2 border-foreground/40 px-3 pt-7"
-        >
+    <YStack>
+      {/* Header row */}
+      <XStack
+        gap="$4"
+        pb="$3"
+        borderBottomWidth={2}
+        borderColor="$color"
+        items="flex-end"
+      >
+        <View flex={1.5} minW={0}>
           <Text
             fontSize="$1"
-            fontWeight="600"
-            color="$color"
+            fontWeight="500"
+            color="$mutedForeground"
             textTransform="uppercase"
             letterSpacing={0.5}
           >
-            {category ?? "Other"}
+            Feature
           </Text>
-        </td>
-      </tr>
-      {group.map((f) => (
-        // allowlist: group/row + group-hover:bg — per-row hover tint on the
-        // sticky-table cells, which are HTML <td> (no Tamagui hoverStyle).
-        <tr key={f.id} className="group/row">
-          <th
-            scope="row"
-            className="sticky left-0 z-10 bg-background px-3 py-3 text-left align-top border-t border-border/60"
-          >
-            <YStack gap="$0.5">
-              <Text fontSize="$3" fontWeight="500" color="$color">
-                {f.displayName}
-              </Text>
-              {f.description ? (
-                <Text fontSize="$1" color="$mutedForeground">
-                  {f.description}
-                </Text>
-              ) : null}
-            </YStack>
-          </th>
-          {plans.map((p) => (
-            <td
-              key={p.id}
-              className="px-3 py-3 align-top border-t border-border/60 transition-colors duration-200 group-hover/row:bg-foreground/3"
+        </View>
+        {plans.map((p) => (
+          <YStack key={p.id} flex={1} minW={0} gap="$1">
+            <Text
+              fontSize="$5"
+              letterSpacing={-0.3}
+              color="$color"
+              style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
             >
-              <Cell plan={p} feature={f} />
-            </td>
+              {p.displayName}
+            </Text>
+            {p.isFeatured && (
+              <Text
+                fontSize="$1"
+                fontWeight="500"
+                color="$mutedForeground"
+                textTransform="uppercase"
+                letterSpacing={0.5}
+              >
+                Most popular
+              </Text>
+            )}
+          </YStack>
+        ))}
+      </XStack>
+
+      {grouped.map(([category, group]) => (
+        <YStack key={category ?? "_uncat"}>
+          {/* Category label */}
+          <View pt="$6" pb="$2">
+            <Text
+              fontSize="$1"
+              fontWeight="600"
+              color="$color"
+              textTransform="uppercase"
+              letterSpacing={0.5}
+            >
+              {category ?? "Other"}
+            </Text>
+          </View>
+          {group.map((f) => (
+            <XStack
+              key={f.id}
+              gap="$4"
+              py="$3"
+              borderTopWidth={1}
+              borderColor="$borderColor"
+              items="flex-start"
+              transition="quick"
+              hoverStyle={{ bg: "$muted" }}
+            >
+              <YStack flex={1.5} minW={0} gap="$0.5">
+                <Text fontSize="$3" fontWeight="500" color="$color">
+                  {f.displayName}
+                </Text>
+                {f.description ? (
+                  <Text fontSize="$1" color="$mutedForeground">
+                    {f.description}
+                  </Text>
+                ) : null}
+              </YStack>
+              {plans.map((p) => (
+                <View key={p.id} flex={1} minW={0}>
+                  <Cell plan={p} feature={f} />
+                </View>
+              ))}
+            </XStack>
           ))}
-        </tr>
+        </YStack>
       ))}
-    </>
+    </YStack>
+  );
+}
+
+/* ── mobile : one card per plan ─────────────────────────────────────────── */
+
+function ComparisonStacked({
+  plans,
+  grouped,
+}: {
+  plans: PricingPlan[];
+  grouped: Grouped;
+}) {
+  return (
+    <YStack gap="$5">
+      {plans.map((p) => (
+        <YStack
+          key={p.id}
+          gap="$4"
+          rounded={20}
+          borderWidth={1}
+          borderColor={p.isFeatured ? "$color" : "$borderColor"}
+          bg="$card"
+          p="$5"
+        >
+          <YStack gap="$1">
+            <Text
+              fontSize="$7"
+              letterSpacing={-0.4}
+              color="$color"
+              style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
+            >
+              {p.displayName}
+            </Text>
+            {p.isFeatured && (
+              <Text
+                fontSize="$1"
+                fontWeight="500"
+                color="$mutedForeground"
+                textTransform="uppercase"
+                letterSpacing={0.5}
+              >
+                Most popular
+              </Text>
+            )}
+          </YStack>
+
+          {grouped.map(([category, group]) => (
+            <YStack key={category ?? "_uncat"} gap="$1">
+              <Text
+                mb="$1"
+                fontSize="$1"
+                fontWeight="600"
+                color="$mutedForeground"
+                textTransform="uppercase"
+                letterSpacing={0.5}
+              >
+                {category ?? "Other"}
+              </Text>
+              {group.map((f) => (
+                <XStack
+                  key={f.id}
+                  gap="$3"
+                  py="$2.5"
+                  borderTopWidth={1}
+                  borderColor="$borderColor"
+                  items="center"
+                  justify="space-between"
+                >
+                  <YStack flex={1} minW={0} gap="$0.5">
+                    <Text fontSize="$3" fontWeight="500" color="$color">
+                      {f.displayName}
+                    </Text>
+                    {f.description ? (
+                      <Text fontSize="$1" color="$mutedForeground">
+                        {f.description}
+                      </Text>
+                    ) : null}
+                  </YStack>
+                  <View shrink={0} items="flex-end">
+                    <Cell plan={p} feature={f} />
+                  </View>
+                </XStack>
+              ))}
+            </YStack>
+          ))}
+        </YStack>
+      ))}
+    </YStack>
   );
 }
 

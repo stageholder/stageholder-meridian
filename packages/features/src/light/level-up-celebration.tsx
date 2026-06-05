@@ -21,6 +21,11 @@ export function LevelUpCelebration({
   }, [onDismiss]);
 
   return (
+    // WEB-TRUTH file. Native gets a separate full-screen <Modal> takeover —
+    // see `level-up-celebration.native.tsx` (Metro resolves that sibling, so
+    // the web-only bits below — position:fixed, backdrop-blur, onKeyDown,
+    // tabIndex — never ship to native).
+    //
     // Mount fade converted to native enter animation (animate-in fade-in
     // duration-300 → enterStyle opacity + transition="medium"). The dark
     // scrim (bg-black/60) has no token (intentionally theme-independent), so

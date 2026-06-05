@@ -1,72 +1,60 @@
+import {
+  type PortableKey,
+  getRandomBytes,
+  deriveKwKey,
+  generateGcmKey,
+  wrapKeyRaw,
+  unwrapKeyRaw,
+} from "./primitives";
+
+// Re-export the platform key type so consumers can name it. On web a
+// PortableKey IS a CryptoKey (see primitives.ts), so every existing PWA call
+// site that passes a CryptoKey keeps typechecking unchanged; on native it is an
+// opaque key holder (see primitives.native.ts). Metro/Vite pick the matching
+// primitives module via the relative "./primitives" import.
+export type { PortableKey };
+
 const PBKDF2_ITERATIONS = 600_000;
 const SALT_LENGTH = 16;
-const DEK_LENGTH = 256;
 
 export function generateSalt(): Uint8Array {
-  return crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
+  return getRandomBytes(SALT_LENGTH);
 }
 
 export async function deriveMasterKey(
   passphrase: string,
   salt: Uint8Array,
-): Promise<CryptoKey> {
+): Promise<PortableKey> {
   const encoder = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(passphrase),
-    "PBKDF2",
-    false,
-    ["deriveKey"],
-  );
-
-  return crypto.subtle.deriveKey(
-    {
-      name: "PBKDF2",
-      salt: salt as unknown as BufferSource,
-      iterations: PBKDF2_ITERATIONS,
-      hash: "SHA-256",
-    },
-    keyMaterial,
-    { name: "AES-KW", length: DEK_LENGTH },
-    false,
-    ["wrapKey", "unwrapKey"],
-  );
+  return deriveKwKey(encoder.encode(passphrase), salt, PBKDF2_ITERATIONS);
 }
 
-export async function generateDEK(): Promise<CryptoKey> {
-  return crypto.subtle.generateKey(
-    { name: "AES-GCM", length: DEK_LENGTH },
-    true,
-    ["encrypt", "decrypt"],
-  );
+export async function generateDEK(): Promise<PortableKey> {
+  return generateGcmKey();
 }
 
 export async function wrapDEK(
-  dek: CryptoKey,
-  masterKey: CryptoKey,
+  dek: PortableKey,
+  masterKey: PortableKey,
 ): Promise<string> {
-  const wrapped = await crypto.subtle.wrapKey("raw", dek, masterKey, "AES-KW");
+  const wrapped = await wrapKeyRaw(dek, masterKey);
   return toBase64(wrapped);
 }
 
 export async function unwrapDEK(
   wrappedBase64: string,
-  masterKey: CryptoKey,
-): Promise<CryptoKey> {
+  masterKey: PortableKey,
+): Promise<PortableKey> {
   const wrapped = fromBase64(wrappedBase64);
-  return crypto.subtle.unwrapKey(
-    "raw",
-    wrapped,
-    masterKey,
-    "AES-KW",
-    { name: "AES-GCM", length: DEK_LENGTH },
-    true,
-    ["encrypt", "decrypt"],
-  );
+  return unwrapKeyRaw(wrapped, masterKey);
 }
 
-export function toBase64(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
+// Base64 helpers live in this shared (web-truth) file — btoa/atob are available
+// on both browsers and Hermes (RN 0.81), so no platform split is needed here.
+// Accepts a Uint8Array or ArrayBuffer so it works for both the byte arrays the
+// primitive layer returns and any raw buffers callers still hand in.
+export function toBase64(buf: Uint8Array | ArrayBuffer): string {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
   let binary = "";
   for (let i = 0; i < bytes.byteLength; i++) {
     binary += String.fromCharCode(bytes[i]!);
@@ -74,21 +62,21 @@ export function toBase64(buf: ArrayBuffer): string {
   return btoa(binary);
 }
 
-export function fromBase64(str: string): ArrayBuffer {
+export function fromBase64(str: string): Uint8Array {
   const binary = atob(str);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.charCodeAt(i);
   }
-  return bytes.buffer;
+  return bytes;
 }
 
 export function saltToBase64(salt: Uint8Array): string {
-  return toBase64(salt.buffer as ArrayBuffer);
+  return toBase64(salt);
 }
 
 export function saltFromBase64(str: string): Uint8Array {
-  return new Uint8Array(fromBase64(str));
+  return fromBase64(str);
 }
 
 /**
@@ -100,26 +88,12 @@ export function saltFromBase64(str: string): Uint8Array {
 export async function deriveRecoveryMasterKey(
   codes: string[],
   userSub: string,
-): Promise<CryptoKey> {
+): Promise<PortableKey> {
   const sorted = [...codes].sort().join("");
   const encoder = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
-    "raw",
+  return deriveKwKey(
     encoder.encode(sorted),
-    "PBKDF2",
-    false,
-    ["deriveKey"],
-  );
-  return crypto.subtle.deriveKey(
-    {
-      name: "PBKDF2",
-      salt: encoder.encode(userSub) as unknown as BufferSource,
-      iterations: 600_000,
-      hash: "SHA-256",
-    },
-    keyMaterial,
-    { name: "AES-KW", length: 256 },
-    false,
-    ["wrapKey", "unwrapKey"],
+    encoder.encode(userSub),
+    PBKDF2_ITERATIONS,
   );
 }

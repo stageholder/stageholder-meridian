@@ -36,31 +36,50 @@ export const RING_CATEGORY = {
 } as const;
 
 /**
+ * Per-category ring colors (stroke `color` + `track` background), keyed the
+ * same as `RING_CATEGORY`. Widened to plain `string` (not the CSS-var literal
+ * types of `RING_CATEGORY`) so native callers can pass resolved hex/rgba —
+ * react-native-svg can't resolve `var(...)`.
+ */
+export interface RingColorMap {
+  todo: { color: string; track: string };
+  habit: { color: string; track: string };
+  journal: { color: string; track: string };
+}
+
+/**
  * Maps computed completion to the kit `<ActivityRings>` ring config. Order
  * is outer→inner: journal, habit, todo (the kit renders `rings[0]`
  * outermost), preserving the prior Meridian ring stacking.
+ *
+ * `colors` defaults to `RING_CATEGORY` (web CSS vars). On native, pass a map
+ * of resolved colors — the kit feeds these straight to react-native-svg as
+ * stroke colors, which does not resolve CSS custom properties.
  */
-export function activityRingsConfig(data: ActivityRingsData): ActivityRing[] {
+export function activityRingsConfig(
+  data: ActivityRingsData,
+  colors: RingColorMap = RING_CATEGORY,
+): ActivityRing[] {
   return [
     {
       value: data.journal,
       max: 100,
-      color: RING_CATEGORY.journal.color,
-      trackColor: RING_CATEGORY.journal.track,
+      color: colors.journal.color,
+      trackColor: colors.journal.track,
       label: "Journal",
     },
     {
       value: data.habit,
       max: 100,
-      color: RING_CATEGORY.habit.color,
-      trackColor: RING_CATEGORY.habit.track,
+      color: colors.habit.color,
+      trackColor: colors.habit.track,
       label: "Habits",
     },
     {
       value: data.todo,
       max: 100,
-      color: RING_CATEGORY.todo.color,
-      trackColor: RING_CATEGORY.todo.track,
+      color: colors.todo.color,
+      trackColor: colors.todo.track,
       label: "Todos",
     },
   ];

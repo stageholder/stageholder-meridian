@@ -9,7 +9,16 @@ import {
 import { CycleToggle } from "@/components/billing/cycle-toggle";
 import { PlanTierCard } from "@/components/billing/plan-tier-card";
 import { ComparisonSheet } from "@/components/billing/comparison-sheet";
-import { H1, Paragraph, Text, View, XStack, YStack } from "@stageholder/ui";
+import {
+  H1,
+  Paragraph,
+  Skeleton,
+  Text,
+  View,
+  XStack,
+  YStack,
+  useMedia,
+} from "@stageholder/ui";
 
 /**
  * Meridian's plan-selection page. Built from `usePricing()` and
@@ -27,6 +36,7 @@ function UpgradePage() {
   const plans = pricing?.plans;
   const features = pricing?.features;
   const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");
+  const media = useMedia();
 
   const ordered = useMemo(() => orderPlans(plans), [plans]);
   const yearlyDiscountLabel = useMemo(
@@ -35,11 +45,12 @@ function UpgradePage() {
   );
 
   return (
-    // allowlist: billing-paper texture (globals.css, no token equivalent)
+    // allowlist: billing-paper texture (globals.css keyframe/bg, no token equivalent)
     <View
       position="relative"
       minH={"100vh" as never}
       bg="$background"
+      overflow="hidden"
       className="billing-paper"
     >
       <YStack
@@ -68,24 +79,38 @@ function UpgradePage() {
           </Link>
         </View>
 
-        {/* Hero */}
-        {/* allowlist: billing-reveal/stagger keyframes (globals.css) */}
-        <XStack
+        {/* Hero — column on mobile (title over the cycle toggle), row at md+.
+            No `flex` on the columns at the mobile breakpoint: a flex child
+            (flexBasis:0%) collapses to zero height inside an indefinite-height
+            column on iOS WebKit, which is what made the title + toggle
+            overlap. Width/natural-height on mobile; flex-share only at md+. */}
+        <YStack
           tag="header"
-          className="billing-reveal billing-stagger-1"
+          enterStyle={{ opacity: 0, y: 14 }}
+          transition="medium"
           mb={48}
-          flexDirection="column"
           gap="$7"
-          $md={{ flexDirection: "row", items: "flex-end" }}
+          $md={{ flexDirection: "row", items: "flex-end", gap: "$8" }}
         >
-          <YStack flex={1.6} gap="$4.5">
-            {/* allowlist: editorial mono kicker — letter-spacing + foreground tint */}
-            <Paragraph className="font-mono text-[11px] uppercase tracking-[0.32em] text-foreground/55">
+          <YStack gap="$4" $md={{ flex: 1.6 }}>
+            {/* Editorial mono kicker (was Tailwind font-mono/tracking utils). */}
+            <Text
+              fontFamily="$mono"
+              fontSize={11}
+              textTransform="uppercase"
+              letterSpacing={3.5}
+              color="$mutedForeground"
+            >
               Plans
-            </Paragraph>
-            {/* allowlist: display-font + clamp() responsive size (CSS var, no kit token) */}
+            </Text>
+            {/* Responsive display heading (was a Tailwind clamp()). */}
             <H1
-              className="text-[clamp(2.5rem,7vw,5.5rem)] leading-[0.92] tracking-[-0.02em]"
+              fontSize={40}
+              lineHeight={42}
+              letterSpacing={-1}
+              color="$color"
+              $md={{ fontSize: 64, lineHeight: 62, letterSpacing: -1.6 }}
+              $lg={{ fontSize: 80, lineHeight: 76, letterSpacing: -2 }}
               style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
             >
               Choose your plan
@@ -96,10 +121,9 @@ function UpgradePage() {
             </Paragraph>
           </YStack>
           <YStack
-            flex={1}
+            gap="$4"
             items="flex-start"
-            gap="$4.5"
-            $md={{ items: "flex-end" }}
+            $md={{ flex: 1, items: "flex-end" }}
           >
             <CycleToggle
               value={cycle}
@@ -116,85 +140,111 @@ function UpgradePage() {
               applicable.
             </Paragraph>
           </YStack>
-        </XStack>
+        </YStack>
 
-        {/* Plan grid */}
+        {/* Plans */}
         <View position="relative">
-          {/* Background register marks behind the grid */}
+          {/* Desktop-only register hairline the cards sit on. */}
           <View
             aria-hidden
             position="absolute"
             l={0}
             r={0}
             t="50%"
+            mt={-0.5}
             z={0}
+            height={1}
+            bg="$borderColor"
+            opacity={0.6}
             pointerEvents="none"
             display="none"
-            className="-translate-y-1/2"
-            $md={{ display: "block" }}
-          >
-            {/* allowlist: foreground-tinted hairline (no token equivalent) */}
-            <View mx="auto" height={1} width="100%" className="bg-border/60" />
-          </View>
+            $md={{ display: "flex" }}
+          />
 
           {isLoading || !ordered || !features ? (
             <PlanGridSkeleton />
+          ) : media.md ? (
+            // md+ : flex grid. Cards flex to fill, wrapping below minWidth.
+            // The featured card lifts via a negative margin (transform-free so
+            // it never fights the enterStyle reveal).
+            <XStack tag="ul" position="relative" flexWrap="wrap" gap="$6">
+              {ordered.map((plan, i) => (
+                <View
+                  key={plan.id}
+                  tag="li"
+                  flex={1}
+                  minW={260}
+                  enterStyle={{ opacity: 0, y: 14 }}
+                  transition={["medium", { delay: i * 70 }]}
+                  // Featured card lifts out of the row (this branch is md+ only).
+                  mt={plan.isFeatured ? -24 : 0}
+                >
+                  <PlanTierCard
+                    plan={plan}
+                    catalog={features}
+                    cycle={cycle}
+                    isCurrent={sub?.plan === plan.slug}
+                  />
+                </View>
+              ))}
+            </XStack>
           ) : (
-            // Flexbox auto-fit: each plan card flexes to fill, wrapping below
-            // minWidth so the row reads single-column on mobile and fans out to
-            // the full set of plans once wide enough.
-            <XStack
-              tag="ul"
-              position="relative"
-              flexWrap="wrap"
-              gap="$5"
-              $md={{ gap: "$6" }}
-            >
-              {ordered.map((plan, i) => {
-                const isCurrent = sub?.plan === plan.slug;
-                return (
+            // mobile : swipeable snap carousel. Fixed-width slides + a peek of
+            // the next card signal "swipe for more"; the bar is hidden but the
+            // surface scroll-snaps to each plan.
+            <YStack gap="$3">
+              <XStack
+                tag="ul"
+                className="scrollbar-hide"
+                flexWrap="nowrap"
+                gap="$4"
+                pb="$2"
+                style={
+                  {
+                    overflowX: "auto",
+                    overflowY: "hidden",
+                    scrollSnapType: "x mandatory",
+                    scrollPaddingLeft: 0,
+                    WebkitOverflowScrolling: "touch",
+                  } as object
+                }
+              >
+                {ordered.map((plan, i) => (
                   <View
                     key={plan.id}
                     tag="li"
-                    flex={1}
-                    minW={260}
-                    // allowlist: billing-reveal/stagger keyframes; md:-translate-y-6
-                    // featured-plan lift (CSS transform, no token equivalent)
-                    className={[
-                      "billing-reveal",
-                      i === 0 && "billing-stagger-2",
-                      i === 1 && "billing-stagger-3",
-                      i === 2 && "billing-stagger-4",
-                      i === 3 && "billing-stagger-5",
-                      plan.isFeatured && "md:-translate-y-6",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
+                    width={280}
+                    shrink={0}
+                    enterStyle={{ opacity: 0, y: 14 }}
+                    transition={["medium", { delay: i * 70 }]}
+                    style={{ scrollSnapAlign: "start" } as object}
                   >
                     <PlanTierCard
                       plan={plan}
                       catalog={features}
                       cycle={cycle}
-                      isCurrent={isCurrent}
-                      className="h-full"
+                      isCurrent={sub?.plan === plan.slug}
                     />
                   </View>
-                );
-              })}
-            </XStack>
+                ))}
+              </XStack>
+              {ordered.length > 1 && (
+                <Text text="center" fontSize="$1" color="$mutedForeground">
+                  Swipe to compare plans
+                </Text>
+              )}
+            </YStack>
           )}
         </View>
 
         {/* Comparison sheet */}
         {!isLoading && ordered && features && features.length > 0 && (
-          // allowlist: billing-reveal/stagger keyframes (globals.css)
-          <View className="billing-reveal billing-stagger-6" mt={96}>
+          <View mt={96} enterStyle={{ opacity: 0, y: 14 }} transition="medium">
             <ComparisonSheet plans={ordered} features={features} />
           </View>
         )}
 
         {/* Closing mark */}
-        {/* allowlist: border-border/60 hairline tint (no token equivalent) */}
         <XStack
           tag="footer"
           mt={80}
@@ -203,20 +253,20 @@ function UpgradePage() {
           justify="space-between"
           gap="$4"
           borderTopWidth={1}
+          borderColor="$borderColor"
           pt="$5"
-          className="border-border/60"
         >
           <Text fontSize="$5" fontWeight="500">
             Questions about your plan?
           </Text>
-          {/* allowlist: hover underline on the mailto link (no token equivalent) */}
           <Text
             tag="a"
             href="mailto:hello@meridian.app"
             fontSize="$3"
             fontWeight="500"
             color="$color"
-            className="underline-offset-4 hover:underline"
+            hoverStyle={{ textDecorationLine: "underline" }}
+            style={{ textUnderlineOffset: 4 } as object}
           >
             hello@meridian.app
           </Text>
@@ -270,21 +320,11 @@ function bestYearlyDiscountLabel(
 
 function PlanGridSkeleton() {
   return (
-    // Flexbox auto-fit matching the live plan grid: cards flex to fill,
-    // wrapping below minWidth so they read single-column on mobile.
+    // Matches the live plan grid (flex, wraps to single-column on mobile).
+    // Kit Skeleton carries the shimmer — no Tailwind animate-pulse.
     <XStack tag="ul" flexWrap="wrap" gap="$5" $md={{ gap: "$6" }}>
       {Array.from({ length: 3 }).map((_, i) => (
-        <View
-          key={i}
-          tag="li"
-          flex={1}
-          minW={260}
-          height={520}
-          rounded={28}
-          borderWidth={1}
-          // allowlist: animate-pulse keyframe + card/border translucency (no token equivalent)
-          className="animate-pulse border-border/60 bg-card/40"
-        />
+        <Skeleton key={i} flex={1} minW={260} height={520} rounded={28} />
       ))}
     </XStack>
   );

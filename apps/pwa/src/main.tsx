@@ -24,13 +24,18 @@ createRoot(rootEl).render(
   </StrictMode>,
 );
 
-// Register the PWA service worker only when running over http(s) — Tauri's
-// tauri:// (macOS/Linux) and http://tauri.localhost (Windows) origins make
-// WebKit reject ServiceWorker.register() with "must be called with a script
-// URL whose protocol is either HTTP or HTTPS". The PWA plugin's auto-inject
-// is off (see vite.config.ts) so this is the single registration site.
-if (/^https?:$/.test(window.location.protocol)) {
-  void import("virtual:pwa-register").then(({ registerSW }) => {
-    registerSW({ immediate: true });
-  });
-}
+// Meridian no longer ships a service worker (it's a plain SPA now — no
+// installability, no precached shell). But returning users who loaded an
+// earlier release still have the OLD service worker installed, and it will
+// keep serving its stale precached `index.html` forever — even after we
+// deploy new builds — until it's explicitly unregistered. So tear down any
+// previously-installed SW on every load.
+//
+// KEEP THIS for several releases: it must survive long enough for the SW to
+// have been removed from every returning user's browser. Removing it too
+// early strands anyone who hasn't reopened the app since the SW era on the
+// old precached bundle. Guarded with `?.` because `navigator.serviceWorker`
+// is undefined on non-secure origins / Tauri's custom scheme.
+void navigator.serviceWorker?.getRegistrations().then((registrations) => {
+  for (const registration of registrations) void registration.unregister();
+});

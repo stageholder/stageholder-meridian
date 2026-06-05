@@ -49,13 +49,11 @@ export function PlanTierCard({
   catalog,
   cycle,
   isCurrent,
-  className,
 }: {
   plan: PricingPlan;
   catalog: ProductFeature[];
   cycle: "monthly" | "yearly";
   isCurrent: boolean;
-  className?: string;
 }) {
   const { mutateAsync, isPending: checkoutPending } = useStartCheckout();
   const billingPortal = useBillingPortal();
@@ -223,12 +221,16 @@ export function PlanTierCard({
       group
       position="relative"
       overflow="hidden"
+      // Fill the parent wrapper (a carousel slide on mobile, a flex grid cell
+      // at md+). Equal-height comes from the row's default stretch; the
+      // flex spacer below pins the CTA to the bottom.
+      width="100%"
+      height="100%"
       rounded={28}
       borderWidth={1}
       // Featured card gets a stronger resting border; both lift to a near-
       // foreground border on hover. The bespoke drop-shadows had no token —
       // dropped, the border emphasis carries the "this rises" intent.
-      // FLAG: featured/hover box-shadows removed.
       borderColor={plan.isFeatured ? "$color" : "$borderColor"}
       bg="$card"
       px="$7"
@@ -236,9 +238,6 @@ export function PlanTierCard({
       pb="$7"
       transition="medium"
       hoverStyle={{ borderColor: "$color" }}
-      // allowlist: CSS grid-placement classes (col-span-* etc.) forwarded
-      // from the upgrade route — pure CSS-grid placement, no kit token.
-      className={className}
     >
       {/* Featured badge — clear "this is the recommended pick" */}
       {plan.isFeatured && (
@@ -263,31 +262,29 @@ export function PlanTierCard({
         </XStack>
       )}
 
-      {/* Illustration — fills the card top, bleeds past the padding, masked
-          to the rounded corners */}
+      {/* Illustration — a compact brand band across the card top. Bleeds to
+          the card edges (negative margins match the px="$7"/pt="$8" padding),
+          masked by the card's overflow:hidden + rounding. Slimmer than the old
+          176px band so the card reads as a clean pricing card on a phone, a
+          touch taller at md+. */}
       <View
         position="relative"
-        // Bleed exactly to the card edges: horizontal margin = px token (39),
-        // top margin = pt token (46), so the illustration fills the top.
         mx={-39}
         mt={-46}
         mb="$6"
-        height={176}
+        height={120}
+        $md={{ height: 152 }}
         overflow="hidden"
         borderBottomWidth={1}
         borderColor="$borderColor"
         bg="$muted"
+        items="center"
+        justify="center"
       >
-        <View
-          position="absolute"
-          t={0}
-          r={0}
-          b={0}
-          l={0}
-          items="center"
-          justify="center"
-        >
-          <OrbitIllustration tier={tier} className="h-[180px] w-[180px]" />
+        {/* Fixed-size orbital, centered + sized to sit inside the band so the
+            outer ring isn't clipped. Scales up a touch at md+. */}
+        <View width={112} height={112} $md={{ width: 144, height: 144 }}>
+          <OrbitIllustration tier={tier} />
         </View>
       </View>
 

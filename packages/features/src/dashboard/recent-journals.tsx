@@ -1,4 +1,4 @@
-import { Text, XStack, YStack } from "@stageholder/ui";
+import { ScrollView, Text, XStack, YStack } from "@stageholder/ui";
 import type { Journal } from "@repo/core/types";
 import { MoodDisplay } from "../journal/mood-display";
 import { BentoCard } from "./bento-card";
@@ -75,66 +75,69 @@ export function RecentJournals({
           Loading...
         </Text>
       ) : recentJournals.length > 0 ? (
-        // Horizontal snap-scroller. scroll-snap (snap-x/snap-start) + x-only
-        // overflow have no Tamagui token — kept via className/style hatch on
-        // web; on RN the equivalent is `ScrollView snapToInterval` (handled
-        // when the mobile shell wraps this view).
-        <XStack
-          gap="$3"
-          pb="$1"
+        // Horizontal scroller via the kit ScrollView (a real RN ScrollView on
+        // native, a slim-scrollbar div on web) — cross-platform, no className/
+        // overflowX hatch. `snap-x`/`snap-start` scroll-snap has no kit token,
+        // so it's kept as a web-only className on the ScrollView + cards
+        // (silently ignored on native, where smooth scroll is the fallback).
+        // The inner XStack carries the gap between cards.
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
           className="snap-x"
-          style={{ overflowX: "auto" }}
         >
-          {recentJournals.map((journal) => {
-            const dateStr = parseDateLocal(journal.date).toLocaleDateString(
-              "en-US",
-              {
-                month: "short",
-                day: "numeric",
-              },
-            );
+          <XStack gap="$3" pb="$1">
+            {recentJournals.map((journal) => {
+              const dateStr = parseDateLocal(journal.date).toLocaleDateString(
+                "en-US",
+                {
+                  month: "short",
+                  day: "numeric",
+                },
+              );
 
-            return (
-              <YStack
-                key={journal.id}
-                onPress={() => onJournalPress?.(journal.id)}
-                cursor={onJournalPress ? "pointer" : undefined}
-                className="snap-start"
-                minW={160}
-                shrink={0}
-                gap="$1.5"
-                rounded="$lg"
-                borderWidth={1}
-                borderColor="$borderColor"
-                bg="$muted"
-                p="$3"
-                transition="quick"
-                hoverStyle={{ bg: "$accent" }}
-                role={onJournalPress ? "button" : undefined}
-              >
-                <XStack items="center" gap="$1.5">
-                  <MoodDisplay mood={journal.mood} />
-                  <Text fontSize="$1" color="$mutedForeground">
-                    {dateStr}
-                  </Text>
-                </XStack>
-                <Text
-                  numberOfLines={2}
-                  fontSize="$3"
-                  fontWeight="500"
-                  color="$color"
+              return (
+                <YStack
+                  key={journal.id}
+                  onPress={() => onJournalPress?.(journal.id)}
+                  cursor={onJournalPress ? "pointer" : undefined}
+                  className="snap-start"
+                  minW={160}
+                  shrink={0}
+                  gap="$1.5"
+                  rounded="$lg"
+                  borderWidth={1}
+                  borderColor="$borderColor"
+                  bg="$muted"
+                  p="$3"
+                  transition="quick"
+                  hoverStyle={{ bg: "$accent" }}
+                  role={onJournalPress ? "button" : undefined}
                 >
-                  {journal.title}
-                </Text>
-                {journal.wordCount > 0 ? (
-                  <Text fontSize={10} color="$mutedForeground">
-                    {journal.wordCount} words
+                  <XStack items="center" gap="$1.5">
+                    <MoodDisplay mood={journal.mood} />
+                    <Text fontSize="$1" color="$mutedForeground">
+                      {dateStr}
+                    </Text>
+                  </XStack>
+                  <Text
+                    numberOfLines={2}
+                    fontSize="$3"
+                    fontWeight="500"
+                    color="$color"
+                  >
+                    {journal.title}
                   </Text>
-                ) : null}
-              </YStack>
-            );
-          })}
-        </XStack>
+                  {journal.wordCount > 0 ? (
+                    <Text fontSize={10} color="$mutedForeground">
+                      {journal.wordCount} words
+                    </Text>
+                  ) : null}
+                </YStack>
+              );
+            })}
+          </XStack>
+        </ScrollView>
       ) : (
         <Text fontSize="$1" color="$mutedForeground">
           No journal entries yet.

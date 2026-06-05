@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check } from "lucide-react";
+import { Check } from "@tamagui/lucide-icons-2";
 import { Button, Paragraph, Text, XStack, YStack } from "@stageholder/ui";
 
 export function CompleteStep({ onFinish }: { onFinish: () => Promise<void> }) {
@@ -29,9 +29,8 @@ export function CompleteStep({ onFinish }: { onFinish: () => Promise<void> }) {
         rounded={9999}
         bg="$primaryMuted"
       >
-        <Text color="$primary">
-          <Check size={32} />
-        </Text>
+        {/* lucide-icons-2 reads its own `color` prop (no CSS cascade). */}
+        <Check size={32} color="$primary" />
       </XStack>
 
       <YStack gap="$2" items="center">
