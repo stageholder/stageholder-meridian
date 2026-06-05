@@ -79,17 +79,33 @@ export function CurrentPlanHero({
       className="billing-reveal billing-stagger-1"
     >
       {/* Top-row status strip */}
-      <XStack mb="$8" items="center" gap="$3">
+      <XStack mb="$6" $md={{ mb: "$8" }} items="center" gap="$3">
         <StatusPill status={status} />
       </XStack>
 
       <XStack
         flexDirection="column"
-        gap="$8"
-        $md={{ flexDirection: "row", items: "center" }}
+        gap="$6"
+        $md={{ flexDirection: "row", items: "center", gap: "$8" }}
       >
-        {/* Left: plan name + meta + actions */}
-        <YStack flex={1} gap="$8" $md={{ flexGrow: 1.4 }}>
+        {/* Left: plan name + meta + actions.
+            On mobile this is a single column. `flex={1}` (→ flexBasis:0%)
+            collapses to ZERO height inside an indefinite-height *column* flex
+            container on iOS WebKit, so the meta + actions overflowed the card
+            and the Invoices card slid underneath them. Use full width + natural
+            height on mobile, and only flex-share the row at md+ (where the orbit
+            illustration sits beside it). */}
+        <YStack
+          width="100%"
+          gap="$6"
+          $md={{
+            width: "auto",
+            flexGrow: 1.4,
+            flexShrink: 1,
+            flexBasis: 0,
+            gap: "$8",
+          }}
+        >
           <YStack gap="$3">
             <Text
               fontFamily="$mono"
@@ -100,11 +116,15 @@ export function CurrentPlanHero({
             >
               Current plan
             </Text>
+            {/* Responsive display size: 64px on a phone overflows / dwarfs the
+                card; scale up to the editorial size at md+. lineHeight is kept
+                >= fontSize on mobile so the glyph never spills past the card. */}
             <H1
-              fontSize={64}
-              lineHeight={64 * 0.92}
-              letterSpacing={-1.3}
+              fontSize={44}
+              lineHeight={46}
+              letterSpacing={-1}
               color="$color"
+              $md={{ fontSize: 64, lineHeight: 60, letterSpacing: -1.3 }}
               style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
             >
               {planName}
