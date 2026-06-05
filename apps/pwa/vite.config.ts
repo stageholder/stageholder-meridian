@@ -66,6 +66,15 @@ export default defineConfig({
     }),
   ],
   resolve: {
+    // Force a SINGLE react/react-dom instance in the web bundle. The bun
+    // workspace intentionally carries two react versions — the Expo SDK
+    // pins react 19.1.0 for apps/mobile (hoisted to the root) while the
+    // PWA + shared packages use ^19.2 (nested under apps/pwa and
+    // packages/features). Without dedupe, a source-compiled workspace
+    // package (e.g. @repo/features) can resolve its own nested react copy
+    // → two React instances → "Invalid hook call". Dedupe pins every bare
+    // `react` import to this app's copy.
+    dedupe: ["react", "react-dom"],
     alias: [
       // Redirect every import of `@tamagui/react-native-web-lite` to the
       // full `react-native-web` package. Tamagui's lite build — verified

@@ -4,6 +4,7 @@
     "slug": "meridian-mobile",
     "version": "0.0.1",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "scheme": "meridian",
     "newArchEnabled": true,
@@ -11,24 +12,33 @@
       "bundleIdentifier": "com.stageholder.meridian.mobile",
       "supportsTablet": true,
       "infoPlist": {
-        "CFBundleURLTypes": [{ "CFBundleURLSchemes": ["meridian"] }],
         "NSFaceIDUsageDescription": "Meridian uses Face ID to keep your sign-in secure on this device."
       }
     },
     "android": {
       "package": "com.stageholder.meridian.mobile",
       "adaptiveIcon": {
-        "backgroundColor": "#0d1530"
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#0e7490"
       },
       "intentFilters": [
         {
           "action": "VIEW",
           "category": ["BROWSABLE", "DEFAULT"],
-          "data": [{ "scheme": "meridian" }]
+          "data": [
+            {
+              "scheme": "meridian"
+            }
+          ]
         }
       ]
     },
-    "plugins": ["expo-router", "expo-secure-store", "expo-web-browser"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-web-browser",
+      "expo-font"
+    ],
     "experiments": {
       "typedRoutes": true
     }

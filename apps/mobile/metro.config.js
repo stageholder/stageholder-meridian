@@ -74,35 +74,24 @@ config.resolver.unstable_conditionNames = [
   "default",
 ];
 
-// Reorder sourceExts so `.mjs` is checked LAST.
-//
-// Per Metro's RESOLVE_FILE (docs/Resolution.md), variants are tried
-// extension-grouped, not platform-grouped. With Expo's default
-// `['ts','tsx','mjs','js','jsx']` and platform=ios, the order is:
-//   .ios.ts, .native.ts, .ts,
-//   .ios.tsx, .native.tsx, .tsx,
-//   .ios.mjs, .native.mjs, .mjs,   ← `.mjs` is checked here
-//   .ios.js,  .native.js,  .js,    ← `.native.js` NEVER tried
-//   .ios.jsx, .native.jsx, .jsx
-//
-// So for any package that ships dual `Foo.mjs` + `Foo.native.js`
-// bundles (@stageholder/ui, Tamagui, every styled() RN library on the
-// modern build setup), Metro picks `Foo.mjs` — the WEB build — on
-// native. Inside that .mjs the imports cascade with explicit
-// `./Bar.mjs` references, so the whole import graph goes web.
-//
-// Concrete crash this prevents: `<ActivityRings>` rendering raw HTML
-// `<svg><circle/>` instead of `react-native-svg`'s `<Svg><Circle/>`,
-// throwing "View config getter callback for component `circle` must be
-// a function" because RN's view registry has no `circle` host.
-//
-// Moving `.mjs` to the end keeps it as a valid resolution for
-// packages that ONLY ship `.mjs` (e.g., `use-latest-callback`), so
-// nothing breaks downstream — `.native.js` just wins first when both
-// are present.
+// Ensure `.native.*` variants resolve BEFORE web variants — same pattern
+// as the kit's own reference app (stageholder-ui/apps/docs-expo/
+// metro.config.js). The kit's dist ships dual `Foo.mjs` (web) +
+// `Foo.native.js` (RN) builds; with Expo's default sourceExts, `.mjs` is
+// tried before `.js`, so Metro picks the WEB build on native — e.g.
+// `<ActivityRings>` rendering raw HTML `<svg><circle/>` and throwing
+// "View config getter callback for component `circle` must be a
+// function". Prepending the compound native extensions makes the RN
+// build win wherever one exists, while web-only `.mjs` packages still
+// resolve via the default tail.
 config.resolver.sourceExts = [
-  ...config.resolver.sourceExts.filter((ext) => ext !== "mjs"),
-  "mjs",
+  ...new Set([
+    "native.tsx",
+    "native.ts",
+    "native.jsx",
+    "native.js",
+    ...(config.resolver.sourceExts ?? []),
+  ]),
 ];
 
 
@@ -144,8 +133,47 @@ const dedupedPackages = [
   "@tamagui/config",
 ];
 
+// Native-only optional integrations of @stageholder/ui that this app does
+// NOT (yet) ship. Metro doesn't tree-shake the kit's barrel, so e.g.
+// RichTextEditor.native's static `import ... from "@10play/tentap-editor"`
+// resolves on EVERY bundle even though we never render the editor (journal
+// rich-text editing is web-only for now — see app/(authed)/journal.tsx).
+// Stub them with @tamagui/proxy-worm — a Proxy that swallows any property
+// access — exactly the pattern apps/pwa/vite.config.ts uses to stub
+// native-only packages on web, just pointed the other way.
+//
+// To ADOPT one of these features natively: install the real packages in
+// this app (they're native modules → `bunx expo prebuild` + rebuild) and
+// remove them from this list.
+// Two failure modes both land here:
+//   1. Bundle-time: the package isn't installed at all (bun only auto-installs
+//      FIRST-level kit peers) → "Unable to resolve module …".
+//   2. Runtime: bun auto-installed the kit peer's JS, but its native pod is
+//      NOT autolinked (autolinking scans this app's deps, not hoisted
+//      extras) → "Cannot find native module 'ExpoAudio'" at import time.
+const stubbedModules = [
+  "@10play/tentap-editor", // kit RichTextEditor/RichTextRenderer .native host
+  "react-native-keyboard-controller", // tentap's keyboard-avoidance peer
+  "expo-audio", // kit AudioPlayer / media controller
+  "expo-blur", // kit GlassSurface (nothing we render composes it)
+  "expo-image-manipulator", // kit ImageCrop.native
+  "expo-location", // kit Map/MapboxPicker user-location
+  "@maplibre/maplibre-react-native", // kit Map.native
+  "@rnmapbox/maps", // kit Map.native (mapbox flavor)
+];
+
 const projectOriginPath = path.join(projectRoot, "package.json");
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (
+    stubbedModules.includes(moduleName) ||
+    stubbedModules.some((s) => moduleName.startsWith(`${s}/`))
+  ) {
+    return context.resolveRequest(
+      { ...context, originModulePath: projectOriginPath },
+      "@tamagui/proxy-worm",
+      platform,
+    );
+  }
   const root = moduleName.split("/")[0];
   const scoped = moduleName.startsWith("@")
     ? moduleName.split("/").slice(0, 2).join("/")
