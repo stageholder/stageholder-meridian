@@ -1,14 +1,12 @@
 // apps/mobile/app/(authed)/todos.tsx
 //
 // Todos — the core loop. A list of cross-platform `TodoItem`s (from
-// @repo/features) with the toggle-complete + delete mutations wired. A
-// quick-add row at the top creates a todo into the user's default list
-// (the todos hooks expose `useCreateTodo`, so we surface it rather than
-// deferring).
+// @repo/features) with the toggle-complete + delete mutations wired.
 //
-// Two create affordances mirror the PWA: the quick-add row captures a
-// title-only todo fast, and the FAB opens the full CreateTodoDialog (priority,
-// due/do dates, list) as a bottom Sheet — same shared TodoForm the PWA uses.
+// Creation is the FAB: it opens the full CreateTodoDialog (priority, due/do
+// dates, list) as a bottom Sheet — same shared TodoForm the PWA uses. (The
+// old quick-add row above the list was removed — one create affordance, the
+// standard mobile pattern.)
 //
 // Grouping is kept trivial: open todos first (the working set), a thin
 // "Completed" section after. The web app owns the richer two-axis
@@ -21,7 +19,6 @@ import {
   Banner,
   Button,
   EmptyState,
-  Input,
   PullToRefresh,
   Separator,
   Spinner,
@@ -29,9 +26,7 @@ import {
   View,
   XStack,
   YStack,
-  useToast,
 } from "@stageholder/ui";
-import { Plus } from "@tamagui/lucide-icons-2";
 import { TodoItem } from "@repo/features/todos";
 import type { Todo } from "@repo/core/types";
 import { useMemo, useState } from "react";
@@ -46,23 +41,15 @@ import { CreateTodoDialog } from "@/components/create-todo-dialog";
 import { EditTodoDialog } from "@/components/edit-todo-dialog";
 import { IGNITION } from "@/lib/ignition-palette";
 
-import {
-  useCreateTodo,
-  useDeleteTodo,
-  useToggleTodo,
-  useTodos,
-} from "@/lib/api";
+import { useDeleteTodo, useToggleTodo, useTodos } from "@/lib/api";
 
 export default function TodosScreen() {
   const insets = useSafeAreaInsets();
   const todosQuery = useTodos();
-  const createTodo = useCreateTodo();
   const toggleTodo = useToggleTodo();
   const deleteTodo = useDeleteTodo();
-  const toast = useToast();
 
   const [refreshing, setRefreshing] = useState(false);
-  const [draft, setDraft] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   // The row tapped for editing. Held even while the sheet animates closed so
   // the form keeps its values through the exit (cleared on full close below).
@@ -90,26 +77,6 @@ export default function TodosScreen() {
     return { open: o.sort(byUpdated), done: d.sort(byUpdated) };
   }, [todos]);
 
-  function handleAdd() {
-    const title = draft.trim();
-    if (!title || createTodo.isPending) return;
-    setDraft("");
-    createTodo.mutate(
-      { title },
-      {
-        onError: (err) => {
-          // Restore the text so the user doesn't lose their typing on failure.
-          setDraft(title);
-          toast.show({
-            title: "Couldn't add todo",
-            message: (err as Error).message ?? "Tap to retry.",
-            intent: "danger",
-          });
-        },
-      },
-    );
-  }
-
   function handleEditOpenChange(next: boolean) {
     if (!next) setEditing(null);
   }
@@ -124,39 +91,21 @@ export default function TodosScreen() {
           <Text fontSize="$8" fontWeight="700" color="$color">
             Todos
           </Text>
-
-          {/* Quick add — Enter (return key) or the + button commits. */}
-          <XStack gap="$2" items="center">
-            <Input
-              flex={1}
-              value={draft}
-              onChangeText={setDraft}
-              placeholder="Add a todo…"
-              returnKeyType="done"
-              onSubmitEditing={handleAdd}
-            />
-            <Button
-              iconOnly
-              icon={<Plus size={18} color="#ffffff" />}
-              onPress={handleAdd}
-              disabled={!draft.trim() || createTodo.isPending}
-              loading={createTodo.isPending}
-              aria-label="Add todo"
-            />
-          </XStack>
         </YStack>
 
         {/* PullToRefresh.native is the scroller — its child is the padded
             content column, not a nested ScrollView. */}
-        <PullToRefresh
-          refreshing={refreshing}
-          onRefresh={handleRefresh}
-          // Clearance for the floating BottomNav capsule (PWA shell parity).
-          contentContainerStyle={{
-            paddingBottom: BOTTOM_NAV_CLEARANCE + insets.bottom,
-          }}
-        >
-          <YStack gap="$2" px="$4" pt="$3" pb="$10">
+        <PullToRefresh refreshing={refreshing} onRefresh={handleRefresh}>
+          {/* Bottom padding = clearance for the floating BottomNav capsule
+              (PWA shell parity). Lives on the content column — kit
+              PullToRefresh (alpha.29) no longer accepts
+              contentContainerStyle. */}
+          <YStack
+            gap="$2"
+            px="$4"
+            pt="$3"
+            pb={BOTTOM_NAV_CLEARANCE + insets.bottom}
+          >
             {/* Error */}
             {todosQuery.error ? (
               <Banner intent="danger">
@@ -187,8 +136,8 @@ export default function TodosScreen() {
                 </EmptyState.IconSlot>
                 <EmptyState.Title>Nothing to do</EmptyState.Title>
                 <EmptyState.Description>
-                  Capture the next thing on your mind in the box above, or tap
-                  the + button to set priority and dates.
+                  Tap the + button to capture your first todo — title, priority,
+                  and dates.
                 </EmptyState.Description>
               </EmptyState>
             ) : null}

@@ -23,7 +23,6 @@ import {
   Paragraph,
   ScrollView,
   SegmentedControl,
-  Select,
   Separator,
   Spinner,
   Text,
@@ -39,7 +38,6 @@ import {
 } from "react-native-safe-area-context";
 
 import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
-import { FormSheet } from "@/components/form-sheet";
 
 import { useAppTheme, type ThemePreference } from "@/lib/platform/theme";
 
@@ -48,78 +46,6 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: "dark", label: "Dark" },
   { value: "system", label: "System" },
 ];
-
-/* ---- TEMP: Select isolation test (DELETE AFTER DEBUGGING) ----
-   Byte-for-byte the docs-expo "Default" demo: static FRUITS list,
-   uncontrolled + controlled, standalone on the screen. */
-const TEST_FRUITS = [
-  { value: "apple", label: "Apple" },
-  { value: "pear", label: "Pear" },
-  { value: "orange", label: "Orange" },
-  { value: "watermelon", label: "Watermelon" },
-  { value: "mango", label: "Mango" },
-] as const;
-
-function SelectIsolationTest() {
-  const [controlled, setControlled] = useState("pear");
-  const [sheetOpen, setSheetOpen] = useState(false);
-  return (
-    <YStack
-      gap="$3"
-      p="$3"
-      borderWidth={2}
-      borderColor="$destructive"
-      rounded="$4"
-    >
-      <Text fontSize="$2" fontWeight="700" color="$destructive">
-        TEMP Select test — dummy data
-      </Text>
-      {/* Test 2: the SAME dummy select mounted INSIDE a FormSheet — the
-          forms' exact mount context, still zero API data. Separates the
-          "initial data" theory from the "Select inside FormSheet" theory. */}
-      <Button size="sm" onPress={() => setSheetOpen(true)}>
-        Open dummy select in FormSheet
-      </Button>
-      <FormSheet
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-        title="Dummy sheet"
-        description="Same select, inside the forms' sheet."
-      >
-        <Select value={controlled} onValueChange={setControlled}>
-          <Select.Trigger placeholder="In sheet" width="100%" />
-          <Select.Content>
-            {TEST_FRUITS.map((f) => (
-              <Select.Item key={f.value} value={f.value}>
-                {f.label}
-              </Select.Item>
-            ))}
-          </Select.Content>
-        </Select>
-      </FormSheet>
-      <Select defaultValue="pear">
-        <Select.Trigger placeholder="Uncontrolled" width="100%" />
-        <Select.Content>
-          {TEST_FRUITS.map((f) => (
-            <Select.Item key={f.value} value={f.value}>
-              {f.label}
-            </Select.Item>
-          ))}
-        </Select.Content>
-      </Select>
-      <Select value={controlled} onValueChange={setControlled}>
-        <Select.Trigger placeholder="Controlled" width="100%" />
-        <Select.Content>
-          {TEST_FRUITS.map((f) => (
-            <Select.Item key={f.value} value={f.value}>
-              {f.label}
-            </Select.Item>
-          ))}
-        </Select.Content>
-      </Select>
-    </YStack>
-  );
-}
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
@@ -163,13 +89,6 @@ export default function SettingsScreen() {
             <Text fontSize="$8" fontWeight="700" color="$color">
               Settings
             </Text>
-
-            {/* ---- TEMP: Select isolation test (DELETE AFTER DEBUGGING) ----
-                The EXACT docs-expo Select demo (static dummy data, no API, no
-                initial, no FormSheet) rendered inside THIS app/binary. If
-                this crashes → environment (dev client/binary); if it works →
-                the difference is in how the forms wire Select. */}
-            <SelectIsolationTest />
 
             {/* ---- Appearance ---- */}
             <YStack gap="$2">

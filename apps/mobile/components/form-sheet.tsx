@@ -45,9 +45,13 @@ export function FormSheet({
       open={open}
       onOpenChange={onOpenChange}
       dismissOnSnapToBottom
-      // Size to content; the ScrollView scrolls a tall form. Mirrors the
-      // kit DialogSheetAdapt / DropdownMenu sheet settings.
-      snapPointsMode="fit"
+      // PERCENT snap, NOT snapPointsMode="fit": fit + Sheet.ScrollView
+      // mis-measures on native and the sheet shoots to FULL SCREEN, pinned
+      // to the very top (same `fit` mismeasure class the kit Select's
+      // nested sheet hit — see @stageholder/ui Select.tsx NestedSelectSheet
+      // comments). 85% keeps the status bar + a sliver of the screen behind
+      // visible like a standard form sheet, with headroom for the keyboard.
+      snapPoints={[85]}
       transition="medium"
     >
       <Sheet.Overlay />

@@ -29,11 +29,12 @@ export function CreateFab({
     <FAB
       icon={<Plus size={24} color={iconColor} />}
       placement="bottom-right"
-      r={20}
-      // 6rem above the bottom (clears the ~66px capsule + its 12px lift),
-      // plus the home-indicator inset — same arithmetic as the PWA's
-      // `bottom-[calc(6rem+env(safe-area-inset-bottom,0px))]`.
-      b={96 + insets.bottom}
+      // Standard Material/iOS edge margin.
+      r={16}
+      // Just above the floating BottomNav capsule (~64px + 12px lift) with a
+      // 16px gap, plus the home-indicator inset — anchored to the nav rather
+      // than floating mid-air. (PWA parity arithmetic, tightened.)
+      b={92 + insets.bottom}
       onPress={onPress}
       aria-label={label}
       {...(tint ? { style: { backgroundColor: tint } } : {})}
