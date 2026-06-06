@@ -25,7 +25,7 @@
 
 import { useStageholder } from "@stageholder/sdk/react-native";
 import { CalendarPickerProvider, Spinner, View } from "@stageholder/ui";
-import { Redirect, Tabs, useSegments } from "expo-router";
+import { Redirect, Tabs, useRouter, useSegments } from "expo-router";
 import { useEffect, useState } from "react";
 
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
@@ -34,6 +34,7 @@ import { isOnboarded } from "@/lib/onboarding";
 export default function AuthedLayout() {
   const { state } = useStageholder();
   const segments = useSegments();
+  const router = useRouter();
 
   // The authenticated user's `sub` keys the per-account onboarding flag. Only
   // present once authenticated (state.data is the me-response); undefined
@@ -59,6 +60,21 @@ export default function AuthedLayout() {
     };
   }, [sub, onOnboarding]);
 
+  // The onboarding redirect must be IMPERATIVE (effect + router.replace), not
+  // a render-time <Redirect> that replaces <Tabs>: the wizard route lives
+  // INSIDE the Tabs navigator below, so returning <Redirect> instead of <Tabs>
+  // unmounts the very navigator the navigation targets — the action can never
+  // complete, segments never change, the gate redirects again on every render,
+  // and React throws "Maximum update depth exceeded". Tabs stays mounted; a
+  // full-screen overlay (bottom of the render) masks the dashboard while the
+  // flag resolves / the replace lands, so nothing half-loaded ever flashes.
+  // (Hook lives ABOVE the early returns — hooks must run unconditionally.)
+  const needsOnboarding = onboarded === false && !onOnboarding;
+  const resolvingFlag = onboarded === null && !onOnboarding;
+  useEffect(() => {
+    if (needsOnboarding) router.replace("/(authed)/onboarding");
+  }, [needsOnboarding, router]);
+
   // While the provider hydrates its session from SecureStore, hold render
   // behind a centered spinner — bg from the theme so it matches light/dark.
   if (state.status === "loading") {
@@ -74,48 +90,67 @@ export default function AuthedLayout() {
     return <Redirect href="/sign-in" />;
   }
 
-  // Authenticated. Hold the spinner until the onboarding flag resolves so the
-  // tabs never flash before a not-onboarded user is redirected. (Skip the hold
-  // while already on the onboarding screen — it renders inside <Tabs> below.)
-  if (onboarded === null && !onOnboarding) {
-    return (
-      <View flex={1} items="center" justify="center" bg="$background">
-        <Spinner size="large" />
-      </View>
-    );
-  }
-  // Not onboarded → into the wizard. Guard against a redirect loop when the
-  // wizard route is already active (it lives in the authed tree below).
-  if (onboarded === false && !onOnboarding) {
-    return <Redirect href="/(authed)/onboarding" />;
-  }
-
+  // Authenticated — render the tabs frame (plus the masking overlay while the
+  // onboarding state is still settling; see the gate comment above).
   return (
     <CalendarPickerProvider>
-      <Tabs
-        // The kit BottomNav capsule replaces the stock bar entirely. It
-        // floats OVER the content (no reserved bar space), so every screen
-        // pads its scroll content by BOTTOM_NAV_CLEARANCE + safe-area inset
-        // (see components/mobile-bottom-nav.tsx) — the same clearance
-        // contract the PWA's app-shell uses.
-        tabBar={(props) => <MobileBottomNav {...(props as never)} />}
-        screenOptions={{ headerShown: false }}
-      >
-        <Tabs.Screen name="index" options={{ title: "Today" }} />
-        <Tabs.Screen name="todos" options={{ title: "Todos" }} />
-        <Tabs.Screen name="habits" options={{ title: "Habits" }} />
-        <Tabs.Screen name="journal" options={{ title: "Journal" }} />
-        <Tabs.Screen name="settings" options={{ title: "Settings" }} />
-        {/* Journal entry detail (journal/[id].tsx) + the new-entry editor
-            (journal/new.tsx) live in the journal tab's stack but are not
-            destinations — the custom bar lists its own items, and the
-            active-state prefix match keeps Journal lit. */}
-        <Tabs.Screen name="journal/[id]" options={{ href: null }} />
-        <Tabs.Screen name="journal/new" options={{ href: null }} />
-        {/* Onboarding wizard (onboarding.tsx) — gated above, not a tab
-            destination; hidden from the custom bar via href:null. */}
-        <Tabs.Screen name="onboarding" options={{ href: null }} />
-      </Tabs>
+      <View flex={1}>
+        <Tabs
+          // The kit BottomNav capsule replaces the stock bar entirely. It
+          // floats OVER the content (no reserved bar space), so every screen
+          // pads its scroll content by BOTTOM_NAV_CLEARANCE + safe-area inset
+          // (see components/mobile-bottom-nav.tsx) — the same clearance
+          // contract the PWA's app-shell uses.
+          //
+          // Hidden during onboarding: the wizard is a full-screen flow, not a
+          // tab destination — showing the capsule there both looks broken and
+          // invites escaping a gated flow.
+          tabBar={(props) => {
+            const { state: navState } = props as unknown as {
+              state: { index: number; routes: { name: string }[] };
+            };
+            if (navState.routes[navState.index]?.name === "onboarding") {
+              return null;
+            }
+            return <MobileBottomNav {...(props as never)} />;
+          }}
+          screenOptions={{ headerShown: false }}
+        >
+          <Tabs.Screen name="index" options={{ title: "Today" }} />
+          <Tabs.Screen name="todos" options={{ title: "Todos" }} />
+          <Tabs.Screen name="habits" options={{ title: "Habits" }} />
+          <Tabs.Screen name="journal" options={{ title: "Journal" }} />
+          <Tabs.Screen name="settings" options={{ title: "Settings" }} />
+          {/* Journal entry detail (journal/[id].tsx) + the new-entry editor
+              (journal/new.tsx) live in the journal tab's stack but are not
+              destinations — the custom bar lists its own items, and the
+              active-state prefix match keeps Journal lit. */}
+          <Tabs.Screen name="journal/[id]" options={{ href: null }} />
+          <Tabs.Screen name="journal/new" options={{ href: null }} />
+          {/* Onboarding wizard (onboarding.tsx) — gated above, not a tab
+              destination; hidden from the custom bar via href:null. */}
+          <Tabs.Screen name="onboarding" options={{ href: null }} />
+        </Tabs>
+        {/* Masks the dashboard while the SecureStore flag resolves and while
+            the onboarding replace() is in flight — keeps Tabs mounted (the
+            redirect needs the navigator alive, see comment above) without
+            ever flashing a screen the user shouldn't see yet. */}
+        {resolvingFlag || needsOnboarding ? (
+          <View
+            position="absolute"
+            t={0}
+            l={0}
+            r={0}
+            b={0}
+            items="center"
+            justify="center"
+            bg="$background"
+            z={100}
+          >
+            <Spinner size="large" />
+          </View>
+        ) : null}
+      </View>
     </CalendarPickerProvider>
   );
 }

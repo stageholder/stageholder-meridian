@@ -25,7 +25,7 @@
     "@repo/crypto": "workspace:*",
     "@repo/features": "workspace:*",
     "@stageholder/sdk": "^1.0.0-alpha.47",
-    "@stageholder/ui": "^0.3.0-alpha.24",
+    "@stageholder/ui": "^0.3.0-alpha.25",
     "@tamagui/config": "^2.0.0",
     "@tamagui/core": "^2.0.0",
     "@tamagui/lucide-icons-2": "^2.0.0",

@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-06-06T10:26:06.275Z",
+  "mode": "headless",
+  "workerType": "audit",
+  "model": "haiku",
+  "durationMs": 195231,
+  "executionId": "audit_1780741371044_avbfbu",
+  "success": true,
+  "findings": {
+    "vulnerabilities": [
+      {
+        "severity": "high",
+        "file": "apps/api/src/app.module.ts",
+        "line": 66,
+        "description": "Webhook secret defaults to empty string if STAGEHOLDER_WEBHOOK_SECRET env var is not set. This disables HMAC signature verification for Hub webhooks, allowing attackers to forge webhook events (user updates, subscription changes, etc.). The fallback `?? \"\"` should be removed and the env var should be validated as required in env.validation.ts"
+      },
+      {
+        "severity": "medium",
+        "file": "apps/api/src/config/env.validation.ts",
+        "line": 1,
+        "description": "STAGEHOLDER_WEBHOOK_SECRET is not included in the Zod environment validation schema, so missing webhook secrets won't be caught at application startup. Add validation: `STAGEHOLDER_WEBHOOK_SECRET: z.string().min(1, \"...\")` to catch misconfiguration early"
+      },
+      {
+        "severity": "low",
+        "file": "apps/api/src/modules/encryption/encryption.service.ts",
+        "line": 21,
+        "description": "Plaintext mode fallback when ENCRYPTION_KEY is not set. While properly logged as a warning and mitigated by env validation requiring the key in production, sensitive user data (journals, habits, todos) is stored unencrypted. Ensure ENCRYPTION_KEY is always set in production via deployment verification"
+      }
+    ],
+    "riskScore": 42,
+    "recommendations": [
+      "CRITICAL: Remove the `?? \"\"` fallback in app.module.ts line 66. Replace with `secret: process.env.STAGEHOLDER_WEBHOOK_SECRET` and add STAGEHOLDER_WEBHOOK_SECRET to env.validation.ts as a required string field with minimum length validation",
+      "Add STAGEHOLDER_WEBHOOK_SECRET to env.validation.ts with production-required validation (similar to IDENTITY_CLIENT_SECRET)",
+      "Verify in CI/CD that STAGEHOLDER_WEBHOOK_SECRET is populated in production deployments and log verification on startup",
+      "No SQL injection risks found — all database queries use Mongoose parameterized methods safely",
+      "No XSS vulnerabilities detected — no dangerouslySetInnerHTML or innerHTML usage; React auto-escaping in place",
+      "No hardcoded secrets — all sensitive values properly loaded from environment variables",
+      "Authentication/Authorization is properly enforced globally via StageholderAuthGuard as APP_GUARD; only legitimate public endpoints (health, webhook) are marked @Public",
+      "Encryption implementation uses industry-standard AES-256-GCM from @boringnode/encryption with proper key rotation scripts provided",
+      "HTTP exception filter properly suppresses sensitive error details from responses",
+      "Throttling is enabled (100 req/min) as a basic DoS protection"
+    ]
+  },
+  "rawOutputPreview": "Based on my comprehensive security analysis of the codebase, here's the detailed report:\n\n```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"high\",\n      \"file\": \"apps/api/src/app.module.ts\",\n      \"line\": 66,\n      \"description\": \"Webhook secret defaults to empty string if STAGEHOLDER_WEBHOOK_SECRET env var is not set. This disables HMAC signature verification for Hub webhooks, allowing attackers to forge webhook events (user updates, subscription changes, etc.). The fallback `?? \\\"\\\"` should be removed and the env var should be validated as required in env.validation.ts\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"apps/api/src/config/env.validation.ts\",\n      \"line\": 1,\n      \"description\": \"STAGEHOLDER_WEBHOOK_SECRET is not included in the Zod environment validation schema, so missing webhook secrets won't be caught at application startup. Add validation: `STAGEHOLDER_WEBHOOK_SECRET: z.string().min(1, \\\"...\\\")` to catch misconfiguration early\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"apps/api/src/modules/encryption/encryption.service.ts\",\n      \"line\": 21,\n      \"description\": \"Plaintext mode fallback when ENCRYPTION_KEY is not set. While properly logged as a warning and mitigated by env validation requiring the key in production, sensitive user data (journals, habits, todos) is stored unencrypted. Ensure ENCRYPTION_KEY is always set in production via deployment verification\"\n    }\n  ],\n  \"riskScore\": 42,\n  \"recommendations\": [\n    \"CRITICAL: Remove the `?? \\\"\\\"` fallback in app.module.ts line 66. Replace with `secret: process.env.STAGEHOLDER_WEBHOOK_SECRET` and add STAGEHOLDER_WEBHOOK_SECRET to env.validation.ts as a required string field with minimum length validation\",\n    \"Add STAGEHOLDER_WEBHOOK_SECRET to env.validation.ts with production-required validation (similar to IDENTITY_CLIENT_SECRET)\",\n    \"Verify in CI/CD that STAGEHOLDER_WEBHOOK_SECRET is populated in production deployments and log verification on startup\",\n    \"No ",
+  "rawOutputLength": 3041
+}

@@ -1,0 +1,51 @@
+{
+  "timestamp": "2026-06-06T10:29:05.517Z",
+  "mode": "headless",
+  "workerType": "optimize",
+  "model": "sonnet",
+  "durationMs": 373469,
+  "executionId": "optimize_1780741372048_62ynn4",
+  "success": true,
+  "findings": {
+    "sections": [
+      {
+        "title": "Performance Analysis Results",
+        "content": "\n",
+        "level": 2
+      },
+      {
+        "title": "1. N+1 Query Pattern — HIGH severity",
+        "content": "**`apps/api/src/modules/todo/todo.service.ts:131-138`**\n\nThe `reorder()` method calls `findById` + `save` in a loop — 20+ DB calls to reorder 10 todos. Fix: add a `updateOrderBatch` repository method and replace the loop with a single call.\n\n---\n\n",
+        "level": 3
+      },
+      {
+        "title": "2. Unnecessary Re-renders — MEDIUM severity",
+        "content": "\n**`apps/pwa/src/components/todos/completed-section.tsx:21-23`** — `[...todos].sort(...)` runs on every render. Wrap in `useMemo([todos])`.\n\n**`apps/pwa/src/components/todos/completed-content.tsx:23-37`** — `.filter()` + `.sort()` + `new Date()` per item on every render. Both the filtered list and the date-keyed grouping map should be memoized.\n\n---\n\n",
+        "level": 3
+      },
+      {
+        "title": "3. Missing TanStack Query Caching — MEDIUM severity (widespread)",
+        "content": "\nEvery `useQuery` in these files is missing `staleTime`/`gcTime`, causing refetches on every navigation:\n\n| File | Hooks affected |\n|---|---|\n| `apps/pwa/src/lib/api/todos.ts` | `useTodoLists`, `useTodos`, `useAllTodos` |\n| `apps/pwa/src/lib/api/habits.ts` | `useHabits`, `useHabit`, `useHabitEntries` |\n| `apps/pwa/src/lib/api/light.ts` | `useUserLight`, `useLightEvents` |\n| `apps/pwa/src/lib/api/calendar.ts` | `useCalendarData`, `useCalendarRange` |\n\n**Fix pattern** (calendar data is safe at 30min, user-mutated data at 5min):\n```typescript\nstaleTime: 5 * 60 * 1000,   // mark fresh for 5 min\ngcTime:   10 * 60 * 1000,   // keep in cache 10 min\n```\n\n---\n\n",
+        "level": 3
+      },
+      {
+        "title": "4. Inline Regex Compilation — LOW severity",
+        "content": "\nSame `/^\\d{4}-\\d{2}-\\d{2}$/` regex is compiled on every request in:\n- `apps/api/src/modules/light/light.service.ts:51`\n- `apps/api/src/modules/journal/journal.service.ts:118`\n- `apps/api/src/modules/calendar/calendar.controller.ts`\n\nFix: hoist to module-level `const ISO_DATE_RE = /^\\d{4}-\\d{2}-\\d{2}$/`.\n\n---\n\n",
+        "level": 3
+      },
+      {
+        "title": "5. Memory Leaks — None Found",
+        "content": "Event listener cleanups in `paywall-listener.tsx`, `update-checker.tsx`, and `journal-celebration.tsx` all have proper `return () => cleanup()` patterns.\n\n---\n\n**Top 2 highest-impact changes to make first:**\n1. The N+1 batch fix in `todo.service.ts` — eliminates O(n) DB round-trips per reorder.\n2. Adding `staleTime` to the TanStack Query hooks — eliminates redundant API calls on every route transition for all four data domains.",
+        "level": 3
+      }
+    ],
+    "codeBlocks": [
+      {
+        "language": "typescript",
+        "code": "staleTime: 5 * 60 * 1000,   // mark fresh for 5 min\ngcTime:   10 * 60 * 1000,   // keep in cache 10 min"
+      }
+    ]
+  },
+  "rawOutputPreview": "Here's a summary of the performance findings across the codebase:\n\n---\n\n## Performance Analysis Results\n\n### 1. N+1 Query Pattern — HIGH severity\n**`apps/api/src/modules/todo/todo.service.ts:131-138`**\n\nThe `reorder()` method calls `findById` + `save` in a loop — 20+ DB calls to reorder 10 todos. Fix: add a `updateOrderBatch` repository method and replace the loop with a single call.\n\n---\n\n### 2. Unnecessary Re-renders — MEDIUM severity\n\n**`apps/pwa/src/components/todos/completed-section.tsx:21-23`** — `[...todos].sort(...)` runs on every render. Wrap in `useMemo([todos])`.\n\n**`apps/pwa/src/components/todos/completed-content.tsx:23-37`** — `.filter()` + `.sort()` + `new Date()` per item on every render. Both the filtered list and the date-keyed grouping map should be memoized.\n\n---\n\n### 3. Missing TanStack Query Caching — MEDIUM severity (widespread)\n\nEvery `useQuery` in these files is missing `staleTime`/`gcTime`, causing refetches on every navigation:\n\n| File | Hooks affected |\n|---|---|\n| `apps/pwa/src/lib/api/todos.ts` | `useTodoLists`, `useTodos`, `useAllTodos` |\n| `apps/pwa/src/lib/api/habits.ts` | `useHabits`, `useHabit`, `useHabitEntries` |\n| `apps/pwa/src/lib/api/light.ts` | `useUserLight`, `useLightEvents` |\n| `apps/pwa/src/lib/api/calendar.ts` | `useCalendarData`, `useCalendarRange` |\n\n**Fix pattern** (calendar data is safe at 30min, user-mutated data at 5min):\n```typescript\nstaleTime: 5 * 60 * 1000,   // mark fresh for 5 min\ngcTime:   10 * 60 * 1000,   // keep in cache 10 min\n```\n\n---\n\n### 4. Inline Regex Compilation — LOW severity\n\nSame `/^\\d{4}-\\d{2}-\\d{2}$/` regex is compiled on every request in:\n- `apps/api/src/modules/light/light.service.ts:51`\n- `apps/api/src/modules/journal/journal.service.ts:118`\n- `apps/api/src/modules/calendar/calendar.controller.ts`\n\nFix: hoist to module-level `const ISO_DATE_RE = /^\\d{4}-\\d{2}-\\d{2}$/`.\n\n---\n\n### 5. Memory Leaks — None Found\nEvent listener cleanups in `paywall-listener.tsx`, `update-checker.tsx`, and `journal",
+  "rawOutputLength": 2347
+}

@@ -22,7 +22,7 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "expo-router";
 import { useUser, useUpdateProfile } from "@stageholder/sdk/react-native";
-import { Button, View, XStack, YStack } from "@stageholder/ui";
+import { Button, ScrollView, View, XStack, YStack } from "@stageholder/ui";
 import {
   WelcomeStep,
   ProfileStep,
@@ -126,41 +126,50 @@ export default function OnboardingScreen() {
   return (
     <YStack flex={1} bg="$background">
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-        {/* Centered, constrained column so the wizard reads as a focused card
-            rather than stretching edge-to-edge on tablets. Vertically centered
-            via flex on the outer column. */}
-        <YStack
-          flex={1}
-          items="center"
-          justify="center"
-          px="$5"
-          pt="$4"
-          style={{ paddingBottom: insets.bottom + 24 }}
-        >
-          <YStack width="100%" maxW={512} gap="$6">
-            {/* Progress dots — active brand, completed muted-brand, upcoming
-                faint. Mirrors the PWA's dot row. */}
-            <XStack items="center" justify="center" gap="$2">
-              {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-                <View
-                  key={i}
-                  height={7}
-                  width={7}
-                  rounded={9999}
-                  transition="quick"
-                  bg={
-                    i === step
-                      ? "$primary"
-                      : i < step
-                        ? "$primaryMuted"
-                        : "$muted"
-                  }
-                />
-              ))}
-            </XStack>
+        {/* Fixed header (dots) + fixed footer (Back/Skip) with the step card
+            SCROLLING between them — steps like the tour list outgrow a phone
+            viewport, so the card cannot live in a fixed centered column (the
+            old layout let content run under the footer). flexGrow + centered
+            contentContainer keeps short steps vertically centered like
+            before; tall steps scroll naturally. */}
+        <YStack flex={1}>
+          {/* Progress dots — active brand, completed muted-brand, upcoming
+              faint. Mirrors the PWA's dot row. */}
+          <XStack items="center" justify="center" gap="$2" pt="$4" pb="$2">
+            {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+              <View
+                key={i}
+                height={7}
+                width={7}
+                rounded={9999}
+                transition="quick"
+                bg={
+                  i === step
+                    ? "$primary"
+                    : i < step
+                      ? "$primaryMuted"
+                      : "$muted"
+                }
+              />
+            ))}
+          </XStack>
 
-            {/* Step content card. */}
+          <ScrollView
+            flex={1}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{
+              flexGrow: 1,
+              justifyContent: "center",
+              paddingHorizontal: 20,
+              paddingVertical: 16,
+            }}
+          >
+            {/* Step content card — constrained so the wizard reads as a
+                focused card rather than stretching edge-to-edge on tablets. */}
             <YStack
+              width="100%"
+              maxW={512}
+              self="center"
               rounded="$6"
               borderWidth={1}
               borderColor="$borderColor"
@@ -169,28 +178,38 @@ export default function OnboardingScreen() {
             >
               {stepComponent}
             </YStack>
+          </ScrollView>
 
-            {/* Navigation — Back (mid-flow) on the left, Skip (before the last
-                step) on the right; the last step's CTA lives in CompleteStep. */}
-            <XStack items="center" justify="space-between">
-              <View>
-                {step > 0 && step < lastStep ? (
-                  <Button
-                    intent="ghost"
-                    size="sm"
-                    onPress={() => setStep(step - 1)}
-                  >
-                    Back
-                  </Button>
-                ) : null}
-              </View>
-              {step < lastStep ? (
-                <Button intent="ghost" size="sm" onPress={handleSkip}>
-                  Skip setup
+          {/* Navigation — Back (mid-flow) on the left, Skip (before the last
+              step) on the right; the last step's CTA lives in CompleteStep.
+              Fixed below the scroll area so it never overlaps step content. */}
+          <XStack
+            items="center"
+            justify="space-between"
+            width="100%"
+            maxW={512}
+            self="center"
+            px="$5"
+            pt="$2"
+            style={{ paddingBottom: insets.bottom + 16 }}
+          >
+            <View>
+              {step > 0 && step < lastStep ? (
+                <Button
+                  intent="ghost"
+                  size="sm"
+                  onPress={() => setStep(step - 1)}
+                >
+                  Back
                 </Button>
               ) : null}
-            </XStack>
-          </YStack>
+            </View>
+            {step < lastStep ? (
+              <Button intent="ghost" size="sm" onPress={handleSkip}>
+                Skip setup
+              </Button>
+            ) : null}
+          </XStack>
         </YStack>
       </SafeAreaView>
     </YStack>
