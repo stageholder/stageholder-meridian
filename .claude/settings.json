@@ -1,6 +1,10 @@
 {
   "enabledPlugins": {
     "commit-commands@claude-plugins-official": true,
-    "feature-dev@claude-plugins-official": true
+    "feature-dev@claude-plugins-official": true,
+    "ruflo-core@ruflo": true,
+    "ruflo-swarm@ruflo": true,
+    "ruflo-rag-memory@ruflo": true,
+    "ruflo-neural-trader@ruflo": true
   }
 }
