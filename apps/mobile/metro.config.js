@@ -123,15 +123,24 @@ const dedupedPackages = [
   // and the second copy of `tamagui` re-creates a fresh internal store, so
   // theme/brand context inside @stageholder/ui's components reads `null`
   // while context set in this app reads correctly. Forcing a single
-  // resolution path fixes the cross-package context cascade. We list every
-  // sub-package that has its own internal state — core, web, native — so
-  // none of them slip through.
+  // resolution path fixes the cross-package context cascade.
   "tamagui",
-  "@tamagui/core",
-  "@tamagui/web",
-  "@tamagui/native",
-  "@tamagui/config",
+  // THE KIT ITSELF. Root cause of the day-long 2026-06-06 Select crash:
+  // bun parked a STALE nested copy at packages/features/node_modules/
+  // @stageholder/ui (alpha.24) during version churn, so the SHARED FORMS
+  // (@repo/features) resolved a different — broken — kit than the app's
+  // own screens (root copy, fixed). Every kit fix "didn't take" for the
+  // forms while dummy tests in apps/mobile worked. Force every import of
+  // the kit, from ANY workspace package, to the single root copy.
+  "@stageholder/ui",
 ];
+
+// The ENTIRE @tamagui/* scope is deduped (wildcard, matching the kit
+// reference app stageholder-ui/apps/docs-expo/metro.config.js) — listing
+// individual sub-packages proved fragile: context/ref-carrying packages we
+// hadn't listed (select, sheet, adapt, portal, compose-refs, floating, …)
+// could still resolve twice and split their internal state across copies.
+const isDedupedScope = (name) => name === "tamagui" || name.startsWith("@tamagui/");
 
 // Native-only optional integrations of @stageholder/ui that this app does
 // NOT (yet) ship. Metro doesn't tree-shake the kit's barrel, so e.g.
@@ -182,6 +191,8 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     ? moduleName.split("/").slice(0, 2).join("/")
     : null;
   if (
+    isDedupedScope(moduleName) ||
+    (scoped && isDedupedScope(scoped)) ||
     dedupedPackages.includes(moduleName) ||
     dedupedPackages.includes(root) ||
     (scoped && dedupedPackages.includes(scoped))

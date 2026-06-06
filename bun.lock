@@ -90,7 +90,7 @@
         "@repo/crypto": "workspace:*",
         "@repo/features": "workspace:*",
         "@stageholder/sdk": "^1.0.0-alpha.47",
-        "@stageholder/ui": "^0.3.0-alpha.25",
+        "@stageholder/ui": "^0.3.0-alpha.29",
         "@tamagui/config": "^2.0.0",
         "@tamagui/core": "^2.0.0",
         "@tamagui/lucide-icons-2": "^2.0.0",
@@ -154,7 +154,7 @@
         "@repo/crypto": "*",
         "@repo/ui": "*",
         "@stageholder/sdk": "^1.0.0-alpha.47",
-        "@stageholder/ui": "^0.3.0-alpha.25",
+        "@stageholder/ui": "^0.3.0-alpha.29",
         "@tamagui/config": "2.0.0",
         "@tamagui/lucide-icons-2": "2.0.0",
         "@tamagui/toast": "2.0.0",
@@ -263,7 +263,7 @@
         "@repo/core": "*",
         "@repo/eslint-config": "*",
         "@repo/typescript-config": "*",
-        "@stageholder/ui": "^0.3.0-alpha.25",
+        "@stageholder/ui": "^0.3.0-alpha.29",
         "@tamagui/lucide-icons-2": "^2.0.0",
         "react": "^19.2.0",
         "typescript": "^5",
@@ -1393,7 +1393,7 @@
 
     "@stageholder/sdk": ["@stageholder/sdk@1.0.0-alpha.47", "https://npm.pkg.github.com/download/@stageholder/sdk/1.0.0-alpha.47/62a2629fc44cb78b4c19ddbff91f9bfc6bfef3bd", { "dependencies": { "@radix-ui/react-avatar": "^1.1.0", "@radix-ui/react-dialog": "^1.1.0", "@radix-ui/react-dropdown-menu": "^2.1.0", "@radix-ui/react-popover": "^1.1.0", "@radix-ui/react-progress": "^1.1.0", "@radix-ui/react-select": "^2.1.0", "@radix-ui/react-slot": "^1.1.0", "class-variance-authority": "^0.7.0", "clsx": "^2.1.0", "cmdk": "^1.0.0", "iron-session": "^8.0.0", "jose": "^6.0.0", "svix": "^1.45.0", "tailwind-merge": "^2.5.0", "zod": "^3.24.0" }, "peerDependencies": { "@nestjs/common": "^11.0.0", "@nestjs/core": "^11.0.0", "@tanstack/react-query": "^5.0.0", "@tauri-apps/plugin-store": "^2.0.0", "expo-auth-session": ">=5.5.0", "expo-crypto": ">=13.0.0", "expo-linking": ">=6.3.0", "expo-secure-store": ">=13.0.0", "expo-web-browser": ">=13.0.0", "ioredis": "^5.0.0", "mongodb": "^6.0.0", "next": "^16.0.0", "pg": "^8.0.0", "react": "^19.2.0", "react-dom": "^19.2.0", "react-native": ">=0.74.0" } }, "sha512-wEBEX04UKPjglZX0ZjMZeocjvBK3R/zwmLd9cGiZ8hsIHfgC5y9EbQQydqenl3pynROZz9nuFIBdgIS6h5skXg=="],
 
-    "@stageholder/ui": ["@stageholder/ui@0.3.0-alpha.25", "https://npm.pkg.github.com/download/@stageholder/ui/0.3.0-alpha.25/8cc9541aa9c3d38365175648ebefb72041998a3a", { "dependencies": { "@tamagui/config": "^2.0.0", "@tamagui/helpers-icon": "^2.0.0", "@tamagui/linear-gradient": "^2.0.0", "@tamagui/themes": "^2.0.0", "@tanstack/react-table": "^8.21.3", "@tanstack/react-virtual": "^3", "@tiptap/extension-highlight": "^3.23.4", "@tiptap/extension-image": "^3.23.4", "@tiptap/extension-mention": "^3", "@tiptap/extension-subscript": "^3.23.4", "@tiptap/extension-superscript": "^3.23.4", "@tiptap/extension-text-align": "^3.23.4", "marked": "^14" }, "peerDependencies": { "@10play/tentap-editor": "^1.0.1", "@maplibre/maplibre-react-native": ">=10.0.0", "@react-native-async-storage/async-storage": ">=1.0.0", "@rnmapbox/maps": ">=10.0.0", "@shopify/flash-list": ">=2.0.0", "@tamagui/lucide-icons-2": "^2.0.0", "@tamagui/toast": "^2.0.0", "@tiptap/core": ">=3.0.0", "@tiptap/extension-collaboration": ">=3.0.0", "@tiptap/extension-collaboration-caret": ">=3.0.0", "@tiptap/extensions": ">=3.0.0", "@tiptap/pm": ">=3.0.0", "@tiptap/react": ">=3.0.0", "@tiptap/starter-kit": ">=3.0.0", "expo": ">=52.0.0", "expo-audio": ">=0.3.0", "expo-blur": ">=12.0.0", "expo-image-manipulator": ">=12.0.0", "expo-location": ">=17.0.0", "expo-video": ">=2.0.0", "mapbox-gl": ">=3.0.0", "maplibre-gl": ">=4.0.0", "motion": ">=12.0.0", "react": ">=19.0.0", "react-image-crop": ">=11.0.0", "react-map-gl": ">=8.0.0", "react-native": ">=0.81.0", "react-native-gesture-handler": ">=2.0.0", "react-native-reanimated": ">=3.10.0", "react-native-svg": ">=15.0.0", "react-native-web": "latest", "react-use-measure": ">=2.0.0", "tamagui": "^2.0.0", "yjs": ">=13.0.0" } }, "sha512-dTm872/qPEK6916JMJjAkYPx1q5fAyx3dmSSxbB/b+9Ky48i7VT8uJThtNG5FwIc4xrOk0ZngfrxyrLMDBvl5g=="],
+    "@stageholder/ui": ["@stageholder/ui@0.3.0-alpha.29", "https://npm.pkg.github.com/download/@stageholder/ui/0.3.0-alpha.29/d0b3038ad714b8caa0bee2083eb521096ec5084b", { "dependencies": { "@tamagui/config": "^2.0.0", "@tamagui/helpers-icon": "^2.0.0", "@tamagui/linear-gradient": "^2.0.0", "@tamagui/select": "^2.0.0", "@tamagui/themes": "^2.0.0", "@tanstack/react-table": "^8.21.3", "@tanstack/react-virtual": "^3", "@tiptap/extension-highlight": "^3.23.4", "@tiptap/extension-image": "^3.23.4", "@tiptap/extension-mention": "^3", "@tiptap/extension-subscript": "^3.23.4", "@tiptap/extension-superscript": "^3.23.4", "@tiptap/extension-text-align": "^3.23.4", "marked": "^14" }, "peerDependencies": { "@10play/tentap-editor": "^1.0.1", "@maplibre/maplibre-react-native": ">=10.0.0", "@react-native-async-storage/async-storage": ">=1.0.0", "@rnmapbox/maps": ">=10.0.0", "@shopify/flash-list": ">=2.0.0", "@tamagui/lucide-icons-2": "^2.0.0", "@tamagui/toast": "^2.0.0", "@tiptap/core": ">=3.0.0", "@tiptap/extension-collaboration": ">=3.0.0", "@tiptap/extension-collaboration-caret": ">=3.0.0", "@tiptap/extensions": ">=3.0.0", "@tiptap/pm": ">=3.0.0", "@tiptap/react": ">=3.0.0", "@tiptap/starter-kit": ">=3.0.0", "expo": ">=52.0.0", "expo-audio": ">=0.3.0", "expo-blur": ">=12.0.0", "expo-image-manipulator": ">=12.0.0", "expo-location": ">=17.0.0", "expo-video": ">=2.0.0", "mapbox-gl": ">=3.0.0", "maplibre-gl": ">=4.0.0", "motion": ">=12.0.0", "react": ">=19.0.0", "react-image-crop": ">=11.0.0", "react-map-gl": ">=8.0.0", "react-native": ">=0.81.0", "react-native-gesture-handler": ">=2.0.0", "react-native-reanimated": ">=3.10.0", "react-native-svg": ">=15.0.0", "react-native-web": "latest", "react-use-measure": ">=2.0.0", "tamagui": "^2.0.0", "yjs": ">=13.0.0" } }, "sha512-49e2wH2aPa3WhD3TBe8QOzc2TQEiWpAWZRtpAw2pKVDJl2hJn1ugiU7vlnlyJicPh/L3Qninu/v7WaR3ynqXjA=="],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 

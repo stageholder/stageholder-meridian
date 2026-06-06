@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Form, useMedia } from "tamagui";
+import { Form, isWeb, useMedia } from "tamagui";
 import {
   Button,
   EmojiPicker,
@@ -287,6 +287,12 @@ export function HabitForm({
                 setFrequency(value as HabitFormValues["frequency"]);
                 if (value !== "weekly") setScheduledDays([]);
               }}
+              // Native: this form renders DIRECTLY inside a Sheet (the
+              // mobile FormSheet pattern — no Adapt teleport), so the kit's
+              // ancestor-Adapt auto-detection misses and the Select's own
+              // Adapt path crashes on RN (frozen-ref, kit <= alpha.25).
+              // Force the driven-sheet listbox; web keeps auto-detection.
+              inSheet={isWeb ? undefined : true}
             >
               <Select.Trigger mt="$1" width="100%" />
               <Select.Content>

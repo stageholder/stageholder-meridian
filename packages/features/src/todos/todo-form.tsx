@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { format } from "date-fns";
 import { Inbox, CalendarClock, Clock, Flag } from "@tamagui/lucide-icons-2";
-import { Form } from "tamagui";
+import { Form, isWeb } from "tamagui";
 import {
   Button,
   Input,
@@ -153,6 +153,12 @@ export function TodoForm({
             <Select
               value={selectedListId || defaultListId}
               onValueChange={setSelectedListId}
+              // Native: this form renders DIRECTLY inside a Sheet (the
+              // mobile FormSheet pattern — no Adapt teleport), so the kit's
+              // ancestor-Adapt auto-detection misses and the Select's own
+              // Adapt path crashes on RN (frozen-ref, kit <= alpha.25).
+              // Force the driven-sheet listbox; web keeps auto-detection.
+              inSheet={isWeb ? undefined : true}
             >
               <Select.Trigger placeholder="Select list" width="100%" />
               <Select.Content>
@@ -230,7 +236,12 @@ export function TodoForm({
                 Priority
               </Text>
             </XStack>
-            <Select value={priority} onValueChange={setPriority}>
+            {/* inSheet: same FormSheet rationale as the List select above. */}
+            <Select
+              value={priority}
+              onValueChange={setPriority}
+              inSheet={isWeb ? undefined : true}
+            >
               <Select.Trigger placeholder="None" width="100%" />
               <Select.Content>
                 <Select.Item value="none">None</Select.Item>

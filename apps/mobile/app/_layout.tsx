@@ -26,12 +26,8 @@
 // read `useAccessToken()` (see lib/api/Provider.tsx).
 
 import { StageholderProvider } from "@stageholder/sdk/react-native";
-import {
-  HapticProvider,
-  Theme,
-  ToastProvider,
-  UIProvider,
-} from "@stageholder/ui";
+import { HapticProvider, Theme, ToastProvider } from "@stageholder/ui";
+import { TamaguiProvider } from "tamagui";
 import Constants from "expo-constants";
 import { SplashScreen, Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -45,6 +41,7 @@ import { QueryProvider } from "@/lib/api";
 import { useAppFonts } from "@/lib/fonts";
 import { expoHapticImpl } from "@/lib/haptic-impl";
 import { initTheme, useAppTheme } from "@/lib/platform/theme";
+import { config as tamaguiConfig } from "../tamagui.config";
 
 // Required at app top-level so the system-browser auth handoff completes on
 // web. No-op on native, but documented by Expo as a best-practice pattern.
@@ -130,9 +127,13 @@ export default function RootLayout() {
           toolbar reads from it. Order matches the kit reference app. */}
       <KeyboardProvider>
         <SafeAreaProvider>
-          {/* UIProvider seeds the initial theme; the inner <Theme name> keeps
-              the whole tree following live preference changes from the store. */}
-          <UIProvider defaultTheme={resolvedTheme}>
+          {/* The app's OWN config (tamagui.config.ts) instead of the kit's
+              UIProvider — same building blocks, but with `disableSSR: true`
+              (Expo Router has no SSR; see the config file header). Mirrors
+              the kit reference app's provider setup. defaultTheme seeds the
+              initial theme; the inner <Theme name> keeps the whole tree
+              following live preference changes from the store. */}
+          <TamaguiProvider config={tamaguiConfig} defaultTheme={resolvedTheme}>
             <Theme name={resolvedTheme}>
               <HapticProvider impl={expoHapticImpl}>
                 <ToastProvider>
@@ -165,7 +166,7 @@ export default function RootLayout() {
                 </ToastProvider>
               </HapticProvider>
             </Theme>
-          </UIProvider>
+          </TamaguiProvider>
         </SafeAreaProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>
