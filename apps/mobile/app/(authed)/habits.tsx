@@ -12,8 +12,10 @@
 // Creation uses the SAME cross-platform flow as the PWA: the kit Dialog adapts
 // to a bottom Sheet on mobile and hosts the shared HabitForm (icon picker via
 // the kit EmojiPickerSheet, day scheduler, quota config) — see
-// components/create-habit-dialog.tsx. The FAB opens it. EDIT/detail of an
-// existing habit is still deferred (the per-card menu nudges to the web app).
+// components/create-habit-dialog.tsx. The FAB opens it. EDITING an existing
+// habit reuses that same shared HabitForm seeded from the tapped habit — see
+// components/edit-habit-dialog.tsx. Only the full detail SCREEN is still
+// deferred (the per-card body tap nudges to the web app).
 
 import {
   Banner,
@@ -36,6 +38,7 @@ import {
 
 import { CreateFab } from "@/components/create-fab";
 import { CreateHabitDialog } from "@/components/create-habit-dialog";
+import { EditHabitDialog } from "@/components/edit-habit-dialog";
 import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
 import {
   useCheckInHabit,
@@ -55,6 +58,10 @@ export default function HabitsScreen() {
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  // The habit currently open in the edit sheet (null = closed). Lifted to the
+  // screen so the sheet renders outside the scrolling list and re-mounts cleanly
+  // per habit (the EditHabitDialog re-seeds the form via `key={open}`).
+  const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -71,13 +78,14 @@ export default function HabitsScreen() {
     [habits],
   );
 
-  // Edit/detail of an EXISTING habit isn't built on mobile yet — the per-card
-  // menu nudges to the web app. (Creation IS native — see the FAB below.)
-  function notifyEditOnWeb() {
+  // The full habit DETAIL screen isn't built on mobile yet — tapping a card's
+  // body nudges to the web app. (Edit + create ARE native — see the FAB below
+  // and the per-card Edit action.)
+  function notifyDetailOnWeb() {
     toast.show({
-      title: "Edit on the web app",
+      title: "Open on the web app",
       message:
-        "Editing a habit's schedule, icon, and quota lives on the web app for now.",
+        "The full habit history and stats view lives on the web app for now.",
       intent: "info",
     });
   }
@@ -149,7 +157,8 @@ export default function HabitsScreen() {
               <HabitCardRow
                 key={habit.id}
                 habit={habit}
-                onManageOnWeb={notifyEditOnWeb}
+                onEdit={() => setEditingHabit(habit)}
+                onOpenDetail={notifyDetailOnWeb}
               />
             ))}
           </YStack>
@@ -166,6 +175,19 @@ export default function HabitsScreen() {
       />
 
       <CreateHabitDialog open={createOpen} onOpenChange={setCreateOpen} />
+
+      {/* Edit — same shared HabitForm in a bottom Sheet, seeded from the tapped
+          habit. Mounted only while a habit is selected so the form re-seeds per
+          habit; closing clears the selection. */}
+      {editingHabit ? (
+        <EditHabitDialog
+          habit={editingHabit}
+          open={!!editingHabit}
+          onOpenChange={(next) => {
+            if (!next) setEditingHabit(null);
+          }}
+        />
+      ) : null}
     </YStack>
   );
 }
@@ -174,8 +196,10 @@ export default function HabitsScreen() {
 
 interface HabitCardRowProps {
   habit: Habit;
-  /** Called for edit/detail actions we don't yet support on mobile. */
-  onManageOnWeb: () => void;
+  /** Opens the native edit sheet for this habit (per-card Edit action). */
+  onEdit: () => void;
+  /** Called for the detail screen, which isn't built on mobile yet. */
+  onOpenDetail: () => void;
 }
 
 /**
@@ -187,7 +211,7 @@ interface HabitCardRowProps {
  * the celebration when the promise rejects). The hooks are optimistic, so the
  * card flips instantly; the awaited promise just gates the animation.
  */
-function HabitCardRow({ habit, onManageOnWeb }: HabitCardRowProps) {
+function HabitCardRow({ habit, onEdit, onOpenDetail }: HabitCardRowProps) {
   const entriesQuery = useHabitEntries(habit.id);
   const checkIn = useCheckInHabit();
   const skip = useSkipHabit();
@@ -240,9 +264,10 @@ function HabitCardRow({ habit, onManageOnWeb }: HabitCardRowProps) {
           patch: { value: 0, type: "completion" },
         });
       }}
-      // Edit + detail are deferred on mobile — both nudge toward the web app.
-      onEdit={onManageOnWeb}
-      onOpenDetail={onManageOnWeb}
+      // Edit opens the native edit sheet; the full detail screen is still
+      // deferred and nudges toward the web app.
+      onEdit={onEdit}
+      onOpenDetail={onOpenDetail}
       // Delete IS wired — the card's own AlertDialog confirms first.
       onDelete={() => deleteHabit.mutate(habit.id)}
     />

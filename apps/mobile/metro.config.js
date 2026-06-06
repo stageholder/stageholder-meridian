@@ -135,12 +135,11 @@ const dedupedPackages = [
 
 // Native-only optional integrations of @stageholder/ui that this app does
 // NOT (yet) ship. Metro doesn't tree-shake the kit's barrel, so e.g.
-// RichTextEditor.native's static `import ... from "@10play/tentap-editor"`
-// resolves on EVERY bundle even though we never render the editor (journal
-// rich-text editing is web-only for now — see app/(authed)/journal.tsx).
-// Stub them with @tamagui/proxy-worm — a Proxy that swallows any property
-// access — exactly the pattern apps/pwa/vite.config.ts uses to stub
-// native-only packages on web, just pointed the other way.
+// Map.native's static `import ... from "@rnmapbox/maps"` resolves on EVERY
+// bundle even though we never render those features. Stub them with
+// @tamagui/proxy-worm — a Proxy that swallows any property access — exactly
+// the pattern apps/pwa/vite.config.ts uses to stub native-only packages on
+// web, just pointed the other way.
 //
 // To ADOPT one of these features natively: install the real packages in
 // this app (they're native modules → `bunx expo prebuild` + rebuild) and
@@ -151,9 +150,13 @@ const dedupedPackages = [
 //   2. Runtime: bun auto-installed the kit peer's JS, but its native pod is
 //      NOT autolinked (autolinking scans this app's deps, not hoisted
 //      extras) → "Cannot find native module 'ExpoAudio'" at import time.
+//
+// NOTE: @10play/tentap-editor + react-native-keyboard-controller were stubbed
+// here while journaling was read-only. They're now REAL deps (the kit's
+// RichTextEditor.native host is 10tap; native journal creation renders it) —
+// installed in package.json so `expo prebuild` autolinks their pods. Removed
+// from this list deliberately; re-adding them would re-break the editor.
 const stubbedModules = [
-  "@10play/tentap-editor", // kit RichTextEditor/RichTextRenderer .native host
-  "react-native-keyboard-controller", // tentap's keyboard-avoidance peer
   "expo-audio", // kit AudioPlayer / media controller
   "expo-blur", // kit GlassSurface (nothing we render composes it)
   "expo-image-manipulator", // kit ImageCrop.native

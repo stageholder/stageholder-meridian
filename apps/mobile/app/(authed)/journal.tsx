@@ -11,8 +11,9 @@
 //   3. LOADING / ERROR / EMPTY → spinner / banner / empty copy.
 //
 // Tapping an entry pushes to the `journal/[id]` detail route (decrypted title +
-// a plain-text excerpt). Rich editing (TipTap / 10tap) is a WEB-ONLY concern
-// this pass, so creation is deferred — the FAB nudges toward the web app.
+// a plain-text excerpt). Creation IS native — the FAB pushes the full-screen
+// rich-text editor (journal/new.tsx), which renders the kit RichTextEditor
+// (10tap) and encrypts with the in-memory DEK before saving.
 //
 // We decrypt at the SCREEN level (not in the data hook like the PWA) because
 // the mobile journal hooks return raw, possibly-encrypted journals. The DEK is
@@ -28,7 +29,6 @@ import {
   Text,
   View,
   YStack,
-  useToast,
 } from "@stageholder/ui";
 import { JournalList } from "@repo/features/journal";
 import { PassphrasePrompt } from "@repo/features/encryption";
@@ -54,7 +54,6 @@ import {
 
 export default function JournalScreen() {
   const router = useRouter();
-  const toast = useToast();
   const insets = useSafeAreaInsets();
   const journalsQuery = useJournals();
   const { isSetup, isUnlocked, isLoading: statusLoading } = useJournalCrypto();
@@ -132,12 +131,11 @@ export default function JournalScreen() {
     await unlockJournal(passphrase);
   }
 
-  function deferCreate() {
-    toast.show({
-      title: "Write on the web app",
-      message: "Rich journaling lives on the web app for now.",
-      intent: "info",
-    });
+  // Native creation — push the full-screen rich-text editor route. Encryption
+  // (when set up) happens inside the create mutation; the editor route guards
+  // the locked case (can't encrypt without the DEK) by bouncing back here.
+  function handleCreate() {
+    router.push("/journal/new");
   }
 
   // ---- Locked: full-screen passphrase prompt ----
@@ -214,12 +212,13 @@ export default function JournalScreen() {
         </PullToRefresh>
       </SafeAreaView>
 
-      {/* Creation deferred — rich editing is web-only this pass. CreateFab
-          mirrors the PWA's: lifted above the capsule, journal-yellow tint. */}
+      {/* Native creation — pushes the full-screen rich-text editor route.
+          CreateFab mirrors the PWA's: lifted above the capsule, journal-yellow
+          tint. */}
       <CreateFab
         label="New journal entry"
         tint={IGNITION.journal.base}
-        onPress={deferCreate}
+        onPress={handleCreate}
       />
     </YStack>
   );

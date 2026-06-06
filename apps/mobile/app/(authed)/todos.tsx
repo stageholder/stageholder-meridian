@@ -13,8 +13,9 @@
 // Grouping is kept trivial: open todos first (the working set), a thin
 // "Completed" section after. The web app owns the richer two-axis
 // list/time filtering; mobile is a focused capture + complete surface this
-// pass. Detail editing of an existing todo (subtasks, etc.) is deferred —
-// tapping a row opens the web app for now via a toast.
+// pass. Tapping a row opens the native EditTodoDialog (the same shared
+// TodoForm as create, seeded with the row's values); subtasks remain a
+// "manage on the web app" concern this pass.
 
 import {
   Banner,
@@ -42,6 +43,7 @@ import {
 import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
 import { CreateFab } from "@/components/create-fab";
 import { CreateTodoDialog } from "@/components/create-todo-dialog";
+import { EditTodoDialog } from "@/components/edit-todo-dialog";
 import { IGNITION } from "@/lib/ignition-palette";
 
 import {
@@ -62,6 +64,9 @@ export default function TodosScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [draft, setDraft] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  // The row tapped for editing. Held even while the sheet animates closed so
+  // the form keeps its values through the exit (cleared on full close below).
+  const [editing, setEditing] = useState<Todo | null>(null);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -105,13 +110,8 @@ export default function TodosScreen() {
     );
   }
 
-  function manageOnWeb() {
-    toast.show({
-      title: "Edit on the web app",
-      message:
-        "Priority, due dates, and subtasks are edited on the web app for now.",
-      intent: "info",
-    });
+  function handleEditOpenChange(next: boolean) {
+    if (!next) setEditing(null);
   }
 
   const isEmpty =
@@ -202,7 +202,7 @@ export default function TodosScreen() {
                   toggleTodo.mutate({ id: todo.id, status: todo.status })
                 }
                 onDelete={() => deleteTodo.mutate(todo.id)}
-                onOpenDetail={manageOnWeb}
+                onOpenDetail={() => setEditing(todo)}
               />
             ))}
 
@@ -231,7 +231,7 @@ export default function TodosScreen() {
                       toggleTodo.mutate({ id: todo.id, status: todo.status })
                     }
                     onDelete={() => deleteTodo.mutate(todo.id)}
-                    onOpenDetail={manageOnWeb}
+                    onOpenDetail={() => setEditing(todo)}
                   />
                 ))}
               </YStack>
@@ -250,6 +250,15 @@ export default function TodosScreen() {
       />
 
       <CreateTodoDialog open={createOpen} onOpenChange={setCreateOpen} />
+
+      {/* Edit — tapping a row seeds this with the todo; same shared TodoForm
+          as create, in a bottom Sheet. `editing` gates open so the sheet
+          mounts only with a real todo to edit. */}
+      <EditTodoDialog
+        open={editing !== null}
+        onOpenChange={handleEditOpenChange}
+        todo={editing}
+      />
     </YStack>
   );
 }

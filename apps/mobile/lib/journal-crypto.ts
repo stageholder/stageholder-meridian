@@ -2,20 +2,22 @@
 //
 // Mobile counterpart of the PWA's journal encryption store
 // (apps/pwa/src/lib/crypto/encryption-store.ts), trimmed to exactly what the
-// mobile journal screens need in this pass: CHECK-STATUS + UNLOCK + decrypt.
+// mobile journal screens need: CHECK-STATUS + UNLOCK + decrypt + ENCRYPT.
 //
 // Why a slimmer surface than the PWA store:
-//   - Mobile is read-first this pass. Creation / passphrase setup / change /
-//     recovery still live on the web app (the journal screen says as much), so
-//     we don't carry setupPassphrase / changePassphrase / recoverWithCodes
-//     here yet — they'd need the recovery-code UX the web app already owns.
+//   - Mobile reads, decrypts, and now WRITES (native journal creation), but
+//     passphrase setup / change / recovery still live on the web app — they'd
+//     need the recovery-code UX the web app already owns. So we carry
+//     `encryptJournalPayload` (the write-side counterpart of the decrypt
+//     helpers) but not setupPassphrase / changePassphrase / recoverWithCodes.
 //   - The DEK is the only sensitive material and it stays IN MEMORY ONLY (a
 //     module-level variable, never persisted). Re-launching the app re-locks
 //     the journal, which is the desired at-rest behavior on a phone.
 //
-// The crypto primitives (deriveMasterKey / unwrapDEK / decryptJournal) now run
-// natively via @repo/crypto's react-native-quick-crypto path, so the unlock +
-// per-entry decrypt below are byte-compatible with what the web app wrote.
+// The crypto primitives (deriveMasterKey / unwrapDEK / decryptJournal /
+// encryptJournal) now run natively via @repo/crypto's react-native-quick-crypto
+// path, so unlock + per-entry decrypt + encrypt below are byte-compatible with
+// what the web app reads/writes.
 //
 // State is exposed through a module-level `useSyncExternalStore` singleton —
 // the same pattern as lib/platform/theme.ts — so every screen sees one shared
@@ -28,6 +30,7 @@ import {
   unwrapDEK,
   saltFromBase64,
   decryptJournal,
+  encryptJournal,
   type PortableKey,
 } from "@repo/crypto";
 import { countWordsFromContent, isJsonContent } from "@repo/core/utils/text";
@@ -234,6 +237,69 @@ export function detectContentFormat(content: string): JournalContent {
   } catch {
     return content;
   }
+}
+
+/* ------------------------------ Encryption --------------------------------- */
+
+/** The plaintext a journal write carries before encryption. `content` is
+ *  dual-format (TipTap JSON object for new entries, legacy HTML string). */
+export interface JournalDraft {
+  title: string;
+  content: JournalContent;
+  tags?: string[];
+  mood?: number;
+  /** yyyy-mm-dd. */
+  date?: string;
+}
+
+/** The wire payload after encryption — encrypted strings + plaintext metadata.
+ *  Matches what the server stores and what the PWA's encryptJournalPayload
+ *  emits (so an entry written on mobile decrypts identically on web). */
+export interface EncryptedJournalPayload {
+  title: string;
+  content: string;
+  tags: string;
+  mood?: number;
+  date?: string;
+  encrypted: true;
+  wordCount: number;
+}
+
+/**
+ * Encrypt a journal draft for the POST/PATCH body with the in-memory DEK.
+ * Byte-for-byte the same shape as the PWA's `encryptJournalPayload`
+ * (apps/pwa/src/lib/crypto/journal-crypto.ts):
+ *   - TipTap JSON content is `JSON.stringify`'d to a string FIRST so the
+ *     encrypted blob stays a string (decrypt recovers JSON because
+ *     JSON.parse on legacy HTML throws — the discriminator in
+ *     `detectContentFormat`).
+ *   - title / content / tags are AES-GCM encrypted (base64); mood / date stay
+ *     plaintext; `encrypted: true` + the server-comparable `wordCount` (from
+ *     the shared counter) ride alongside.
+ */
+export async function encryptJournalPayload(
+  draft: JournalDraft,
+  key: PortableKey,
+): Promise<EncryptedJournalPayload> {
+  const wordCount = countWordsFromContent(draft.content);
+  const contentForEncryption = isJsonContent(draft.content)
+    ? JSON.stringify(draft.content)
+    : draft.content;
+  const encrypted = await encryptJournal(
+    {
+      title: draft.title,
+      content: contentForEncryption,
+      tags: draft.tags ?? [],
+    },
+    key,
+  );
+  return {
+    ...encrypted,
+    mood: draft.mood,
+    date: draft.date,
+    encrypted: true,
+    wordCount,
+  };
 }
 
 /* ----------------------- Plain-text extraction ----------------------------- */

@@ -95,6 +95,20 @@ export function useCreateHabit() {
   });
 }
 
+/**
+ * Edit-only fields. Superset of `CreateHabitInput`: adds `weeklyTarget`
+ * (times-per-week target) and lets `scheduledDays` be `null` to WIPE a
+ * previously-set schedule — the form emits `undefined` for "no specific
+ * days", so the edit host translates that to `null`. Mirrors the PWA's
+ * useUpdateHabit data shape (apps/pwa/src/lib/api/habits.ts).
+ */
+export type UpdateHabitInput = Partial<
+  Omit<CreateHabitInput, "scheduledDays">
+> & {
+  scheduledDays?: number[] | null;
+  weeklyTarget?: number;
+};
+
 export function useUpdateHabit() {
   const qc = useQueryClient();
   return useMutation({
@@ -103,7 +117,7 @@ export function useUpdateHabit() {
       patch,
     }: {
       id: string;
-      patch: Partial<CreateHabitInput>;
+      patch: UpdateHabitInput;
     }) => {
       const { data } = await apiClient.patch<Habit>(`/habits/${id}`, patch);
       return data;

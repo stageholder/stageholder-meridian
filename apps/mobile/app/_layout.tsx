@@ -1,8 +1,15 @@
 // apps/mobile/app/_layout.tsx
 //
 // Root layout wires every cross-cutting provider before Expo Router takes
-// over. Order matters: gestures → safe-area → Tamagui (themed) → haptics →
-// toasts → SDK auth → React Query → router stack.
+// over. Order matters: gestures → keyboard → safe-area → Tamagui (themed) →
+// haptics → toasts → SDK auth → React Query → router stack.
+//
+// KeyboardProvider (react-native-keyboard-controller) sits OUTSIDE
+// SafeAreaProvider — same outside→inside order as the kit's reference app
+// (stageholder-ui/apps/docs-expo/app/_layout.tsx). It's the native bridge the
+// kit's RichTextEditor.native (10tap) keyboard-avoidance + KeyboardStickyView
+// toolbar need; without it the journal editor's toolbar won't track the
+// keyboard. A no-op until something mounts a keyboard-aware view.
 //
 // Two things changed from the pre-d5f3089 shell:
 //   1. BrandProvider is gone. The current kit (@stageholder/ui 0.3.0-alpha.20)
@@ -31,6 +38,7 @@ import { StatusBar } from "expo-status-bar";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { QueryProvider } from "@/lib/api";
@@ -117,44 +125,49 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        {/* UIProvider seeds the initial theme; the inner <Theme name> keeps
-            the whole tree following live preference changes from the store. */}
-        <UIProvider defaultTheme={resolvedTheme}>
-          <Theme name={resolvedTheme}>
-            <HapticProvider impl={expoHapticImpl}>
-              <ToastProvider>
-                <StageholderProvider
-                  productSlug="meridian"
-                  config={{
-                    issuerUrl: ISSUER_URL,
-                    clientId: CLIENT_ID,
-                    scheme: "meridian",
-                    audience: "meridian-api",
-                    biometric: "off",
-                  }}
-                  onSignedOut={() => router.replace("/sign-in")}
-                >
-                  {/* QueryProvider sits INSIDE the SDK provider so its
-                      AuthTokenBridge can read useAccessToken(), and its
-                      onUnauthorized can drive the route change on a 401. */}
-                  <QueryProvider
-                    onUnauthorized={() => router.replace("/sign-in")}
+      {/* KeyboardProvider wraps everything below the gesture root (outside
+          SafeAreaProvider) — the kit RichTextEditor.native's keyboard-aware
+          toolbar reads from it. Order matches the kit reference app. */}
+      <KeyboardProvider>
+        <SafeAreaProvider>
+          {/* UIProvider seeds the initial theme; the inner <Theme name> keeps
+              the whole tree following live preference changes from the store. */}
+          <UIProvider defaultTheme={resolvedTheme}>
+            <Theme name={resolvedTheme}>
+              <HapticProvider impl={expoHapticImpl}>
+                <ToastProvider>
+                  <StageholderProvider
+                    productSlug="meridian"
+                    config={{
+                      issuerUrl: ISSUER_URL,
+                      clientId: CLIENT_ID,
+                      scheme: "meridian",
+                      audience: "meridian-api",
+                      biometric: "off",
+                    }}
+                    onSignedOut={() => router.replace("/sign-in")}
                   >
-                    <StatusBar
-                      style={resolvedTheme === "dark" ? "light" : "dark"}
-                    />
-                    <Stack screenOptions={{ headerShown: false }}>
-                      <Stack.Screen name="sign-in" />
-                      <Stack.Screen name="(authed)" />
-                    </Stack>
-                  </QueryProvider>
-                </StageholderProvider>
-              </ToastProvider>
-            </HapticProvider>
-          </Theme>
-        </UIProvider>
-      </SafeAreaProvider>
+                    {/* QueryProvider sits INSIDE the SDK provider so its
+                        AuthTokenBridge can read useAccessToken(), and its
+                        onUnauthorized can drive the route change on a 401. */}
+                    <QueryProvider
+                      onUnauthorized={() => router.replace("/sign-in")}
+                    >
+                      <StatusBar
+                        style={resolvedTheme === "dark" ? "light" : "dark"}
+                      />
+                      <Stack screenOptions={{ headerShown: false }}>
+                        <Stack.Screen name="sign-in" />
+                        <Stack.Screen name="(authed)" />
+                      </Stack>
+                    </QueryProvider>
+                  </StageholderProvider>
+                </ToastProvider>
+              </HapticProvider>
+            </Theme>
+          </UIProvider>
+        </SafeAreaProvider>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }

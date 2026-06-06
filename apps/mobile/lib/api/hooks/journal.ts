@@ -8,10 +8,11 @@
 // lazily so we don't thrash the network on every keystroke.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Journal, JournalStats } from "@repo/core/types";
+import type { Journal, JournalContent, JournalStats } from "@repo/core/types";
 
 import { apiClient } from "../client";
 import { journalKeys } from "../keys";
+import { encryptJournalPayload, getJournalDek } from "@/lib/journal-crypto";
 
 /* ------------------------------ Reads -------------------------------- */
 
@@ -58,7 +59,9 @@ export function useJournalStats(today?: boolean) {
 
 export type CreateJournalInput = {
   title?: string;
-  content: string;
+  // Dual-format like the PWA: TipTap JSON object (new entries) or legacy HTML
+  // string. Encrypted inline before POST when the journal has a DEK.
+  content: JournalContent;
   mood?: number;
   tags?: string[];
   /** yyyy-mm-dd. Server uses today when omitted. */
@@ -79,11 +82,27 @@ export function useCreateJournal() {
         input.title && input.title.trim().length > 0
           ? input.title.trim()
           : dateLabel(date);
-      const { data } = await apiClient.post<Journal>("/journals", {
-        ...input,
-        title,
-        date,
-      });
+
+      // END-TO-END ENCRYPTION — mirror the PWA's inline boundary
+      // (apps/pwa/src/lib/api/journals.ts useCreateJournal): when a DEK is in
+      // memory, encrypt title/content/tags (and stamp `encrypted:true` +
+      // wordCount) BEFORE the POST so plaintext never hits the wire. When the
+      // account has no encryption (no DEK), send the draft as-is.
+      const dek = getJournalDek();
+      const body = dek
+        ? await encryptJournalPayload(
+            {
+              title,
+              content: input.content,
+              tags: input.tags,
+              mood: input.mood,
+              date,
+            },
+            dek,
+          )
+        : { ...input, title, date };
+
+      const { data } = await apiClient.post<Journal>("/journals", body);
       return data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: journalKeys.lists() }),
