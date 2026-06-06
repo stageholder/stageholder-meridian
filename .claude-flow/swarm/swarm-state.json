@@ -1,0 +1,24 @@
+{
+  "swarms": {
+    "swarm-1780731109947-guou7t": {
+      "swarmId": "swarm-1780731109947-guou7t",
+      "topology": "hierarchical",
+      "maxAgents": 8,
+      "status": "running",
+      "agents": [],
+      "tasks": [],
+      "config": {
+        "topology": "hierarchical",
+        "maxAgents": 8,
+        "strategy": "specialized",
+        "communicationProtocol": "message-bus",
+        "autoScaling": true,
+        "consensusMechanism": "majority"
+      },
+      "createdAt": "2026-06-06T07:31:49.947Z",
+      "updatedAt": "2026-06-06T07:31:49.947Z",
+      "pid": 33822
+    }
+  },
+  "version": "3.0.0"
+}

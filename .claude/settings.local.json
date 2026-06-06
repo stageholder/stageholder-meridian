@@ -26,8 +26,10 @@
       "mcp__ide__getDiagnostics"
     ]
   },
+  "enabledMcpjsonServers": ["claude-flow"],
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true,
     "context7@claude-plugins-official": true
-  }
+  },
+  "enableAllProjectMcpServers": true
 }
