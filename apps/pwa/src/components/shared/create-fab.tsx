@@ -47,12 +47,13 @@ export function CreateFab({
       position={"fixed" as never}
       r={20}
       z={40}
-      // allowlist: env safe-area inset (no token equivalent) — clears the nav.
-      className="bottom-[calc(6rem+env(safe-area-inset-bottom,0px))]"
+      // env() safe-area inset clears the bottom nav — web-only CSS value, so
+      // it rides the prop as a raw string (same idiom as position="fixed").
+      b={"calc(6rem + env(safe-area-inset-bottom, 0px))" as never}
       $md={{ display: "none" }}
     >
       <FAB
-        icon={<Plus size={24} color={iconColor} />}
+        icon={<Plus size={24} color={iconColor as never} />}
         onPress={onPress}
         aria-label={label}
         {...tint}

@@ -43,7 +43,7 @@ export function JourneyStats({ userLight }: JourneyStatsProps) {
       icon: Zap,
       color: "#a855f7",
     },
-  ];
+  ] as const;
 
   return (
     // Fixed 2-up stat cells — the kit Grid (CSS grid on web, flex-wrap on

@@ -401,13 +401,15 @@ export function HabitCard({
                   height={11}
                   rounded={9999}
                   transition="quick"
-                  title={
-                    failed
+                  // DOM `title` tooltip attr isn't in the kit View prop type
+                  // (web-only, passed through at runtime; no-op on native).
+                  {...({
+                    title: failed
                       ? "Failed"
                       : isDaySkipped
                         ? "Skipped"
-                        : `${day.value}/${day.effectiveTarget}`
-                  }
+                        : `${day.value}/${day.effectiveTarget}`,
+                  } as object)}
                   borderWidth={complete ? 0 : 1}
                   borderStyle={
                     !day.isScheduled || isDaySkipped ? "dashed" : "solid"

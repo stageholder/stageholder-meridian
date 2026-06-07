@@ -39,7 +39,7 @@ export function InvoiceLedger({
 
   return (
     <View
-      tag="section"
+      render="section"
       position="relative"
       rounded={32}
       borderWidth={1}
@@ -47,13 +47,14 @@ export function InvoiceLedger({
       bg="$card"
       p="$6"
       $md={{ p: "$7" }}
-      // allowlist: billing-reveal / billing-stagger-3 — staggered section
-      // reveal keyframe shared across the billing dashboard (no token equiv).
-      className="billing-reveal billing-stagger-3"
+      // Staggered section reveal — Tamagui-native mount animation (was the
+      // `billing-reveal billing-stagger-3` CSS keyframe), matching upgrade.tsx.
+      enterStyle={{ opacity: 0, y: 14 }}
+      transition={["medium", { delay: 220 }]}
     >
       {/* Header */}
       <XStack
-        tag="header"
+        render="header"
         mb="$6"
         flexWrap="wrap"
         items="flex-end"

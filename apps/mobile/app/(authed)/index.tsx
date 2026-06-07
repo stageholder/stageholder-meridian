@@ -256,9 +256,13 @@ export default function TodayScreen() {
           refreshing={refreshing}
           onRefresh={handleRefresh}
           // Clearance for the floating BottomNav capsule (PWA shell parity).
-          contentContainerStyle={{
-            paddingBottom: BOTTOM_NAV_CLEARANCE + insets.bottom,
-          }}
+          // `contentContainerStyle` exists only on the .native variant; tsc
+          // resolves the web types, so it rides a spread cast.
+          {...({
+            contentContainerStyle: {
+              paddingBottom: BOTTOM_NAV_CLEARANCE + insets.bottom,
+            },
+          } as object)}
         >
           <YStack gap="$5" px="$4" pt="$4" pb="$8">
             {/* ---- Header: date + greeting ---- */}

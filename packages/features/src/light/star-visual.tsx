@@ -1,8 +1,9 @@
+import { useThemeName } from "tamagui";
+
 interface StarVisualProps {
   tier: number;
   size?: "xs" | "sm" | "md" | "lg" | "xl";
   animate?: boolean;
-  className?: string;
 }
 
 const SIZES = { xs: 20, sm: 32, md: 48, lg: 64, xl: 96 };
@@ -11,21 +12,23 @@ export function StarVisual({
   tier,
   size = "md",
   animate = true,
-  className,
 }: StarVisualProps) {
   const t = Math.max(1, Math.min(10, tier));
   const px = SIZES[size];
   const id = `s${t}${size}${Math.random().toString(36).slice(2, 6)}`;
+  // The dark-sky portal backdrop only renders in LIGHT mode (in dark mode the
+  // page itself is the night sky). Was Tailwind `dark:hidden`; now a Tamagui
+  // theme check so this file carries no Tailwind dependency.
+  const isDark = useThemeName().startsWith("dark");
 
   return (
     <svg
       width={px}
       height={px}
       viewBox="0 0 100 100"
-      // allowlist: SVG-internal Tailwind classes — `shrink-0` plus any caller
-      // class (e.g. `dark:hidden` on the sky portal); no Tamagui equivalent
-      // for an <svg> element.
-      className={className ? `shrink-0 ${className}` : "shrink-0"}
+      // Raw <svg> (no Tamagui equivalent) — flexShrink rides the DOM style
+      // prop (was Tailwind `shrink-0`).
+      style={{ flexShrink: 0 }}
       aria-hidden
     >
       <defs>
@@ -54,26 +57,28 @@ export function StarVisual({
         </filter>
       </defs>
 
-      {/* ── Light-mode dark sky portal ── */}
-      <g className="dark:hidden">
-        <circle cx={50} cy={50} r={49} fill={`url(#${id}-bg)`} />
-        {/* Distant background stars */}
-        <circle cx={18} cy={24} r={0.5} fill="#fff" opacity={0.3} />
-        <circle cx={82} cy={30} r={0.4} fill="#fff" opacity={0.25} />
-        <circle cx={25} cy={76} r={0.4} fill="#fff" opacity={0.2} />
-        <circle cx={78} cy={72} r={0.5} fill="#fff" opacity={0.3} />
-        <circle cx={14} cy={52} r={0.3} fill="#fff" opacity={0.2} />
-        {/* Subtle edge ring */}
-        <circle
-          cx={50}
-          cy={50}
-          r={47}
-          fill="none"
-          stroke="#334155"
-          strokeWidth={0.4}
-          opacity={0.25}
-        />
-      </g>
+      {/* ── Light-mode dark sky portal (omitted in dark mode) ── */}
+      {!isDark && (
+        <g>
+          <circle cx={50} cy={50} r={49} fill={`url(#${id}-bg)`} />
+          {/* Distant background stars */}
+          <circle cx={18} cy={24} r={0.5} fill="#fff" opacity={0.3} />
+          <circle cx={82} cy={30} r={0.4} fill="#fff" opacity={0.25} />
+          <circle cx={25} cy={76} r={0.4} fill="#fff" opacity={0.2} />
+          <circle cx={78} cy={72} r={0.5} fill="#fff" opacity={0.3} />
+          <circle cx={14} cy={52} r={0.3} fill="#fff" opacity={0.2} />
+          {/* Subtle edge ring */}
+          <circle
+            cx={50}
+            cy={50}
+            r={47}
+            fill="none"
+            stroke="#334155"
+            strokeWidth={0.4}
+            opacity={0.25}
+          />
+        </g>
+      )}
 
       {/* ═══════ Tier 1: STARGAZER — a distant twinkling star ═══════ */}
       {t === 1 && (

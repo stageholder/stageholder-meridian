@@ -11,21 +11,23 @@
  */
 export function LimitOrbit({
   highlight,
-  className,
 }: {
   /** Which pillar to surface. `null` falls back to a neutral, all-ghost diagram. */
   highlight: "todos" | "habits" | "journal" | null;
-  className?: string;
 }) {
   return (
     <svg
       viewBox="0 0 240 240"
       role="presentation"
       aria-hidden
-      // allowlist: SVG sizing + foreground-tint utility classes (no kit token; native SVG styling)
-      className={["h-full w-full text-foreground/80", className]
-        .filter(Boolean)
-        .join(" ")}
+      width="100%"
+      height="100%"
+      // Raw <svg> sizing + currentColor source (was Tailwind h-full w-full
+      // text-foreground/80) — same DOM-style approach as OrbitIllustration.
+      style={{
+        display: "block",
+        color: "color-mix(in srgb, var(--foreground) 80%, transparent)",
+      }}
     >
       {/* Diagonal meridian — the line that gives the product its name. */}
       <line

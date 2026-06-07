@@ -28,10 +28,11 @@ export function LevelUpCelebration({
     //
     // Mount fade converted to native enter animation (animate-in fade-in
     // duration-300 → enterStyle opacity + transition="medium"). The dark
-    // scrim (bg-black/60) has no token (intentionally theme-independent), so
-    // it rides the style hatch; backdrop-blur-sm is kept as an allowlist class
-    // (frosted glass, no token equivalent). position:fixed is web-only and
-    // omitted from Tamagui's type, so it's cast `as never` (see kit Header).
+    // scrim (bg-black/60) has no token (intentionally theme-independent) and
+    // the frosted-glass blur (was Tailwind `backdrop-blur-sm`) is web-only
+    // CSS — both ride the style hatch (this file is web-truth, so the
+    // web-only keys are safe). position:fixed is web-only and omitted from
+    // Tamagui's type, so it's cast `as never` (see kit Header).
     <View
       position={"fixed" as never}
       t={0}
@@ -44,9 +45,13 @@ export function LevelUpCelebration({
       justify="center"
       enterStyle={{ opacity: 0 }}
       transition="medium"
-      style={{ backgroundColor: "rgba(0, 0, 0, 0.6)" }}
-      // allowlist: backdrop-blur-sm — frosted scrim, no token equivalent
-      className="backdrop-blur-sm"
+      style={
+        {
+          backgroundColor: "rgba(0, 0, 0, 0.6)",
+          backdropFilter: "blur(4px)",
+          WebkitBackdropFilter: "blur(4px)",
+        } as object
+      }
       role="button"
       tabIndex={0}
       onPress={onDismiss}

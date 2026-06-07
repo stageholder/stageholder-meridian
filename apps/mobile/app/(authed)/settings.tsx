@@ -82,7 +82,7 @@ export default function SettingsScreen() {
           showsVerticalScrollIndicator={false}
           // Clearance for the floating BottomNav capsule (PWA shell parity).
           contentContainerStyle={{
-            paddingBottom: BOTTOM_NAV_CLEARANCE + insets.bottom,
+            pb: BOTTOM_NAV_CLEARANCE + insets.bottom,
           }}
         >
           <YStack gap="$5" px="$4" pt="$4" pb="$10">

@@ -69,11 +69,12 @@ export function createTodosApi(client: ApiClientLike) {
       todoId: string,
       data: {
         title?: string;
-        description?: string;
+        /** `null` clears the field server-side (PATCH semantics). */
+        description?: string | null;
         status?: string;
         priority?: string;
-        dueDate?: string;
-        doDate?: string;
+        dueDate?: string | null;
+        doDate?: string | null;
       },
     ): Promise<Todo> => {
       const res = await client.patch(`/todos/${todoId}`, data);

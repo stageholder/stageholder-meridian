@@ -41,9 +41,12 @@ export async function encryptJournalPayload(
   // operates on strings. We can recover the JSON on decrypt because
   // JSON.parse on an HTML string throws (which we catch as the
   // legacy-HTML signal).
-  const contentForEncryption = isJsonContent(data.content)
-    ? JSON.stringify(data.content)
-    : data.content;
+  // `typeof` (not `isJsonContent`) so TS narrows the false branch to string —
+  // the predicate's JSONContentNode doesn't subtract Record<> from the union.
+  const contentForEncryption =
+    typeof data.content === "string"
+      ? data.content
+      : JSON.stringify(data.content);
   const encrypted = await encryptJournal(
     {
       title: data.title,

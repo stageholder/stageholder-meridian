@@ -16,19 +16,11 @@ const sizes = {
 // `src`), so a plain <img> is the right primitive here.
 export function MeridianLogo({
   size = "md",
-  className,
 }: {
   size?: "xs" | "sm" | "md" | "lg";
-  className?: string;
 }) {
   const px = sizes[size];
   return (
-    <img
-      src="/logo/meridian_light.png"
-      alt="Meridian"
-      width={px}
-      height={px}
-      className={className}
-    />
+    <img src="/logo/meridian_light.png" alt="Meridian" width={px} height={px} />
   );
 }

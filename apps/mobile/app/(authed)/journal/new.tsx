@@ -38,7 +38,7 @@ import {
   useToast,
 } from "@stageholder/ui";
 import { JournalEditor } from "@repo/features/journal";
-import type { JournalContent } from "@repo/core/types";
+import type { RichTextEditorContent } from "@stageholder/ui";
 import { countWordsFromContent } from "@repo/core/utils/text";
 import { ChevronLeft } from "@tamagui/lucide-icons-2";
 // Bare tamagui Input for the title — no kit Frame chrome, matching the PWA's
@@ -56,7 +56,10 @@ import { useCreateJournal } from "@/lib/api";
 import { useJournalCrypto } from "@/lib/journal-crypto";
 
 /** Empty TipTap doc — the editor seeds from this for a fresh entry. */
-const EMPTY_DOC: JournalContent = {
+// Typed as the kit's RichTextEditorContent (TipTap JSONContent) — this screen
+// only ever holds JSON (10tap), never the legacy HTML string side of
+// JournalContent, and the editor's `initialContent` requires the JSON shape.
+const EMPTY_DOC: RichTextEditorContent = {
   type: "doc",
   content: [{ type: "paragraph" }],
 };
@@ -89,7 +92,7 @@ export default function NewJournalScreen() {
   // New entries are always TipTap JSON — there's no legacy HTML for a fresh
   // doc. The shared JournalEditor is uncontrolled after mount (it owns the
   // document); we keep the latest JSON here for the save.
-  const [content, setContent] = useState<JournalContent>(EMPTY_DOC);
+  const [content, setContent] = useState<RichTextEditorContent>(EMPTY_DOC);
   const [mood, setMood] = useState<number | undefined>(undefined);
   const [tags, setTags] = useState<string[]>([]);
   const [date, setDate] = useState(localDateKey());

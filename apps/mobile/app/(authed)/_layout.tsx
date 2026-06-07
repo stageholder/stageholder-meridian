@@ -40,7 +40,9 @@ export default function AuthedLayout() {
   // present once authenticated (state.data is the me-response); undefined
   // otherwise, which keeps the effect below inert until we have an identity.
   const sub = state.status === "authenticated" ? state.data.sub : undefined;
-  const onOnboarding = segments.includes("onboarding");
+  // expo-router types `segments` as a route-tuple union — widen for the
+  // membership test.
+  const onOnboarding = (segments as string[]).includes("onboarding");
 
   // null = still resolving the SecureStore flag (hold the spinner, don't flash
   // tabs); true/false once known. Re-resolves when the identity changes OR
@@ -112,7 +114,11 @@ export default function AuthedLayout() {
             if (navState.routes[navState.index]?.name === "onboarding") {
               return null;
             }
-            return <MobileBottomNav {...(props as never)} />;
+            return (
+              <MobileBottomNav
+                {...(props as unknown as Parameters<typeof MobileBottomNav>[0])}
+              />
+            );
           }}
           screenOptions={{ headerShown: false }}
         >

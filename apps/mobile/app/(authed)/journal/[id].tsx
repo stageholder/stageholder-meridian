@@ -211,7 +211,7 @@ export default function JournalDetailScreen() {
           showsVerticalScrollIndicator={false}
           // Clearance for the floating BottomNav capsule (PWA shell parity).
           contentContainerStyle={{
-            paddingBottom: BOTTOM_NAV_CLEARANCE + insets.bottom,
+            pb: BOTTOM_NAV_CLEARANCE + insets.bottom,
           }}
         >
           <YStack gap="$4" px="$4" pt="$2" pb="$10">

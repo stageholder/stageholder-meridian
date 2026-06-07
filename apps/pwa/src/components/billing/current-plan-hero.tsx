@@ -64,7 +64,7 @@ export function CurrentPlanHero({
 
   return (
     <View
-      tag="section"
+      render="section"
       position="relative"
       rounded={32}
       borderWidth={1}
@@ -74,9 +74,10 @@ export function CurrentPlanHero({
       bg="$card"
       p="$7"
       $md={{ p: "$8" }}
-      // allowlist: billing-reveal / billing-stagger-1 — staggered section
-      // reveal keyframe shared across the billing dashboard (no token equiv).
-      className="billing-reveal billing-stagger-1"
+      // Staggered section reveal — Tamagui-native mount animation (was the
+      // `billing-reveal billing-stagger-1` CSS keyframe), matching upgrade.tsx.
+      enterStyle={{ opacity: 0, y: 14 }}
+      transition={["medium", { delay: 60 }]}
     >
       {/* Top-row status strip */}
       <XStack mb="$6" $md={{ mb: "$8" }} items="center" gap="$3">
@@ -100,8 +101,8 @@ export function CurrentPlanHero({
           gap="$6"
           $md={{
             width: "auto",
-            flexGrow: 1.4,
-            flexShrink: 1,
+            grow: 1.4,
+            shrink: 1,
             flexBasis: 0,
             gap: "$8",
           }}
@@ -211,7 +212,7 @@ export function CurrentPlanHero({
         <View
           position="relative"
           display="none"
-          $md={{ display: "flex", flexGrow: 1 }}
+          $md={{ display: "flex", grow: 1 }}
         >
           <View position="relative" mx="auto" width="100%" maxW={320}>
             {/* aspect-square via padding-bottom trick is hard without a token;
@@ -252,12 +253,12 @@ function StatusPill({ status }: { status: string }) {
   // muted-tint tokens; the dot inherits the same intent color.
   const tone =
     status === "active"
-      ? { bg: "$successMuted", color: "$success" }
+      ? ({ bg: "$successMuted", color: "$success" } as const)
       : status === "trialing"
-        ? { bg: "$warningMuted", color: "$warning" }
+        ? ({ bg: "$warningMuted", color: "$warning" } as const)
         : status === "past_due"
-          ? { bg: "$destructiveMuted", color: "$destructive" }
-          : { bg: "$muted", color: "$mutedForeground" };
+          ? ({ bg: "$destructiveMuted", color: "$destructive" } as const)
+          : ({ bg: "$muted", color: "$mutedForeground" } as const);
   const label =
     status === "active"
       ? "Active"
@@ -345,7 +346,7 @@ function CornerTick({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) {
 function HeroSkeleton() {
   return (
     <View
-      tag="section"
+      render="section"
       rounded={32}
       borderWidth={1}
       borderColor="$borderColor"

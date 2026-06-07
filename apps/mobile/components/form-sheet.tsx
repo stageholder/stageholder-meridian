@@ -29,6 +29,12 @@ interface FormSheetProps {
   title: string;
   /** Optional sub-label under the title. */
   description?: string;
+  /**
+   * Sheet height as a percent of the screen. Default 85 suits long forms
+   * (habit). Short forms (todo: 5 fields + buttons) pass less so the sheet
+   * hugs its content instead of leaving dead space.
+   */
+  snapPoint?: number;
   children: ReactNode;
 }
 
@@ -37,6 +43,7 @@ export function FormSheet({
   onOpenChange,
   title,
   description,
+  snapPoint = 85,
   children,
 }: FormSheetProps) {
   return (
@@ -51,7 +58,7 @@ export function FormSheet({
       // nested sheet hit — see @stageholder/ui Select.tsx NestedSelectSheet
       // comments). 85% keeps the status bar + a sliver of the screen behind
       // visible like a standard form sheet, with headroom for the keyboard.
-      snapPoints={[85]}
+      snapPoints={[snapPoint]}
       transition="medium"
     >
       <Sheet.Overlay />

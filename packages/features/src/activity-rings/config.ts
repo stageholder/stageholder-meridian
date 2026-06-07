@@ -1,4 +1,10 @@
 import type { ActivityRing } from "@stageholder/ui";
+import { RING_CATEGORY, type RingColorMap } from "./ring-colors";
+
+// Platform-split colors (web CSS vars / native resolved hex — Metro picks
+// `ring-colors.native.ts`) — re-exported so existing `from "./config"` /
+// barrel imports keep working.
+export { RING_CATEGORY, type RingColorMap };
 
 /** Per-day completion (0–100) for the three Meridian activity rings. */
 export interface ActivityRingsData {
@@ -23,38 +29,14 @@ export interface ActivityRingsDetails {
 }
 
 /**
- * Meridian's standard category colors — theme-aware CSS vars on web,
- * shared by the calendar rings, the day panel, and the daily-target
- * header rings. Passed straight to the kit `<ActivityRings>` as raw SVG
- * stroke colors.
- *   todo = red · habit = orange · journal = yellow
- */
-export const RING_CATEGORY = {
-  todo: { color: "var(--ring-todo)", track: "var(--ring-todo-track)" },
-  habit: { color: "var(--ring-habit)", track: "var(--ring-habit-track)" },
-  journal: { color: "var(--ring-journal)", track: "var(--ring-journal-track)" },
-} as const;
-
-/**
- * Per-category ring colors (stroke `color` + `track` background), keyed the
- * same as `RING_CATEGORY`. Widened to plain `string` (not the CSS-var literal
- * types of `RING_CATEGORY`) so native callers can pass resolved hex/rgba —
- * react-native-svg can't resolve `var(...)`.
- */
-export interface RingColorMap {
-  todo: { color: string; track: string };
-  habit: { color: string; track: string };
-  journal: { color: string; track: string };
-}
-
-/**
  * Maps computed completion to the kit `<ActivityRings>` ring config. Order
  * is outer→inner: journal, habit, todo (the kit renders `rings[0]`
  * outermost), preserving the prior Meridian ring stacking.
  *
- * `colors` defaults to `RING_CATEGORY` (web CSS vars). On native, pass a map
- * of resolved colors — the kit feeds these straight to react-native-svg as
- * stroke colors, which does not resolve CSS custom properties.
+ * `colors` defaults to `RING_CATEGORY`, which is platform-resolved (CSS
+ * vars on web, resolved hex/rgba on native via `ring-colors.native.ts`) —
+ * omitting it is safe on both runtimes. Pass an explicit map only to
+ * override the standard palette.
  */
 export function activityRingsConfig(
   data: ActivityRingsData,

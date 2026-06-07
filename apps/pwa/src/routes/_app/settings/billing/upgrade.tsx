@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
+import { Anchor } from "tamagui";
 import {
   usePricing,
   useSubscription,
@@ -68,10 +69,12 @@ function UpgradePage() {
             <XStack
               items="center"
               gap="$1.5"
-              fontSize="$3"
-              color="$mutedForeground"
               transition="quick"
-              hoverStyle={{ color: "$color" }}
+              // Text color cascades to the label + lucide icon (currentColor).
+              // `color`/`fontSize` aren't in the View frame's prop type —
+              // runtime CSS only — so they ride casts.
+              {...({ fontSize: "$3", color: "$mutedForeground" } as object)}
+              hoverStyle={{ color: "$color" } as never}
             >
               <ArrowLeft size={16} />
               <Text>Back to billing</Text>
@@ -85,7 +88,7 @@ function UpgradePage() {
             column on iOS WebKit, which is what made the title + toggle
             overlap. Width/natural-height on mobile; flex-share only at md+. */}
         <YStack
-          tag="header"
+          render="header"
           enterStyle={{ opacity: 0, y: 14 }}
           transition="medium"
           mb={48}
@@ -167,11 +170,11 @@ function UpgradePage() {
             // md+ : flex grid. Cards flex to fill, wrapping below minWidth.
             // The featured card lifts via a negative margin (transform-free so
             // it never fights the enterStyle reveal).
-            <XStack tag="ul" position="relative" flexWrap="wrap" gap="$6">
+            <XStack render="ul" position="relative" flexWrap="wrap" gap="$6">
               {ordered.map((plan, i) => (
                 <View
                   key={plan.id}
-                  tag="li"
+                  render="li"
                   flex={1}
                   minW={260}
                   enterStyle={{ opacity: 0, y: 14 }}
@@ -194,7 +197,7 @@ function UpgradePage() {
             // surface scroll-snaps to each plan.
             <YStack gap="$3">
               <XStack
-                tag="ul"
+                render="ul"
                 className="scrollbar-hide"
                 flexWrap="nowrap"
                 gap="$4"
@@ -212,7 +215,7 @@ function UpgradePage() {
                 {ordered.map((plan, i) => (
                   <View
                     key={plan.id}
-                    tag="li"
+                    render="li"
                     width={280}
                     shrink={0}
                     enterStyle={{ opacity: 0, y: 14 }}
@@ -246,7 +249,7 @@ function UpgradePage() {
 
         {/* Closing mark */}
         <XStack
-          tag="footer"
+          render="footer"
           mt={80}
           flexWrap="wrap"
           items="baseline"
@@ -259,17 +262,19 @@ function UpgradePage() {
           <Text fontSize="$5" fontWeight="500">
             Questions about your plan?
           </Text>
-          <Text
-            tag="a"
+          {/* Anchor (styled Text rendering <a>) — the v2 guide's
+              replacement for tag="a". */}
+          <Anchor
             href="mailto:hello@meridian.app"
             fontSize="$3"
             fontWeight="500"
             color="$color"
+            textDecorationLine="none"
             hoverStyle={{ textDecorationLine: "underline" }}
             style={{ textUnderlineOffset: 4 } as object}
           >
             hello@meridian.app
-          </Text>
+          </Anchor>
         </XStack>
       </YStack>
     </View>
@@ -322,7 +327,7 @@ function PlanGridSkeleton() {
   return (
     // Matches the live plan grid (flex, wraps to single-column on mobile).
     // Kit Skeleton carries the shimmer — no Tailwind animate-pulse.
-    <XStack tag="ul" flexWrap="wrap" gap="$5" $md={{ gap: "$6" }}>
+    <XStack render="ul" flexWrap="wrap" gap="$5" $md={{ gap: "$6" }}>
       {Array.from({ length: 3 }).map((_, i) => (
         <Skeleton key={i} flex={1} minW={260} height={520} rounded={28} />
       ))}

@@ -82,6 +82,8 @@ export function CreateTodoDialog({
       onOpenChange={onOpenChange}
       title="New Todo"
       description="Create a new todo with optional details, priority, and dates."
+      // Short form (5 fields + buttons) — hug the content, no dead space.
+      snapPoint={62}
     >
       <TodoForm
         key={open ? "open" : "closed"}

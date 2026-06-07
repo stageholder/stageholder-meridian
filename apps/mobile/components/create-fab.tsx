@@ -27,7 +27,7 @@ export function CreateFab({
   const insets = useSafeAreaInsets();
   return (
     <FAB
-      icon={<Plus size={24} color={iconColor} />}
+      icon={<Plus size={24} color={iconColor as never} />}
       placement="bottom-right"
       // Standard Material/iOS edge margin.
       r={16}

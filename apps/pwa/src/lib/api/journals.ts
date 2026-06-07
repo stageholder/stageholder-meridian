@@ -27,7 +27,7 @@ import {
   useInfiniteQuery,
   useQuery,
 } from "@tanstack/react-query";
-import type { Journal, JournalStats } from "@repo/core/types";
+import type { Journal, JournalContent, JournalStats } from "@repo/core/types";
 import type { PaginatedJournals } from "@repo/core/api/journals";
 import { tryGetCurrentUserSub } from "@/lib/current-user-sub";
 import { lightKeys } from "./light";
@@ -132,7 +132,7 @@ export function useCreateJournal() {
     Error,
     {
       title: string;
-      content: string;
+      content: JournalContent;
       mood?: number;
       tags?: string[];
       date?: string;
@@ -209,7 +209,7 @@ export function useUpdateJournal() {
       id: string;
       data: {
         title?: string;
-        content?: string;
+        content?: JournalContent;
         mood?: number;
         tags?: string[];
       };

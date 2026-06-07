@@ -137,7 +137,7 @@ export function CalendarView() {
         width="100%"
         gap="$4"
         className="meridian-cal-square"
-        $lg={{ width: 520, position: "sticky" as never, top: "$4" }}
+        $lg={{ width: 520, position: "sticky" as never, t: "$4" }}
       >
         {isError ? (
           <XStack height={320} items="center" justify="center">

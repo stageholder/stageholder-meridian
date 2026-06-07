@@ -75,10 +75,18 @@ export function MeridianPaywallModal({
     // scrim already blocks background interaction, so the lock is redundant.
     <Dialog open={open} onOpenChange={onOpenChange} disableRemoveScroll>
       <Dialog.Portal>
-        {/* allowlist: backdrop-blur-md — frosted backdrop is load-bearing for
+        {/* Frosted backdrop (was Tailwind backdrop-blur-md) — load-bearing for
             the editorial modal; the kit overlay supplies the base tint +
-            enter/exit animation. */}
-        <Dialog.Overlay className="backdrop-blur-md" />
+            enter/exit animation. backdrop-filter is web-only CSS, so it rides
+            the style hatch. */}
+        <Dialog.Overlay
+          style={
+            {
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+            } as object
+          }
+        />
         <Dialog.Content
           // Override the kit's default 480 max-width / padding for the wide
           // two-column paywall. The kit's transition + enter/exit still run.
@@ -119,7 +127,7 @@ export function MeridianPaywallModal({
                 $sm={{ flexDirection: "row", gap: "$9" }}
               >
                 {/* Text + ledger column */}
-                <YStack flex={1} gap="$7" $sm={{ flexGrow: 1.3 }}>
+                <YStack flex={1} gap="$7" $sm={{ grow: 1.3 }}>
                   <YStack gap="$4">
                     <Text
                       fontSize="$3"
@@ -219,9 +227,9 @@ export function MeridianPaywallModal({
 
                 {/* Diagram column (desktop only) */}
                 <View
-                  tag="aside"
+                  render="aside"
                   display="none"
-                  $sm={{ display: "flex", flexGrow: 1 }}
+                  $sm={{ display: "flex", grow: 1 }}
                 >
                   <View
                     position="relative"

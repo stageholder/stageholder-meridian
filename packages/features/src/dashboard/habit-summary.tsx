@@ -29,7 +29,6 @@ export interface HabitSummaryProps {
   onViewAll?: () => void;
   /** Mount animation index — passed through to BentoCard. */
   index?: number;
-  className?: string;
 }
 
 /**
@@ -44,7 +43,6 @@ export function HabitSummary({
   isLoading,
   onViewAll,
   index = 0,
-  className,
 }: HabitSummaryProps) {
   // Quota (`weekly_target`) habits aren't due on any specific day — they're
   // tracked weekly on /habits — so they're excluded from this daily summary.
@@ -57,7 +55,6 @@ export function HabitSummary({
       title="Habits Today"
       onTitlePress={onViewAll}
       index={index}
-      className={className}
       action={
         onViewAll ? (
           <Text

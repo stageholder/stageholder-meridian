@@ -45,13 +45,13 @@ const CATEGORIES = [
  * Per-category ring colors: the `color` (stroke/fill + matching legend icon)
  * and `track` (ring background). Mirrors `RING_CATEGORY`'s shape.
  *
- * Web's default is `RING_CATEGORY` — theme-aware CSS custom properties
- * (`var(--ring-todo)` …). Those resolve in the browser but NOT in
- * react-native-svg (no CSS-var resolver), so a native caller MUST pass
- * resolved hex/rgba here (e.g. the mobile `IGNITION` palette). lucide-icons-2
- * and the kit `ProgressRing`/`ActivityRings` all read these straight as SVG
- * stroke/fill, so an unresolved `var(...)` would render at the icon's #000
- * fallback and an invalid ring color on native.
+ * The `RING_CATEGORY` default is platform-resolved (`ring-colors.ts` CSS
+ * vars on web / `ring-colors.native.ts` resolved hex on native), so omitting
+ * `colors` is safe on both runtimes. Pass an explicit map only to override
+ * the standard palette (e.g. a bespoke per-surface tint) — on native it must
+ * be resolved hex/rgba, since lucide-icons-2 and the kit
+ * `ProgressRing`/`ActivityRings` read these straight as SVG stroke/fill and
+ * react-native-svg has no CSS-var resolver.
  *
  * Same shape as `activityRingsConfig`'s `colors` param — aliased so the rings
  * visual and its config helper share one color-map contract.
@@ -65,11 +65,10 @@ export interface ActivityRingsProps {
   size?: ActivityRingsSize;
   showLabels?: boolean;
   bare?: boolean;
-  className?: string;
   /**
-   * Per-category ring + legend-icon colors. Defaults to the web CSS-var map
-   * (`RING_CATEGORY`); native callers MUST pass resolved hex/rgba (e.g. the
-   * mobile IGNITION palette) since react-native-svg can't resolve `var(...)`.
+   * Per-category ring + legend-icon colors. Defaults to the
+   * platform-resolved `RING_CATEGORY` (CSS vars on web, resolved hex on
+   * native) — only pass this to override the standard palette.
    */
   colors?: ActivityRingsColors;
 }
@@ -95,19 +94,13 @@ export function ActivityRings({
   size = "xl",
   showLabels,
   bare,
-  className,
   colors = RING_CATEGORY,
 }: ActivityRingsProps) {
   const dims = SIZE_PX[size];
 
   if (isLoading) {
     return (
-      <View
-        items="center"
-        justify="center"
-        minH={size === "xl" ? 160 : 96}
-        className={className}
-      >
+      <View items="center" justify="center" minH={size === "xl" ? 160 : 96}>
         <Skeleton height={dims.size} width={dims.size} rounded={9999} />
       </View>
     );
@@ -123,7 +116,7 @@ export function ActivityRings({
   );
 
   if (!showLabels) {
-    return <View className={className}>{ring}</View>;
+    return <View>{ring}</View>;
   }
 
   const fractions: Record<string, string> = {
@@ -140,7 +133,6 @@ export function ActivityRings({
 
   return (
     <View
-      className={className}
       rounded={bare ? undefined : "$lg"}
       borderWidth={bare ? undefined : 1}
       borderColor={bare ? undefined : "$borderColor"}
@@ -164,14 +156,16 @@ export function ActivityRings({
           minW={0}
           width="100%"
           gap="$3"
-          $sm={{ width: "auto", flexGrow: 1, flexShrink: 1, flexBasis: 0 }}
+          $sm={{ width: "auto", grow: 1, shrink: 1, flexBasis: 0 }}
         >
           {CATEGORIES.map(({ key, label, icon: Icon }) => (
             <XStack key={key} items="center" gap="$3">
               {/* Ring colors are viz accents — lucide-icons-2 reads its own
                   `color` so the legend icon matches the ring's stroke. Resolved
                   hex on native; CSS var on web (default `colors`). */}
-              <Icon size={16} shrink={0} color={colors[key].color} />
+              {/* RingColorMap values are platform strings (CSS var on web /
+                  hex on native) — wider than the icon's token-typed `color`. */}
+              <Icon size={16} shrink={0} color={colors[key].color as never} />
               <YStack minW={0} flex={1}>
                 <Text fontSize="$3" fontWeight="500" color="$color">
                   {label}
@@ -196,12 +190,10 @@ export interface ActivityRingsBreakdownProps {
   data: ActivityRingsData;
   details: ActivityRingsDetails;
   isLoading?: boolean;
-  className?: string;
   /**
    * Per-category ring + icon colors. Same contract as `ActivityRings.colors`:
-   * defaults to the web CSS-var map; native callers MUST pass resolved colors
-   * (react-native-svg can't resolve `var(...)`, so the ProgressRing fill/track
-   * and legend icon would otherwise break silently).
+   * defaults to the platform-resolved `RING_CATEGORY` (CSS vars on web,
+   * resolved hex on native) — only pass this to override the palette.
    */
   colors?: ActivityRingsColors;
 }
@@ -215,20 +207,19 @@ export interface ActivityRingsBreakdownProps {
  *
  * Presentational only: the host feeds the same `data`/`details` it passes
  * to `<ActivityRings>` (the per-day hook is cached, so calling it for both
- * cards is free). Cross-platform — kit primitives only, no `.native.tsx` —
- * but it renders SVG rings/icons, so a native host MUST pass resolved `colors`
- * (the CSS-var default only resolves in the browser). See `colors` above.
+ * cards is free). Cross-platform — kit primitives only, no `.native.tsx`;
+ * the SVG ring/icon colors come from the platform-resolved `RING_CATEGORY`
+ * default. See `colors` above.
  */
 export function ActivityRingsBreakdown({
   data,
   details,
   isLoading,
-  className,
   colors = RING_CATEGORY,
 }: ActivityRingsBreakdownProps) {
   if (isLoading) {
     return (
-      <YStack gap="$4" className={className}>
+      <YStack gap="$4">
         {[0, 1, 2].map((i) => (
           <XStack key={i} items="center" gap="$3">
             <YStack flex={1} gap="$1.5">
@@ -254,9 +245,9 @@ export function ActivityRingsBreakdown({
   };
 
   return (
-    <YStack gap="$4" className={className}>
+    <YStack gap="$4">
       {CATEGORIES.map(({ key, label, icon: Icon }) => {
-        const pct = percentages[key];
+        const pct = percentages[key] ?? 0;
         const { color, track } = colors[key];
         return (
           <XStack key={key} items="center" gap="$3" width="100%">
@@ -280,7 +271,8 @@ export function ActivityRingsBreakdown({
               trackColor={track}
             >
               {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
-              <Icon size={18} shrink={0} color={color} />
+              {/* RingColorMap color is a platform string — see legend note. */}
+              <Icon size={18} shrink={0} color={color as never} />
             </ProgressRing>
           </XStack>
         );

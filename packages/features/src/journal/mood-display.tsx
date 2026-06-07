@@ -22,7 +22,9 @@ export function MoodDisplay({ mood }: MoodDisplayProps) {
   if (!option) return null;
 
   return (
-    <Text fontSize="$6" title={option.label}>
+    // DOM `title` tooltip attr isn't in the kit Text prop type (web-only,
+    // passed through at runtime) — rides a spread cast.
+    <Text fontSize="$6" {...({ title: option.label } as object)}>
       {option.emoji}
     </Text>
   );

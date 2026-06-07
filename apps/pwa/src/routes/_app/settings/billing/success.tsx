@@ -348,13 +348,23 @@ function BillingSuccessPage() {
         py={64}
         $md={{ py: 96 }}
       >
-        {/* allowlist: card translucency + frosted backdrop-blur + foreground-tinted border (no token equivalent) */}
+        {/* Frosted translucent card — the 80%-card fill + backdrop blur are
+            web-only CSS (no token equivalent), so they ride the style hatch
+            (was Tailwind border-border/70 bg-card/80 backdrop-blur-sm). */}
         <YStack
           rounded={32}
           borderWidth={1}
+          borderColor="$borderColor"
           p="$7"
           $md={{ p: "$9" }}
-          className="border-border/70 bg-card/80 backdrop-blur-sm"
+          style={
+            {
+              backgroundColor:
+                "color-mix(in srgb, var(--card) 80%, transparent)",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
+            } as object
+          }
         >
           <XStack items="center" gap="$2">
             <Text
@@ -364,16 +374,27 @@ function BillingSuccessPage() {
             >
               <Sparkles size={16} />
             </Text>
-            {/* allowlist: editorial mono kicker — letter-spacing + foreground tint (no token equivalent) */}
-            <Paragraph className="font-mono text-[11px] uppercase tracking-[0.32em] text-foreground/55">
+            {/* Editorial mono kicker (was Tailwind font-mono/tracking utils) —
+                matches upgrade.tsx / billing index. */}
+            <Text
+              fontFamily="$mono"
+              fontSize={11}
+              textTransform="uppercase"
+              letterSpacing={3.5}
+              color="$mutedForeground"
+            >
               {kicker}
-            </Paragraph>
+            </Text>
           </XStack>
 
-          {/* allowlist: display-font + clamp() responsive size (CSS var, no kit token) */}
+          {/* Responsive display heading (was a Tailwind clamp()); the display
+              serif lives only as a CSS var (no kit font token). */}
           <H1
             mt="$4.5"
-            className="text-[clamp(2.25rem,6vw,4rem)] leading-[0.95] tracking-[-0.02em]"
+            fontSize={36}
+            lineHeight={34}
+            letterSpacing={-0.7}
+            $md={{ fontSize: 64, lineHeight: 61, letterSpacing: -1.3 }}
             style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
           >
             {headline}
@@ -429,12 +450,18 @@ function BillingSuccessPage() {
           </XStack>
 
           {checkoutId && (
-            // allowlist: editorial mono reference line + border-border/60 hairline (no token equivalent)
+            // Editorial mono reference line (was Tailwind font-mono/tracking
+            // utils + border-border/60 hairline).
             <Paragraph
               mt="$7"
               borderTopWidth={1}
+              borderColor="$borderColor"
               pt="$3"
-              className="border-border/60 font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground"
+              fontFamily="$mono"
+              fontSize={10}
+              textTransform="uppercase"
+              letterSpacing={2.4}
+              color="$mutedForeground"
             >
               Reference · {checkoutId}
             </Paragraph>

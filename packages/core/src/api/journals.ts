@@ -1,5 +1,48 @@
 import type { ApiClientLike } from "./client";
-import type { Journal, JournalStats } from "@repo/core/types";
+import type { Journal, JournalContent, JournalStats } from "@repo/core/types";
+
+/**
+ * Create body — plaintext, or the E2E-encrypted variant produced by the
+ * PWA's `encryptJournalPayload`. In the encrypted shape `title`/`content`/
+ * `tags` are opaque ciphertext strings, `encrypted: true` flags the format
+ * for the server, and `wordCount` is precomputed client-side (the server
+ * can't count words it can't read).
+ */
+export type CreateJournalBody =
+  | {
+      title: string;
+      content: JournalContent;
+      mood?: number;
+      tags?: string[];
+      date?: string;
+    }
+  | {
+      title: string;
+      content: string;
+      tags: string;
+      mood?: number;
+      date?: string;
+      encrypted: true;
+      wordCount: number;
+    };
+
+/** Update body — same plaintext/encrypted split as {@link CreateJournalBody}. */
+export type UpdateJournalBody =
+  | {
+      title?: string;
+      content?: JournalContent;
+      mood?: number;
+      tags?: string[];
+    }
+  | {
+      title: string;
+      content: string;
+      tags: string;
+      mood?: number;
+      date?: string;
+      encrypted: true;
+      wordCount: number;
+    };
 
 /**
  * Full pagination envelope returned by `GET /journals` when called with
@@ -19,13 +62,7 @@ export interface PaginatedJournals {
  */
 export function createJournalsApi(client: ApiClientLike) {
   return {
-    create: async (data: {
-      title: string;
-      content: string;
-      mood?: number;
-      tags?: string[];
-      date?: string;
-    }): Promise<Journal> => {
+    create: async (data: CreateJournalBody): Promise<Journal> => {
       const res = await client.post(`/journals`, data);
       return res.data;
     },
@@ -61,15 +98,7 @@ export function createJournalsApi(client: ApiClientLike) {
       const res = await client.get(`/journals/${id}`);
       return res.data;
     },
-    update: async (
-      id: string,
-      data: {
-        title?: string;
-        content?: string;
-        mood?: number;
-        tags?: string[];
-      },
-    ): Promise<Journal> => {
+    update: async (id: string, data: UpdateJournalBody): Promise<Journal> => {
       const res = await client.patch(`/journals/${id}`, data);
       return res.data;
     },

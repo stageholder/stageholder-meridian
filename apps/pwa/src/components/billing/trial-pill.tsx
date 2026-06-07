@@ -42,8 +42,12 @@ export function TrialPill({
   // Intent palette: urgent escalates to destructive (rose), otherwise the
   // comfortable amber maps onto the kit's warning tokens.
   const tone = urgent
-    ? { bg: "$destructiveMuted", border: "$destructive", color: "$destructive" }
-    : { bg: "$warningMuted", border: "$warning", color: "$warning" };
+    ? ({
+        bg: "$destructiveMuted",
+        border: "$destructive",
+        color: "$destructive",
+      } as const)
+    : ({ bg: "$warningMuted", border: "$warning", color: "$warning" } as const);
 
   return (
     <Tooltip delay={250} placement="bottom-end">

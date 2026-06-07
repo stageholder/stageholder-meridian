@@ -8,13 +8,7 @@ import { useEncryptionStore } from "@/lib/crypto/encryption-store";
  * while locked), wires TanStack `useNavigate` to `onViewAll` and
  * `onJournalPress`, and renders the shared cross-platform view.
  */
-export function RecentJournals({
-  index = 0,
-  className,
-}: {
-  index?: number;
-  className?: string;
-}) {
+export function RecentJournals({ index = 0 }: { index?: number }) {
   const navigate = useNavigate();
   const { isSetup, isUnlocked } = useEncryptionStore();
   const isLocked = isSetup && !isUnlocked;
@@ -32,7 +26,6 @@ export function RecentJournals({
         void navigate({ to: "/journal/$id", params: { id } })
       }
       index={index}
-      className={className}
     />
   );
 }

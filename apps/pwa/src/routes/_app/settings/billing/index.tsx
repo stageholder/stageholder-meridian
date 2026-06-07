@@ -41,10 +41,12 @@ function BillingPage() {
             <XStack
               items="center"
               gap="$1.5"
-              fontSize="$3"
-              color="$mutedForeground"
               transition="quick"
-              hoverStyle={{ color: "$color" }}
+              // Text color cascades to the label + lucide icon (currentColor).
+              // `color`/`fontSize` aren't in the View frame's prop type —
+              // runtime CSS only — so they ride casts.
+              {...({ fontSize: "$3", color: "$mutedForeground" } as object)}
+              hoverStyle={{ color: "$color" } as never}
             >
               <ArrowLeft size={16} />
               <Text>Back to settings</Text>
@@ -54,7 +56,7 @@ function BillingPage() {
 
         {/* Page header */}
         <XStack
-          tag="header"
+          render="header"
           mb="$7"
           flexWrap="wrap"
           items="baseline"
@@ -62,13 +64,25 @@ function BillingPage() {
           gap="$4"
         >
           <View>
-            {/* allowlist: editorial mono kicker — letter-spacing + foreground tint (no token equivalent) */}
-            <Paragraph className="font-mono text-[11px] uppercase tracking-[0.32em] text-foreground/55">
+            {/* Editorial mono kicker (was Tailwind font-mono/tracking utils) —
+                matches upgrade.tsx. */}
+            <Text
+              fontFamily="$mono"
+              fontSize={11}
+              textTransform="uppercase"
+              letterSpacing={3.5}
+              color="$mutedForeground"
+            >
               Billing
-            </Paragraph>
-            {/* allowlist: display-font + responsive size — driven by CSS var, no kit token */}
+            </Text>
+            {/* Display heading (was Tailwind text-4xl/md:text-5xl); the display
+                serif lives only as a CSS var (no kit font token). */}
             <H1
-              className="mt-2 text-4xl tracking-tight md:text-5xl"
+              mt="$2"
+              fontSize={36}
+              lineHeight={40}
+              letterSpacing={-0.9}
+              $md={{ fontSize: 48, lineHeight: 48, letterSpacing: -1.2 }}
               style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
             >
               Your subscription
@@ -85,17 +99,16 @@ function BillingPage() {
         </YStack>
 
         {/* Footer mark */}
-        {/* allowlist: border-border/60 hairline tint (no token equivalent) */}
         <XStack
-          tag="footer"
+          render="footer"
           mt="$10"
           flexWrap="wrap"
           items="center"
           justify="space-between"
           gap="$2"
           borderTopWidth={1}
+          borderColor="$borderColor"
           pt="$5"
-          className="border-border/60"
         >
           <Text fontSize="$1" color="$mutedForeground">
             Meridian — personal productivity

@@ -282,9 +282,12 @@ export async function encryptJournalPayload(
   key: PortableKey,
 ): Promise<EncryptedJournalPayload> {
   const wordCount = countWordsFromContent(draft.content);
-  const contentForEncryption = isJsonContent(draft.content)
-    ? JSON.stringify(draft.content)
-    : draft.content;
+  // `typeof` (not `isJsonContent`) so TS narrows the false branch to string —
+  // the predicate's JSONContentNode doesn't subtract Record<> from the union.
+  const contentForEncryption =
+    typeof draft.content === "string"
+      ? draft.content
+      : JSON.stringify(draft.content);
   const encrypted = await encryptJournal(
     {
       title: draft.title,

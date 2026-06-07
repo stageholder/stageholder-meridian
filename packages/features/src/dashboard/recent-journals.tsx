@@ -1,7 +1,16 @@
+import { isWeb } from "tamagui";
 import { ScrollView, Text, XStack, YStack } from "@stageholder/ui";
 import type { Journal } from "@repo/core/types";
 import { MoodDisplay } from "../journal/mood-display";
 import { BentoCard } from "./bento-card";
+
+// CSS scroll-snap for the horizontal card strip (was Tailwind `snap-x` /
+// `snap-start`). Web-only CSS keys — guarded with `isWeb` so they never
+// reach RN's style validator; native falls back to plain smooth scrolling.
+const snapContainer = isWeb
+  ? ({ scrollSnapType: "x proximity" } as object)
+  : undefined;
+const snapItem = isWeb ? ({ scrollSnapAlign: "start" } as object) : undefined;
 
 /** Parse a `yyyy-MM-dd` or full ISO date string as the LOCAL day. */
 function parseDateLocal(input: string): Date {
@@ -22,7 +31,6 @@ export interface RecentJournalsProps {
   onJournalPress?: (id: string) => void;
   /** Mount animation index — passed through to BentoCard. */
   index?: number;
-  className?: string;
 }
 
 /**
@@ -42,7 +50,6 @@ export function RecentJournals({
   onViewAll,
   onJournalPress,
   index = 0,
-  className,
 }: RecentJournalsProps) {
   const recentJournals = journals.slice(0, 5);
 
@@ -51,7 +58,6 @@ export function RecentJournals({
       title="Recent Journal Entries"
       onTitlePress={onViewAll}
       index={index}
-      className={className}
       action={
         onViewAll ? (
           <Text
@@ -76,15 +82,14 @@ export function RecentJournals({
         </Text>
       ) : recentJournals.length > 0 ? (
         // Horizontal scroller via the kit ScrollView (a real RN ScrollView on
-        // native, a slim-scrollbar div on web) — cross-platform, no className/
-        // overflowX hatch. `snap-x`/`snap-start` scroll-snap has no kit token,
-        // so it's kept as a web-only className on the ScrollView + cards
-        // (silently ignored on native, where smooth scroll is the fallback).
-        // The inner XStack carries the gap between cards.
+        // native, a slim-scrollbar div on web) — cross-platform. Scroll-snap
+        // has no kit token, so it's an isWeb-guarded inline style on the
+        // ScrollView + cards (undefined on native, where smooth scroll is the
+        // fallback). The inner XStack carries the gap between cards.
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          className="snap-x"
+          style={snapContainer}
         >
           <XStack gap="$3" pb="$1">
             {recentJournals.map((journal) => {
@@ -101,7 +106,7 @@ export function RecentJournals({
                   key={journal.id}
                   onPress={() => onJournalPress?.(journal.id)}
                   cursor={onJournalPress ? "pointer" : undefined}
-                  className="snap-start"
+                  style={snapItem}
                   minW={160}
                   shrink={0}
                   gap="$1.5"

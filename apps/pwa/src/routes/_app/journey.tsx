@@ -28,13 +28,21 @@ function JourneyPage() {
   if (isLoading || !userLight) {
     return (
       <XStack minH={"50vh" as never} items="center" justify="center">
-        {/* allowlist: animate-spin keyframe + amber spinner ring (no token equivalent) */}
+        {/* allowlist: animate-spin keyframe (sanctioned spinner class). The
+            amber ring tints are plain CSS colors on the style hatch. */}
         <View
           height={32}
           width={32}
           rounded={9999}
           borderWidth={2}
-          className="animate-spin border-muted-foreground/20 border-t-amber-500"
+          className="animate-spin"
+          style={
+            {
+              borderColor:
+                "color-mix(in srgb, var(--muted-foreground) 20%, transparent)",
+              borderTopColor: "#f59e0b",
+            } as object
+          }
         />
       </XStack>
     );
@@ -47,7 +55,8 @@ function JourneyPage() {
           layout reads single-column on mobile and two-up once wide enough. */}
       <XStack flexWrap="wrap" gap="$4">
         {/* Left: Hero — Star + Title + Progress */}
-        {/* allowlist: amber gradient surface + border tint (no token equivalent) */}
+        {/* Amber gradient surface + border tint — web-only CSS (no token
+            equivalent) on the style hatch (was Tailwind amber utilities). */}
         <YStack
           flex={1}
           minW={280}
@@ -60,9 +69,16 @@ function JourneyPage() {
           px="$5"
           pb="$5"
           pt="$6"
-          className="border-amber-500/20 bg-gradient-to-b from-amber-500/5 to-transparent"
+          style={
+            {
+              borderColor: "rgba(245, 158, 11, 0.2)",
+              background:
+                "linear-gradient(to bottom, rgba(245, 158, 11, 0.05), transparent)",
+            } as object
+          }
         >
-          {/* allowlist: amber ambient glow — translucency + heavy blur (no token equivalent) */}
+          {/* Amber ambient glow — translucency + heavy blur (web-only CSS)
+              on the style hatch. */}
           <View
             position="absolute"
             t={0}
@@ -71,7 +87,13 @@ function JourneyPage() {
             width={256}
             rounded={9999}
             pointerEvents="none"
-            className="-translate-x-1/2 bg-amber-500/10 blur-3xl"
+            style={
+              {
+                transform: "translateX(-50%)",
+                backgroundColor: "rgba(245, 158, 11, 0.1)",
+                filter: "blur(64px)",
+              } as object
+            }
           />
 
           <StarVisual tier={userLight.currentTier} size="xl" />
@@ -124,7 +146,7 @@ function JourneyPage() {
       </Paragraph>
 
       {/* Streaks */}
-      <View tag="section">
+      <View render="section">
         <H2
           mb="$3"
           fontSize="$3"
@@ -149,7 +171,7 @@ function JourneyPage() {
       </Card>
 
       {/* Tier Map */}
-      <View tag="section">
+      <View render="section">
         <H2
           mb="$3"
           fontSize="$3"

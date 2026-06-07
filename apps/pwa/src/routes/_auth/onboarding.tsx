@@ -140,8 +140,10 @@ function OnboardingPage() {
           borderColor="$borderColor"
           bg="$card"
           p="$6"
-          // allowlist: soft drop shadow — no kit token equivalent
-          className="shadow-sm"
+          // Soft drop shadow (was Tailwind shadow-sm) via Tamagui shadow props.
+          shadowColor="rgba(0, 0, 0, 0.05)"
+          shadowOffset={{ width: 0, height: 1 }}
+          shadowRadius={2}
         >
           {stepComponent}
         </YStack>

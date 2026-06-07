@@ -93,13 +93,18 @@ export function RadianceBurst({ active, color }: RadianceBurstProps) {
       l={0}
       z={10}
       pointerEvents="none"
-      aria-hidden="true"
+      aria-hidden
       style={{ overflow: "visible" }}
     >
-      {/* Center glow pulse */}
+      {/* Center glow pulse — the centering translate lives in the
+          habit-center-glow-pulse keyframe itself. */}
       <div
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full habit-center-glow"
+        className="habit-center-glow"
         style={{
+          position: "absolute",
+          left: "50%",
+          top: "50%",
+          borderRadius: 9999,
           width: 80,
           height: 80,
           background: `radial-gradient(circle, ${color || "oklch(0.82 0.22 65)"}40 0%, transparent 70%)`,
@@ -110,8 +115,12 @@ export function RadianceBurst({ active, color }: RadianceBurstProps) {
       {rays.map((r) => (
         <span
           key={r.id}
-          className="absolute left-1/2 top-1/2 origin-bottom habit-ray"
+          className="habit-ray"
           style={{
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            transformOrigin: "bottom",
             width: r.width,
             height: 0,
             backgroundColor: r.color,
@@ -129,8 +138,10 @@ export function RadianceBurst({ active, color }: RadianceBurstProps) {
       {sparks.map((s) => (
         <span
           key={s.id}
-          className="absolute rounded-full habit-spark"
+          className="habit-spark"
           style={{
+            position: "absolute",
+            borderRadius: 9999,
             left: `${s.x}%`,
             top: `${s.y}%`,
             width: s.size,

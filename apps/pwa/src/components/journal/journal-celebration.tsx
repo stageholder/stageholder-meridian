@@ -139,7 +139,7 @@ export function JournalCelebration({ trigger }: JournalCelebrationProps) {
       l={0}
       z={20}
       overflow="hidden"
-      aria-hidden="true"
+      aria-hidden
     >
       {/* allowlist: journal-celebration-* / journal-fire-edge / journal-ember /
           journal-spark are bespoke celebration keyframes (flash, shimmer
@@ -148,20 +148,31 @@ export function JournalCelebration({ trigger }: JournalCelebrationProps) {
           div/span kept so the keyframe classes + inline CSS-var styles apply. */}
 
       {/* Golden flash overlay */}
-      <div className="journal-celebration-flash absolute inset-0" />
+      <div
+        className="journal-celebration-flash"
+        style={{ position: "absolute", inset: 0 }}
+      />
 
       {/* Shimmer sweep */}
-      <div className="journal-celebration-shimmer absolute inset-0" />
+      <div
+        className="journal-celebration-shimmer"
+        style={{ position: "absolute", inset: 0 }}
+      />
 
       {/* Fire glow along the bottom edge */}
-      <div className="journal-fire-edge absolute bottom-0 left-0 right-0" />
+      <div
+        className="journal-fire-edge"
+        style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}
+      />
 
       {/* Fire ember particles — rising from the bottom */}
       {allEmbers.map((e) => (
         <span
           key={e.id}
-          className="absolute rounded-full journal-ember"
+          className="journal-ember"
           style={{
+            position: "absolute",
+            borderRadius: 9999,
             left: `${e.x}%`,
             top: `${e.startY}%`,
             width: e.size,
@@ -180,8 +191,10 @@ export function JournalCelebration({ trigger }: JournalCelebrationProps) {
       {sparks.map((s) => (
         <span
           key={s.id}
-          className="absolute rounded-full journal-spark"
+          className="journal-spark"
           style={{
+            position: "absolute",
+            borderRadius: 9999,
             left: `${s.x}%`,
             top: `${s.startY}%`,
             width: s.size,
@@ -199,17 +212,22 @@ export function JournalCelebration({ trigger }: JournalCelebrationProps) {
       {/* Target reached banner — anchored to top, no text overlap */}
       {showBanner && (
         <XStack position="absolute" l={0} r={0} t={12} justify="center">
-          {/* allowlist: journal-celebration-banner — bespoke celebration keyframe;
-              backdrop-blur + oklch tint have no token equivalent (CSS-var/effect viz) */}
+          {/* allowlist: journal-celebration-banner — bespoke celebration
+              keyframe. The frosted blur + oklch tint are web-only CSS (no
+              token equivalent), riding the style hatch. */}
           <View
-            className="journal-celebration-banner backdrop-blur-sm"
+            className="journal-celebration-banner"
             rounded={9999}
             px="$5"
             py="$1.5"
-            style={{
-              background: "oklch(0.82 0.22 75 / 0.12)",
-              border: "1px solid oklch(0.82 0.22 75 / 0.2)",
-            }}
+            style={
+              {
+                background: "oklch(0.82 0.22 75 / 0.12)",
+                border: "1px solid oklch(0.82 0.22 75 / 0.2)",
+                backdropFilter: "blur(4px)",
+                WebkitBackdropFilter: "blur(4px)",
+              } as object
+            }
           >
             {/* Brand-adjacent celebration gold has no token — style escape hatch. */}
             <Text

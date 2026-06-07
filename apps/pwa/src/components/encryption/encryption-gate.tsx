@@ -97,7 +97,7 @@ function SetupBanner({ onSetup }: { onSetup: () => void }) {
     <YStack
       position={"fixed" as never}
       b="$3.5"
-      left="50%"
+      l="50%"
       x="-50%"
       z={50}
       width="100%"

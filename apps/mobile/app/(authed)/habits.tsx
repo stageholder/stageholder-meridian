@@ -99,10 +99,14 @@ export default function HabitsScreen() {
           refreshing={refreshing}
           onRefresh={handleRefresh}
           // Clearance for the floating BottomNav capsule — same contract as
-          // the PWA shell's pb-[calc(5.5rem+env(safe-area-inset-bottom))].
-          contentContainerStyle={{
-            paddingBottom: BOTTOM_NAV_CLEARANCE + insets.bottom,
-          }}
+          // the PWA shell's safe-area bottom padding. `contentContainerStyle`
+          // exists only on the .native variant; tsc resolves the web types,
+          // so it rides a spread cast.
+          {...({
+            contentContainerStyle: {
+              paddingBottom: BOTTOM_NAV_CLEARANCE + insets.bottom,
+            },
+          } as object)}
         >
           <YStack gap="$4" px="$4" pt="$4" pb="$10">
             <Text fontSize="$8" fontWeight="700" color="$color">
@@ -242,23 +246,29 @@ function HabitCardRow({ habit, onEdit, onOpenDetail }: HabitCardRowProps) {
       accentColor={IGNITION.habit.base}
       accentTrackColor={IGNITION.habit.track}
       isPending={isPending}
-      onCheckIn={() => checkIn.mutateAsync({ habitId: habit.id })}
-      onSkip={() => skip.mutateAsync({ habitId: habit.id })}
-      onFail={() => fail.mutateAsync({ habitId: habit.id })}
-      onUndo={() => {
+      onCheckIn={async () => {
+        await checkIn.mutateAsync({ habitId: habit.id });
+      }}
+      onSkip={async () => {
+        await skip.mutateAsync({ habitId: habit.id });
+      }}
+      onFail={async () => {
+        await fail.mutateAsync({ habitId: habit.id });
+      }}
+      onUndo={async () => {
         // Decrement today's value by 1 (PATCH). No-op when there's no entry —
         // HabitCard already guards `activeDateValue <= 0` before calling.
-        if (!todayEntry) return Promise.resolve();
-        return updateEntry.mutateAsync({
+        if (!todayEntry) return;
+        await updateEntry.mutateAsync({
           habitId: habit.id,
           entryId: todayEntry.id,
           patch: { value: Math.max(0, (todayEntry.value ?? 0) - 1) },
         });
       }}
-      onClearStatus={() => {
+      onClearStatus={async () => {
         // Clear a skip/fail back to an un-acted day: value-0 completion entry.
-        if (!todayEntry) return Promise.resolve();
-        return updateEntry.mutateAsync({
+        if (!todayEntry) return;
+        await updateEntry.mutateAsync({
           habitId: habit.id,
           entryId: todayEntry.id,
           patch: { value: 0, type: "completion" },

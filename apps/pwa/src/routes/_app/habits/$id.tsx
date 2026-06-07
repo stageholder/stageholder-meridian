@@ -10,6 +10,7 @@ import {
   H3,
   IconButton,
   Paragraph,
+  Skeleton,
   Stat,
   StreakBadge,
   Text,
@@ -503,21 +504,8 @@ function HabitDetailPage() {
   if (isLoading) {
     return (
       <YStack gap="$4" p="$4">
-        {/* allowlist: animate-pulse keyframe */}
-        <View
-          height={32}
-          width={192}
-          rounded="$sm"
-          bg="$muted"
-          className="animate-pulse"
-        />
-        <View
-          height={16}
-          width={128}
-          rounded="$sm"
-          bg="$muted"
-          className="animate-pulse"
-        />
+        <Skeleton height={32} width={192} rounded="$sm" />
+        <Skeleton height={16} width={128} rounded="$sm" />
       </YStack>
     );
   }

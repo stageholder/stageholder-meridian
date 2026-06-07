@@ -217,7 +217,7 @@ export function PlanTierCard({
 
   return (
     <YStack
-      tag="article"
+      render="article"
       group
       position="relative"
       overflow="hidden"
@@ -455,11 +455,11 @@ function CheckoutErrorBanner({
   // for end-user UI, plus a follow-up `action` for cases the user can fix.
   const copy = explainBillingError(error.code);
 
-  // Whole banner adopts the destructive sub-theme so the danger tint +
-  // foreground resolve from one place instead of hardcoding rose-* per key.
+  // Danger tint comes from the explicit $destructive tokens below — the kit
+  // ships no "destructive" sub-theme (only light/dark/accent), so a theme
+  // switch here would silently no-op.
   return (
     <YStack
-      theme="destructive"
       role="alert"
       mt="$3"
       rounded={16}

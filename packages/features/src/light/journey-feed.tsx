@@ -22,7 +22,7 @@ import { tabularNums } from "../_internal/text-styles";
  */
 const ACTION_CONFIG: Record<
   string,
-  { label: string; icon: typeof Star; color?: string }
+  { label: string; icon: typeof Star; color?: `#${string}` }
 > = {
   todo_complete: {
     label: "Completed todo",

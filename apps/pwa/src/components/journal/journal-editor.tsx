@@ -228,21 +228,32 @@ function MeridianProgress({
   const thumbLeftPx = thumbCenterPx - THUMB_WIDTH / 2;
 
   return (
-    // allowlist: the meridian progress strip is a measured, pixel-precise
-    // visualization — ResizeObserver-driven left/width in raw px, CSS-var
-    // theming (var(--ring-journal)/var(--background)), color-mix(in oklch, …)
+    // The meridian progress strip is a measured, pixel-precise visualization —
+    // ResizeObserver-driven left/width in raw px, CSS-var theming
+    // (var(--ring-journal)/var(--background)), color-mix(in oklch, …)
     // gradients + glow, and per-property CSS transitions on the measured
-    // positions. No Tamagui token/transition equivalent; kept as styled DOM.
-    // tabular-nums on the count keeps the digits from jittering as they tick.
+    // positions. No Tamagui token/transition equivalent; kept as styled DOM
+    // (all inline styles, no utility classes). fontVariantNumeric on the count
+    // keeps the digits from jittering as they tick.
     <div
       ref={stripRef}
-      className="relative shrink-0 w-full overflow-visible"
-      style={{ height: 48, marginBottom: 12 }}
+      style={{
+        position: "relative",
+        flexShrink: 0,
+        width: "100%",
+        overflow: "visible",
+        height: 48,
+        marginBottom: 12,
+      }}
     >
       {/* Track */}
       <div
-        className="absolute left-0 right-0 rounded-full bg-border/40"
         style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          borderRadius: 9999,
+          background: "color-mix(in srgb, var(--border) 40%, transparent)",
           top: "50%",
           marginTop: -trackHeight / 2,
           height: trackHeight,
@@ -252,8 +263,10 @@ function MeridianProgress({
 
       {/* Filled trail */}
       <div
-        className="absolute left-0 rounded-full"
         style={{
+          position: "absolute",
+          left: 0,
+          borderRadius: 9999,
           top: "50%",
           marginTop: -trackHeight / 2,
           width: trailLeadingPx,
@@ -271,8 +284,8 @@ function MeridianProgress({
 
       {/* Thumb pill — count + "Words" */}
       <div
-        className="absolute"
         style={{
+          position: "absolute",
           left: thumbLeftPx,
           top: "50%",
           width: THUMB_WIDTH,
@@ -295,8 +308,8 @@ function MeridianProgress({
         }}
       >
         <span
-          className="tabular-nums"
           style={{
+            fontVariantNumeric: "tabular-nums",
             fontSize: 11,
             fontWeight: 700,
             lineHeight: 1,

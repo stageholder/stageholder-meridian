@@ -160,9 +160,13 @@ export default function JournalScreen() {
           refreshing={refreshing}
           onRefresh={handleRefresh}
           // Clearance for the floating BottomNav capsule (PWA shell parity).
-          contentContainerStyle={{
-            paddingBottom: BOTTOM_NAV_CLEARANCE + insets.bottom,
-          }}
+          // `contentContainerStyle` exists only on the .native variant; tsc
+          // resolves the web types, so it rides a spread cast.
+          {...({
+            contentContainerStyle: {
+              paddingBottom: BOTTOM_NAV_CLEARANCE + insets.bottom,
+            },
+          } as object)}
         >
           <YStack gap="$4" px="$4" pt="$4" pb="$10">
             <Text fontSize="$8" fontWeight="700" color="$color">

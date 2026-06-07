@@ -72,8 +72,15 @@ export function DailyTargetRings() {
                 fillColor={r.ring}
                 trackColor={r.track}
               >
-                {/* Tamagui `color` flows to the icon via currentColor. */}
-                <View color={(complete ? r.ring : "$mutedForeground") as never}>
+                {/* CSS color cascades to the icon via currentColor; the
+                    values are CSS vars, so they ride the style hatch. */}
+                <View
+                  style={
+                    {
+                      color: complete ? r.ring : "var(--muted-foreground)",
+                    } as object
+                  }
+                >
                   <Icon size={14} />
                 </View>
               </ProgressRing>
@@ -107,7 +114,11 @@ export function DailyTargetRings() {
                   trackColor={r.track}
                 >
                   <View
-                    color={(complete ? r.ring : "$mutedForeground") as never}
+                    style={
+                      {
+                        color: complete ? r.ring : "var(--muted-foreground)",
+                      } as object
+                    }
                   >
                     <Icon size={16} />
                   </View>

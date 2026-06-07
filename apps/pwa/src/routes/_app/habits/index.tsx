@@ -6,6 +6,7 @@ import {
   Button,
   EmptyState,
   SegmentedControl,
+  Skeleton,
   View,
   XStack,
   YStack,
@@ -148,75 +149,26 @@ function HabitsPage() {
                 p="$5"
               >
                 <XStack items="center" gap="$3">
-                  {/* allowlist: animate-pulse keyframe (Tailwind/globals) */}
-                  <View
-                    height={40}
-                    width={40}
-                    rounded="$lg"
-                    bg="$muted"
-                    className="animate-pulse"
-                  />
+                  <Skeleton height={40} width={40} rounded="$lg" />
                   <YStack gap="$2">
-                    <View
-                      height={16}
-                      width={96}
-                      rounded="$sm"
-                      bg="$muted"
-                      className="animate-pulse"
-                    />
-                    <View
-                      height={13}
-                      width={128}
-                      rounded="$sm"
-                      bg="$muted"
-                      className="animate-pulse"
-                    />
+                    <Skeleton height={16} width={96} rounded="$sm" />
+                    <Skeleton height={13} width={128} rounded="$sm" />
                   </YStack>
                 </XStack>
                 <YStack mt="$4" gap="$2">
-                  <View
-                    height={8}
-                    width="100%"
-                    rounded={9999}
-                    bg="$muted"
-                    className="animate-pulse"
-                  />
+                  <Skeleton height={8} width="100%" rounded={9999} />
                 </YStack>
                 <XStack mt="$3" justify="space-between">
                   {[1, 2, 3, 4, 5, 6, 7].map((d) => (
                     <YStack key={d} items="center" gap="$1">
-                      <View
-                        height={10}
-                        width={10}
-                        rounded="$sm"
-                        bg="$muted"
-                        className="animate-pulse"
-                      />
-                      <View
-                        height={14}
-                        width={14}
-                        rounded={9999}
-                        bg="$muted"
-                        className="animate-pulse"
-                      />
+                      <Skeleton height={10} width={10} rounded="$sm" />
+                      <Skeleton height={14} width={14} rounded={9999} />
                     </YStack>
                   ))}
                 </XStack>
                 <XStack mt="$4" items="center" justify="space-between">
-                  <View
-                    height={13}
-                    width={64}
-                    rounded="$sm"
-                    bg="$muted"
-                    className="animate-pulse"
-                  />
-                  <View
-                    height={28}
-                    width={64}
-                    rounded="$lg"
-                    bg="$muted"
-                    className="animate-pulse"
-                  />
+                  <Skeleton height={13} width={64} rounded="$sm" />
+                  <Skeleton height={28} width={64} rounded="$lg" />
                 </XStack>
               </YStack>
             ))}
@@ -237,36 +189,12 @@ function HabitsPage() {
                 borderColor="$borderColor"
                 bg="$card"
               >
-                <View
-                  width={36}
-                  height={36}
-                  rounded="$lg"
-                  bg="$muted"
-                  className="animate-pulse"
-                />
+                <Skeleton width={36} height={36} rounded="$lg" />
                 <YStack flex={1} gap="$1.5">
-                  <View
-                    height={14}
-                    width={160}
-                    rounded="$sm"
-                    bg="$muted"
-                    className="animate-pulse"
-                  />
-                  <View
-                    height={10}
-                    width={100}
-                    rounded="$sm"
-                    bg="$muted"
-                    className="animate-pulse"
-                  />
+                  <Skeleton height={14} width={160} rounded="$sm" />
+                  <Skeleton height={10} width={100} rounded="$sm" />
                 </YStack>
-                <View
-                  height={28}
-                  width={88}
-                  rounded="$lg"
-                  bg="$muted"
-                  className="animate-pulse"
-                />
+                <Skeleton height={28} width={88} rounded="$lg" />
               </XStack>
             ))}
           </YStack>

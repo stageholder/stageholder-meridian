@@ -434,9 +434,9 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
           // last rows need ≈5.5rem + the home-indicator inset to clear it. The
           // safe-area inset lives ONLY here (the kit owns the capsule's own
           // offset), so it isn't double-counted. Removed at md+ where the rail
-          // replaces the bottom nav.
-          // allowlist: env safe-area inset on the bottom padding (no token equivalent)
-          className="pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))]"
+          // replaces the bottom nav. calc()+env() is a web-only CSS value, so
+          // it rides the prop as a raw string (same idiom as minH="100vh").
+          pb={"calc(5.5rem + env(safe-area-inset-bottom, 0px))" as never}
           $md={{ pb: 0 }}
         >
           {children}

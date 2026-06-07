@@ -10,7 +10,6 @@ interface ActivityRingsProps {
   size?: ActivityRingsSize;
   showLabels?: boolean;
   bare?: boolean;
-  className?: string;
 }
 
 /**
@@ -36,20 +35,13 @@ export function ActivityRings({ date, ...rest }: ActivityRingsProps) {
  * combined rings). Shares the cached `useActivityRings(date)` query with
  * `<ActivityRings>` above, so rendering both cards costs one fetch.
  */
-export function ActivityRingsBreakdown({
-  date,
-  className,
-}: {
-  date: string;
-  className?: string;
-}) {
+export function ActivityRingsBreakdown({ date }: { date: string }) {
   const { data, isLoading, details } = useActivityRings(date);
   return (
     <ActivityRingsBreakdownView
       data={data}
       details={details}
       isLoading={isLoading}
-      className={className}
     />
   );
 }

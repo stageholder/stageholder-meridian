@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { format } from "date-fns";
 import { Sun } from "lucide-react";
 import { AnimatePresence, Text, XStack, YStack } from "@stageholder/ui";
@@ -50,7 +51,11 @@ export function TodayContent() {
 
   const defaultList = lists?.find((l) => l.isDefault) || lists?.[0];
 
-  const section = (label: string, color: string, items: Todo[]) =>
+  const section = (
+    label: string,
+    color: ComponentProps<typeof Text>["color"],
+    items: Todo[],
+  ) =>
     items.length === 0 ? null : (
       <YStack gap="$0.5">
         <XStack mb="$1.5" items="center" gap="$2">

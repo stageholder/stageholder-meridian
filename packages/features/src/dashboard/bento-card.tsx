@@ -22,7 +22,6 @@ export interface BentoCardProps {
    * (each card fades in 75ms after the previous).
    */
   index?: number;
-  className?: string;
 }
 
 /**
@@ -41,7 +40,6 @@ export function BentoCard({
   onTitlePress,
   action,
   index = 0,
-  className,
 }: BentoCardProps) {
   return (
     <Card
@@ -49,7 +47,6 @@ export function BentoCard({
       // opacity 0 + translateY(12px) → 1/0), delayed per grid index.
       enterStyle={{ opacity: 0, y: 12 }}
       transition={["medium", { delay: index * 75 }]}
-      className={className}
     >
       {title || action ? (
         <Card.Header>

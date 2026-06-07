@@ -1,6 +1,6 @@
 import { Skeleton, XStack, YStack } from "@stageholder/ui";
 
-const WIDTHS = ["68%", "52%", "74%", "44%", "61%", "57%"];
+const WIDTHS = ["68%", "52%", "74%", "44%", "61%", "57%"] as const;
 
 /** Loading placeholder that mirrors the todo-row layout (checkbox + title). */
 export function TodoListSkeleton({ rows = 6 }: { rows?: number }) {
@@ -12,7 +12,7 @@ export function TodoListSkeleton({ rows = 6 }: { rows?: number }) {
           <Skeleton
             height={13}
             rounded="$sm"
-            width={WIDTHS[i % WIDTHS.length]}
+            width={WIDTHS[i % WIDTHS.length] ?? "60%"}
           />
         </XStack>
       ))}

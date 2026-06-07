@@ -15,13 +15,7 @@ import { Text, View, YStack } from "@stageholder/ui";
  * Children should be wrapped in individual `<div className="auth-animate
  * auth-stagger-N">` blocks to get the staggered reveal.
  */
-export function AuthShell({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+export function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <YStack
       position="relative"
@@ -31,27 +25,36 @@ export function AuthShell({
       overflow="hidden"
       bg="$background"
       px="$6"
-      // consumer passthrough (e.g. error/goodbye variants); allowlist-aware
-      className={className}
     >
       {/* Atmospheric background */}
       <View position="absolute" t={0} b={0} l={0} r={0} pointerEvents="none">
-        {/* allowlist: auth-showcase-grid keyframe (globals.css), dark-variant opacity */}
+        {/* allowlist: auth-showcase-grid drift keyframe (globals.css). The
+            light/dark opacity split is a Tamagui theme variant now. */}
         <View
           position="absolute"
-          className="auth-showcase-grid opacity-40 dark:opacity-20"
+          className="auth-showcase-grid"
+          opacity={0.4}
+          $theme-dark={{ opacity: 0.2 }}
           style={{ inset: "-40px" }}
         />
-        {/* allowlist: vertical meridian line — CSS gradient, no token equivalent */}
+        {/* Vertical meridian line — CSS gradient (web-only, no token
+            equivalent) rides the style hatch. */}
         <View
           position="absolute"
           t={0}
           height="100%"
           width={1}
           l="50%"
-          className="-translate-x-1/2 bg-gradient-to-b from-transparent via-primary/20 to-transparent"
+          style={
+            {
+              transform: "translateX(-50%)",
+              background:
+                "linear-gradient(to bottom, transparent, color-mix(in srgb, var(--primary) 20%, transparent), transparent)",
+            } as object
+          }
         />
-        {/* allowlist: primary glow orb — translucency + heavy blur, no token equivalent */}
+        {/* Primary glow orb — translucency + heavy blur (web-only CSS) rides
+            the style hatch. */}
         <View
           position="absolute"
           t="50%"
@@ -59,7 +62,14 @@ export function AuthShell({
           height={480}
           width={480}
           rounded={9999}
-          className="-translate-x-1/2 -translate-y-1/2 bg-primary/[0.04] blur-[100px]"
+          style={
+            {
+              transform: "translate(-50%, -50%)",
+              backgroundColor:
+                "color-mix(in srgb, var(--primary) 4%, transparent)",
+              filter: "blur(100px)",
+            } as object
+          }
         />
       </View>
 

@@ -1,5 +1,5 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useState, type ReactElement } from "react";
 import { format } from "date-fns";
 import {
   Sun,
@@ -73,7 +73,8 @@ function NavButton({
   active,
   onPress,
 }: {
-  icon: ReactNode;
+  /** Element (not arbitrary ReactNode) — the kit icon slot takes an element. */
+  icon: ReactElement;
   label: string;
   count?: number;
   active: boolean;

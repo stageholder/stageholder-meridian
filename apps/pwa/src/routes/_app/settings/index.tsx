@@ -47,7 +47,7 @@ function SettingsPage() {
   return (
     // Centered, width-capped column (Stripe / Linear settings pattern) so the
     // page doesn't pin to the left edge on wide screens.
-    <YStack gap="$6" p="$4" width="100%" maxW={920} marginHorizontal="auto">
+    <YStack gap="$6" p="$4" width="100%" maxW={920} mx="auto">
       <H1 fontSize="$8" fontWeight="700" color="$color">
         Settings
       </H1>

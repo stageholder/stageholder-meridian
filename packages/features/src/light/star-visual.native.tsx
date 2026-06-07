@@ -21,8 +21,7 @@
 //   Net: the same recognizable shape and palette, far simpler rendering. The
 //   web file remains the high-fidelity reference for large hero displays.
 //
-// Public contract is identical to the web file: { tier, size, animate,
-// className }. `className` is a no-op on native (kept for prop-shape parity).
+// Public contract is identical to the web file: { tier, size, animate }.
 
 import { useEffect, useRef, useState } from "react";
 import Svg, {
@@ -38,7 +37,6 @@ interface StarVisualProps {
   tier: number;
   size?: "xs" | "sm" | "md" | "lg" | "xl";
   animate?: boolean;
-  className?: string;
 }
 
 // Same px size map as the web file.

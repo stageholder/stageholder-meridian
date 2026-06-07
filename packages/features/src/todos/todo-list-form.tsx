@@ -126,7 +126,7 @@ export function TodoListForm({
             intent="outline"
             type="button"
             flex={1}
-            $md={{ flexBasis: "auto", flexGrow: 0 }}
+            $md={{ flexBasis: "auto", grow: 0 }}
             onPress={onCancel}
           >
             Cancel
@@ -134,7 +134,7 @@ export function TodoListForm({
           <Form.Trigger asChild>
             <Button
               flex={1}
-              $md={{ flexBasis: "auto", flexGrow: 0 }}
+              $md={{ flexBasis: "auto", grow: 0 }}
               disabled={!name.trim() || isSubmitting}
               loading={isSubmitting}
               loadingText={submittingLabel}

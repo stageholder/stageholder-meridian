@@ -91,6 +91,8 @@ export function EditTodoDialog({
       onOpenChange={onOpenChange}
       title="Edit Todo"
       description="Update the title, details, priority, dates, and list."
+      // Short form — same content-hugging height as the create sheet.
+      snapPoint={62}
     >
       {/* Re-mount when switching between todos so each opens with its own
           values (the form seeds state from `initial` only on mount). */}

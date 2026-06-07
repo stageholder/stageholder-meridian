@@ -19,7 +19,10 @@ import type { UserLight } from "@repo/core/types";
 // Per-tier COLOR VALUES. `ring` is the brightest mid-stop — applied as a SOLID
 // color via Tamagui's color/fillColor props (no gradient text clip). `track` is
 // the unfilled ring. Single source for both the desktop and mobile badges.
-const tierColors: Record<number, { ring: string; track: string }> = {
+const tierColors: Record<
+  number,
+  { ring: `#${string}`; track: `rgba(${string})` }
+> = {
   1: { ring: "#cbd5e1", track: "rgba(148,163,184,0.15)" },
   2: { ring: "#ef4444", track: "rgba(239,68,68,0.15)" },
   3: { ring: "#f59e0b", track: "rgba(245,158,11,0.15)" },
@@ -213,7 +216,11 @@ export function JourneyTierBadge({ userLight }: { userLight: UserLight }) {
                 borderTopWidth={1}
                 borderColor="$borderColor"
                 color="$mutedForeground"
-                hoverStyle={{ bg: "$accent", color: "$color" }}
+                hoverStyle={
+                  // `color` isn't in the View frame's pseudo type; it works at
+                  // runtime via CSS cascade onto the label, so it rides a cast.
+                  { bg: "$accent", color: "$color" } as never
+                }
                 onPress={() => void navigate({ to: "/journey" })}
               >
                 My Journey →

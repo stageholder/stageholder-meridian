@@ -278,22 +278,26 @@ export function TodoForm({
           />
         </XStack>
 
-        {/* Full-width buttons on mobile (the bottom sheet); right-aligned,
-            content-width at md+ (the desktop dialog). */}
+        {/* Full-width 50/50 lg buttons on mobile (the bottom sheet);
+            right-aligned, content-width on DESKTOP. `$md` is min-width
+            768 in @tamagui/config v5 (mobile-first), so it only matches the
+            desktop dialog. */}
         <XStack gap="$3" pt="$2" $md={{ justify: "flex-end" }}>
           <Button
             intent="outline"
             type="button"
+            size="lg"
             flex={1}
-            $md={{ flexBasis: "auto", flexGrow: 0 }}
+            $md={{ flexBasis: "auto", grow: 0 }}
             onPress={onCancel}
           >
             Cancel
           </Button>
           <Form.Trigger asChild>
             <Button
+              size="lg"
               flex={1}
-              $md={{ flexBasis: "auto", flexGrow: 0 }}
+              $md={{ flexBasis: "auto", grow: 0 }}
               disabled={!title.trim() || isSubmitting}
               loading={isSubmitting}
               loadingText={submittingLabel}

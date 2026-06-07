@@ -158,10 +158,10 @@ export default function OnboardingScreen() {
             flex={1}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
-              flexGrow: 1,
-              justifyContent: "center",
-              paddingHorizontal: 20,
-              paddingVertical: 16,
+              grow: 1,
+              justify: "center",
+              px: 20,
+              py: 16,
             }}
           >
             {/* Step content card — constrained so the wizard reads as a
