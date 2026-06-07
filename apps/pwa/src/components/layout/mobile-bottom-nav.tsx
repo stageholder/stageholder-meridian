@@ -114,11 +114,12 @@ export function MobileBottomNav() {
             }
             void navigate({ to: v });
           }}
-          // `width="auto"` makes the capsule hug its items so the bar doesn't
-          // span the full width (no gutter dead-zones); `pointerEvents="auto"`
-          // re-enables taps on the pill despite the layer's "none". Both are
-          // forwarded onto the kit's floating wrapper via its `...rest`.
-          width="auto"
+          // `pointerEvents="auto"` re-enables taps on the bar despite the
+          // layer's "none" (forwarded onto the kit's floating wrapper via its
+          // `...rest`). NO `width="auto"` since alpha.31: the kit wrapper owns
+          // centering at full width, and with 5 destinations the capsule
+          // auto-switches to DENSE mode (equal-flex items on a full-width
+          // track) — a hugged wrapper would collapse the dense layout.
           pointerEvents="auto"
           label="Primary navigation"
         >

@@ -125,9 +125,10 @@ export function MobileBottomNav({ state, navigation }: TabBarProps) {
         variant="floating"
         value={activeValue}
         onChange={(v) => navigation.navigate(v)}
-        // Hug the items so the capsule doesn't span full width — forwarded
-        // to the kit's floating wrapper, same as the PWA.
-        width="auto"
+        // NO `width="auto"` since alpha.31: the kit wrapper owns centering at
+        // full width, and with 5 destinations the capsule auto-switches to
+        // DENSE mode (equal-flex items on a full-width track) — a hugged
+        // wrapper would collapse the dense layout. Same change as the PWA.
         label="Primary navigation"
       >
         {NAV_ITEMS.map((item) => {

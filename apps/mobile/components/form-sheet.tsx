@@ -20,6 +20,7 @@
 // being nested inside another Adapt/Sheet — then mobile could use the exact PWA
 // `Dialog` + DialogSheetAdapt structure. See the kit prompt.)
 
+import { useWindowDimensions } from "react-native";
 import { Sheet, Text, YStack } from "@stageholder/ui";
 import type { ReactNode } from "react";
 
@@ -46,20 +47,26 @@ export function FormSheet({
   snapPoint = 85,
   children,
 }: FormSheetProps) {
+  // CONSTANT (px) snap — the alpha.31 sheet rules (see @stageholder/ui
+  // Sheet.tsx): NEVER percent mode on native (the frame goes invisible at
+  // close-start and "blinks" away instead of sliding down), and `fit` is
+  // out because Sheet.ScrollView has no intrinsic height (full-screen
+  // mis-measure). The public `snapPoint` prop stays percent-of-screen for
+  // callers; it's resolved to px here.
+  //
+  // NO `transition` prop: Sheet drives its own spring (animationConfig) —
+  // layering a Tamagui transition double-animates the frame (the
+  // two-systems class documented on the kit Sheet's StyledOverlay).
+  const { height: windowHeight } = useWindowDimensions();
+  const snapHeight = Math.round((windowHeight * snapPoint) / 100);
   return (
     <Sheet
       modal
       open={open}
       onOpenChange={onOpenChange}
       dismissOnSnapToBottom
-      // PERCENT snap, NOT snapPointsMode="fit": fit + Sheet.ScrollView
-      // mis-measures on native and the sheet shoots to FULL SCREEN, pinned
-      // to the very top (same `fit` mismeasure class the kit Select's
-      // nested sheet hit — see @stageholder/ui Select.tsx NestedSelectSheet
-      // comments). 85% keeps the status bar + a sliver of the screen behind
-      // visible like a standard form sheet, with headroom for the keyboard.
-      snapPoints={[snapPoint]}
-      transition="medium"
+      snapPointsMode="constant"
+      snapPoints={[snapHeight]}
     >
       <Sheet.Overlay />
       <Sheet.Frame px={0} pt="$2" pb="$5" gap="$2">
