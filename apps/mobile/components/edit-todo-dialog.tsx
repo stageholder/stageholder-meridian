@@ -6,18 +6,16 @@
 // on web-only affordances (raw input refs, onKeyDown, hover-reveal). Mobile
 // instead reuses the same shared `TodoForm` from @repo/features/todos that the
 // create flow uses — seeded with the tapped todo's values — and submits a
-// single PATCH. Same FormSheet host as CreateTodoDialog (see form-sheet.tsx for
-// why the form renders directly inside a Sheet, not Dialog + Adapt).
+// single PATCH. Same kit FormSheet host as CreateTodoDialog.
 //
 // Subtasks are NOT edited here: TodoForm has no subtask field, so they stay
 // "manage on the web app" for this pass (parity with the create flow's scope).
 
-import { useToast } from "@stageholder/ui";
+import { FormSheet, useToast } from "@stageholder/ui";
 import { TodoForm, type TodoFormValues } from "@repo/features/todos";
 import type { Todo } from "@repo/core/types";
 
 import { useUpdateTodo, useTodoLists, type TodoPriority } from "@/lib/api";
-import { FormSheet } from "@/components/form-sheet";
 import { IGNITION } from "@/lib/ignition-palette";
 
 interface EditTodoDialogProps {
@@ -88,12 +86,14 @@ export function EditTodoDialog({
 
   return (
     <FormSheet
+      // The shared form renders its own accent-colored Cancel/Create
+      // buttons, so hide the kit footer; we keep the kit FormSheet for its
+      // keyboard-stretch handling + frame + title.
+      hideFooter
       open={open}
       onOpenChange={onOpenChange}
       title="Edit Todo"
       description="Update the title, details, priority, dates, and list."
-      // Short form — same content-hugging height as the create sheet.
-      snapPoint={62}
     >
       {/* Re-mount when switching between todos so each opens with its own
           values (the form seeds state from `initial` only on mount). */}

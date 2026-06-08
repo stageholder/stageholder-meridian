@@ -3,11 +3,11 @@
 // Native mirror of the PWA's CreateTodoDialog (apps/pwa/src/components/todos/
 // create-todo-dialog.tsx). Same shared `TodoForm` from @repo/features/todos and
 // the same submit/invalidate behavior; the host is a kit Sheet (FormSheet)
-// rather than the PWA's Dialog + DialogSheetAdapt — see form-sheet.tsx for why
+// rather than the PWA's Dialog + DialogSheetAdapt for why
 // (the inner Select's Adapt can't survive a double teleport on native). The
 // form re-mounts on each open (`key={open}`) so it resets by remount.
 
-import { useToast } from "@stageholder/ui";
+import { FormSheet, useToast } from "@stageholder/ui";
 import {
   TodoForm,
   makeTodoFormDefaults,
@@ -15,7 +15,6 @@ import {
 } from "@repo/features/todos";
 
 import { useCreateTodo, useTodoLists, type TodoPriority } from "@/lib/api";
-import { FormSheet } from "@/components/form-sheet";
 import { IGNITION } from "@/lib/ignition-palette";
 
 interface CreateTodoDialogProps {
@@ -79,12 +78,14 @@ export function CreateTodoDialog({
 
   return (
     <FormSheet
+      // The shared form renders its own accent-colored Cancel/Create
+      // buttons, so hide the kit footer; we keep the kit FormSheet for its
+      // keyboard-stretch handling + frame + title.
+      hideFooter
       open={open}
       onOpenChange={onOpenChange}
       title="New Todo"
       description="Create a new todo with optional details, priority, and dates."
-      // Short form (5 fields + buttons) — hug the content, no dead space.
-      snapPoint={62}
     >
       <TodoForm
         key={open ? "open" : "closed"}

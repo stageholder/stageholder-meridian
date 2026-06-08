@@ -3,19 +3,18 @@
 // Native mirror of the PWA's EditHabitSheet (apps/pwa/src/components/habits/
 // edit-habit-sheet.tsx). Same shared `HabitForm` from @repo/features/habits as
 // the create flow — seeded from the tapped habit's current values — hosted in a
-// kit Sheet (FormSheet) rather than the PWA's Dialog + DialogSheetAdapt (see
-// form-sheet.tsx for why the host diverges on native). The form re-mounts on
+// kit FormSheet (@stageholder/ui) rather than the PWA's Dialog +
+// DialogSheetAdapt. The form re-mounts on
 // each open (`key={open}`) so it re-seeds without a useEffect dance.
 //
 // accentColor: the PWA passes the `--ring-habit` CSS var; on native CSS vars
 // don't resolve in style objects, so the resolved IGNITION hex is passed.
 
-import { useToast } from "@stageholder/ui";
+import { FormSheet, useToast } from "@stageholder/ui";
 import { HabitForm, type HabitFormValues } from "@repo/features/habits";
 import type { Habit } from "@repo/core/types";
 
 import { useUpdateHabit } from "@/lib/api";
-import { FormSheet } from "@/components/form-sheet";
 import { IGNITION } from "@/lib/ignition-palette";
 
 interface EditHabitDialogProps {
@@ -76,11 +75,13 @@ export function EditHabitDialog({
 
   return (
     <FormSheet
+      // The shared form renders its own accent-colored Cancel/Create
+      // buttons, so hide the kit footer; we keep the kit FormSheet for its
+      // keyboard-stretch handling + frame + title.
+      hideFooter
       open={open}
       onOpenChange={onOpenChange}
       title="Edit Habit"
-      // Hug the content like the todo sheet (see create-habit-dialog).
-      snapPoint={62}
     >
       <HabitForm
         // Re-seed on each open (React idiom — no useEffect needed in the view).
