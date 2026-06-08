@@ -111,7 +111,16 @@ export default function AuthedLayout() {
             const { state: navState } = props as unknown as {
               state: { index: number; routes: { name: string }[] };
             };
-            if (navState.routes[navState.index]?.name === "onboarding") {
+            const activeName = navState.routes[navState.index]?.name;
+            // Hide the floating capsule on full-screen flows: the onboarding
+            // wizard and the journal editor / entry detail. The journal
+            // editor's keyboard toolbar sits at the bottom edge — the capsule
+            // would overlap it — and these are focused tasks, not tab stops.
+            if (
+              activeName === "onboarding" ||
+              activeName === "journal/new" ||
+              activeName === "journal/[id]"
+            ) {
               return null;
             }
             return (

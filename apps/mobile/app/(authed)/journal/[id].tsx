@@ -18,6 +18,7 @@ import {
   Banner,
   Button,
   H1,
+  IconButton,
   Paragraph,
   ScrollView,
   Separator,
@@ -103,15 +104,27 @@ export default function JournalDetailScreen() {
   // Headers are hidden globally by the Tabs layout's screenOptions, so this
   // detail screen draws its own lightweight back bar instead of a nav header.
   const backBar = (
-    <XStack px="$2" py="$2">
-      <Button
-        intent="ghost"
+    <XStack items="center" px="$2" py="$2" position="relative">
+      <IconButton
+        variant="ghost"
         size="sm"
-        icon={<ChevronLeft size={18} />}
-        onPress={() => router.back()}
+        aria-label="Back to journal"
+        onPress={() => router.navigate("/journal")}
       >
-        Journal
-      </Button>
+        <ChevronLeft size={20} />
+      </IconButton>
+      <Text
+        position="absolute"
+        l={0}
+        r={0}
+        text="center"
+        pointerEvents="none"
+        fontSize="$5"
+        fontWeight="600"
+        color="$color"
+      >
+        Entry
+      </Text>
     </XStack>
   );
 

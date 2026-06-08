@@ -25,6 +25,7 @@
 
 import {
   Button,
+  IconButton,
   MoodPicker,
   MOOD_DEFAULT_OPTIONS,
   Popover,
@@ -47,10 +48,7 @@ import { ChevronLeft } from "@tamagui/lucide-icons-2";
 import { Input as BareInput } from "tamagui";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useCreateJournal } from "@/lib/api";
 import { useJournalCrypto } from "@/lib/journal-crypto";
@@ -84,7 +82,6 @@ function formatDefaultTitle(yyyymmdd: string): string {
 export default function NewJournalScreen() {
   const router = useRouter();
   const toast = useToast();
-  const insets = useSafeAreaInsets();
   const createJournal = useCreateJournal();
   const { isSetup, isUnlocked } = useJournalCrypto();
 
@@ -120,7 +117,7 @@ export default function NewJournalScreen() {
       {
         onSuccess: () => {
           toast.show({ title: "Entry saved", intent: "success" });
-          router.back();
+          router.navigate("/journal");
         },
         onError: () => {
           toast.show({ title: "Failed to save entry", intent: "danger" });
@@ -134,7 +131,10 @@ export default function NewJournalScreen() {
     return (
       <YStack flex={1} bg="$background">
         <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-          <BackBar onBack={() => router.back()} />
+          <BackBar
+            onBack={() => router.navigate("/journal")}
+            title="New Entry"
+          />
           <YStack flex={1} items="center" justify="center" gap="$3" px="$6">
             <Text fontSize="$5" fontWeight="600" color="$color">
               Journal locked
@@ -154,17 +154,39 @@ export default function NewJournalScreen() {
   return (
     <YStack flex={1} bg="$background">
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-        {/* Header: back + Save. Save is disabled until there's text and while
-            the create mutation is in flight (spinner replaces the label). */}
-        <XStack items="center" justify="space-between" px="$2" py="$2">
-          <Button
-            intent="ghost"
+        {/* Header: icon back (left) · centered title · Save (right). The
+            title is absolutely centered so it sits at the true screen center
+            regardless of the differing left/right control widths; it's
+            pointer-transparent so it never intercepts a tap meant for a
+            button. Save is disabled until there's text and while the create
+            mutation is in flight (spinner replaces the label). */}
+        <XStack
+          items="center"
+          justify="space-between"
+          px="$2"
+          py="$2"
+          position="relative"
+        >
+          <IconButton
+            variant="ghost"
             size="sm"
-            icon={<ChevronLeft size={18} />}
-            onPress={() => router.back()}
+            aria-label="Back to journal"
+            onPress={() => router.navigate("/journal")}
           >
-            Journal
-          </Button>
+            <ChevronLeft size={20} />
+          </IconButton>
+          <Text
+            position="absolute"
+            l={0}
+            r={0}
+            text="center"
+            pointerEvents="none"
+            fontSize="$5"
+            fontWeight="600"
+            color="$color"
+          >
+            New Entry
+          </Text>
           <Button
             intent="primary"
             size="sm"
@@ -260,7 +282,7 @@ export default function NewJournalScreen() {
             kit RichTextEditor (10tap), word count, and target-crossing. The
             web-only progress bar / celebration / dead-zone handler are omitted
             (those render-props are optional). */}
-        <View flex={1} pb={insets.bottom}>
+        <View flex={1}>
           <JournalEditor
             initialContent={content}
             onChange={setContent}
@@ -277,17 +299,29 @@ export default function NewJournalScreen() {
 
 /* ------------------------------- Back bar ---------------------------------- */
 
-function BackBar({ onBack }: { onBack: () => void }) {
+function BackBar({ onBack, title }: { onBack: () => void; title: string }) {
   return (
-    <XStack px="$2" py="$2">
-      <Button
-        intent="ghost"
+    <XStack items="center" px="$2" py="$2" position="relative">
+      <IconButton
+        variant="ghost"
         size="sm"
-        icon={<ChevronLeft size={18} />}
+        aria-label="Back to journal"
         onPress={onBack}
       >
-        Journal
-      </Button>
+        <ChevronLeft size={20} />
+      </IconButton>
+      <Text
+        position="absolute"
+        l={0}
+        r={0}
+        text="center"
+        pointerEvents="none"
+        fontSize="$5"
+        fontWeight="600"
+        color="$color"
+      >
+        {title}
+      </Text>
     </XStack>
   );
 }
