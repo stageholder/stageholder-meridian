@@ -57,7 +57,15 @@ export function CreateHabitDialog({
   }
 
   return (
-    <FormSheet open={open} onOpenChange={onOpenChange} title="New Habit">
+    <FormSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title="New Habit"
+      // Hug the content like the todo sheet (was the default 85, which left a
+      // tall empty gap below the buttons). The habit form is ~the same height
+      // as the todo form, so the same snap reads identically.
+      snapPoint={62}
+    >
       <HabitForm
         key={open ? "open" : "closed"}
         initial={HABIT_FORM_DEFAULTS}

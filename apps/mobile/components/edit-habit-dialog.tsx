@@ -75,7 +75,13 @@ export function EditHabitDialog({
   }
 
   return (
-    <FormSheet open={open} onOpenChange={onOpenChange} title="Edit Habit">
+    <FormSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Edit Habit"
+      // Hug the content like the todo sheet (see create-habit-dialog).
+      snapPoint={62}
+    >
       <HabitForm
         // Re-seed on each open (React idiom — no useEffect needed in the view).
         key={open ? "open" : "closed"}
