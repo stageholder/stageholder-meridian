@@ -98,21 +98,26 @@ export function TodoListForm({
             Color
           </Text>
           <XStack gap="$2">
-            {TODO_LIST_COLOR_OPTIONS.map((opt) => (
+            {/* Destructure to a bare `swatch` identifier — see habit-form:
+                the swatch color must NOT reach the JSX `style` as a `.value`
+                MEMBER expression (`opt.value`), or the react-native-worklets
+                babel plugin injects a false-positive "shared value .value in
+                inline style" warning (its check is purely syntactic). */}
+            {TODO_LIST_COLOR_OPTIONS.map(({ value: swatch, label }) => (
               <View
-                key={opt.value}
-                onPress={() => setColor(opt.value)}
+                key={swatch}
+                onPress={() => setColor(swatch)}
                 cursor="pointer"
                 width={28}
                 height={28}
                 rounded={9999}
                 borderWidth={2}
                 transition="quick"
-                borderColor={color === opt.value ? "$color" : "transparent"}
-                scale={color === opt.value ? 1.1 : 1}
-                style={{ backgroundColor: opt.value }}
-                aria-label={opt.label}
-                aria-pressed={color === opt.value}
+                borderColor={color === swatch ? "$color" : "transparent"}
+                scale={color === swatch ? 1.1 : 1}
+                style={{ backgroundColor: swatch }}
+                aria-label={label}
+                aria-pressed={color === swatch}
                 role="button"
               />
             ))}

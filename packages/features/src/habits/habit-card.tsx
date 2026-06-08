@@ -426,12 +426,22 @@ export function HabitCard({
                   outlineColor="$primary"
                   outlineStyle="solid"
                   outlineOffset={1}
-                  style={
-                    complete
-                      ? { backgroundColor: accentColor }
+                  // Color via the `bg` PROP, not an inline `style`. With the
+                  // native Reanimated animation driver (config v5-reanimated),
+                  // `transition` + a changing inline `style={{backgroundColor}}`
+                  // makes the driver read a shared value's `.value` inside the
+                  // inline style → Reanimated's "shared value .value in inline
+                  // style" warning, once per dot (7 dots × cards). `bg` is a
+                  // first-class animatable Tamagui prop the driver handles via
+                  // its own shared value (no inline read) — and it animates the
+                  // color smoothly on native too. Raw hex/rgba → `as never`
+                  // (the strict color typing rejects a plain `string`).
+                  bg={
+                    (complete
+                      ? accentColor
                       : partial
-                        ? { backgroundColor: accentTrackColor }
-                        : undefined
+                        ? accentTrackColor
+                        : "transparent") as never
                   }
                 />
               </YStack>

@@ -378,22 +378,30 @@ export function HabitForm({
             Color
           </Text>
           <XStack mt="$2" gap="$2">
-            {COLOR_OPTIONS.map((opt) => (
+            {/* Destructure to a bare `swatch` identifier — the swatch color
+                must NOT reach the JSX `style` as a `.value` MEMBER expression
+                (`opt.value`). The react-native-worklets babel plugin's
+                inline-style check is purely syntactic: it injects a
+                `console.warn("…shared value's .value inside reanimated inline
+                style…")` for ANY `style={{ x: SOMETHING.value }}`, with no
+                idea that `opt.value` is just a color string. A plain
+                identifier sidesteps the false positive. */}
+            {COLOR_OPTIONS.map(({ value: swatch, label }) => (
               <View
-                key={opt.value}
+                key={swatch}
                 role="button"
-                aria-pressed={color === opt.value}
-                aria-label={opt.label}
-                onPress={() => setColor(opt.value)}
+                aria-pressed={color === swatch}
+                aria-label={label}
+                onPress={() => setColor(swatch)}
                 cursor="pointer"
                 height={28}
                 width={28}
                 rounded={9999}
                 borderWidth={2}
-                borderColor={color === opt.value ? "$color" : "transparent"}
+                borderColor={color === swatch ? "$color" : "transparent"}
                 transition="quick"
-                scale={color === opt.value ? 1.1 : 1}
-                style={{ backgroundColor: opt.value }}
+                scale={color === swatch ? 1.1 : 1}
+                style={{ backgroundColor: swatch }}
               />
             ))}
           </XStack>
