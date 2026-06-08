@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Calendar,
   Check,
@@ -124,13 +124,30 @@ export function TodoItem({
   const [burning, setBurning] = useState(false);
   const [gone, setGone] = useState(false);
 
+  // Cross-platform "don't open the detail sheet when the checkbox/delete was
+  // tapped". Web relies on stopPropagation (onPress → bubbling onClick), but
+  // native has no propagation: tapping the checkbox would ALSO fire the row's
+  // onPress and open the edit sheet. An inner control records its touch-DOWN
+  // time (onPressIn, before ANY onPress fires — order-independent); the row's
+  // onPress ignores presses that land within a beat of a control press. A
+  // timestamp (not a boolean) so it self-expires — it can never get stuck
+  // "true" in the native case where only the control's onPress fires.
+  const controlPressAt = useRef(0);
+  const pressedControl = () => {
+    controlPressAt.current = Date.now();
+  };
+
   const isDone = todo.status === "done";
   const priority =
     PRIORITY_CONFIG[todo.priority as keyof typeof PRIORITY_CONFIG] ??
     PRIORITY_CONFIG.none;
 
-  function handleToggle(e: { stopPropagation: () => void }) {
-    e.stopPropagation();
+  function handleToggle(e?: { stopPropagation?: () => void }) {
+    // Web: stops the row's onPress (open-detail) from also firing — onPress
+    // maps to a bubbling onClick. Native: the RN responder system already
+    // gives the touch to this innermost view (no bubbling), and the press
+    // event carries no stopPropagation — so optional-chain it.
+    e?.stopPropagation?.();
     if (isDone) {
       // Un-complete: flip back immediately, no burn.
       onToggle();
@@ -147,8 +164,10 @@ export function TodoItem({
     }, BURN_MS);
   }
 
-  function handleDelete(e: { stopPropagation: () => void }) {
-    e.stopPropagation();
+  function handleDelete(e?: { stopPropagation?: () => void }) {
+    // See handleToggle — optional-chained so native (no stopPropagation on
+    // the press event) doesn't throw while web still stops row bubbling.
+    e?.stopPropagation?.();
     onDelete();
   }
 
@@ -177,6 +196,11 @@ export function TodoItem({
     <XStack
       group
       onPress={() => {
+        // Skip when an inner control (checkbox / delete) was just the press
+        // target — native has no stopPropagation, so without this a checkbox
+        // tap would also open the detail sheet. 400ms covers the touch
+        // down→up gap of a single tap.
+        if (Date.now() - controlPressAt.current < 400) return;
         if (!burning) onOpenDetail();
       }}
       cursor="pointer"
@@ -197,6 +221,7 @@ export function TodoItem({
     >
       <View shrink={0} position="relative">
         <View
+          onPressIn={pressedControl}
           onPress={handleToggle}
           width={24}
           height={24}
@@ -329,6 +354,7 @@ export function TodoItem({
         variant="ghost"
         size="sm"
         intent="danger"
+        onPressIn={pressedControl}
         onPress={handleDelete}
         aria-label="Delete todo"
         opacity={0}

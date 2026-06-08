@@ -16,6 +16,7 @@ import {
 
 import { useCreateTodo, useTodoLists, type TodoPriority } from "@/lib/api";
 import { FormSheet } from "@/components/form-sheet";
+import { IGNITION } from "@/lib/ignition-palette";
 
 interface CreateTodoDialogProps {
   open: boolean;
@@ -92,6 +93,8 @@ export function CreateTodoDialog({
         submitLabel="Create"
         submittingLabel="Creating…"
         isSubmitting={createTodo.isPending}
+        // Resolved hex — native can't parse the web `var(--ring-todo)` default.
+        accentColor={IGNITION.todo.base}
         onSubmit={handleSubmit}
         onCancel={() => onOpenChange(false)}
       />

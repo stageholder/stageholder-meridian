@@ -1,6 +1,6 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { format } from "date-fns";
-import { Inbox, CalendarClock, Clock, Flag } from "@tamagui/lucide-icons-2";
+import { Inbox } from "@tamagui/lucide-icons-2";
 import { Form, isWeb } from "tamagui";
 import {
   Button,
@@ -55,6 +55,13 @@ export interface TodoFormProps {
   submitLabel: string;
   submittingLabel: string;
   isSubmitting?: boolean;
+  /**
+   * Accent color for the submit button — Meridian's todo category color
+   * (red). Defaults to the web CSS var `var(--ring-todo)`; native callers
+   * MUST pass a resolved hex (e.g. the mobile `IGNITION.todo.base`) since
+   * react-native can't resolve `var(...)`. Mirrors `HabitForm.accentColor`.
+   */
+  accentColor?: string;
   onSubmit: (values: TodoFormValues) => void | Promise<void>;
   onCancel: () => void;
 }
@@ -68,38 +75,29 @@ function parseLocalDay(input: string): Date {
 }
 
 /**
- * Shared date field — label + icon header, then the kit DatePicker with
- * its built-in Notion-style preset shortcuts. Used for both Due and Do
- * dates. Cross-platform — kit DatePicker handles its own native vs web
+ * Compact date CHIP — just the kit QuickDatePicker pill at `size="sm"`,
+ * no header label. The pill self-describes via its short placeholder ("Do"
+ * / "Due") when empty and the resolved smart label ("Today", "Sat") when
+ * set, plus the QDP's leading calendar icon. Sits inline in the field
+ * chip row. Cross-platform — QDP owns its native (sheet) vs web (popover)
  * presentation.
  */
-function DateField({
-  label,
-  icon,
+function DateChip({
+  placeholder,
   value,
   onChange,
 }: {
-  label: string;
-  icon: ReactNode;
+  placeholder: string;
   value: string;
   onChange: (iso: string) => void;
 }) {
   return (
-    <YStack gap="$1.5" flex={1} minW={120}>
-      <XStack items="center" gap="$2">
-        {/* `icon` is a lucide-icons-2 element that carries its own `color`
-            (no CSS cascade), so it's rendered directly — no tint wrapper. */}
-        {icon}
-        <Text fontSize="$3" fontWeight="500" color="$color">
-          {label}
-        </Text>
-      </XStack>
-      <QuickDatePicker
-        value={value ? parseLocalDay(value) : null}
-        onChange={(d) => onChange(d ? format(d, "yyyy-MM-dd") : "")}
-        placeholder={`No ${label.toLowerCase()}`}
-      />
-    </YStack>
+    <QuickDatePicker
+      size="sm"
+      value={value ? parseLocalDay(value) : null}
+      onChange={(d) => onChange(d ? format(d, "yyyy-MM-dd") : "")}
+      placeholder={placeholder}
+    />
   );
 }
 
@@ -116,6 +114,7 @@ export function TodoForm({
   submitLabel,
   submittingLabel,
   isSubmitting,
+  accentColor = "var(--ring-todo)",
   onSubmit,
   onCancel,
 }: TodoFormProps) {
@@ -223,59 +222,67 @@ export function TodoForm({
           />
         </YStack>
 
-        {/* Priority + dates as one compact, equal-width row. `flexWrap`
-            lets the three columns reflow on narrow widths (e.g. the mobile
-            sheet); Priority picks up the dates' icon+label header so the
-            trio reads as one set. */}
-        <XStack gap="$3" flexWrap="wrap">
-          <YStack gap="$1.5" flex={1} minW={120}>
-            <XStack items="center" gap="$2">
-              {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
-              <Flag size={14} color="$mutedForeground" />
-              <Text fontSize="$3" fontWeight="500" color="$color">
-                Priority
-              </Text>
-            </XStack>
-            {/* inSheet: same FormSheet rationale as the List select above. */}
-            <Select
-              value={priority}
-              onValueChange={setPriority}
-              inSheet={isWeb ? undefined : true}
-            >
-              <Select.Trigger placeholder="None" width="100%" />
-              <Select.Content>
-                <Select.Item value="none">None</Select.Item>
-                {(["low", "medium", "high", "urgent"] as const).map((key) => (
-                  <Select.Item key={key} value={key}>
-                    <XStack items="center" gap="$2">
-                      <View
-                        width={8}
-                        height={8}
-                        rounded={9999}
-                        style={{ backgroundColor: PRIORITY_DOT[key] }}
-                      />
-                      <Select.ItemText>
-                        {key.charAt(0).toUpperCase() + key.slice(1)}
-                      </Select.ItemText>
-                    </XStack>
-                  </Select.Item>
-                ))}
-              </Select.Content>
-            </Select>
-          </YStack>
+        {/* Compact chip row — Priority + the two dates as small pills, no
+            header labels: each chip self-describes (Priority shows its
+            colored dot + level or "Priority" when none; the date chips show
+            their calendar icon + "Do"/"Due" placeholder or the smart date
+            label). `flexWrap` lets a chip drop to a second line on the
+            narrowest sheets. Order: Priority · Do · Due. */}
+        <XStack gap="$2" flexWrap="wrap" items="center">
+          {/* inSheet: same FormSheet rationale as the List select above.
+              `size="sm"` matches the QDP chips; the trigger is a pill via
+              the call-site `rounded` override (forwarded to both the web
+              and native trigger). Custom children render the chip face so
+              an empty priority reads "Priority", not "None". */}
+          <Select
+            size="sm"
+            value={priority}
+            onValueChange={setPriority}
+            inSheet={isWeb ? undefined : true}
+          >
+            <Select.Trigger rounded={9999} minW={0}>
+              <XStack items="center" gap="$1.5">
+                {priority !== "none" ? (
+                  <View
+                    width={8}
+                    height={8}
+                    rounded={9999}
+                    style={{ backgroundColor: PRIORITY_DOT[priority] }}
+                  />
+                ) : null}
+                <Text
+                  fontSize="$2"
+                  color={priority === "none" ? "$mutedForeground" : "$color"}
+                  numberOfLines={1}
+                >
+                  {priority === "none"
+                    ? "Priority"
+                    : priority.charAt(0).toUpperCase() + priority.slice(1)}
+                </Text>
+              </XStack>
+            </Select.Trigger>
+            <Select.Content>
+              <Select.Item value="none">None</Select.Item>
+              {(["low", "medium", "high", "urgent"] as const).map((key) => (
+                <Select.Item key={key} value={key}>
+                  <XStack items="center" gap="$2">
+                    <View
+                      width={8}
+                      height={8}
+                      rounded={9999}
+                      style={{ backgroundColor: PRIORITY_DOT[key] }}
+                    />
+                    <Select.ItemText>
+                      {key.charAt(0).toUpperCase() + key.slice(1)}
+                    </Select.ItemText>
+                  </XStack>
+                </Select.Item>
+              ))}
+            </Select.Content>
+          </Select>
 
-          <DateField
-            label="Due Date"
-            icon={<CalendarClock size={14} color="$mutedForeground" />}
-            value={dueDate}
-            onChange={setDueDate}
-          />
-          <DateField
-            label="Do Date"
-            icon={<Clock size={14} color="$mutedForeground" />}
-            value={doDate}
-            onChange={setDoDate}
-          />
+          <DateChip placeholder="Do" value={doDate} onChange={setDoDate} />
+          <DateChip placeholder="Due" value={dueDate} onChange={setDueDate} />
         </XStack>
 
         {/* Full-width 50/50 lg buttons on mobile (the bottom sheet);
@@ -298,6 +305,18 @@ export function TodoForm({
               size="lg"
               flex={1}
               $md={{ flexBasis: "auto", grow: 0 }}
+              // Todo category color (red) — same accent treatment as
+              // HabitForm's submit. White label on the colored fill; the
+              // free-form hex/var rides the style hatch (no kit token).
+              borderWidth={0}
+              color={"#ffffff" as never}
+              style={{ backgroundColor: accentColor }}
+              hoverStyle={
+                { backgroundColor: accentColor, opacity: 0.9 } as never
+              }
+              pressStyle={
+                { backgroundColor: accentColor, opacity: 0.82 } as never
+              }
               disabled={!title.trim() || isSubmitting}
               loading={isSubmitting}
               loadingText={submittingLabel}

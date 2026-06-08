@@ -18,6 +18,7 @@ import type { Todo } from "@repo/core/types";
 
 import { useUpdateTodo, useTodoLists, type TodoPriority } from "@/lib/api";
 import { FormSheet } from "@/components/form-sheet";
+import { IGNITION } from "@/lib/ignition-palette";
 
 interface EditTodoDialogProps {
   open: boolean;
@@ -103,6 +104,8 @@ export function EditTodoDialog({
         submitLabel="Save"
         submittingLabel="Saving…"
         isSubmitting={updateTodo.isPending}
+        // Resolved hex — native can't parse the web `var(--ring-todo)` default.
+        accentColor={IGNITION.todo.base}
         onSubmit={handleSubmit}
         onCancel={() => onOpenChange(false)}
       />
