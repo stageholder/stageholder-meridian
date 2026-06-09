@@ -20,6 +20,7 @@
 import {
   Banner,
   Button,
+  Celebration,
   EmptyState,
   PullToRefresh,
   Spinner,
@@ -148,11 +149,8 @@ export default function HabitsScreen() {
                   Add a daily ritual you want to keep — a walk, a few pages, ten
                   minutes of stillness.
                 </EmptyState.Description>
-                <EmptyState.Actions>
-                  <Button intent="primary" onPress={() => setCreateOpen(true)}>
-                    Create your first habit
-                  </Button>
-                </EmptyState.Actions>
+                {/* No action button — the FAB is the create affordance, same
+                    as the empty todo / journal lists. */}
               </EmptyState>
             ) : null}
 
@@ -216,6 +214,7 @@ interface HabitCardRowProps {
  * card flips instantly; the awaited promise just gates the animation.
  */
 function HabitCardRow({ habit, onEdit, onOpenDetail }: HabitCardRowProps) {
+  const toast = useToast();
   const entriesQuery = useHabitEntries(habit.id);
   const checkIn = useCheckInHabit();
   const skip = useSkipHabit();
@@ -245,34 +244,107 @@ function HabitCardRow({ habit, onEdit, onOpenDetail }: HabitCardRowProps) {
       // vars wouldn't resolve on native).
       accentColor={IGNITION.habit.base}
       accentTrackColor={IGNITION.habit.track}
+      // Completion celebration — the PWA plugs in its web-only RadianceBurst
+      // here; on native we fire the kit's cross-platform Reanimated burst
+      // (CelebrationProvider lives at the app root). `completing` flips true
+      // for ~1.2s only when a check-in actually MEETS the target, so this
+      // fires once per completion, in habit-orange embers.
+      renderCompletionEffect={(active) => (
+        <Celebration
+          trigger={active}
+          preset="ember-burst"
+          colors={["#f97316", "#fb923c", "#fdba74"]}
+        />
+      )}
       isPending={isPending}
+      // ── Entry actions — ALL follow the same create-or-update rule ──
+      // The API has ONE entry per habit per day. POSTing a second one for a
+      // day that already has an entry returns 409. So every action that sets
+      // today's state must: POST when there's no entry yet, else PATCH the
+      // existing one. (This is why check-in failed after undo, and skip/fail
+      // 409'd once any entry existed — they were POST-only.) Each handler also
+      // catches its own rejection: the shared HabitCard fires skip/fail/undo
+      // as `void`, so an uncaught reject (the 409 you saw) escapes as an
+      // unhandled promise — we surface a toast instead. The hooks already roll
+      // back their optimistic update + refetch on error.
       onCheckIn={async () => {
-        await checkIn.mutateAsync({ habitId: habit.id });
+        try {
+          if (!todayEntry) {
+            await checkIn.mutateAsync({ habitId: habit.id, date: today });
+          } else {
+            // Existing entry: increment a completion, or promote a skip/fail.
+            const isNonCompletion =
+              todayEntry.type === "skip" || todayEntry.type === "fail";
+            await updateEntry.mutateAsync({
+              habitId: habit.id,
+              entryId: todayEntry.id,
+              patch: isNonCompletion
+                ? { type: "completion", value: 1 }
+                : { value: (todayEntry.value ?? 0) + 1 },
+            });
+          }
+        } catch (e) {
+          toast.show({ title: "Couldn't check in", intent: "danger" });
+          // Re-throw so HabitCard's awaited handler skips the celebration.
+          throw e;
+        }
       }}
       onSkip={async () => {
-        await skip.mutateAsync({ habitId: habit.id });
+        try {
+          if (!todayEntry) {
+            await skip.mutateAsync({ habitId: habit.id, date: today });
+          } else {
+            await updateEntry.mutateAsync({
+              habitId: habit.id,
+              entryId: todayEntry.id,
+              patch: { type: "skip", value: 0 },
+            });
+          }
+        } catch {
+          toast.show({ title: "Couldn't skip", intent: "danger" });
+        }
       }}
       onFail={async () => {
-        await fail.mutateAsync({ habitId: habit.id });
+        try {
+          if (!todayEntry) {
+            await fail.mutateAsync({ habitId: habit.id, date: today });
+          } else {
+            await updateEntry.mutateAsync({
+              habitId: habit.id,
+              entryId: todayEntry.id,
+              patch: { type: "fail", value: 0 },
+            });
+          }
+        } catch {
+          toast.show({ title: "Couldn't mark failed", intent: "danger" });
+        }
       }}
       onUndo={async () => {
         // Decrement today's value by 1 (PATCH). No-op when there's no entry —
         // HabitCard already guards `activeDateValue <= 0` before calling.
         if (!todayEntry) return;
-        await updateEntry.mutateAsync({
-          habitId: habit.id,
-          entryId: todayEntry.id,
-          patch: { value: Math.max(0, (todayEntry.value ?? 0) - 1) },
-        });
+        try {
+          await updateEntry.mutateAsync({
+            habitId: habit.id,
+            entryId: todayEntry.id,
+            patch: { value: Math.max(0, (todayEntry.value ?? 0) - 1) },
+          });
+        } catch {
+          toast.show({ title: "Couldn't undo", intent: "danger" });
+        }
       }}
       onClearStatus={async () => {
         // Clear a skip/fail back to an un-acted day: value-0 completion entry.
         if (!todayEntry) return;
-        await updateEntry.mutateAsync({
-          habitId: habit.id,
-          entryId: todayEntry.id,
-          patch: { value: 0, type: "completion" },
-        });
+        try {
+          await updateEntry.mutateAsync({
+            habitId: habit.id,
+            entryId: todayEntry.id,
+            patch: { value: 0, type: "completion" },
+          });
+        } catch {
+          toast.show({ title: "Couldn't clear status", intent: "danger" });
+        }
       }}
       // Edit opens the native edit sheet; the full detail screen is still
       // deferred and nudges toward the web app.

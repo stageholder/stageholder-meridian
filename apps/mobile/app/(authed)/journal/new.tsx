@@ -28,8 +28,8 @@ import {
   IconButton,
   MoodPicker,
   MOOD_DEFAULT_OPTIONS,
-  Popover,
   QuickDatePicker,
+  Sheet,
   Spinner,
   TagInput,
   Text,
@@ -41,11 +41,12 @@ import {
 import { JournalEditor } from "@repo/features/journal";
 import type { RichTextEditorContent } from "@stageholder/ui";
 import { countWordsFromContent } from "@repo/core/utils/text";
-import { ChevronLeft } from "@tamagui/lucide-icons-2";
+import { ChevronLeft, SmilePlus } from "@tamagui/lucide-icons-2";
 // Bare tamagui Input for the title — no kit Frame chrome, matching the PWA's
 // bare title field (kit Input wraps a bordered Frame whose focus ring can't be
 // zeroed from call-site props).
 import { Input as BareInput } from "tamagui";
+import { KeyboardController } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -91,6 +92,7 @@ export default function NewJournalScreen() {
   // document); we keep the latest JSON here for the save.
   const [content, setContent] = useState<RichTextEditorContent>(EMPTY_DOC);
   const [mood, setMood] = useState<number | undefined>(undefined);
+  const [moodOpen, setMoodOpen] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [date, setDate] = useState(localDateKey());
 
@@ -219,9 +221,27 @@ export default function NewJournalScreen() {
             focusVisibleStyle={{ outlineWidth: 0 }}
           />
 
-          {/* Metadata pills — date, mood, tags (mirrors the PWA's row). */}
-          <XStack mb="$4" flexWrap="wrap" items="center" gap="$2">
+          {/* Metadata chips — date · mood · tags. All `size="sm"` so the row
+              reads as one consistent set of chips.
+
+              onTouchStart dismisses the EDITOR's keyboard the moment the user
+              touches any chip. The editor is a 10tap WEBVIEW — RN's
+              `Keyboard.dismiss()` (what the kit Select/QDP call) can't close a
+              webview keyboard, so the date sheet would open with the keyboard
+              still up. `KeyboardController.dismiss()` resigns the native first
+              responder (incl. the webview), and as a bonus it frees focus so
+              the inline Tag field can take the keyboard when it expands. */}
+          <XStack
+            mb="$4"
+            flexWrap="wrap"
+            items="center"
+            gap="$2"
+            onTouchStart={() => {
+              void KeyboardController.dismiss();
+            }}
+          >
             <QuickDatePicker
+              size="sm"
               value={parseDateLocal(date)}
               onChange={(d) => {
                 if (d) setDate(localDateKey(d));
@@ -229,52 +249,31 @@ export default function NewJournalScreen() {
               clearable={false}
             />
 
-            {/* Mood — kit MoodPicker in an anchored Popover. (This screen is a
-                full-screen route, NOT a bottom Sheet, so a Popover renders
-                correctly above it — the sheet-behind-popover gotcha that drove
-                the habit form's EmojiPickerSheet doesn't apply here.) */}
-            <Popover placement="bottom-start">
-              <Popover.Trigger asChild>
-                <Button intent="ghost" size="sm" gap="$1">
-                  {currentMood ? (
-                    <XStack items="center" gap="$1">
-                      <Text fontSize="$3">{currentMood.emoji}</Text>
-                      {currentMood.label ? (
-                        <Text fontSize="$1" color="$mutedForeground">
-                          {currentMood.label}
-                        </Text>
-                      ) : null}
-                    </XStack>
-                  ) : (
-                    <XStack
-                      items="center"
-                      gap="$1"
-                      rounded={9999}
-                      borderWidth={1}
-                      borderStyle="dashed"
-                      borderColor="$borderColor"
-                      px="$2"
-                      py="$0.5"
-                    >
-                      <Text fontSize="$1">🙂</Text>
-                      <Text fontSize="$1" color="$mutedForeground">
-                        Mood
-                      </Text>
-                    </XStack>
-                  )}
-                </Button>
-              </Popover.Trigger>
-              <Popover.Content width="auto" p="$2">
-                {/* Bridge number|undefined ↔ the kit's number|null at the edge. */}
-                <MoodPicker
-                  value={mood ?? null}
-                  onChange={(v) => setMood(v ?? undefined)}
-                />
-              </Popover.Content>
-            </Popover>
+            {/* Mood — a small chip that opens a bottom Sheet with the kit
+                MoodPicker. The MoodPicker's bubbles are a fixed 48px; in a
+                cramped popover they overflowed, so we give them a full-width
+                sheet (consistent with the date picker's sheet on native). */}
+            <Button
+              intent="outline"
+              size="sm"
+              rounded={9999}
+              gap="$1.5"
+              onPress={() => setMoodOpen(true)}
+              icon={
+                currentMood ? (
+                  <Text fontSize="$3">{currentMood.emoji}</Text>
+                ) : (
+                  <SmilePlus size={14} color="$mutedForeground" />
+                )
+              }
+            >
+              <Text fontSize="$2" color="$mutedForeground">
+                {currentMood?.label ?? "Mood"}
+              </Text>
+            </Button>
 
-            {/* Tags — kit TagInput inline mode (chips + a "+ Tag" pill). */}
-            <TagInput value={tags} onChange={setTags} inline />
+            {/* Tags — kit TagInput inline (chips + a "+ Tag" pill). */}
+            <TagInput value={tags} onChange={setTags} inline addLabel="Tag" />
           </XStack>
         </YStack>
 
@@ -293,6 +292,37 @@ export default function NewJournalScreen() {
           />
         </View>
       </SafeAreaView>
+
+      {/* Mood picker — bottom sheet so the kit MoodPicker's fixed-48px bubbles
+          get a full-width row to sit in (a popover cramped them). Content-hug
+          via fit; closes on pick or overlay tap. */}
+      <Sheet
+        modal
+        open={moodOpen}
+        onOpenChange={setMoodOpen}
+        dismissOnSnapToBottom
+        snapPointsMode="fit"
+      >
+        <Sheet.Overlay />
+        <Sheet.Frame pt="$3" pb="$6" px="$4" gap="$3">
+          <Text fontSize="$5" fontWeight="600" color="$color">
+            How are you feeling?
+          </Text>
+          <XStack justify="center" py="$2">
+            {/* Bridge number|undefined ↔ the kit's number|null at the edge.
+                clearable so tapping the active mood again removes it. */}
+            <MoodPicker
+              value={mood ?? null}
+              showLabels
+              clearable
+              onChange={(v) => {
+                setMood(v ?? undefined);
+                setMoodOpen(false);
+              }}
+            />
+          </XStack>
+        </Sheet.Frame>
+      </Sheet>
     </YStack>
   );
 }

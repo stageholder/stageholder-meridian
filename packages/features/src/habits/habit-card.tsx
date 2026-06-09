@@ -195,9 +195,12 @@ export function HabitCard({
       !habit.scheduledDays ||
       habit.scheduledDays.length === 0 ||
       habit.scheduledDays.includes(dow);
-    const effectiveTarget = entry
-      ? resolveTargetCount(entry, habit)
-      : habit.targetCount;
+    // `|| 1` so a habit with a missing/0 targetCount still completes at value
+    // 1 — matches the header's `isComplete` (which falls back to 1). Without
+    // it, `ratio = value / undefined` left the dot empty even after a
+    // successful check-in (the header said "Complete" but the dot didn't fill).
+    const effectiveTarget =
+      (entry ? resolveTargetCount(entry, habit) : habit.targetCount) || 1;
     return {
       label: format(date, "EEEEE"),
       dateStr,
@@ -332,7 +335,16 @@ export function HabitCard({
               ) : null}
             </YStack>
           </XStack>
-          {streak > 0 ? <StreakBadge count={streak} size="$2" /> : null}
+          {/* Streak fire — the kit StreakBadge already tiers the flame's color
+              hotter as the count climbs (cold→warm→hot→blazing at 3/7/30); we
+              ALSO grow it so a long streak literally reads bigger: $2 (<7) →
+              $3 (7+) → $4 (30+, blazing). */}
+          {streak > 0 ? (
+            <StreakBadge
+              count={streak}
+              size={streak >= 30 ? "$4" : streak >= 7 ? "$3" : "$2"}
+            />
+          ) : null}
           <DropdownMenu>
             <DropdownMenu.Trigger asChild>
               {/* RippleButton (not IconButton): ripple press feedback instead of
@@ -393,14 +405,21 @@ export function HabitCard({
                 >
                   {day.label}
                 </Text>
-                {/* One consistent dot per day: filled (habit color) = done,
-                    tinted = partial, dashed = skip/rest, red ring = fail,
-                    primary ring = today. A run of filled dots IS the streak. */}
+                {/* One consistent dot per day — ALWAYS the same View (same
+                    hook-affecting props, incl. `transition`) so toggling a
+                    day's state never changes the hook order. Filled (habit
+                    color) = done, tinted = partial, red ring = fail, primary
+                    ring = today. A skipped day drops the border and renders a
+                    skip glyph (▷|) CHILD so "deliberately skipped" reads
+                    differently from "missed / not yet". A run of filled dots
+                    IS the streak. */}
                 <View
                   width={11}
                   height={11}
                   rounded={9999}
                   transition="quick"
+                  items="center"
+                  justify="center"
                   // DOM `title` tooltip attr isn't in the kit View prop type
                   // (web-only, passed through at runtime; no-op on native).
                   {...({
@@ -410,17 +429,18 @@ export function HabitCard({
                         ? "Skipped"
                         : `${day.value}/${day.effectiveTarget}`,
                   } as object)}
-                  borderWidth={complete ? 0 : 1}
-                  borderStyle={
-                    !day.isScheduled || isDaySkipped ? "dashed" : "solid"
-                  }
+                  // No border for a done OR skipped day (skip shows its glyph).
+                  borderWidth={complete || isDaySkipped ? 0 : 1}
+                  borderStyle={!day.isScheduled ? "dashed" : "solid"}
                   borderColor={failed ? "$destructive" : "$mutedForeground"}
                   opacity={
                     !day.isScheduled
                       ? 0.3
-                      : complete || partial || failed
-                        ? 1
-                        : 0.4
+                      : isDaySkipped
+                        ? 0.75
+                        : complete || partial || failed
+                          ? 1
+                          : 0.4
                   }
                   outlineWidth={day.isToday ? 2 : 0}
                   outlineColor="$primary"
@@ -443,7 +463,11 @@ export function HabitCard({
                         ? accentTrackColor
                         : "transparent") as never
                   }
-                />
+                >
+                  {isDaySkipped ? (
+                    <SkipForward size={9} color="$mutedForeground" />
+                  ) : null}
+                </View>
               </YStack>
             );
           })}

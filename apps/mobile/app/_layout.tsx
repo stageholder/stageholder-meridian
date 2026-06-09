@@ -26,7 +26,12 @@
 // read `useAccessToken()` (see lib/api/Provider.tsx).
 
 import { StageholderProvider } from "@stageholder/sdk/react-native";
-import { HapticProvider, Theme, ToastProvider } from "@stageholder/ui";
+import {
+  CelebrationProvider,
+  HapticProvider,
+  Theme,
+  ToastProvider,
+} from "@stageholder/ui";
 import { TamaguiProvider } from "tamagui";
 import Constants from "expo-constants";
 import { SplashScreen, Stack, useRouter } from "expo-router";
@@ -136,34 +141,40 @@ export default function RootLayout() {
           <TamaguiProvider config={tamaguiConfig} defaultTheme={resolvedTheme}>
             <Theme name={resolvedTheme}>
               <HapticProvider impl={expoHapticImpl}>
-                <ToastProvider>
-                  <StageholderProvider
-                    productSlug="meridian"
-                    config={{
-                      issuerUrl: ISSUER_URL,
-                      clientId: CLIENT_ID,
-                      scheme: "meridian",
-                      audience: "meridian-api",
-                      biometric: "off",
-                    }}
-                    onSignedOut={() => router.replace("/sign-in")}
-                  >
-                    {/* QueryProvider sits INSIDE the SDK provider so its
+                {/* Full-screen celebration overlay + useCelebrate(). Inside
+                    HapticProvider (burst haptics) and Theme. Drives the habit
+                    completion burst — see habits.tsx renderCompletionEffect.
+                    alpha.34's native build (Celebration.shared.native). */}
+                <CelebrationProvider>
+                  <ToastProvider>
+                    <StageholderProvider
+                      productSlug="meridian"
+                      config={{
+                        issuerUrl: ISSUER_URL,
+                        clientId: CLIENT_ID,
+                        scheme: "meridian",
+                        audience: "meridian-api",
+                        biometric: "off",
+                      }}
+                      onSignedOut={() => router.replace("/sign-in")}
+                    >
+                      {/* QueryProvider sits INSIDE the SDK provider so its
                         AuthTokenBridge can read useAccessToken(), and its
                         onUnauthorized can drive the route change on a 401. */}
-                    <QueryProvider
-                      onUnauthorized={() => router.replace("/sign-in")}
-                    >
-                      <StatusBar
-                        style={resolvedTheme === "dark" ? "light" : "dark"}
-                      />
-                      <Stack screenOptions={{ headerShown: false }}>
-                        <Stack.Screen name="sign-in" />
-                        <Stack.Screen name="(authed)" />
-                      </Stack>
-                    </QueryProvider>
-                  </StageholderProvider>
-                </ToastProvider>
+                      <QueryProvider
+                        onUnauthorized={() => router.replace("/sign-in")}
+                      >
+                        <StatusBar
+                          style={resolvedTheme === "dark" ? "light" : "dark"}
+                        />
+                        <Stack screenOptions={{ headerShown: false }}>
+                          <Stack.Screen name="sign-in" />
+                          <Stack.Screen name="(authed)" />
+                        </Stack>
+                      </QueryProvider>
+                    </StageholderProvider>
+                  </ToastProvider>
+                </CelebrationProvider>
               </HapticProvider>
             </Theme>
           </TamaguiProvider>
