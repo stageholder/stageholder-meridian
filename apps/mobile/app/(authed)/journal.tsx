@@ -29,10 +29,15 @@ import {
   Text,
   View,
   YStack,
+  useToast,
 } from "@stageholder/ui";
 import { JournalList } from "@repo/features/journal";
-import { PassphrasePrompt } from "@repo/features/encryption";
+import {
+  PassphrasePrompt,
+  PassphraseSetupDialog,
+} from "@repo/features/encryption";
 import type { Journal } from "@repo/core/types";
+import { useUser } from "@stageholder/sdk/react-native";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -48,6 +53,7 @@ import {
   checkJournalStatus,
   decryptJournalList,
   getJournalDek,
+  setupJournalPassphrase,
   unlockJournal,
   useJournalCrypto,
 } from "@/lib/journal-crypto";
@@ -55,8 +61,12 @@ import {
 export default function JournalScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const toast = useToast();
+  const { user } = useUser();
   const journalsQuery = useJournals();
   const { isSetup, isUnlocked, isLoading: statusLoading } = useJournalCrypto();
+  // First-time encryption setup wizard (shared kit dialog).
+  const [setupOpen, setSetupOpen] = useState(false);
 
   // Check encryption status once on mount (cheap GET; the unlock flow needs the
   // server's wrapped DEK + salt before it can derive anything).
@@ -173,6 +183,27 @@ export default function JournalScreen() {
               Journal
             </Text>
 
+            {/* Encryption not set up yet → offer to set a passphrase. Mirrors
+                the PWA's SetupBanner. Hidden once isSetup flips true. */}
+            {!isSetup && !statusLoading ? (
+              <Banner intent="info">
+                <Banner.Title>Encrypt your journal</Banner.Title>
+                <Banner.Description>
+                  Set a passphrase so only you can read your entries.
+                  You&apos;ll get one-time recovery codes to save.
+                </Banner.Description>
+                <Banner.Action>
+                  <Button
+                    intent="primary"
+                    size="sm"
+                    onPress={() => setSetupOpen(true)}
+                  >
+                    Set up encryption
+                  </Button>
+                </Banner.Action>
+              </Banner>
+            ) : null}
+
             {/* Error */}
             {journalsQuery.error ? (
               <Banner intent="danger">
@@ -223,6 +254,28 @@ export default function JournalScreen() {
         label="New journal entry"
         tint={IGNITION.journal.base}
         onPress={handleCreate}
+      />
+
+      {/* First-time encryption setup — collects a passphrase, then shows the
+          recovery codes. onSetup runs the native key ceremony + POSTs to
+          /journal-security/setup; on completion we re-check status so the
+          banner disappears and new entries encrypt. */}
+      <PassphraseSetupDialog
+        open={setupOpen}
+        onSetup={async (passphrase) => {
+          if (!user?.sub) throw new Error("Not signed in");
+          return setupJournalPassphrase(passphrase, user.sub);
+        }}
+        onSetupError={() =>
+          toast.show({
+            title: "Couldn't set up encryption",
+            intent: "danger",
+          })
+        }
+        onComplete={() => {
+          setSetupOpen(false);
+          void checkJournalStatus();
+        }}
       />
     </YStack>
   );

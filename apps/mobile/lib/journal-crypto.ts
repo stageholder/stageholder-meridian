@@ -27,6 +27,12 @@
 import { useSyncExternalStore } from "react";
 import {
   deriveMasterKey,
+  deriveRecoveryMasterKey,
+  generateDEK,
+  generateRecoveryCodes,
+  generateSalt,
+  saltToBase64,
+  wrapDEK,
   unwrapDEK,
   saltFromBase64,
   decryptJournal,
@@ -136,6 +142,54 @@ export async function unlockJournal(passphrase: string): Promise<void> {
   // that's our wrong-passphrase signal.
   dek = await unwrapDEK(wrappedDek, masterKey);
   commit({ isUnlocked: true });
+}
+
+/**
+ * First-time encryption setup — the mobile counterpart of the PWA store's
+ * `setupPassphrase` (apps/pwa/src/lib/crypto/encryption-store.ts), byte-for-byte
+ * the same flow so a passphrase set on EITHER platform unlocks on the other:
+ *   1. derive a master key from `passphrase` + a fresh salt,
+ *   2. generate the data-encryption key (DEK) and wrap it with the master key,
+ *   3. generate recovery codes, derive a recovery key from them + the user's
+ *      `sub`, wrap the DEK with that too,
+ *   4. POST both wrapped DEKs + the salt + the codes to /journal-security/setup.
+ * On success the DEK is held in memory (journal is immediately unlocked) and
+ * the returned recovery codes are shown ONCE by the setup dialog.
+ *
+ * `userSub` comes from the SDK (`useUser().user.sub`) — the recovery key is
+ * derived from it, so it must match what the web app uses.
+ */
+export async function setupJournalPassphrase(
+  passphrase: string,
+  userSub: string,
+): Promise<string[]> {
+  if (!userSub) throw new Error("Not authenticated");
+
+  const saltBytes = generateSalt();
+  const masterKey = await deriveMasterKey(passphrase, saltBytes);
+  const newDek = await generateDEK();
+  const passphraseWrappedDek = await wrapDEK(newDek, masterKey);
+  const passphraseSalt = saltToBase64(saltBytes);
+
+  const recoveryCodes = generateRecoveryCodes();
+  const recoveryKey = await deriveRecoveryMasterKey(recoveryCodes, userSub);
+  const recoveryWrappedDek = await wrapDEK(newDek, recoveryKey);
+
+  await apiClient.post("/journal-security/setup", {
+    passphraseWrappedDek,
+    passphraseSalt,
+    recoveryWrappedDek,
+    recoveryCodes,
+  });
+
+  // Hold the DEK + key material so the session is immediately unlocked and a
+  // later unlock() (after a re-lock) can derive without another round-trip.
+  dek = newDek;
+  wrappedDek = passphraseWrappedDek;
+  salt = passphraseSalt;
+  commit({ isSetup: true, isUnlocked: true });
+
+  return recoveryCodes;
 }
 
 /** Drop the DEK from memory — re-locks the journal until the next unlock. */

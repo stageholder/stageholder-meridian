@@ -1,53 +1,50 @@
 // apps/mobile/app/(authed)/journal/[id].tsx
 //
-// Journal entry detail — read-only. Decrypts the entry with the in-memory DEK
-// (held in lib/journal-crypto) and shows its title, date · mood · word count,
-// and a PLAIN-TEXT excerpt extracted from the TipTap-JSON content.
+// Journal entry detail — a FULL EDITOR (parity with the PWA's $id route).
+// Fetches the entry, decrypts it with the in-memory DEK, then seeds the shared
+// rich-text JournalEditor (10tap on native) so the entry can be re-read AND
+// edited. Save encrypts title/content/tags before the PATCH (see
+// useUpdateJournal) — the same end-to-end boundary as creation.
 //
-// Deliberately NOT a rich renderer: the TipTap / 10tap editor stack stays a
-// web-only concern this pass. We walk the content tree collecting text nodes
-// (extractPlainText) so the reader gets the gist without pulling the editor
-// onto mobile. A footer note points to the web app for full rich reading +
-// editing.
+// Editing mirrors journal/new.tsx (explicit Save, not the PWA's autosave): one
+// PATCH on Save, then back to the list. The editor body is split into its own
+// <EntryEditor> that mounts ONLY once the decrypted entry is ready, so its
+// initial state seeds cleanly from the entry (no async re-seed dance).
 //
-// This route lives under the journal tab's stack but is hidden from the tab bar
-// via `href: null` in (authed)/_layout.tsx. If the journal is locked (no DEK)
-// we bounce the reader back — the list screen owns the unlock flow.
+// Hidden from the tab bar via `href: null` in (authed)/_layout.tsx. If the
+// journal is locked (no DEK) we bounce the reader to the list to unlock.
 
 import {
   Banner,
   Button,
-  H1,
   IconButton,
-  Paragraph,
-  ScrollView,
-  Separator,
+  MoodPicker,
+  MOOD_DEFAULT_OPTIONS,
+  QuickDatePicker,
+  Sheet,
   Spinner,
+  TagInput,
   Text,
   View,
   XStack,
   YStack,
+  useToast,
 } from "@stageholder/ui";
-import { ChevronLeft } from "@tamagui/lucide-icons-2";
-// MoodDisplay isn't a kit export — it ships from the features journal barrel
-// (read-only emoji built on the kit's MOOD_DEFAULT_OPTIONS).
-import { MoodDisplay } from "@repo/features/journal";
-import type { Journal } from "@repo/core/types";
+import type { RichTextEditorContent } from "@stageholder/ui";
+import { JournalEditor } from "@repo/features/journal";
+import { countWordsFromContent } from "@repo/core/utils/text";
+import type { Journal, JournalContent } from "@repo/core/types";
+import { ChevronLeft, SmilePlus } from "@tamagui/lucide-icons-2";
+import { Input as BareInput } from "tamagui";
+import { KeyboardController } from "react-native-keyboard-controller";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
-
-import { useJournal } from "@/lib/api";
+import { useJournal, useUpdateJournal } from "@/lib/api";
 import {
   decryptJournalEntry,
-  extractPlainText,
   getJournalDek,
-  journalWordCount,
   useJournalCrypto,
 } from "@/lib/journal-crypto";
 
@@ -56,8 +53,19 @@ function parseDateLocal(input: string): Date {
   return new Date(ymd + "T00:00:00");
 }
 
+function localDateKey(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function formatDefaultTitle(yyyymmdd: string): string {
+  return parseDateLocal(yyyymmdd).toLocaleDateString(undefined, {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export default function JournalDetailScreen() {
-  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const journalQuery = useJournal(id);
@@ -83,8 +91,6 @@ export default function JournalDetailScreen() {
     }
     const dek = getJournalDek();
     if (!dek) {
-      // Locked — can't read this entry. Leave `entry` null; the render branch
-      // sends the reader back to unlock on the list.
       setEntry(null);
       return;
     }
@@ -101,15 +107,300 @@ export default function JournalDetailScreen() {
     // isUnlocked in deps so a mid-screen unlock re-runs decryption.
   }, [raw, isUnlocked]);
 
-  // Headers are hidden globally by the Tabs layout's screenOptions, so this
-  // detail screen draws its own lightweight back bar instead of a nav header.
-  const backBar = (
+  // ---- Loading ----
+  if (journalQuery.isLoading) {
+    return (
+      <Scaffold>
+        <BackBar onBack={() => router.navigate("/journal")} title="Entry" />
+        <Centered>
+          <Spinner size="large" />
+        </Centered>
+      </Scaffold>
+    );
+  }
+
+  // ---- Error (fetch or decrypt) ----
+  if (journalQuery.error || decryptError) {
+    return (
+      <Scaffold>
+        <BackBar onBack={() => router.navigate("/journal")} title="Entry" />
+        <YStack px="$4" pt="$2">
+          <Banner intent="danger">
+            <Banner.Title>Couldn&apos;t open this entry</Banner.Title>
+            <Banner.Description>
+              {decryptError
+                ? "This entry couldn't be decrypted with the current key."
+                : ((journalQuery.error as Error)?.message ?? "Network error.")}
+            </Banner.Description>
+          </Banner>
+        </YStack>
+      </Scaffold>
+    );
+  }
+
+  // ---- Locked: encrypted but no DEK → unlock on the list ----
+  if (raw?.encrypted && !entry) {
+    return (
+      <Scaffold>
+        <BackBar onBack={() => router.navigate("/journal")} title="Entry" />
+        <YStack px="$4" pt="$2" gap="$3">
+          <Banner intent="neutral">
+            <Banner.Title>Journal locked</Banner.Title>
+            <Banner.Description>
+              Unlock your journal from the list to read or edit this entry.
+            </Banner.Description>
+            <Banner.Action>
+              <Button
+                intent="secondary"
+                size="sm"
+                onPress={() => router.navigate("/journal")}
+              >
+                Go to journal
+              </Button>
+            </Banner.Action>
+          </Banner>
+        </YStack>
+      </Scaffold>
+    );
+  }
+
+  if (!entry) {
+    return (
+      <Scaffold>
+        <BackBar onBack={() => router.navigate("/journal")} title="Entry" />
+        <Centered>
+          <Spinner size="large" />
+        </Centered>
+      </Scaffold>
+    );
+  }
+
+  // Decrypted + ready → the editor mounts seeded from this entry.
+  return <EntryEditor entry={entry} />;
+}
+
+/* ------------------------------- Editor ------------------------------------ */
+
+function EntryEditor({ entry }: { entry: Journal }) {
+  const router = useRouter();
+  const toast = useToast();
+  const updateJournal = useUpdateJournal();
+
+  // Seed from the (already-decrypted) entry — this component only mounts once
+  // the entry is ready, so a plain useState initializer is correct.
+  const [title, setTitle] = useState(entry.title ?? "");
+  const [content, setContent] = useState<JournalContent>(entry.content);
+  const [mood, setMood] = useState<number | undefined>(entry.mood ?? undefined);
+  const [moodOpen, setMoodOpen] = useState(false);
+  // Decrypted tags are string[]; the encrypted-at-rest form is a string. This
+  // editor only mounts post-decrypt, so it's an array — guard anyway.
+  const [tags, setTags] = useState<string[]>(
+    Array.isArray(entry.tags) ? entry.tags : [],
+  );
+  const [date, setDate] = useState(localDateKey(parseDateLocal(entry.date)));
+
+  const effectiveTitle = title.trim() || formatDefaultTitle(date);
+  const currentMood = MOOD_DEFAULT_OPTIONS.find((m) => m.value === mood);
+  const hasContent = countWordsFromContent(content) > 0;
+
+  function handleSave() {
+    if (!hasContent || updateJournal.isPending) return;
+    updateJournal.mutate(
+      {
+        id: entry.id,
+        patch: { title: effectiveTitle, content, mood, tags, date },
+      },
+      {
+        onSuccess: () => {
+          toast.show({ title: "Entry updated", intent: "success" });
+          router.navigate("/journal");
+        },
+        onError: () => {
+          toast.show({ title: "Failed to save entry", intent: "danger" });
+        },
+      },
+    );
+  }
+
+  return (
+    <YStack flex={1} bg="$background">
+      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
+        {/* Header: icon back · centered title · Save. */}
+        <XStack
+          items="center"
+          justify="space-between"
+          px="$2"
+          py="$2"
+          position="relative"
+        >
+          <IconButton
+            variant="ghost"
+            size="sm"
+            aria-label="Back to journal"
+            onPress={() => router.navigate("/journal")}
+          >
+            <ChevronLeft size={20} />
+          </IconButton>
+          <Text
+            position="absolute"
+            l={0}
+            r={0}
+            text="center"
+            pointerEvents="none"
+            fontSize="$5"
+            fontWeight="600"
+            color="$color"
+          >
+            Entry
+          </Text>
+          <Button
+            intent="primary"
+            size="sm"
+            mr="$2"
+            disabled={!hasContent || updateJournal.isPending}
+            onPress={handleSave}
+          >
+            {updateJournal.isPending ? <Spinner size="small" /> : "Save"}
+          </Button>
+        </XStack>
+
+        <YStack shrink={0} px="$4" pt="$2">
+          <BareInput
+            value={title}
+            onChangeText={setTitle}
+            placeholder={formatDefaultTitle(date)}
+            width="100%"
+            mb="$3"
+            px={0}
+            bg="transparent"
+            borderWidth={0}
+            outlineWidth={0}
+            fontSize={24}
+            fontWeight="700"
+            color="$color"
+            placeholderTextColor="$mutedForeground"
+            focusStyle={{ borderWidth: 0, outlineWidth: 0 }}
+            focusVisibleStyle={{ outlineWidth: 0 }}
+          />
+
+          {/* Metadata chips — date · mood · tags. onTouchStart dismisses the
+              editor's (webview) keyboard so the pickers open clean — see
+              new.tsx for the full rationale. */}
+          <XStack
+            mb="$4"
+            flexWrap="wrap"
+            items="center"
+            gap="$2"
+            onTouchStart={() => {
+              void KeyboardController.dismiss();
+            }}
+          >
+            <QuickDatePicker
+              size="sm"
+              value={parseDateLocal(date)}
+              onChange={(d) => {
+                if (d) setDate(localDateKey(d));
+              }}
+              clearable={false}
+            />
+
+            <Button
+              intent="outline"
+              size="sm"
+              rounded={9999}
+              gap="$1.5"
+              onPress={() => setMoodOpen(true)}
+              icon={
+                currentMood ? (
+                  <Text fontSize="$3">{currentMood.emoji}</Text>
+                ) : (
+                  <SmilePlus size={14} color="$mutedForeground" />
+                )
+              }
+            >
+              <Text fontSize="$2" color="$mutedForeground">
+                {currentMood?.label ?? "Mood"}
+              </Text>
+            </Button>
+
+            <TagInput value={tags} onChange={setTags} inline addLabel="Tag" />
+          </XStack>
+        </YStack>
+
+        {/* Editor — seeded with the entry's content. 10tap accepts both TipTap
+            JSON (new entries) and an HTML string (legacy) at runtime; the type
+            is JSON-only, hence the cast. onChange always emits JSON. */}
+        <View flex={1}>
+          <JournalEditor
+            initialContent={content as RichTextEditorContent}
+            onChange={setContent}
+            placeholder="What's on your mind?"
+            autoFocus={false}
+            target={0}
+            otherWordsToday={0}
+          />
+        </View>
+      </SafeAreaView>
+
+      {/* Mood picker — full-width bottom sheet (the kit MoodPicker's 48px
+          bubbles overflow a popover). */}
+      <Sheet
+        modal
+        open={moodOpen}
+        onOpenChange={setMoodOpen}
+        dismissOnSnapToBottom
+        snapPointsMode="fit"
+      >
+        <Sheet.Overlay />
+        <Sheet.Frame pt="$3" pb="$6" px="$4" gap="$3">
+          <Text fontSize="$5" fontWeight="600" color="$color">
+            How are you feeling?
+          </Text>
+          <XStack justify="center" py="$2">
+            <MoodPicker
+              value={mood ?? null}
+              showLabels
+              clearable
+              onChange={(v) => {
+                setMood(v ?? undefined);
+                setMoodOpen(false);
+              }}
+            />
+          </XStack>
+        </Sheet.Frame>
+      </Sheet>
+    </YStack>
+  );
+}
+
+/* ------------------------------- Chrome ------------------------------------ */
+
+function Scaffold({ children }: { children: React.ReactNode }) {
+  return (
+    <YStack flex={1} bg="$background">
+      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
+        {children}
+      </SafeAreaView>
+    </YStack>
+  );
+}
+
+function Centered({ children }: { children: React.ReactNode }) {
+  return (
+    <View flex={1} items="center" justify="center">
+      {children}
+    </View>
+  );
+}
+
+function BackBar({ onBack, title }: { onBack: () => void; title: string }) {
+  return (
     <XStack items="center" px="$2" py="$2" position="relative">
       <IconButton
         variant="ghost"
         size="sm"
         aria-label="Back to journal"
-        onPress={() => router.navigate("/journal")}
+        onPress={onBack}
       >
         <ChevronLeft size={20} />
       </IconButton>
@@ -123,162 +414,8 @@ export default function JournalDetailScreen() {
         fontWeight="600"
         color="$color"
       >
-        Entry
+        {title}
       </Text>
     </XStack>
-  );
-
-  // ---- Loading ----
-  if (journalQuery.isLoading) {
-    return (
-      <YStack flex={1} bg="$background">
-        <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-          {backBar}
-          <View flex={1} items="center" justify="center">
-            <Spinner size="large" />
-          </View>
-        </SafeAreaView>
-      </YStack>
-    );
-  }
-
-  // ---- Error (fetch or decrypt) ----
-  if (journalQuery.error || decryptError) {
-    return (
-      <YStack flex={1} bg="$background">
-        <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-          {backBar}
-          <YStack px="$4" pt="$2">
-            <Banner intent="danger">
-              <Banner.Title>Couldn&apos;t open this entry</Banner.Title>
-              <Banner.Description>
-                {decryptError
-                  ? "This entry couldn't be decrypted with the current key."
-                  : ((journalQuery.error as Error)?.message ??
-                    "Network error.")}
-              </Banner.Description>
-            </Banner>
-          </YStack>
-        </SafeAreaView>
-      </YStack>
-    );
-  }
-
-  // ---- Locked / not yet decrypted ----
-  // raw is encrypted but we have no DEK → prompt the reader to unlock on the
-  // list. (We don't render the prompt here to keep the unlock flow in one place.)
-  if (raw?.encrypted && !entry) {
-    return (
-      <YStack flex={1} bg="$background">
-        <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-          {backBar}
-          <YStack px="$4" pt="$2" gap="$3">
-            <Banner intent="neutral">
-              <Banner.Title>Journal locked</Banner.Title>
-              <Banner.Description>
-                Unlock your journal from the list to read this entry.
-              </Banner.Description>
-              <Banner.Action>
-                <Button
-                  intent="secondary"
-                  size="sm"
-                  onPress={() => router.push("/journal")}
-                >
-                  Go to journal
-                </Button>
-              </Banner.Action>
-            </Banner>
-          </YStack>
-        </SafeAreaView>
-      </YStack>
-    );
-  }
-
-  if (!entry) {
-    return (
-      <YStack flex={1} bg="$background">
-        <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-          {backBar}
-          <View flex={1} items="center" justify="center">
-            <Spinner size="large" />
-          </View>
-        </SafeAreaView>
-      </YStack>
-    );
-  }
-
-  const dateLabel = parseDateLocal(entry.date).toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-  const words = journalWordCount(entry);
-  const excerpt = extractPlainText(entry.content);
-
-  return (
-    <YStack flex={1} bg="$background">
-      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-        {backBar}
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          // Clearance for the floating BottomNav capsule (PWA shell parity).
-          contentContainerStyle={{
-            pb: BOTTOM_NAV_CLEARANCE + insets.bottom,
-          }}
-        >
-          <YStack gap="$4" px="$4" pt="$2" pb="$10">
-            <YStack gap="$2">
-              <H1 fontSize="$8" fontWeight="700" color="$color">
-                {entry.title}
-              </H1>
-              <XStack items="center" gap="$2" flexWrap="wrap">
-                <Text fontSize="$2" color="$mutedForeground">
-                  {dateLabel}
-                </Text>
-                {entry.mood ? (
-                  <>
-                    <Text fontSize="$2" color="$mutedForeground">
-                      ·
-                    </Text>
-                    <MoodDisplay mood={entry.mood} />
-                  </>
-                ) : null}
-                {words > 0 ? (
-                  <>
-                    <Text fontSize="$2" color="$mutedForeground">
-                      ·
-                    </Text>
-                    <Text fontSize="$2" color="$mutedForeground">
-                      {words} words
-                    </Text>
-                  </>
-                ) : null}
-              </XStack>
-            </YStack>
-
-            <Separator />
-
-            {excerpt ? (
-              <Paragraph fontSize="$4" lineHeight="$5" color="$color">
-                {excerpt}
-              </Paragraph>
-            ) : (
-              <Text fontSize="$3" color="$mutedForeground">
-                This entry has no text content.
-              </Text>
-            )}
-
-            {/* Honest footer — formatting + editing are web-only this pass. */}
-            <View pt="$4">
-              <Text fontSize="$1" color="$mutedForeground">
-                Showing a plain-text preview. Open the web app for full
-                formatting and editing.
-              </Text>
-            </View>
-          </YStack>
-        </ScrollView>
-      </SafeAreaView>
-    </YStack>
   );
 }

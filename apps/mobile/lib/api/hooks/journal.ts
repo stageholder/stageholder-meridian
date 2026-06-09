@@ -137,7 +137,26 @@ export function useUpdateJournal() {
       id: string;
       patch: UpdateJournalInput;
     }) => {
-      const { data } = await apiClient.patch<Journal>(`/journals/${id}`, patch);
+      // END-TO-END ENCRYPTION on edit — same boundary as useCreateJournal.
+      // When a DEK is in memory AND the patch carries editable content (the
+      // rich-editor save), encrypt title/content/tags (+ stamp encrypted:true)
+      // before the PATCH so plaintext never hits the wire. A metadata-only
+      // patch (no content) PATCHes as-is.
+      const dek = getJournalDek();
+      const body =
+        dek && patch.content !== undefined
+          ? await encryptJournalPayload(
+              {
+                title: patch.title ?? "",
+                content: patch.content,
+                tags: patch.tags,
+                mood: patch.mood,
+                date: patch.date,
+              },
+              dek,
+            )
+          : patch;
+      const { data } = await apiClient.patch<Journal>(`/journals/${id}`, body);
       return data;
     },
     onMutate: async ({ id, patch }) => {
