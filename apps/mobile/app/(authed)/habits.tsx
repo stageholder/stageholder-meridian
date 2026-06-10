@@ -31,6 +31,7 @@ import {
 } from "@stageholder/ui";
 import { HabitCard } from "@repo/features/habits";
 import type { Habit } from "@repo/core/types";
+import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import {
   SafeAreaView,
@@ -55,7 +56,7 @@ import { localDateKey } from "@/lib/streak";
 
 export default function HabitsScreen() {
   const habitsQuery = useHabits();
-  const toast = useToast();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -79,16 +80,10 @@ export default function HabitsScreen() {
     [habits],
   );
 
-  // The full habit DETAIL screen isn't built on mobile yet — tapping a card's
-  // body nudges to the web app. (Edit + create ARE native — see the FAB below
-  // and the per-card Edit action.)
-  function notifyDetailOnWeb() {
-    toast.show({
-      title: "Open on the web app",
-      message:
-        "The full habit history and stats view lives on the web app for now.",
-      intent: "info",
-    });
+  // Tapping a card's body opens the NATIVE habit detail screen (stats, month
+  // day-editor, recent entries) — PWA /habits/$id parity.
+  function openDetail(habit: Habit) {
+    router.push(`/habits/${habit.id}`);
   }
 
   return (
@@ -166,7 +161,7 @@ export default function HabitsScreen() {
                 key={habit.id}
                 habit={habit}
                 onEdit={() => setEditingHabit(habit)}
-                onOpenDetail={notifyDetailOnWeb}
+                onOpenDetail={() => openDetail(habit)}
               />
             ))}
           </YStack>

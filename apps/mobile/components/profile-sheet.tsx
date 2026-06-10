@@ -7,6 +7,9 @@
 //
 //   [user header: avatar · name · email]
 //   ─────────────────────────────────────
+//   Journey            → /journey route (Light tiers, streaks, feed) —
+//                        mobile-only extra row: the PWA reaches Journey from
+//                        its sidebar nav, which has no native equivalent
 //   Account settings   → /settings route
 //   Plans & billing    → /billing route (native billing screen)
 //   Dark mode          → switch row (stays open so the change is visible)
@@ -29,7 +32,13 @@ import {
   YStack,
   useToast,
 } from "@stageholder/ui";
-import { CreditCard, LogOut, Moon, UserCog } from "@tamagui/lucide-icons-2";
+import {
+  CreditCard,
+  LogOut,
+  Moon,
+  Sparkles,
+  UserCog,
+} from "@tamagui/lucide-icons-2";
 import { useRouter } from "expo-router";
 
 import { useAppTheme } from "@/lib/platform/theme";
@@ -159,6 +168,14 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
 
         {/* ---- Menu rows — same items/order as the PWA's useUserMenuItems
              (minus the desktop-only update check) ---- */}
+        <MenuRow
+          icon={<Sparkles size={18} color="$color" />}
+          label="Journey"
+          onPress={() => {
+            close();
+            router.navigate("/journey");
+          }}
+        />
         <MenuRow
           icon={<UserCog size={18} color="$color" />}
           label="Account settings"

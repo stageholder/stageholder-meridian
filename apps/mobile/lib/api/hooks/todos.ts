@@ -59,6 +59,52 @@ export function useTodoLists() {
   });
 }
 
+/* ------------------------- List mutations ---------------------------- */
+// PWA parity (apps/pwa/src/lib/api/todos.ts): create / rename+recolor /
+// delete a todo list. Deleting a list also affects its todos server-side,
+// so both caches invalidate.
+
+export type TodoListInput = { name: string; color?: string };
+
+export function useCreateTodoList() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: TodoListInput) => {
+      const { data } = await apiClient.post<TodoList>("/todo-lists", input);
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: todoListKeys.all }),
+  });
+}
+
+export function useUpdateTodoList() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: TodoListInput }) => {
+      const { data } = await apiClient.put<TodoList>(
+        `/todo-lists/${id}`,
+        patch,
+      );
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: todoListKeys.all }),
+  });
+}
+
+export function useDeleteTodoList() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await apiClient.delete(`/todo-lists/${id}`);
+      return id;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: todoListKeys.all });
+      void qc.invalidateQueries({ queryKey: todoKeys.all });
+    },
+  });
+}
+
 /* ---------------------------- Mutations ------------------------------ */
 
 export type CreateTodoInput = {

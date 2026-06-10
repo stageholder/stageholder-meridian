@@ -143,6 +143,9 @@ export default function AuthedLayout() {
           <Tabs.Screen name="upgrade" options={{ href: null }} />
           {/* Journey (gamification) — pushed from the Today level card. */}
           <Tabs.Screen name="journey" options={{ href: null }} />
+          {/* Habit detail — pushed from a habit card; Habits tab stays lit
+              via the prefix match. */}
+          <Tabs.Screen name="habits/[id]" options={{ href: null }} />
           {/* Journal entry detail (journal/[id].tsx) + the new-entry editor
               (journal/new.tsx) live in the journal tab's stack but are not
               destinations — the custom bar lists its own items, and the

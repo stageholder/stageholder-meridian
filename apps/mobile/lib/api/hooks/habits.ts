@@ -52,15 +52,25 @@ export function useHabit(id: string | null | undefined) {
   });
 }
 
-export function useHabitEntries(habitId: string | null | undefined) {
+export function useHabitEntries(
+  habitId: string | null | undefined,
+  /** Optional yyyy-MM-dd window — the server filters /habits/:id/entries by
+   *  startDate/endDate (the PWA's detail page depends on this). Omitted →
+   *  the server default window, exactly as before. */
+  range?: { startDate?: string; endDate?: string },
+) {
+  const baseKey = habitId
+    ? habitKeys.entries(habitId)
+    : habitKeys.entries("disabled");
   return useQuery({
-    queryKey: habitId
-      ? habitKeys.entries(habitId)
-      : habitKeys.entries("disabled"),
+    // Range rides the key as an extra segment so windowed queries cache
+    // separately while invalidateQueries(habitKeys.entries(id)) still
+    // prefix-matches every window.
+    queryKey: range ? ([...baseKey, range] as const) : baseKey,
     queryFn: async () => {
       const { data } = await apiClient.get<
         { data: HabitEntry[] } | HabitEntry[]
-      >(`/habits/${habitId}/entries`);
+      >(`/habits/${habitId}/entries`, { params: range });
       return Array.isArray(data) ? data : data.data;
     },
     enabled: !!habitId,

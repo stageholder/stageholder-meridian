@@ -8,13 +8,15 @@
 // create flow uses — seeded with the tapped todo's values — and submits a
 // single PATCH. Same kit FormSheet host as CreateTodoDialog.
 //
-// Subtasks are NOT edited here: TodoForm has no subtask field, so they stay
-// "manage on the web app" for this pass (parity with the create flow's scope).
+// Subtasks ARE edited here (PWA TodoDetailDialog parity): the SubtaskSection
+// below the form commits each toggle/add/delete immediately via its own
+// mutation — independent of the form's single Save PATCH.
 
-import { FormSheet, useToast } from "@stageholder/ui";
+import { FormSheet, Separator, useToast } from "@stageholder/ui";
 import { TodoForm, type TodoFormValues } from "@repo/features/todos";
 import type { Todo } from "@repo/core/types";
 
+import { SubtaskSection } from "@/components/subtask-section";
 import { useUpdateTodo, useTodoLists, type TodoPriority } from "@/lib/api";
 import { IGNITION } from "@/lib/ignition-palette";
 
@@ -109,6 +111,12 @@ export function EditTodoDialog({
         onSubmit={handleSubmit}
         onCancel={() => onOpenChange(false)}
       />
+
+      {/* Subtasks — instant-commit section (each action is its own mutation,
+          like the PWA detail dialog), so it sits OUTSIDE the form's
+          Save/Cancel lifecycle. Keyed per todo so state re-seeds. */}
+      <Separator />
+      <SubtaskSection key={`sub-${todo.id}`} todo={todo} />
     </FormSheet>
   );
 }
