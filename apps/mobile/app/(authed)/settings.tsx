@@ -1,76 +1,113 @@
 // apps/mobile/app/(authed)/settings.tsx
 //
-// Settings — the focused mobile subset. Four blocks:
+// Settings — native mirror of the PWA's /settings page (apps/pwa/src/routes/
+// _app/settings/index.tsx): the same three tabs over the same SHARED views.
 //
-//   1. Appearance — light / dark / system, wired to the cross-platform theme
-//      store (lib/platform/theme). A SegmentedControl maps cleanly to three
-//      mutually-exclusive choices.
-//   2. Account — name + email + avatar from the SDK's useUser() identity.
-//   3. Sign out — the SDK provider's signOut() (drops the session; the root
-//      layout's onSignedOut redirects to /sign-in).
-//   4. About — app version from expo-constants, plus an honest note that the
-//      advanced settings (targets, billing, security) live on the web app.
+//   Profile — @repo/features/settings ProfileForm (display name + timezone),
+//             read via Hub GET /api/account/profile (lib/api/hub), written via
+//             the SDK's native useUpdateProfile (refreshes the session so
+//             useUser's name updates everywhere).
+//   Targets — @repo/features/settings TargetsSettings (daily todo / journal
+//             word targets), wired to the Meridian API light hooks.
+//   Account — billing & subscription entry (native /billing screen) + Hub
+//             security page via the system browser (password, MFA, sessions,
+//             deletion are Hub surfaces on every platform — the PWA links out
+//             the same way).
 //
-// Deliberately small: profile editing, daily targets, and billing are
-// substantial web surfaces (apps/pwa settings) that aren't ported this pass.
+// No Appearance section: dark/light lives in the bottom-nav Profile sheet
+// (the PWA puts it in the same account menu) — keeping it here too was
+// redundant. Sign-out also lives in that sheet, like the PWA's menu.
 
-import { useState } from "react";
-import { useStageholder, useUser } from "@stageholder/sdk/react-native";
 import {
-  Avatar,
   Button,
   Card,
   Paragraph,
   ScrollView,
-  SegmentedControl,
+  SizableText,
   Separator,
-  Spinner,
+  Tabs,
   Text,
-  View,
   XStack,
   YStack,
-  useToast,
 } from "@stageholder/ui";
+import { ProfileForm, TargetsSettings } from "@repo/features/settings";
+import { openURL } from "@repo/core/platform/linking";
+import { useUpdateProfile } from "@stageholder/sdk/react-native";
+import {
+  ArrowRight,
+  CreditCard,
+  ExternalLink,
+  Target,
+  User,
+} from "@tamagui/lucide-icons-2";
 import Constants from "expo-constants";
+import { useRouter } from "expo-router";
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 
 import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
+import { useUpdateTargets, useUserLight } from "@/lib/api";
+import { useHubProfile } from "@/lib/api/hub";
 
-import { useAppTheme, type ThemePreference } from "@/lib/platform/theme";
+const HUB_URL =
+  process.env.EXPO_PUBLIC_STAGEHOLDER_ISSUER_URL ??
+  "https://id.stageholder.com";
 
-const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
-  { value: "light", label: "Light" },
-  { value: "dark", label: "Dark" },
-  { value: "system", label: "System" },
-];
+const TABS = [
+  { id: "profile", label: "Profile", icon: User },
+  { id: "targets", label: "Targets", icon: Target },
+  { id: "account", label: "Account", icon: CreditCard },
+] as const;
+
+// Strip the kit Tabs.Content default card (bg/border/padding/margin) so the
+// panel reads flat — the section components own their own spacing. Same
+// constant as the PWA settings page.
+const FLAT_CONTENT = {
+  bg: "transparent",
+  borderWidth: 0,
+  p: 0,
+  mt: 0,
+} as const;
+
+/** PWA's ProfileForm wrapper, mobile edition: Hub profile read + SDK write. */
+function ProfileSection() {
+  const { data: profile, isLoading } = useHubProfile();
+  const update = useUpdateProfile();
+
+  return (
+    <ProfileForm
+      initialName={profile?.displayName ?? ""}
+      initialTimezone={profile?.timezone ?? ""}
+      isLoading={isLoading}
+      onSubmit={async (data) => {
+        await update.mutateAsync(data);
+      }}
+    />
+  );
+}
+
+/** PWA's TargetsSettings wrapper, mobile edition — same light API hooks. */
+function TargetsSection() {
+  const { data: userLight, isLoading } = useUserLight();
+  const updateTargets = useUpdateTargets();
+
+  return (
+    <TargetsSettings
+      initialTodoTarget={userLight?.todoTargetDaily}
+      initialJournalTarget={userLight?.journalTargetDailyWords}
+      isLoading={isLoading}
+      onSubmit={async (data) => {
+        await updateTargets.mutateAsync(data);
+      }}
+    />
+  );
+}
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { user, isLoading: userLoading } = useUser();
-  const { signOut } = useStageholder();
-  const { theme, setTheme } = useAppTheme();
-  const toast = useToast();
-
-  const [signingOut, setSigningOut] = useState(false);
-
-  async function handleSignOut() {
-    setSigningOut(true);
-    try {
-      // The root layout's onSignedOut handler redirects to /sign-in once the
-      // session is cleared, so we don't navigate manually here.
-      await signOut();
-    } catch (err) {
-      setSigningOut(false);
-      toast.show({
-        title: "Couldn't sign out",
-        message: (err as Error).message ?? "Try again.",
-        intent: "danger",
-      });
-    }
-  }
+  const router = useRouter();
 
   // app.json's expo.version is the user-facing version string.
   const appVersion = Constants.expoConfig?.version ?? "—";
@@ -85,108 +122,79 @@ export default function SettingsScreen() {
             pb: BOTTOM_NAV_CLEARANCE + insets.bottom,
           }}
         >
-          <YStack gap="$5" px="$4" pt="$4" pb="$10">
+          <YStack gap="$4" px="$4" pt="$4" pb="$10">
             <Text fontSize="$8" fontWeight="700" color="$color">
               Settings
             </Text>
 
-            {/* ---- Appearance ---- */}
-            <YStack gap="$2">
-              <Text
-                fontSize="$1"
-                fontWeight="600"
-                color="$mutedForeground"
-                letterSpacing={0.6}
-                textTransform="uppercase"
-              >
-                Appearance
-              </Text>
-              <Card>
-                <Card.Body gap="$3">
-                  <Paragraph fontSize="$3" color="$mutedForeground">
-                    Choose how Meridian looks. System follows your device.
-                  </Paragraph>
-                  <SegmentedControl
-                    fullWidth
-                    value={theme}
-                    onValueChange={(v) => setTheme(v as ThemePreference)}
-                  >
-                    {THEME_OPTIONS.map((opt) => (
-                      <SegmentedControl.Item key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SegmentedControl.Item>
-                    ))}
-                  </SegmentedControl>
-                </Card.Body>
-              </Card>
-            </YStack>
+            {/* Horizontal underline tabs — the PWA's sub-md presentation of
+                the same three sections. */}
+            <Tabs
+              defaultValue="profile"
+              orientation="horizontal"
+              variant="underline"
+            >
+              <YStack gap="$4" items="flex-start" width="100%">
+                <Tabs.List
+                  flexDirection="row"
+                  width="100%"
+                  shrink={0}
+                  gap="$1"
+                  bg="transparent"
+                  borderWidth={0}
+                  p={0}
+                >
+                  {TABS.map((tab) => {
+                    const Icon = tab.icon;
+                    return (
+                      <Tabs.Tab key={tab.id} value={tab.id} justify="center">
+                        <XStack items="center" gap="$2">
+                          <Icon size={16} />
+                          <SizableText>{tab.label}</SizableText>
+                        </XStack>
+                      </Tabs.Tab>
+                    );
+                  })}
+                </Tabs.List>
 
-            {/* ---- Account ---- */}
-            <YStack gap="$2">
-              <Text
-                fontSize="$1"
-                fontWeight="600"
-                color="$mutedForeground"
-                letterSpacing={0.6}
-                textTransform="uppercase"
-              >
-                Account
-              </Text>
-              <Card>
-                <Card.Body gap="$3">
-                  {userLoading && !user ? (
-                    <View py="$3" items="center">
-                      <Spinner />
-                    </View>
-                  ) : user ? (
-                    <XStack items="center" gap="$3">
-                      <Avatar
-                        src={user.picture ?? undefined}
-                        name={user.name ?? user.email ?? "User"}
-                        size="md"
-                      />
-                      <YStack flex={1} minW={0}>
-                        {user.name ? (
-                          <Text
-                            fontSize="$4"
-                            fontWeight="600"
-                            color="$color"
-                            numberOfLines={1}
-                          >
-                            {user.name}
-                          </Text>
-                        ) : null}
-                        {user.email ? (
-                          <Text
-                            fontSize="$2"
-                            color="$mutedForeground"
-                            numberOfLines={1}
-                          >
-                            {user.email}
-                          </Text>
-                        ) : null}
+                <YStack width="100%" minW={0}>
+                  <Tabs.Content value="profile" {...FLAT_CONTENT}>
+                    <ProfileSection />
+                  </Tabs.Content>
+                  <Tabs.Content value="targets" {...FLAT_CONTENT}>
+                    <TargetsSection />
+                  </Tabs.Content>
+                  <Tabs.Content value="account" {...FLAT_CONTENT}>
+                    <YStack gap="$4">
+                      <Paragraph fontSize="$3" color="$mutedForeground">
+                        Your billing and subscription live in-app. Password,
+                        MFA, connected accounts, sessions, and account deletion
+                        are managed on Stageholder.
+                      </Paragraph>
+                      <YStack gap="$2">
+                        <Button
+                          intent="outline"
+                          iconAfter={<ArrowRight size={14} opacity={0.7} />}
+                          onPress={() => router.push("/billing")}
+                        >
+                          Billing & subscription
+                        </Button>
+                        <Button
+                          intent="outline"
+                          iconAfter={<ExternalLink size={14} opacity={0.7} />}
+                          onPress={() => openURL(`${HUB_URL}/account`)}
+                        >
+                          Security & sign-in on Stageholder
+                        </Button>
                       </YStack>
-                    </XStack>
-                  ) : (
-                    <Text fontSize="$3" color="$mutedForeground">
-                      Not signed in.
-                    </Text>
-                  )}
-                  <Separator />
-                  <Button
-                    intent="outline"
-                    onPress={handleSignOut}
-                    loading={signingOut}
-                    loadingText="Signing out…"
-                  >
-                    Sign out
-                  </Button>
-                </Card.Body>
-              </Card>
-            </YStack>
+                    </YStack>
+                  </Tabs.Content>
+                </YStack>
+              </YStack>
+            </Tabs>
 
             {/* ---- About ---- */}
-            <YStack gap="$2">
+            <YStack gap="$2" pt="$2">
               <Text
                 fontSize="$1"
                 fontWeight="600"
@@ -208,8 +216,8 @@ export default function SettingsScreen() {
                   </XStack>
                   <Separator />
                   <Paragraph fontSize="$2" color="$mutedForeground">
-                    Advanced settings — daily targets, billing, and journal
-                    security — live on the web app.
+                    Journal security — passphrase change and recovery — lives on
+                    the web app for now.
                   </Paragraph>
                 </Card.Body>
               </Card>

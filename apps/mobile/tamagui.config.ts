@@ -38,6 +38,14 @@ export const config = createTamagui({
     // Manual <Theme name={mode}> in _layout.tsx (fed by lib/platform/theme)
     // is the source of truth — don't bind to OS prefers-color-scheme.
     shouldAddPrefersColorThemes: false,
+    // v5 defaults this to true, which on iOS turns theme colors into
+    // DynamicColorIOS OBJECTS bound to the OS scheme. Two reasons it must
+    // be off here: (1) our theme is app-driven, so OS-bound colors would
+    // paint dark while the app says light; (2) Reanimated 4's color
+    // processor rejects the object form — the kit Tabs' sliding indicator
+    // (theme.primary.get() → Animated.View backgroundColor) crashed with
+    // "[Reanimated] Invalid color value: [object Object]".
+    fastSchemeChange: false,
     // Expo Router has no SSR — skip the hydration double-render.
     disableSSR: true,
   },

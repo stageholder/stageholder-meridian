@@ -136,6 +136,9 @@ export default function AuthedLayout() {
           <Tabs.Screen name="habits" options={{ title: "Habits" }} />
           <Tabs.Screen name="journal" options={{ title: "Journal" }} />
           <Tabs.Screen name="settings" options={{ title: "Settings" }} />
+          {/* Plans & billing — reached from the Profile sheet / Settings →
+              Account, not a tab destination. */}
+          <Tabs.Screen name="billing" options={{ href: null }} />
           {/* Journal entry detail (journal/[id].tsx) + the new-entry editor
               (journal/new.tsx) live in the journal tab's stack but are not
               destinations — the custom bar lists its own items, and the

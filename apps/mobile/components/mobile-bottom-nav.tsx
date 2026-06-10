@@ -9,13 +9,12 @@
 //
 // Destinations mirror the PWA's `bottomNavItems` (apps/pwa/src/components/
 // layout/nav-items.ts) — Today / Todos / Habits / Journal, same icons, same
-// order — plus the trailing Profile avatar item. One deliberate IA
-// difference: the PWA's Profile item opens the account MENU (Dashboard via
-// the header logo, Settings inside the menu); on mobile the Profile item
-// routes to the Settings screen, which holds the same account / theme /
-// sign-out actions. Because Settings IS a route here, the Profile item DOES
-// take the active pill when you're on it (the PWA's never does — its profile
-// is a menu, not a destination).
+// order — plus the trailing Profile avatar item. Profile is NOT a route
+// (PWA parity): tapping it opens the account bottom sheet (ProfileSheet —
+// user header, Account settings, Plans & billing, Dark mode, Sign out),
+// exactly like the PWA's Profile tap opens its adapted DropdownMenu sheet.
+// The sentinel value never matches `activeValue`, so Profile never takes
+// the active pill — Settings is reached THROUGH the sheet.
 //
 // The wrapper layer is absolute-positioned with `box-none` so the side
 // gutters stay scrollable — on NATIVE box-none works as designed (the
@@ -30,8 +29,11 @@ import {
   CheckSquare,
   Target,
 } from "@tamagui/lucide-icons-2";
+import { useState } from "react";
 import { Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { ProfileSheet } from "@/components/profile-sheet";
 
 /**
  * Bottom padding scroll content needs to clear the floating capsule — the
@@ -53,7 +55,10 @@ const NAV_ITEMS = [
   { name: "journal", label: "Journal", icon: BookOpen },
 ] as const;
 
-const PROFILE_ROUTE = "settings";
+// Sentinel value for the Profile item — NOT a route, so `onChange` opens the
+// account sheet instead of navigating, and it never matches `activeValue`
+// (so Profile never shows the active indicator). Same as the PWA's.
+const PROFILE_VALUE = "__profile__";
 
 function getUserInitials(name?: string | null, email?: string | null): string {
   const source = name?.trim() || email?.trim() || "?";
@@ -104,6 +109,7 @@ type TabBarProps = {
 
 export function MobileBottomNav({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
+  const [profileOpen, setProfileOpen] = useState(false);
 
   // Active tab — nested detail routes (journal/[id]) highlight their parent
   // destination, mirroring the PWA's longest-prefix isNavActive.
@@ -111,44 +117,58 @@ export function MobileBottomNav({ state, navigation }: TabBarProps) {
   const activeValue = currentName.split("/")[0] ?? "";
 
   return (
-    <View
-      position="absolute"
-      // The kit's floating variant owns the capsule's own 12px lift; we add
-      // only the home-indicator inset underneath (the PWA's env() inset).
-      b={insets.bottom}
-      l={0}
-      r={0}
-      items="center"
-      pointerEvents="box-none"
-    >
-      <BottomNav
-        variant="floating"
-        value={activeValue}
-        onChange={(v) => navigation.navigate(v)}
-        // NO `width="auto"` since alpha.31: the kit wrapper owns centering at
-        // full width, and with 5 destinations the capsule auto-switches to
-        // DENSE mode (equal-flex items on a full-width track) — a hugged
-        // wrapper would collapse the dense layout. Same change as the PWA.
-        label="Primary navigation"
+    <>
+      <View
+        position="absolute"
+        // The kit's floating variant owns the capsule's own 12px lift; we add
+        // only the home-indicator inset underneath (the PWA's env() inset).
+        b={insets.bottom}
+        l={0}
+        r={0}
+        items="center"
+        pointerEvents="box-none"
       >
-        {NAV_ITEMS.map((item) => {
-          const Icon = item.icon;
-          return (
-            <BottomNav.Item
-              key={item.name}
-              value={item.name}
-              // The kit auto-sizes (22px) and tints the icon by active state.
-              icon={<Icon />}
-              label={item.label}
-            />
-          );
-        })}
-        <BottomNav.Item
-          value={PROFILE_ROUTE}
-          icon={<ProfileNavAvatar />}
-          label="Profile"
-        />
-      </BottomNav>
-    </View>
+        <BottomNav
+          variant="floating"
+          value={activeValue}
+          onChange={(v) => {
+            // Profile isn't a route — it opens the account sheet (PWA parity).
+            if (v === PROFILE_VALUE) {
+              setProfileOpen(true);
+              return;
+            }
+            navigation.navigate(v);
+          }}
+          // NO `width="auto"` since alpha.31: the kit wrapper owns centering at
+          // full width, and with 5 destinations the capsule auto-switches to
+          // DENSE mode (equal-flex items on a full-width track) — a hugged
+          // wrapper would collapse the dense layout. Same change as the PWA.
+          label="Primary navigation"
+        >
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <BottomNav.Item
+                key={item.name}
+                value={item.name}
+                // The kit auto-sizes (22px) and tints the icon by active state.
+                icon={<Icon />}
+                label={item.label}
+              />
+            );
+          })}
+          <BottomNav.Item
+            value={PROFILE_VALUE}
+            icon={<ProfileNavAvatar />}
+            label="Profile"
+          />
+        </BottomNav>
+      </View>
+
+      {/* Account sheet — the PWA's Profile menu as a driven native Sheet
+          (user header · Account settings · Plans & billing · Dark mode ·
+          Sign out). Modal, so it portals above the tab content. */}
+      <ProfileSheet open={profileOpen} onOpenChange={setProfileOpen} />
+    </>
   );
 }
