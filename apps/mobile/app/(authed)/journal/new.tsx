@@ -48,9 +48,14 @@ import { ChevronLeft, SmilePlus } from "@tamagui/lucide-icons-2";
 import { Input as BareInput } from "tamagui";
 import { KeyboardController } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import {
+  JournalTargetCelebration,
+  JournalTargetProgress,
+} from "@/components/journal-progress";
+import { useJournals, useUserLight } from "@/lib/api";
 import { useAutosave } from "@/lib/use-autosave";
 import { useJournalCrypto } from "@/lib/journal-crypto";
 
@@ -104,7 +109,25 @@ export default function NewJournalScreen() {
   // Debounced autosave (PWA parity). First non-empty change POSTs; the hook
   // keeps the created id for subsequent PATCHes. No URL rewrite — we keep
   // editing in place so the 10tap editor never blurs mid-typing.
-  const { scheduleSave, status } = useAutosave({});
+  // `journalId` (set after the first save) excludes this draft from the
+  // other-words-today sum below, so autosave doesn't double-count us.
+  const { scheduleSave, status, journalId } = useAutosave({});
+
+  // Daily word target + words already written in OTHER entries today — feeds
+  // the shared editor's progress strip and target-crossing celebration.
+  // `wordCount` is plaintext metadata even on encrypted entries, so the raw
+  // journals cache is enough (no decrypt needed).
+  const lightQuery = useUserLight();
+  const wordTarget = lightQuery.data?.journalTargetDailyWords ?? 0;
+  const journalsQuery = useJournals();
+  const todayKey = localDateKey();
+  const otherWordsToday = useMemo(
+    () =>
+      (journalsQuery.data ?? [])
+        .filter((j) => j.date.slice(0, 10) === todayKey && j.id !== journalId)
+        .reduce((sum, j) => sum + (j.wordCount ?? 0), 0),
+    [journalsQuery.data, todayKey, journalId],
+  );
 
   const lastSavedRef = useRef<{
     title: string;
@@ -306,8 +329,12 @@ export default function NewJournalScreen() {
             placeholder="What's on your mind?"
             autoFocus
             saveStatus={status}
-            target={0}
-            otherWordsToday={0}
+            target={wordTarget}
+            otherWordsToday={otherWordsToday}
+            renderProgress={(state) => <JournalTargetProgress {...state} />}
+            renderCelebration={(trigger) => (
+              <JournalTargetCelebration trigger={trigger} />
+            )}
           />
         </View>
       </SafeAreaView>

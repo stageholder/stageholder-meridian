@@ -29,18 +29,29 @@ import {
   View,
   XStack,
   YStack,
+  useToast,
 } from "@stageholder/ui";
 import type { RichTextEditorContent } from "@stageholder/ui";
 import { JournalEditor } from "@repo/features/journal";
 import type { Journal, JournalContent } from "@repo/core/types";
-import { ChevronLeft, SmilePlus } from "@tamagui/lucide-icons-2";
+import { ChevronLeft, SmilePlus, Trash2 } from "@tamagui/lucide-icons-2";
 import { Input as BareInput } from "tamagui";
+import { Alert } from "react-native";
 import { KeyboardController } from "react-native-keyboard-controller";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useJournal } from "@/lib/api";
+import {
+  JournalTargetCelebration,
+  JournalTargetProgress,
+} from "@/components/journal-progress";
+import {
+  useDeleteJournal,
+  useJournal,
+  useJournals,
+  useUserLight,
+} from "@/lib/api";
 import { useAutosave } from "@/lib/use-autosave";
 import {
   decryptJournalEntry,
@@ -188,6 +199,33 @@ export default function JournalDetailScreen() {
 
 function EntryEditor({ entry }: { entry: Journal }) {
   const router = useRouter();
+  const toast = useToast();
+  const deleteJournal = useDeleteJournal();
+
+  // Platform-native destructive confirm (PWA parity: its $id page deletes
+  // behind a web AlertDialog). Navigates straight back on success — there's
+  // nothing left to edit.
+  function confirmDelete() {
+    Alert.alert("Delete this entry?", "This cannot be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () =>
+          deleteJournal.mutate(entry.id, {
+            onSuccess: () => {
+              toast.show({ title: "Entry deleted", intent: "success" });
+              router.navigate("/journal");
+            },
+            onError: () =>
+              toast.show({
+                title: "Couldn't delete entry",
+                intent: "danger",
+              }),
+          }),
+      },
+    ]);
+  }
 
   // Seed from the (already-decrypted) entry — this component only mounts once
   // the entry is ready, so a plain useState initializer is correct.
@@ -208,6 +246,21 @@ function EntryEditor({ entry }: { entry: Journal }) {
   // Debounced autosave (PWA parity) — always PATCHes this entry's id. The
   // baseline seeds from the entry so the mount tick never fires a no-op save.
   const { scheduleSave, status } = useAutosave({ journalId: entry.id });
+
+  // Daily word target + words in OTHER entries today (this entry excluded —
+  // its live count comes from the editor). `wordCount` stays plaintext on
+  // encrypted entries, so the raw cache suffices.
+  const lightQuery = useUserLight();
+  const wordTarget = lightQuery.data?.journalTargetDailyWords ?? 0;
+  const journalsQuery = useJournals();
+  const todayKey = localDateKey();
+  const otherWordsToday = useMemo(
+    () =>
+      (journalsQuery.data ?? [])
+        .filter((j) => j.date.slice(0, 10) === todayKey && j.id !== entry.id)
+        .reduce((sum, j) => sum + (j.wordCount ?? 0), 0),
+    [journalsQuery.data, todayKey, entry.id],
+  );
 
   const lastSavedRef = useRef<{
     title: string;
@@ -243,9 +296,10 @@ function EntryEditor({ entry }: { entry: Journal }) {
   return (
     <YStack flex={1} bg="$background">
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-        {/* Header: icon back · centered title · Done. Done just returns to
-            the list — autosave owns persistence (status badge in the editor
-            toolbar). */}
+        {/* Header: icon back · centered title · delete · Done. Done just
+            returns to the list — autosave owns persistence (status badge in
+            the editor toolbar). Delete confirms via the platform Alert (the
+            PWA's $id page has the same action behind its web AlertDialog). */}
         <XStack
           items="center"
           justify="space-between"
@@ -273,14 +327,24 @@ function EntryEditor({ entry }: { entry: Journal }) {
           >
             Entry
           </Text>
-          <Button
-            intent="primary"
-            size="sm"
-            mr="$2"
-            onPress={() => router.navigate("/journal")}
-          >
-            Done
-          </Button>
+          <XStack items="center" gap="$1" mr="$2">
+            <IconButton
+              variant="ghost"
+              size="sm"
+              aria-label="Delete entry"
+              disabled={deleteJournal.isPending}
+              onPress={confirmDelete}
+            >
+              <Trash2 size={18} color="$destructive" />
+            </IconButton>
+            <Button
+              intent="primary"
+              size="sm"
+              onPress={() => router.navigate("/journal")}
+            >
+              Done
+            </Button>
+          </XStack>
         </XStack>
 
         <YStack shrink={0} px="$4" pt="$2">
@@ -356,8 +420,12 @@ function EntryEditor({ entry }: { entry: Journal }) {
             placeholder="What's on your mind?"
             autoFocus={false}
             saveStatus={status}
-            target={0}
-            otherWordsToday={0}
+            target={wordTarget}
+            otherWordsToday={otherWordsToday}
+            renderProgress={(state) => <JournalTargetProgress {...state} />}
+            renderCelebration={(trigger) => (
+              <JournalTargetCelebration trigger={trigger} />
+            )}
           />
         </View>
       </SafeAreaView>
