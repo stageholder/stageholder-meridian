@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { format } from "date-fns";
 import { Inbox } from "@tamagui/lucide-icons-2";
 import { Form, isWeb } from "tamagui";
@@ -123,6 +123,14 @@ export function TodoForm({
   const [selectedListId, setSelectedListId] = useState(
     initial.listId || defaultListId,
   );
+  // Several TodoForm instances can be MOUNTED at once (create + edit sheets
+  // on the todos screen, the calendar's create dialog — tab screens stay
+  // alive), so input ids must be per-instance or RN warns "duplicate ID for
+  // input". useId keeps the Label↔Input pairing collision-free.
+  const uid = useId();
+  const titleId = `todo-form-title-${uid}`;
+  const descriptionId = `todo-form-description-${uid}`;
+
   const [title, setTitle] = useState(initial.title);
   const [description, setDescription] = useState(initial.description ?? "");
   const [priority, setPriority] = useState(initial.priority);
@@ -197,9 +205,9 @@ export function TodoForm({
         )}
 
         <YStack gap="$1">
-          <Label htmlFor="todo-form-title">Title</Label>
+          <Label htmlFor={titleId}>Title</Label>
           <Input
-            id="todo-form-title"
+            id={titleId}
             value={title}
             onChangeText={setTitle}
             placeholder="What needs to be done?"
@@ -208,9 +216,9 @@ export function TodoForm({
         </YStack>
 
         <YStack gap="$1">
-          <Label htmlFor="todo-form-description">Description</Label>
+          <Label htmlFor={descriptionId}>Description</Label>
           <TextArea
-            id="todo-form-description"
+            id={descriptionId}
             value={description}
             onChangeText={setDescription}
             placeholder="Add details..."

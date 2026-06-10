@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Form, isWeb, useMedia } from "tamagui";
 import {
   Button,
@@ -128,6 +128,15 @@ export function HabitForm({
   onSubmit,
   onCancel,
 }: HabitFormProps) {
+  // Create + edit dialogs can both be mounted at once (the habits screen
+  // keeps both sheets in the tree), so input ids must be per-instance or RN
+  // warns "duplicate ID for input" — same fix as TodoForm.
+  const uid = useId();
+  const nameId = `habit-form-name-${uid}`;
+  const descriptionId = `habit-form-description-${uid}`;
+  const targetId = `habit-form-target-${uid}`;
+  const unitId = `habit-form-unit-${uid}`;
+
   const [name, setName] = useState(initial.name);
   const [description, setDescription] = useState(initial.description ?? "");
   const [frequency, setFrequency] = useState<HabitFormValues["frequency"]>(
@@ -248,9 +257,9 @@ export function HabitForm({
             </View>
           </YStack>
           <YStack flex={1}>
-            <Label htmlFor="habit-form-name">Name</Label>
+            <Label htmlFor={nameId}>Name</Label>
             <Input
-              id="habit-form-name"
+              id={nameId}
               mt="$1"
               value={name}
               onChangeText={setName}
@@ -261,9 +270,9 @@ export function HabitForm({
         </XStack>
 
         <YStack>
-          <Label htmlFor="habit-form-description">Description</Label>
+          <Label htmlFor={descriptionId}>Description</Label>
           <TextArea
-            id="habit-form-description"
+            id={descriptionId}
             mt="$1"
             value={description}
             onChangeText={setDescription}
@@ -303,11 +312,11 @@ export function HabitForm({
             </Select>
           </YStack>
           <YStack width={120}>
-            <Label htmlFor="habit-form-target">
+            <Label htmlFor={targetId}>
               {frequency === "weekly_target" ? "Per session" : "Times per day"}
             </Label>
             <Input
-              id="habit-form-target"
+              id={targetId}
               mt="$1"
               keyboardType="number-pad"
               value={String(targetCount)}
@@ -315,9 +324,9 @@ export function HabitForm({
             />
           </YStack>
           <YStack flex={1}>
-            <Label htmlFor="habit-form-unit">Unit</Label>
+            <Label htmlFor={unitId}>Unit</Label>
             <Input
-              id="habit-form-unit"
+              id={unitId}
               mt="$1"
               value={unit}
               onChangeText={setUnit}

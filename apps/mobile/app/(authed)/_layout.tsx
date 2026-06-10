@@ -146,6 +146,9 @@ export default function AuthedLayout() {
           {/* Habit detail — pushed from a habit card; Habits tab stays lit
               via the prefix match. */}
           <Tabs.Screen name="habits/[id]" options={{ href: null }} />
+          {/* Calendar — month grid + day agenda, pushed from the Today
+              header's calendar icon. */}
+          <Tabs.Screen name="calendar" options={{ href: null }} />
           {/* Journal entry detail (journal/[id].tsx) + the new-entry editor
               (journal/new.tsx) live in the journal tab's stack but are not
               destinations — the custom bar lists its own items, and the

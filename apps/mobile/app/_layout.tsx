@@ -138,32 +138,39 @@ export default function RootLayout() {
               the kit reference app's provider setup. defaultTheme seeds the
               initial theme; the inner <Theme name> keeps the whole tree
               following live preference changes from the store. */}
-          <TamaguiProvider config={tamaguiConfig} defaultTheme={resolvedTheme}>
-            <Theme name={resolvedTheme}>
-              <HapticProvider impl={expoHapticImpl}>
-                {/* Full-screen celebration overlay + useCelebrate(). Inside
-                    HapticProvider (burst haptics) and Theme. Drives the habit
-                    completion burst — see habits.tsx renderCompletionEffect.
-                    alpha.34's native build (Celebration.shared.native). */}
-                <CelebrationProvider>
-                  <ToastProvider>
-                    <StageholderProvider
-                      productSlug="meridian"
-                      config={{
-                        issuerUrl: ISSUER_URL,
-                        clientId: CLIENT_ID,
-                        scheme: "meridian",
-                        audience: "meridian-api",
-                        biometric: "off",
-                      }}
-                      onSignedOut={() => router.replace("/sign-in")}
-                    >
-                      {/* QueryProvider sits INSIDE the SDK provider so its
-                        AuthTokenBridge can read useAccessToken(), and its
-                        onUnauthorized can drive the route change on a 401. */}
-                      <QueryProvider
-                        onUnauthorized={() => router.replace("/sign-in")}
-                      >
+          {/* HEADLESS providers (SDK auth + react-query) sit OUTSIDE
+              TamaguiProvider ON PURPOSE: Tamagui's root portal host renders
+              at the TamaguiProvider level, and MODAL SHEETS PORTAL their
+              children there. Any context provided BELOW that host is
+              invisible to sheet content — react-query hooks inside a
+              FormSheet threw "No QueryClient set" until these moved up.
+              Both providers render no UI, so Tamagui doesn't need to wrap
+              them. Query stays INSIDE the SDK provider so its
+              AuthTokenBridge can read useAccessToken(). */}
+          <StageholderProvider
+            productSlug="meridian"
+            config={{
+              issuerUrl: ISSUER_URL,
+              clientId: CLIENT_ID,
+              scheme: "meridian",
+              audience: "meridian-api",
+              biometric: "off",
+            }}
+            onSignedOut={() => router.replace("/sign-in")}
+          >
+            <QueryProvider onUnauthorized={() => router.replace("/sign-in")}>
+              <TamaguiProvider
+                config={tamaguiConfig}
+                defaultTheme={resolvedTheme}
+              >
+                <Theme name={resolvedTheme}>
+                  <HapticProvider impl={expoHapticImpl}>
+                    {/* Full-screen celebration overlay + useCelebrate().
+                        Inside HapticProvider (burst haptics) and Theme.
+                        Drives the habit completion burst — see habits.tsx
+                        renderCompletionEffect. */}
+                    <CelebrationProvider>
+                      <ToastProvider>
                         <StatusBar
                           style={resolvedTheme === "dark" ? "light" : "dark"}
                         />
@@ -171,13 +178,13 @@ export default function RootLayout() {
                           <Stack.Screen name="sign-in" />
                           <Stack.Screen name="(authed)" />
                         </Stack>
-                      </QueryProvider>
-                    </StageholderProvider>
-                  </ToastProvider>
-                </CelebrationProvider>
-              </HapticProvider>
-            </Theme>
-          </TamaguiProvider>
+                      </ToastProvider>
+                    </CelebrationProvider>
+                  </HapticProvider>
+                </Theme>
+              </TamaguiProvider>
+            </QueryProvider>
+          </StageholderProvider>
         </SafeAreaProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>

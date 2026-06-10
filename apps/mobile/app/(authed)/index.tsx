@@ -20,6 +20,7 @@ import {
   Button,
   Card,
   H2,
+  IconButton,
   Paragraph,
   PullToRefresh,
   Separator,
@@ -40,6 +41,7 @@ import {
 import { LevelProgress } from "@repo/features/light";
 import type { HabitEntry, Todo } from "@repo/core/types";
 import type { UserLight } from "@repo/core/types/light";
+import { CalendarDays } from "@tamagui/lucide-icons-2";
 import { useQueries } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
@@ -267,21 +269,33 @@ export default function TodayScreen() {
           } as object)}
         >
           <YStack gap="$5" px="$4" pt="$4" pb="$8">
-            {/* ---- Header: date + greeting ---- */}
-            <YStack gap="$1">
-              <Paragraph
-                fontFamily="$mono"
-                fontSize={11}
-                letterSpacing={2}
-                color="$mutedForeground"
+            {/* ---- Header: date + greeting · calendar entry ---- */}
+            <XStack items="flex-start" justify="space-between" gap="$3">
+              <YStack gap="$1" flex={1} minW={0}>
+                <Paragraph
+                  fontFamily="$mono"
+                  fontSize={11}
+                  letterSpacing={2}
+                  color="$mutedForeground"
+                >
+                  {todayLabel()}
+                </Paragraph>
+                <H2 color="$color">
+                  {greeting()}
+                  {user?.name ? `, ${user.name.split(" ")[0]}` : ""}.
+                </H2>
+              </YStack>
+              {/* Month calendar (rings-per-day + day agenda) — the PWA's
+                  /calendar, hidden-route on mobile. */}
+              <IconButton
+                variant="ghost"
+                size="sm"
+                aria-label="Open calendar"
+                onPress={() => router.push("/calendar")}
               >
-                {todayLabel()}
-              </Paragraph>
-              <H2 color="$color">
-                {greeting()}
-                {user?.name ? `, ${user.name.split(" ")[0]}` : ""}.
-              </H2>
-            </YStack>
+                <CalendarDays size={20} />
+              </IconButton>
+            </XStack>
 
             {/* ---- Error banner ---- */}
             {error ? (

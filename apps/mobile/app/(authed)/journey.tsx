@@ -43,6 +43,7 @@ import {
   LevelUpCelebration,
   StarVisual,
 } from "@repo/features/light";
+import { JourneyLightChart } from "@repo/features/charts";
 import { LIGHT_TIERS, type UserLight } from "@repo/core/types/light";
 import { ChevronLeft } from "@tamagui/lucide-icons-2";
 import { useRouter } from "expo-router";
@@ -54,6 +55,7 @@ import {
 
 import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
 import { useLightEvents, useUserLight } from "@/lib/api";
+import { useLightTrend } from "@/lib/use-light-trend";
 
 const FEED_INITIAL = 10;
 const FEED_STEP = 20;
@@ -85,6 +87,7 @@ export default function JourneyScreen() {
 
   const [feedLimit, setFeedLimit] = useState(FEED_INITIAL);
   const eventsQuery = useLightEvents(feedLimit, 0);
+  const lightTrend = useLightTrend();
   // Array.isArray (not just ?? []): the query cache is PERSISTED to
   // AsyncStorage, so a stale entry written by an older hook version can
   // rehydrate with a different shape and render before the refetch lands.
@@ -175,6 +178,16 @@ export default function JourneyScreen() {
               <YStack gap="$3">
                 <SectionLabel>Streaks</SectionLabel>
                 <JourneyStreaks userLight={userLight} />
+              </YStack>
+
+              {/* ---- Light earned (14-day cumulative trend) — the shared
+                   chart view over the kit's cross-platform AreaChart. ---- */}
+              <YStack gap="$3">
+                <SectionLabel>Light Earned</SectionLabel>
+                <JourneyLightChart
+                  data={lightTrend.data}
+                  isLoading={lightTrend.isLoading}
+                />
               </YStack>
 
               {/* ---- The path (redesigned vertical tier map) ---- */}

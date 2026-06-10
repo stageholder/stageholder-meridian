@@ -115,14 +115,23 @@ export function SubtaskSection({ todo }: { todo: Todo }) {
       {sorted.map((subtask) => {
         const done = subtask.status === "done";
         return (
-          <XStack key={subtask.id} items="center" gap="$2.5">
-            <Checkbox
-              checked={done}
-              onCheckedChange={() => handleToggle(subtask)}
-              aria-label={done ? "Mark subtask not done" : "Mark subtask done"}
-            >
+          // The ROW is the toggle target (UserMenuContent switch-row
+          // pattern): one press surface with a real 44pt hit area, and no
+          // reliance on TamaguiCheckbox's internal press inside a portaled
+          // sheet (where it proved unreliable). The checkbox is visual-only.
+          <XStack
+            key={subtask.id}
+            items="center"
+            gap="$2.5"
+            py="$1"
+            onPress={() => handleToggle(subtask)}
+            pressStyle={{ opacity: 0.7 }}
+            role="checkbox"
+            aria-checked={done}
+          >
+            <Checkbox checked={done} pointerEvents="none">
               <Checkbox.Indicator>
-                <Check size={12} />
+                <Check size={12} color="$primaryForeground" />
               </Checkbox.Indicator>
             </Checkbox>
             <Text

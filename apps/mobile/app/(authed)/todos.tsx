@@ -156,6 +156,10 @@ export default function TodosScreen() {
         <RNScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          // RN ScrollView defaults to flexGrow:1 — in this flex column it
+          // would split the leftover height with the PullToRefresh scroller,
+          // stranding the chips mid-screen. Hug the rail's content height.
+          style={{ flexGrow: 0 }}
           contentContainerStyle={{
             paddingHorizontal: 16,
             paddingVertical: 10,
