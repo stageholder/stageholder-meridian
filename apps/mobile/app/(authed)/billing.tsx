@@ -48,6 +48,7 @@ import {
 } from "@stageholder/sdk/react-native";
 import { ChevronLeft, Download, ExternalLink } from "@tamagui/lucide-icons-2";
 import { useRouter } from "expo-router";
+import { Platform } from "react-native";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -61,6 +62,7 @@ import {
   useInvoices,
   type HubInvoice,
 } from "@/lib/api/hub";
+import { iapEnabled, storeManagementUrl } from "@/lib/purchases";
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -187,10 +189,14 @@ export default function BillingScreen() {
                   </Text>
                   {sub ? (
                     <Badge intent={statusIntent(sub.status)}>
-                      {sub.status === "past_due"
-                        ? "Past due"
-                        : sub.status.charAt(0).toUpperCase() +
-                          sub.status.slice(1)}
+                      {/* Badge's frame is a View — on native, text must go
+                          through the Badge.Label Text child. */}
+                      <Badge.Label>
+                        {sub.status === "past_due"
+                          ? "Past due"
+                          : sub.status.charAt(0).toUpperCase() +
+                            sub.status.slice(1)}
+                      </Badge.Label>
                     </Badge>
                   ) : null}
                 </XStack>
@@ -223,15 +229,47 @@ export default function BillingScreen() {
                 ) : null}
 
                 {canManage && activeOrgId ? (
-                  <Button
-                    intent="primary"
-                    iconAfter={<ExternalLink size={14} opacity={0.7} />}
-                    loading={portal.isPending}
-                    loadingText="Opening…"
-                    onPress={openPortal}
-                  >
-                    Manage plan & payment
-                  </Button>
+                  iapEnabled() ? (
+                    // STORE BUILD: purchases run through StoreKit / Play
+                    // Billing (apps/mobile/lib/purchases.ts) — no external
+                    // payment links on this screen (App Store guideline
+                    // 3.1.1). Store subs are managed in the OS subscription
+                    // settings, not the Polar portal.
+                    //
+                    // TODO(provider): once the Hub claim carries `provider`
+                    // (docs/iap-hub-contract.md §4), web-billed Polar subs
+                    // should branch back to the portal button here.
+                    <YStack gap="$2">
+                      <Button
+                        intent="primary"
+                        onPress={() => router.push("/upgrade")}
+                      >
+                        {sub ? "Change plan" : "Upgrade plan"}
+                      </Button>
+                      {sub ? (
+                        <Button
+                          intent="outline"
+                          iconAfter={<ExternalLink size={14} opacity={0.7} />}
+                          onPress={() => openURL(storeManagementUrl())}
+                        >
+                          Manage in{" "}
+                          {Platform.OS === "ios" ? "App Store" : "Google Play"}
+                        </Button>
+                      ) : null}
+                    </YStack>
+                  ) : (
+                    // WEB-BILLED (pre-store / dev builds): the Polar portal
+                    // owns payment method, cancel, and plan changes.
+                    <Button
+                      intent="primary"
+                      iconAfter={<ExternalLink size={14} opacity={0.7} />}
+                      loading={portal.isPending}
+                      loadingText="Opening…"
+                      onPress={openPortal}
+                    >
+                      Manage plan & payment
+                    </Button>
+                  )
                 ) : (
                   <Paragraph fontSize="$2" color="$mutedForeground">
                     Only an organization owner or admin can change billing.
