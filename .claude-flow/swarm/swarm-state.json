@@ -4,7 +4,7 @@
       "swarmId": "swarm-1780731109947-guou7t",
       "topology": "hierarchical",
       "maxAgents": 8,
-      "status": "running",
+      "status": "terminated",
       "agents": [],
       "tasks": [],
       "config": {
@@ -16,8 +16,9 @@
         "consensusMechanism": "majority"
       },
       "createdAt": "2026-06-06T07:31:49.947Z",
-      "updatedAt": "2026-06-06T07:31:49.947Z",
-      "pid": 33822
+      "updatedAt": "2026-06-10T03:48:36.889Z",
+      "pid": 33822,
+      "terminationReason": "host process 33822 exited"
     }
   },
   "version": "3.0.0"

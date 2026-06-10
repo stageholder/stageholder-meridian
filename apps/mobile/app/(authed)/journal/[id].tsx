@@ -6,10 +6,11 @@
 // edited. Save encrypts title/content/tags before the PATCH (see
 // useUpdateJournal) — the same end-to-end boundary as creation.
 //
-// Editing mirrors journal/new.tsx (explicit Save, not the PWA's autosave): one
-// PATCH on Save, then back to the list. The editor body is split into its own
-// <EntryEditor> that mounts ONLY once the decrypted entry is ready, so its
-// initial state seeds cleanly from the entry (no async re-seed dance).
+// Editing mirrors journal/new.tsx: debounced AUTOSAVE (PWA parity) — every
+// settled change PATCHes via use-autosave; the header's Done just returns to
+// the list. The editor body is split into its own <EntryEditor> that mounts
+// ONLY once the decrypted entry is ready, so its initial state (and the
+// autosave's last-saved baseline) seeds cleanly from the entry.
 //
 // Hidden from the tab bar via `href: null` in (authed)/_layout.tsx. If the
 // journal is locked (no DEK) we bounce the reader to the list to unlock.
@@ -28,20 +29,19 @@ import {
   View,
   XStack,
   YStack,
-  useToast,
 } from "@stageholder/ui";
 import type { RichTextEditorContent } from "@stageholder/ui";
 import { JournalEditor } from "@repo/features/journal";
-import { countWordsFromContent } from "@repo/core/utils/text";
 import type { Journal, JournalContent } from "@repo/core/types";
 import { ChevronLeft, SmilePlus } from "@tamagui/lucide-icons-2";
 import { Input as BareInput } from "tamagui";
 import { KeyboardController } from "react-native-keyboard-controller";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useJournal, useUpdateJournal } from "@/lib/api";
+import { useJournal } from "@/lib/api";
+import { useAutosave } from "@/lib/use-autosave";
 import {
   decryptJournalEntry,
   getJournalDek,
@@ -126,12 +126,15 @@ export default function JournalDetailScreen() {
         <BackBar onBack={() => router.navigate("/journal")} title="Entry" />
         <YStack px="$4" pt="$2">
           <Banner intent="danger">
-            <Banner.Title>Couldn&apos;t open this entry</Banner.Title>
-            <Banner.Description>
-              {decryptError
-                ? "This entry couldn't be decrypted with the current key."
-                : ((journalQuery.error as Error)?.message ?? "Network error.")}
-            </Banner.Description>
+            <Banner.Body>
+              <Banner.Title>Couldn&apos;t open this entry</Banner.Title>
+              <Banner.Description>
+                {decryptError
+                  ? "This entry couldn't be decrypted with the current key."
+                  : ((journalQuery.error as Error)?.message ??
+                    "Network error.")}
+              </Banner.Description>
+            </Banner.Body>
           </Banner>
         </YStack>
       </Scaffold>
@@ -145,19 +148,21 @@ export default function JournalDetailScreen() {
         <BackBar onBack={() => router.navigate("/journal")} title="Entry" />
         <YStack px="$4" pt="$2" gap="$3">
           <Banner intent="neutral">
-            <Banner.Title>Journal locked</Banner.Title>
-            <Banner.Description>
-              Unlock your journal from the list to read or edit this entry.
-            </Banner.Description>
-            <Banner.Action>
-              <Button
-                intent="secondary"
-                size="sm"
-                onPress={() => router.navigate("/journal")}
-              >
-                Go to journal
-              </Button>
-            </Banner.Action>
+            <Banner.Body>
+              <Banner.Title>Journal locked</Banner.Title>
+              <Banner.Description>
+                Unlock your journal from the list to read or edit this entry.
+              </Banner.Description>
+              <Banner.Action self="flex-end" mt="$2">
+                <Button
+                  intent="secondary"
+                  size="sm"
+                  onPress={() => router.navigate("/journal")}
+                >
+                  Go to journal
+                </Button>
+              </Banner.Action>
+            </Banner.Body>
           </Banner>
         </YStack>
       </Scaffold>
@@ -183,8 +188,6 @@ export default function JournalDetailScreen() {
 
 function EntryEditor({ entry }: { entry: Journal }) {
   const router = useRouter();
-  const toast = useToast();
-  const updateJournal = useUpdateJournal();
 
   // Seed from the (already-decrypted) entry — this component only mounts once
   // the entry is ready, so a plain useState initializer is correct.
@@ -201,31 +204,48 @@ function EntryEditor({ entry }: { entry: Journal }) {
 
   const effectiveTitle = title.trim() || formatDefaultTitle(date);
   const currentMood = MOOD_DEFAULT_OPTIONS.find((m) => m.value === mood);
-  const hasContent = countWordsFromContent(content) > 0;
 
-  function handleSave() {
-    if (!hasContent || updateJournal.isPending) return;
-    updateJournal.mutate(
-      {
-        id: entry.id,
-        patch: { title: effectiveTitle, content, mood, tags, date },
-      },
-      {
-        onSuccess: () => {
-          toast.show({ title: "Entry updated", intent: "success" });
-          router.navigate("/journal");
-        },
-        onError: () => {
-          toast.show({ title: "Failed to save entry", intent: "danger" });
-        },
-      },
-    );
-  }
+  // Debounced autosave (PWA parity) — always PATCHes this entry's id. The
+  // baseline seeds from the entry so the mount tick never fires a no-op save.
+  const { scheduleSave, status } = useAutosave({ journalId: entry.id });
+
+  const lastSavedRef = useRef<{
+    title: string;
+    content: JournalContent;
+    mood: number | undefined;
+    tags: string[];
+    date: string;
+  }>({
+    title: entry.title ?? "",
+    content: entry.content,
+    mood: entry.mood ?? undefined,
+    tags: Array.isArray(entry.tags) ? entry.tags : [],
+    date: localDateKey(parseDateLocal(entry.date)),
+  });
+
+  // Schedule a save when something actually changed since the last scheduled
+  // save. Content/tags compare via JSON.stringify (two identical JSON docs
+  // are never `===`); the title falls back to the date label like creation.
+  useEffect(() => {
+    const last = lastSavedRef.current;
+    if (
+      effectiveTitle === last.title &&
+      JSON.stringify(content) === JSON.stringify(last.content) &&
+      mood === last.mood &&
+      JSON.stringify(tags) === JSON.stringify(last.tags) &&
+      date === last.date
+    )
+      return;
+    lastSavedRef.current = { title: effectiveTitle, content, mood, tags, date };
+    scheduleSave({ title: effectiveTitle, content, mood, tags, date });
+  }, [effectiveTitle, content, mood, tags, date, scheduleSave]);
 
   return (
     <YStack flex={1} bg="$background">
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-        {/* Header: icon back · centered title · Save. */}
+        {/* Header: icon back · centered title · Done. Done just returns to
+            the list — autosave owns persistence (status badge in the editor
+            toolbar). */}
         <XStack
           items="center"
           justify="space-between"
@@ -257,10 +277,9 @@ function EntryEditor({ entry }: { entry: Journal }) {
             intent="primary"
             size="sm"
             mr="$2"
-            disabled={!hasContent || updateJournal.isPending}
-            onPress={handleSave}
+            onPress={() => router.navigate("/journal")}
           >
-            {updateJournal.isPending ? <Spinner size="small" /> : "Save"}
+            Done
           </Button>
         </XStack>
 
@@ -336,6 +355,7 @@ function EntryEditor({ entry }: { entry: Journal }) {
             onChange={setContent}
             placeholder="What's on your mind?"
             autoFocus={false}
+            saveStatus={status}
             target={0}
             otherWordsToday={0}
           />

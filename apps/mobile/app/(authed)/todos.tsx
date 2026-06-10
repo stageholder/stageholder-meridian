@@ -109,15 +109,21 @@ export default function TodosScreen() {
             {/* Error */}
             {todosQuery.error ? (
               <Banner intent="danger">
-                <Banner.Title>Couldn&apos;t load todos</Banner.Title>
-                <Banner.Description>
-                  {(todosQuery.error as Error).message ?? "Network error."}
-                </Banner.Description>
-                <Banner.Action>
-                  <Button intent="secondary" size="sm" onPress={handleRefresh}>
-                    Try again
-                  </Button>
-                </Banner.Action>
+                <Banner.Body>
+                  <Banner.Title>Couldn&apos;t load todos</Banner.Title>
+                  <Banner.Description>
+                    {(todosQuery.error as Error).message ?? "Network error."}
+                  </Banner.Description>
+                  <Banner.Action self="flex-end" mt="$2">
+                    <Button
+                      intent="secondary"
+                      size="sm"
+                      onPress={handleRefresh}
+                    >
+                      Try again
+                    </Button>
+                  </Banner.Action>
+                </Banner.Body>
               </Banner>
             ) : null}
 

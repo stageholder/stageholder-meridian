@@ -83,8 +83,10 @@ export default function SignInScreen() {
 
             {showError ? (
               <Banner intent="danger">
-                <Banner.Title>Sign-in failed</Banner.Title>
-                <Banner.Description>{error.message}</Banner.Description>
+                <Banner.Body>
+                  <Banner.Title>Sign-in failed</Banner.Title>
+                  <Banner.Description>{error.message}</Banner.Description>
+                </Banner.Body>
               </Banner>
             ) : null}
           </YStack>

@@ -18,3 +18,10 @@ export {
   PassphraseSetupDialog,
   type PassphraseSetupDialogProps,
 } from "./passphrase-setup-dialog";
+
+export {
+  PASSPHRASE_SETUP_COPY,
+  PassphraseSetupForm,
+  type PassphraseSetupFormProps,
+  type PassphraseSetupStep,
+} from "./passphrase-setup-form";

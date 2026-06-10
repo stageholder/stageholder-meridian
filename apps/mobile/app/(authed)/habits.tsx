@@ -117,15 +117,21 @@ export default function HabitsScreen() {
             {/* Error — only when the list itself failed. */}
             {habitsQuery.error ? (
               <Banner intent="danger">
-                <Banner.Title>Couldn&apos;t load habits</Banner.Title>
-                <Banner.Description>
-                  {(habitsQuery.error as Error).message ?? "Network error."}
-                </Banner.Description>
-                <Banner.Action>
-                  <Button intent="secondary" size="sm" onPress={handleRefresh}>
-                    Try again
-                  </Button>
-                </Banner.Action>
+                <Banner.Body>
+                  <Banner.Title>Couldn&apos;t load habits</Banner.Title>
+                  <Banner.Description>
+                    {(habitsQuery.error as Error).message ?? "Network error."}
+                  </Banner.Description>
+                  <Banner.Action self="flex-end" mt="$2">
+                    <Button
+                      intent="secondary"
+                      size="sm"
+                      onPress={handleRefresh}
+                    >
+                      Try again
+                    </Button>
+                  </Banner.Action>
+                </Banner.Body>
               </Banner>
             ) : null}
 

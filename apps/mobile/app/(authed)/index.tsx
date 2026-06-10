@@ -284,15 +284,21 @@ export default function TodayScreen() {
             {/* ---- Error banner ---- */}
             {error ? (
               <Banner intent="danger">
-                <Banner.Title>Couldn&apos;t load today</Banner.Title>
-                <Banner.Description>
-                  {(error as Error).message ?? "Something went wrong."}
-                </Banner.Description>
-                <Banner.Action>
-                  <Button intent="secondary" size="sm" onPress={handleRefresh}>
-                    Try again
-                  </Button>
-                </Banner.Action>
+                <Banner.Body>
+                  <Banner.Title>Couldn&apos;t load today</Banner.Title>
+                  <Banner.Description>
+                    {(error as Error).message ?? "Something went wrong."}
+                  </Banner.Description>
+                  <Banner.Action self="flex-end" mt="$2">
+                    <Button
+                      intent="secondary"
+                      size="sm"
+                      onPress={handleRefresh}
+                    >
+                      Try again
+                    </Button>
+                  </Banner.Action>
+                </Banner.Body>
               </Banner>
             ) : null}
 

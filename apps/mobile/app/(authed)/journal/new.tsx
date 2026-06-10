@@ -14,10 +14,12 @@
 // mirrors it. The route is registered with `href: null` in (authed)/_layout
 // so it isn't a tab destination; the Journal tab stays lit via prefix match.
 //
-// Why an explicit SAVE (not the PWA's autosave): the PWA's use-autosave carries
-// web-specific TanStack-Router remount workarounds and can create an entry on
-// the first keystroke. On mobile a single Save on done is clearer and never
-// leaves an orphan empty entry. One create call, then back to the list.
+// Autosave (parity with the PWA): the local use-autosave port debounces 1s,
+// POSTs once on the first non-empty change (then remembers the id for
+// PATCHes), and flushes on unmount. The empty-draft guard means backing out
+// without typing never creates an orphan entry. The header's Done button just
+// returns to the list — persistence has already happened (or will via the
+// pending debounce timer, which still fires after navigation).
 //
 // Encryption: the create mutation encrypts inline when a DEK is present. If
 // encryption is SET UP but LOCKED (no DEK in memory), we can't encrypt — bounce
@@ -30,13 +32,11 @@ import {
   MOOD_DEFAULT_OPTIONS,
   QuickDatePicker,
   Sheet,
-  Spinner,
   TagInput,
   Text,
   View,
   XStack,
   YStack,
-  useToast,
 } from "@stageholder/ui";
 import { JournalEditor } from "@repo/features/journal";
 import type { RichTextEditorContent } from "@stageholder/ui";
@@ -48,10 +48,10 @@ import { ChevronLeft, SmilePlus } from "@tamagui/lucide-icons-2";
 import { Input as BareInput } from "tamagui";
 import { KeyboardController } from "react-native-keyboard-controller";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useCreateJournal } from "@/lib/api";
+import { useAutosave } from "@/lib/use-autosave";
 import { useJournalCrypto } from "@/lib/journal-crypto";
 
 /** Empty TipTap doc — the editor seeds from this for a fresh entry. */
@@ -82,8 +82,6 @@ function formatDefaultTitle(yyyymmdd: string): string {
 
 export default function NewJournalScreen() {
   const router = useRouter();
-  const toast = useToast();
-  const createJournal = useCreateJournal();
   const { isSetup, isUnlocked } = useJournalCrypto();
 
   const [title, setTitle] = useState("");
@@ -102,31 +100,52 @@ export default function NewJournalScreen() {
 
   const effectiveTitle = title.trim() || formatDefaultTitle(date);
   const currentMood = MOOD_DEFAULT_OPTIONS.find((m) => m.value === mood);
-  // Save needs at least some text (matches the PWA, which won't autosave an
-  // empty doc). Title alone isn't enough — an entry is its content.
-  const hasContent = countWordsFromContent(content) > 0;
 
-  function handleSave() {
-    if (!hasContent || createJournal.isPending) return;
-    createJournal.mutate(
-      {
-        title: effectiveTitle,
-        content,
-        mood,
-        tags,
-        date,
-      },
-      {
-        onSuccess: () => {
-          toast.show({ title: "Entry saved", intent: "success" });
-          router.navigate("/journal");
-        },
-        onError: () => {
-          toast.show({ title: "Failed to save entry", intent: "danger" });
-        },
-      },
-    );
-  }
+  // Debounced autosave (PWA parity). First non-empty change POSTs; the hook
+  // keeps the created id for subsequent PATCHes. No URL rewrite — we keep
+  // editing in place so the 10tap editor never blurs mid-typing.
+  const { scheduleSave, status } = useAutosave({});
+
+  const lastSavedRef = useRef<{
+    title: string;
+    content: RichTextEditorContent;
+    mood: number | undefined;
+    tags: string[];
+    date: string;
+  }>({
+    title: "",
+    content: EMPTY_DOC,
+    mood: undefined,
+    tags: [],
+    date: "",
+  });
+
+  // Schedule a save when something actually changed. The empty-draft guard
+  // (no title, no words, no mood, no tags) keeps backing out from creating
+  // an orphan entry; the "changed since last scheduled?" check stops the
+  // mount tick and picker round-trips from re-saving identical data.
+  // Content/tags compare via JSON.stringify — two identical JSON docs are
+  // never `===`.
+  useEffect(() => {
+    if (
+      !title.trim() &&
+      countWordsFromContent(content) === 0 &&
+      mood === undefined &&
+      tags.length === 0
+    )
+      return;
+    const last = lastSavedRef.current;
+    if (
+      effectiveTitle === last.title &&
+      JSON.stringify(content) === JSON.stringify(last.content) &&
+      mood === last.mood &&
+      JSON.stringify(tags) === JSON.stringify(last.tags) &&
+      date === last.date
+    )
+      return;
+    lastSavedRef.current = { title: effectiveTitle, content, mood, tags, date };
+    scheduleSave({ title: effectiveTitle, content, mood, tags, date });
+  }, [effectiveTitle, content, mood, tags, date, scheduleSave, title]);
 
   // ---- Locked: can't encrypt without the DEK — bounce to the list ----
   if (locked) {
@@ -156,12 +175,12 @@ export default function NewJournalScreen() {
   return (
     <YStack flex={1} bg="$background">
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-        {/* Header: icon back (left) · centered title · Save (right). The
+        {/* Header: icon back (left) · centered title · Done (right). The
             title is absolutely centered so it sits at the true screen center
             regardless of the differing left/right control widths; it's
             pointer-transparent so it never intercepts a tap meant for a
-            button. Save is disabled until there's text and while the create
-            mutation is in flight (spinner replaces the label). */}
+            button. Done just returns to the list — autosave owns
+            persistence (the save-status badge lives in the editor toolbar). */}
         <XStack
           items="center"
           justify="space-between"
@@ -193,10 +212,9 @@ export default function NewJournalScreen() {
             intent="primary"
             size="sm"
             mr="$2"
-            disabled={!hasContent || createJournal.isPending}
-            onPress={handleSave}
+            onPress={() => router.navigate("/journal")}
           >
-            {createJournal.isPending ? <Spinner size="small" /> : "Save"}
+            Done
           </Button>
         </XStack>
 
@@ -287,6 +305,7 @@ export default function NewJournalScreen() {
             onChange={setContent}
             placeholder="What's on your mind?"
             autoFocus
+            saveStatus={status}
             target={0}
             otherWordsToday={0}
           />

@@ -1,19 +1,12 @@
 import { useState } from "react";
-import { writeToClipboard } from "@repo/core/platform/clipboard";
+import { Dialog, XStack, YStack } from "@stageholder/ui";
+import { Shield } from "@tamagui/lucide-icons-2";
+
 import {
-  Button,
-  Checkbox,
-  Dialog,
-  Grid,
-  Input,
-  Label,
-  Text,
-  XStack,
-  YStack,
-} from "@stageholder/ui";
-// Form isn't re-exported by the kit yet; pull it from the shared tamagui dep.
-import { Form } from "tamagui";
-import { Shield, Copy, Check } from "@tamagui/lucide-icons-2";
+  PASSPHRASE_SETUP_COPY,
+  PassphraseSetupForm,
+  type PassphraseSetupStep,
+} from "./passphrase-setup-form";
 
 export interface PassphraseSetupDialogProps {
   /** Controls dialog visibility. */
@@ -37,17 +30,10 @@ export interface PassphraseSetupDialogProps {
 }
 
 /**
- * Two-step encryption setup wizard rendered as a kit `Dialog`. Step 1
- * collects + confirms a passphrase; step 2 shows the recovery codes the
- * user must save before they can dismiss the dialog.
- *
- * Presentational only: the host (PWA's `encryption-gate.tsx`, mobile's
- * equivalent) supplies `onSetup` wired to its encryption store's
- * `setupPassphrase` method and (optionally) an `onSetupError` toast.
- *
- * `writeToClipboard` is the cross-platform adapter from
- * `@repo/core/platform/clipboard` — works on web today, falls back to
- * `expo-clipboard` on the future RN sibling.
+ * The two-step setup wizard (`PassphraseSetupForm`) hosted in a kit
+ * `Dialog` — the PWA surface. Mobile hosts the same form in a kit
+ * `FormSheet` instead (apps/mobile journal screen), matching its other
+ * create/edit flows.
  */
 export function PassphraseSetupDialog({
   open,
@@ -55,65 +41,10 @@ export function PassphraseSetupDialog({
   onSetup,
   onSetupError,
 }: PassphraseSetupDialogProps) {
-  const [step, setStep] = useState<"create" | "recovery">("create");
-  const [passphrase, setPassphrase] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
-  const [saved, setSaved] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [error, setError] = useState("");
-
-  async function handleSetup() {
-    setError("");
-    if (passphrase.length < 8) {
-      setError("Passphrase must be at least 8 characters");
-      return;
-    }
-    if (passphrase !== confirm) {
-      setError("Passphrases do not match");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const codes = await onSetup(passphrase);
-      setRecoveryCodes(codes);
-      setStep("recovery");
-    } catch (err) {
-      onSetupError?.(err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleCopy() {
-    const text = recoveryCodes.join("\n");
-    await writeToClipboard(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  function handleDone() {
-    onComplete();
-    setStep("create");
-    setPassphrase("");
-    setConfirm("");
-    setRecoveryCodes([]);
-    setSaved(false);
-  }
-
-  // User-initiated cancel from the "create" step. Resets the form state so
-  // reopening the dialog starts fresh, then closes via `onComplete`. Not
-  // exposed on the "recovery" step — once codes have been generated, the
-  // user must complete the flow to avoid losing them.
-  function handleCancel() {
-    setStep("create");
-    setPassphrase("");
-    setConfirm("");
-    setError("");
-    onComplete();
-  }
+  // Mirror of the form's internal step — drives which Dialog.Title /
+  // Description pair renders above the form content.
+  const [step, setStep] = useState<PassphraseSetupStep>("create");
+  const copy = PASSPHRASE_SETUP_COPY[step];
 
   return (
     // disableRemoveScroll: the kit's modal scroll-lock sets overflow:hidden +
@@ -128,135 +59,29 @@ export function PassphraseSetupDialog({
           maxW={448}
           onInteractOutside={(e) => e.preventDefault()}
         >
-          {step === "create" ? (
-            <>
-              {/* Restructured header: the Shield icon lives in its own flex
-                  row above Dialog.Title, instead of inside Title with flex+gap.
-                  Tamagui's Dialog.Title renders as an inline-ish Text on web —
-                  putting Description as its sibling caused the two to render
-                  on the same line. Splitting the icon out makes the wrapping
-                  stacks the block-level boundaries. */}
-              <YStack gap="$2">
-                <XStack items="center" gap="$2">
-                  {/* lucide-icons-2 reads its own `color` (no CSS cascade) —
-                      tint the icon directly, dropping the tint-only Text. */}
-                  <Shield size={20} color="$cardForeground" />
-                  <Dialog.Title>Set Up Journal Encryption</Dialog.Title>
-                </XStack>
-                <Dialog.Description>
-                  Create an encryption passphrase to protect your journal
-                  entries. This is separate from your login password. Even we
-                  cannot read your encrypted journals.
-                </Dialog.Description>
-              </YStack>
-              <Form onSubmit={() => void handleSetup()} gap="$4" pt="$2">
-                <YStack gap="$2">
-                  <Label htmlFor="passphrase">Encryption Passphrase</Label>
-                  <Input
-                    id="passphrase"
-                    width="100%"
-                    secureTextEntry
-                    type={"password" as never}
-                    value={passphrase}
-                    onChangeText={setPassphrase}
-                    placeholder="Enter a strong passphrase"
-                  />
-                </YStack>
-                <YStack gap="$2">
-                  <Label htmlFor="confirm">Confirm Passphrase</Label>
-                  <Input
-                    id="confirm"
-                    width="100%"
-                    secureTextEntry
-                    type={"password" as never}
-                    value={confirm}
-                    onChangeText={setConfirm}
-                    placeholder="Confirm your passphrase"
-                  />
-                </YStack>
-                {error ? (
-                  <Text fontSize="$3" color="$destructive">
-                    {error}
-                  </Text>
-                ) : null}
-                {/* Dialog-footer convention: right-aligned actions, primary on
-                    the far right, dismissive (Cancel) ghost-styled on the
-                    left. Submit isn't disabled when fields are empty — letting
-                    the user click and see the validation message is clearer
-                    UX than a silently-disabled button. Only disabled during
-                    the in-flight save to prevent double-submit. */}
-                <XStack justify="flex-end" gap="$2">
-                  <Button intent="ghost" onPress={handleCancel}>
-                    Cancel
-                  </Button>
-                  <Form.Trigger asChild>
-                    <Button
-                      disabled={loading}
-                      loading={loading}
-                      loadingText="Setting up…"
-                    >
-                      Set Up Encryption
-                    </Button>
-                  </Form.Trigger>
-                </XStack>
-              </Form>
-            </>
-          ) : (
-            <>
-              <YStack gap="$2">
-                <Dialog.Title>Save Your Recovery Codes</Dialog.Title>
-                <Dialog.Description>
-                  If you forget your passphrase, these codes are the only way to
-                  recover access to your journals. Store them somewhere safe.
-                </Dialog.Description>
-              </YStack>
-              <YStack gap="$4" pt="$2">
-                <Grid
-                  columns={2}
-                  gap="$2"
-                  rounded="$lg"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  bg="$muted"
-                  p="$4"
-                >
-                  {recoveryCodes.map((code, i) => (
-                    <Text
-                      key={i}
-                      fontFamily="$mono"
-                      fontSize="$3"
-                      color="$color"
-                      text="center"
-                    >
-                      {code}
-                    </Text>
-                  ))}
-                </Grid>
-                <Button
-                  intent="outline"
-                  width="100%"
-                  icon={copied ? <Check size={16} /> : <Copy size={16} />}
-                  onPress={() => void handleCopy()}
-                >
-                  {copied ? "Copied!" : "Copy to Clipboard"}
-                </Button>
-                <Label flexDirection="row" items="center" gap="$2" size="$3">
-                  <Checkbox
-                    checked={saved}
-                    onCheckedChange={(v) => setSaved(v === true)}
-                  >
-                    <Checkbox.Indicator>
-                      <Check size={12} />
-                    </Checkbox.Indicator>
-                  </Checkbox>
-                  <Text>I have saved these recovery codes</Text>
-                </Label>
-                <Button onPress={handleDone} disabled={!saved} width="100%">
-                  Done
-                </Button>
-              </YStack>
-            </>
-          )}
+          <YStack gap="$2">
+            {step === "create" ? (
+              // The Shield icon lives in its own flex row above Dialog.Title,
+              // instead of inside Title with flex+gap. Tamagui's Dialog.Title
+              // renders as an inline-ish Text on web — putting Description as
+              // its sibling caused the two to render on the same line.
+              <XStack items="center" gap="$2">
+                {/* lucide-icons-2 reads its own `color` (no CSS cascade) —
+                    tint the icon directly. */}
+                <Shield size={20} color="$cardForeground" />
+                <Dialog.Title>{copy.title}</Dialog.Title>
+              </XStack>
+            ) : (
+              <Dialog.Title>{copy.title}</Dialog.Title>
+            )}
+            <Dialog.Description>{copy.description}</Dialog.Description>
+          </YStack>
+          <PassphraseSetupForm
+            onComplete={onComplete}
+            onSetup={onSetup}
+            onSetupError={onSetupError}
+            onStepChange={setStep}
+          />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog>

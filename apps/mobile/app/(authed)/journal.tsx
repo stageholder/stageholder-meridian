@@ -24,6 +24,7 @@ import {
   Banner,
   Button,
   EmptyState,
+  FormSheet,
   PullToRefresh,
   Spinner,
   Text,
@@ -33,8 +34,10 @@ import {
 } from "@stageholder/ui";
 import { JournalList } from "@repo/features/journal";
 import {
+  PASSPHRASE_SETUP_COPY,
   PassphrasePrompt,
-  PassphraseSetupDialog,
+  PassphraseSetupForm,
+  type PassphraseSetupStep,
 } from "@repo/features/encryption";
 import type { Journal } from "@repo/core/types";
 import { useUser } from "@stageholder/sdk/react-native";
@@ -65,8 +68,12 @@ export default function JournalScreen() {
   const { user } = useUser();
   const journalsQuery = useJournals();
   const { isSetup, isUnlocked, isLoading: statusLoading } = useJournalCrypto();
-  // First-time encryption setup wizard (shared kit dialog).
+  // First-time encryption setup wizard — the shared two-step form hosted in
+  // a kit FormSheet (same host as the todo/habit create flows). `setupStep`
+  // mirrors the form's internal step so the sheet's title/description swap
+  // when the wizard advances to the recovery codes.
   const [setupOpen, setSetupOpen] = useState(false);
+  const [setupStep, setSetupStep] = useState<PassphraseSetupStep>("create");
 
   // Check encryption status once on mount (cheap GET; the unlock flow needs the
   // server's wrapped DEK + salt before it can derive anything).
@@ -187,35 +194,46 @@ export default function JournalScreen() {
                 the PWA's SetupBanner. Hidden once isSetup flips true. */}
             {!isSetup && !statusLoading ? (
               <Banner intent="info">
-                <Banner.Title>Encrypt your journal</Banner.Title>
-                <Banner.Description>
-                  Set a passphrase so only you can read your entries.
-                  You&apos;ll get one-time recovery codes to save.
-                </Banner.Description>
-                <Banner.Action>
-                  <Button
-                    intent="primary"
-                    size="sm"
-                    onPress={() => setSetupOpen(true)}
-                  >
-                    Set up encryption
-                  </Button>
-                </Banner.Action>
+                <Banner.Body>
+                  <Banner.Title>Encrypt your journal</Banner.Title>
+                  <Banner.Description>
+                    Set a passphrase so only you can read your entries.
+                    You&apos;ll get one-time recovery codes to save.
+                  </Banner.Description>
+                  {/* Inside Body (not a row sibling) so the text keeps the
+                      full width and the CTA sits bottom-right — the standard
+                      mobile banner layout. */}
+                  <Banner.Action self="flex-end" mt="$2">
+                    <Button
+                      intent="primary"
+                      size="sm"
+                      onPress={() => setSetupOpen(true)}
+                    >
+                      Set up encryption
+                    </Button>
+                  </Banner.Action>
+                </Banner.Body>
               </Banner>
             ) : null}
 
             {/* Error */}
             {journalsQuery.error ? (
               <Banner intent="danger">
-                <Banner.Title>Couldn&apos;t load entries</Banner.Title>
-                <Banner.Description>
-                  {(journalsQuery.error as Error).message ?? "Network error."}
-                </Banner.Description>
-                <Banner.Action>
-                  <Button intent="secondary" size="sm" onPress={handleRefresh}>
-                    Try again
-                  </Button>
-                </Banner.Action>
+                <Banner.Body>
+                  <Banner.Title>Couldn&apos;t load entries</Banner.Title>
+                  <Banner.Description>
+                    {(journalsQuery.error as Error).message ?? "Network error."}
+                  </Banner.Description>
+                  <Banner.Action self="flex-end" mt="$2">
+                    <Button
+                      intent="secondary"
+                      size="sm"
+                      onPress={handleRefresh}
+                    >
+                      Try again
+                    </Button>
+                  </Banner.Action>
+                </Banner.Body>
               </Banner>
             ) : null}
 
@@ -259,24 +277,43 @@ export default function JournalScreen() {
       {/* First-time encryption setup — collects a passphrase, then shows the
           recovery codes. onSetup runs the native key ceremony + POSTs to
           /journal-security/setup; on completion we re-check status so the
-          banner disappears and new entries encrypt. */}
-      <PassphraseSetupDialog
+          banner disappears and new entries encrypt. The form renders its own
+          Cancel/submit actions, so the kit footer is hidden; the form
+          re-mounts on each open (`key`) so it resets by remount. */}
+      <FormSheet
+        hideFooter
         open={setupOpen}
-        onSetup={async (passphrase) => {
-          if (!user?.sub) throw new Error("Not signed in");
-          return setupJournalPassphrase(passphrase, user.sub);
+        onOpenChange={(open) => {
+          // Once recovery codes are showing, only the Done button may close
+          // the sheet (overlay taps ignored) — dismissing mid-step would lose
+          // the codes forever.
+          if (!open && setupStep === "recovery") return;
+          setSetupOpen(open);
+          if (!open) setSetupStep("create");
         }}
-        onSetupError={() =>
-          toast.show({
-            title: "Couldn't set up encryption",
-            intent: "danger",
-          })
-        }
-        onComplete={() => {
-          setSetupOpen(false);
-          void checkJournalStatus();
-        }}
-      />
+        title={PASSPHRASE_SETUP_COPY[setupStep].title}
+        description={PASSPHRASE_SETUP_COPY[setupStep].description}
+      >
+        <PassphraseSetupForm
+          key={setupOpen ? "open" : "closed"}
+          onStepChange={setSetupStep}
+          onSetup={async (passphrase) => {
+            if (!user?.sub) throw new Error("Not signed in");
+            return setupJournalPassphrase(passphrase, user.sub);
+          }}
+          onSetupError={() =>
+            toast.show({
+              title: "Couldn't set up encryption",
+              intent: "danger",
+            })
+          }
+          onComplete={() => {
+            setSetupOpen(false);
+            setSetupStep("create");
+            void checkJournalStatus();
+          }}
+        />
+      </FormSheet>
     </YStack>
   );
 }
