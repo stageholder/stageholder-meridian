@@ -186,9 +186,16 @@ export default function JournalScreen() {
           } as object)}
         >
           <YStack gap="$4" px="$4" pt="$4" pb="$10">
-            <Text fontSize="$8" fontWeight="700" color="$color">
-              Journal
-            </Text>
+            <YStack gap="$0.5">
+              <Text fontSize="$8" fontWeight="700" color="$color">
+                Journal
+              </Text>
+              {!listLoading && sorted.length > 0 ? (
+                <Text fontSize="$2" color="$mutedForeground">
+                  {sorted.length} {sorted.length === 1 ? "entry" : "entries"}
+                </Text>
+              ) : null}
+            </YStack>
 
             {/* Encryption not set up yet → offer to set a passphrase. Mirrors
                 the PWA's SetupBanner. Hidden once isSetup flips true. */}
