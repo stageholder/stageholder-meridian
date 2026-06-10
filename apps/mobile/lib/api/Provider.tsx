@@ -69,7 +69,10 @@ export function QueryProvider({
         persister: queryPersister,
         // Buster string — bump when the cache contents need to be
         // invalidated wholesale (e.g. after a major hook refactor).
-        buster: "v1",
+        // v2: light-events entries were briefly cached as the raw {data,meta}
+        // envelope (pre-factory hook); rehydrating that shape crashed the
+        // Journey feed before the corrected refetch could land.
+        buster: "v2",
       }}
     >
       <AuthTokenBridge />

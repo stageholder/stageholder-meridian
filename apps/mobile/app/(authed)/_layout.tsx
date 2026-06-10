@@ -141,6 +141,8 @@ export default function AuthedLayout() {
           <Tabs.Screen name="billing" options={{ href: null }} />
           {/* Native paywall (store IAP) — pushed from /billing. */}
           <Tabs.Screen name="upgrade" options={{ href: null }} />
+          {/* Journey (gamification) — pushed from the Today level card. */}
+          <Tabs.Screen name="journey" options={{ href: null }} />
           {/* Journal entry detail (journal/[id].tsx) + the new-entry editor
               (journal/new.tsx) live in the journal tab's stack but are not
               destinations — the custom bar lists its own items, and the

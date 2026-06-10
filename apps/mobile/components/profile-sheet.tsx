@@ -120,7 +120,10 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
       snapPointsMode="fit"
     >
       <Sheet.Overlay />
-      <Sheet.Frame pt="$4" pb="$6" px="$3" gap="$1">
+      {/* pt 0 — the kit grabber renders as the frame's FIRST CHILD with its
+          own mt/mb; extra top padding sinks it into the card (the FormSheet
+          convention: pt 0 whenever the handle shows). */}
+      <Sheet.Frame pt={0} pb="$6" px="$3" gap="$1">
         {/* ---- User header — avatar · name · email (PWA parity) ---- */}
         {user ? (
           <>

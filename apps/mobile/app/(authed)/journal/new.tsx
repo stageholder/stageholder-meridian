@@ -323,7 +323,9 @@ export default function NewJournalScreen() {
         snapPointsMode="fit"
       >
         <Sheet.Overlay />
-        <Sheet.Frame pt="$3" pb="$6" px="$4" gap="$3">
+        {/* pt 0 — the kit grabber is the frame's first child with its own
+            spacing; top padding would sink it (FormSheet convention). */}
+        <Sheet.Frame pt={0} pb="$6" px="$4" gap="$3">
           <Text fontSize="$5" fontWeight="600" color="$color">
             How are you feeling?
           </Text>

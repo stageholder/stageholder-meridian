@@ -1,5 +1,5 @@
 import { Sparkles, Calendar, Trophy, Zap } from "@tamagui/lucide-icons-2";
-import { Grid, Text, XStack, YStack } from "@stageholder/ui";
+import { Text, XStack, YStack } from "@stageholder/ui";
 import type { UserLight } from "@repo/core/types/light";
 import { tabularNums } from "../_internal/text-styles";
 
@@ -46,14 +46,18 @@ export function JourneyStats({ userLight }: JourneyStatsProps) {
   ] as const;
 
   return (
-    // Fixed 2-up stat cells — the kit Grid (CSS grid on web, flex-wrap on
-    // native) replaces the hand-rolled display:grid + gridTemplateColumns.
-    <Grid columns={2} gap="$2">
+    // 2-up stat cells via the repo-standard flex-wrap recipe (flexWrap +
+    // flex:1 + minW) — kit Grid columns are CSS-grid-only and stack
+    // one-per-row on native. minW 120 → exactly two columns on phones,
+    // still two in the PWA's ~350px right rail.
+    <XStack flexWrap="wrap" gap="$2">
       {stats.map((stat) => {
         const Icon = stat.icon;
         return (
           <XStack
             key={stat.label}
+            flex={1}
+            minW={120}
             items="center"
             gap="$2.5"
             rounded="$lg"
@@ -85,6 +89,6 @@ export function JourneyStats({ userLight }: JourneyStatsProps) {
           </XStack>
         );
       })}
-    </Grid>
+    </XStack>
   );
 }

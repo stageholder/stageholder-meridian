@@ -11,13 +11,22 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { LightStats, UserLight } from "@repo/core/types";
+import { createLightApi } from "@repo/core/api/light";
 
 import { apiClient } from "../client";
+
+// The SAME framework-agnostic factory the PWA instantiates in its
+// lib/api/clients.ts — owns paths AND response unwrapping (e.g. /light/events
+// returns a `{data, meta}` envelope the factory unwraps). Don't hand-roll
+// apiClient.get for surfaces the factory already covers.
+const lightApi = createLightApi(apiClient);
 
 export const lightKeys = {
   all: ["light"] as const,
   me: () => [...lightKeys.all, "me"] as const,
   stats: (today?: boolean) => [...lightKeys.all, "stats", { today }] as const,
+  events: (limit?: number, offset?: number) =>
+    [...lightKeys.all, "events", { limit, offset }] as const,
 };
 
 export function useUserLight() {
@@ -42,6 +51,16 @@ export function useLightStats(today = false) {
       });
       return data;
     },
+  });
+}
+
+/** Chronological Light-earning events — powers the Journey screen's feed.
+ *  Same call path as the PWA's useLightEvents (lib/api/light.ts):
+ *  the shared factory unwraps the `{data, meta}` pagination envelope. */
+export function useLightEvents(limit?: number, offset?: number) {
+  return useQuery({
+    queryKey: lightKeys.events(limit, offset),
+    queryFn: () => lightApi.events({ limit, offset }),
   });
 }
 

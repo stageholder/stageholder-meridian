@@ -29,6 +29,7 @@ import {
   View,
   XStack,
   YStack,
+  usePressScale,
 } from "@stageholder/ui";
 import {
   HabitSummary,
@@ -38,6 +39,7 @@ import {
 } from "@repo/features/dashboard";
 import { LevelProgress } from "@repo/features/light";
 import type { HabitEntry, Todo } from "@repo/core/types";
+import type { UserLight } from "@repo/core/types/light";
 import { useQueries } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
@@ -302,13 +304,13 @@ export default function TodayScreen() {
               </Banner>
             ) : null}
 
-            {/* ---- Level progress (gamification) ---- */}
+            {/* ---- Level progress (gamification) — taps through to the
+                 Journey screen (tier path, streaks, Light feed). ---- */}
             {lightQuery.data ? (
-              <Card>
-                <Card.Body>
-                  <LevelProgress userLight={lightQuery.data} />
-                </Card.Body>
-              </Card>
+              <LevelProgressCard
+                userLight={lightQuery.data}
+                onPress={() => router.push("/journey")}
+              />
             ) : null}
 
             {/* ---- Activity rings + legend ---- */}
@@ -402,5 +404,33 @@ export default function TodayScreen() {
         </PullToRefresh>
       </SafeAreaView>
     </YStack>
+  );
+}
+
+/* --------------------------- Level progress card --------------------------- */
+
+/**
+ * The dashboard's tappable gamification card — LevelProgress plus a "view
+ * journey" affordance, navigating to the Journey screen. Own component so it
+ * can hold a `usePressScale` (kit press-latch animation; hooks can't sit in
+ * conditional JSX).
+ */
+function LevelProgressCard({
+  userLight,
+  onPress,
+}: {
+  userLight: UserLight;
+  onPress: () => void;
+}) {
+  const { handlers, pressProps } = usePressScale({ onPress, haptic: "none" });
+  return (
+    <Card {...handlers} {...pressProps} transition="quick" role="button">
+      <Card.Body gap="$2">
+        <LevelProgress userLight={userLight} />
+        <Text fontSize="$1" color="$mutedForeground" self="flex-end">
+          View journey ›
+        </Text>
+      </Card.Body>
+    </Card>
   );
 }

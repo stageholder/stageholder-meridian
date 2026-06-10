@@ -15,6 +15,13 @@ import { tabularNums } from "../_internal/text-styles";
 
 interface JourneyTierMapProps {
   currentTier: number;
+  /**
+   * Total Light earned. Used by the NATIVE sibling (vertical path) to show
+   * live progress inside the current level's card; accepted-unused here so
+   * the cross-platform contract stays identical (tsc resolves THIS file's
+   * types even for native call sites).
+   */
+  totalLight?: number;
 }
 
 export function JourneyTierMap({ currentTier }: JourneyTierMapProps) {
