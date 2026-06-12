@@ -6,6 +6,7 @@ import {
   Select,
   Text,
   useToast,
+  View,
   XStack,
   YStack,
 } from "@stageholder/ui";
@@ -115,13 +116,20 @@ export function TargetsSettings({
           How many todos you aim to complete each day.
         </Text>
         <XStack mt="$2" items="center" gap="$2">
-          <NumberInput
-            value={todoTarget}
-            onChange={setTodoTarget}
-            min={1}
-            max={50}
-            step={1}
-          />
+          {/* Definite-width wrapper: inside an auto-width ROW, the
+              NumberInput's inner flex:1 value field collapses to zero
+              content width on native Yoga (digits invisible — only the
+              steppers' gap shows). The 150px column gives it real space;
+              NumberInput has no width prop of its own. */}
+          <View width={150}>
+            <NumberInput
+              value={todoTarget}
+              onChange={setTodoTarget}
+              min={1}
+              max={50}
+              step={1}
+            />
+          </View>
           <Text fontSize="$3" color="$mutedForeground">
             todos / day
           </Text>
@@ -157,13 +165,16 @@ export function TargetsSettings({
               ))}
             </Select.Content>
           </Select>
-          <NumberInput
-            value={journalTarget}
-            onChange={setJournalTarget}
-            min={10}
-            max={5000}
-            step={25}
-          />
+          {/* Same native flex-collapse guard as the todo stepper. */}
+          <View width={150}>
+            <NumberInput
+              value={journalTarget}
+              onChange={setJournalTarget}
+              min={10}
+              max={5000}
+              step={25}
+            />
+          </View>
           <Text fontSize="$3" color="$mutedForeground">
             words / day
           </Text>

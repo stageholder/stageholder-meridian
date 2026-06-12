@@ -85,6 +85,15 @@ export function useHubProfile() {
       const { data } = await hubClient.get<HubProfile>("/api/account/profile");
       return data;
     },
+    // 4xx are deterministic (404 = no profile row yet on a fresh account;
+    // 401 = session problem) — retrying just delays the UI's error/fallback
+    // state. Only transient 5xx/network errors get the default retries.
+    retry: (failureCount, error) => {
+      const status = (error as { response?: { status?: number } })?.response
+        ?.status;
+      if (status && status >= 400 && status < 500) return false;
+      return failureCount < 2;
+    },
   });
 }
 

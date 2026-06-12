@@ -337,14 +337,12 @@ export default function TodayScreen() {
                 ) : (
                   <>
                     <ActivityRings size={196} rings={rings}>
-                      <YStack items="center" gap="$0.5">
-                        <Text fontSize="$8" fontWeight="700" color="$color">
-                          {habitStats.doneToday + todoStats.done}
-                        </Text>
-                        <Text fontSize="$1" color="$mutedForeground">
-                          done today
-                        </Text>
-                      </YStack>
+                      {/* The flame at the heart of the ignition rings — the
+                          legend below carries the numbers, so the center
+                          stays a pure identity mark. */}
+                      <Text fontSize={40} lineHeight={48}>
+                        🔥
+                      </Text>
                     </ActivityRings>
                     <XStack gap="$5" flexWrap="wrap" justify="center">
                       {rings.map((r) => (
