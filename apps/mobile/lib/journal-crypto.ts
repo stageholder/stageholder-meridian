@@ -192,6 +192,96 @@ export async function setupJournalPassphrase(
   return recoveryCodes;
 }
 
+/**
+ * Change the encryption passphrase — byte-for-byte the PWA store's
+ * `changePassphrase` (apps/pwa/src/lib/crypto/encryption-store.ts):
+ * unwrap the DEK with the OLD passphrase's master key (the AES-KW
+ * integrity failure on a wrong passphrase is the error signal), re-wrap
+ * under a fresh salt + NEW passphrase, PUT to /journal-security/passphrase.
+ * Recovery codes are untouched — only the passphrase wrap changes.
+ * On success the journal is unlocked with the held DEK.
+ */
+export async function changeJournalPassphrase(
+  oldPassphrase: string,
+  newPassphrase: string,
+): Promise<void> {
+  if (!wrappedDek || !salt) {
+    throw new Error(
+      "Encryption keys not loaded. Call checkJournalStatus first.",
+    );
+  }
+
+  const oldMasterKey = await deriveMasterKey(
+    oldPassphrase,
+    saltFromBase64(salt),
+  );
+  const currentDek = await unwrapDEK(wrappedDek, oldMasterKey);
+
+  const newSaltBytes = generateSalt();
+  const newMasterKey = await deriveMasterKey(newPassphrase, newSaltBytes);
+  const newWrappedDek = await wrapDEK(currentDek, newMasterKey);
+  const newSaltStr = saltToBase64(newSaltBytes);
+
+  await apiClient.put("/journal-security/passphrase", {
+    passphraseWrappedDek: newWrappedDek,
+    passphraseSalt: newSaltStr,
+  });
+
+  dek = currentDek;
+  wrappedDek = newWrappedDek;
+  salt = newSaltStr;
+  commit({ isUnlocked: true });
+}
+
+/**
+ * Recover with the saved recovery codes after a FORGOTTEN passphrase —
+ * byte-for-byte the PWA store's `recoverWithCodes`:
+ *   1. POST the codes → server validates + returns the recovery-wrapped DEK,
+ *   2. derive the recovery key from codes + userSub, unwrap the DEK (throws
+ *      on wrong codes),
+ *   3. re-wrap under a fresh salt + the NEW passphrase, mint NEW recovery
+ *      codes + recovery wrap, finalize server-side (old codes burn),
+ *   4. hold the DEK (unlocked) and return the NEW codes for one-time display.
+ */
+export async function recoverJournalWithCodes(
+  codes: string[],
+  newPassphrase: string,
+  userSub: string,
+): Promise<string[]> {
+  if (!userSub) throw new Error("Not authenticated");
+
+  const { data } = await apiClient.post<{ recoveryWrappedDek: string }>(
+    "/journal-security/recover",
+    { codes },
+  );
+
+  const recoveryKey = await deriveRecoveryMasterKey(codes, userSub);
+  const recoveredDek = await unwrapDEK(data.recoveryWrappedDek, recoveryKey);
+
+  const newSaltBytes = generateSalt();
+  const newMasterKey = await deriveMasterKey(newPassphrase, newSaltBytes);
+  const newPassphraseWrappedDek = await wrapDEK(recoveredDek, newMasterKey);
+  const newSaltStr = saltToBase64(newSaltBytes);
+
+  const newCodes = generateRecoveryCodes();
+  const newRecoveryKey = await deriveRecoveryMasterKey(newCodes, userSub);
+  const newRecoveryWrappedDek = await wrapDEK(recoveredDek, newRecoveryKey);
+
+  await apiClient.post("/journal-security/recover/finalize", {
+    passphraseWrappedDek: newPassphraseWrappedDek,
+    passphraseSalt: newSaltStr,
+    recoveryWrappedDek: newRecoveryWrappedDek,
+    recoveryCodes: newCodes,
+  });
+
+  dek = recoveredDek;
+  wrappedDek = newPassphraseWrappedDek;
+  salt = newSaltStr;
+  commit({ isSetup: true, isUnlocked: true });
+
+  return newCodes;
+}
+
 /** Drop the DEK from memory — re-locks the journal until the next unlock. */
 export function lockJournal(): void {
   dek = null;

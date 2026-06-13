@@ -25,3 +25,20 @@ export {
   type PassphraseSetupFormProps,
   type PassphraseSetupStep,
 } from "./passphrase-setup-form";
+
+export {
+  PassphraseChangeForm,
+  type PassphraseChangeFormProps,
+} from "./passphrase-change-form";
+
+export {
+  PASSPHRASE_RECOVERY_COPY,
+  PassphraseRecoveryForm,
+  type PassphraseRecoveryFormProps,
+  type PassphraseRecoveryStep,
+} from "./passphrase-recovery-form";
+
+export {
+  RecoveryCodesPanel,
+  type RecoveryCodesPanelProps,
+} from "./recovery-codes-panel";

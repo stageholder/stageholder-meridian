@@ -60,7 +60,11 @@ export function FeedbackButton() {
   // Sidebar context is always available here because FeedbackButton lives
   // exclusively inside <Sidebar.Footer> within the app shell. If we ever
   // need this component outside a Sidebar, swap to a guarded version.
-  const { setOpenMobile, isMobile } = useSidebar();
+  const { setOpenMobile, isMobile, state, collapsible } = useSidebar();
+  // Rail iconified (desktop, icon-collapse) — show the caption tile so the
+  // collapsed rail keeps the "Feedback" label, matching the nav rows.
+  const collapsed =
+    !isMobile && state === "collapsed" && collapsible === "icon";
   const toast = useToast();
 
   async function handleSubmit() {
@@ -88,23 +92,35 @@ export function FeedbackButton() {
   return (
     <Popover open={open} onOpenChange={setOpen} placement="right-end">
       <Popover.Trigger asChild>
-        <Sidebar.MenuButton
-          icon={<MessageSquarePlus size={18} />}
-          height={40}
-          rounded="$3"
-          gap="$2.5"
-        >
-          <Text
-            flex={1}
-            fontSize={14}
-            fontWeight="500"
-            color="$sidebarForeground"
-            numberOfLines={1}
-            text="left"
+        {collapsed ? (
+          // Collapsed rail: kit RailTile (icon + always-visible caption — the
+          // kit docs' collapsed standard). RailTile forwards its ref + uses a
+          // ripple (not a press-scale), so it's safe as a Popover anchor.
+          <Sidebar.RailTile
+            label="Feedback"
+            {...({ "aria-label": "Send feedback" } as object)}
           >
-            Feedback
-          </Text>
-        </Sidebar.MenuButton>
+            <MessageSquarePlus size={18} strokeWidth={1.75} />
+          </Sidebar.RailTile>
+        ) : (
+          <Sidebar.MenuButton
+            icon={<MessageSquarePlus size={18} />}
+            height={40}
+            rounded="$3"
+            gap="$2.5"
+          >
+            <Text
+              flex={1}
+              fontSize={14}
+              fontWeight="500"
+              color="$sidebarForeground"
+              numberOfLines={1}
+              text="left"
+            >
+              Feedback
+            </Text>
+          </Sidebar.MenuButton>
+        )}
       </Popover.Trigger>
       {/* `Popover.Content size="$3"` uses the kit/Tamagui-idiomatic
           sizing token — that drives default padding & borderRadius

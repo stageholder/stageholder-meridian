@@ -18,7 +18,7 @@
 // (the PWA puts it in the same account menu) — keeping it here too was
 // redundant. Sign-out also lives in that sheet, like the PWA's menu.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Avatar,
   Banner,
@@ -34,14 +34,17 @@ import {
   Text,
   XStack,
   YStack,
+  useToast,
 } from "@stageholder/ui";
 import { ProfileForm, TargetsSettings } from "@repo/features/settings";
+import { PassphraseChangeForm } from "@repo/features/encryption";
 import { openURL } from "@repo/core/platform/linking";
 import { useUpdateProfile, useUser } from "@stageholder/sdk/react-native";
 import {
   ArrowRight,
   CreditCard,
   ExternalLink,
+  KeyRound,
   Pencil,
   Target,
   User,
@@ -56,6 +59,11 @@ import {
 import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
 import { useUpdateTargets, useUserLight } from "@/lib/api";
 import { useHubProfile } from "@/lib/api/hub";
+import {
+  changeJournalPassphrase,
+  checkJournalStatus,
+  useJournalCrypto,
+} from "@/lib/journal-crypto";
 
 const HUB_URL =
   process.env.EXPO_PUBLIC_STAGEHOLDER_ISSUER_URL ??
@@ -333,6 +341,78 @@ function TargetsSection() {
   );
 }
 
+/** Journal encryption — status row + Change passphrase (FormSheet hosting
+ *  the shared PassphraseChangeForm wired to the native crypto module).
+ *  Status comes from the journal-crypto store; refreshed on mount so the
+ *  change flow has the wrapped key material loaded even if the user never
+ *  visited the journal tab this session. */
+function EncryptionSection() {
+  const { isSetup } = useJournalCrypto();
+  const toast = useToast();
+  const [changeOpen, setChangeOpen] = useState(false);
+
+  useEffect(() => {
+    void checkJournalStatus();
+  }, []);
+
+  return (
+    <>
+      <Card>
+        <Card.Body p="$0" gap="$0">
+          <InfoRow
+            label="Journal encryption"
+            value={isSetup ? "Enabled" : "Not set up"}
+            muted={!isSetup}
+          />
+          {isSetup ? (
+            <>
+              <Separator />
+              <XStack px="$4" py="$3">
+                <Button
+                  intent="outline"
+                  size="sm"
+                  flex={1}
+                  icon={<KeyRound size={14} />}
+                  onPress={() => setChangeOpen(true)}
+                >
+                  Change passphrase
+                </Button>
+              </XStack>
+            </>
+          ) : (
+            <>
+              <Separator />
+              <XStack px="$4" py="$3">
+                <Paragraph fontSize="$2" color="$mutedForeground">
+                  Set up encryption from the Journal tab.
+                </Paragraph>
+              </XStack>
+            </>
+          )}
+        </Card.Body>
+      </Card>
+
+      <FormSheet
+        hideFooter
+        open={changeOpen}
+        onOpenChange={setChangeOpen}
+        title="Change Passphrase"
+        description="Your entries stay encrypted — only the passphrase that unlocks them changes. Recovery codes keep working."
+      >
+        <PassphraseChangeForm
+          key={changeOpen ? "open" : "closed"}
+          onChangePassphrase={changeJournalPassphrase}
+          onComplete={() => {
+            setChangeOpen(false);
+            toast.show({ title: "Passphrase changed", intent: "success" });
+          }}
+          onCancel={() => setChangeOpen(false)}
+        />
+      </FormSheet>
+    </>
+  );
+}
+
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -416,6 +496,12 @@ export default function SettingsScreen() {
                         </Button>
                       </YStack>
 
+                      {/* Journal encryption — status + change-passphrase.
+                          Recovery (forgotten passphrase) lives on the
+                          journal's lock screen, where the locked-out user
+                          actually is. */}
+                      <EncryptionSection />
+
                       {/* About — inside Account (not a screen footer) so it
                           doesn't trail every tab's content. */}
                       <Card>
@@ -428,11 +514,6 @@ export default function SettingsScreen() {
                               {appVersion}
                             </Text>
                           </XStack>
-                          <Separator />
-                          <Paragraph fontSize="$2" color="$mutedForeground">
-                            Journal security — passphrase change and recovery —
-                            lives on the web app for now.
-                          </Paragraph>
                         </Card.Body>
                       </Card>
                     </YStack>

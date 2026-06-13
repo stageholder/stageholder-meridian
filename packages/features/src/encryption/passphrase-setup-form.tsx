@@ -13,20 +13,11 @@
 // `expo-clipboard` on native.
 
 import { useState } from "react";
-import { writeToClipboard } from "@repo/core/platform/clipboard";
-import {
-  Button,
-  Checkbox,
-  Grid,
-  Input,
-  Label,
-  Text,
-  XStack,
-  YStack,
-} from "@stageholder/ui";
+import { Button, Input, Label, Text, XStack, YStack } from "@stageholder/ui";
 // Form isn't re-exported by the kit yet; pull it from the shared tamagui dep.
 import { Form } from "tamagui";
-import { Copy, Check } from "@tamagui/lucide-icons-2";
+
+import { RecoveryCodesPanel } from "./recovery-codes-panel";
 
 export type PassphraseSetupStep = "create" | "recovery";
 
@@ -86,9 +77,7 @@ export function PassphraseSetupForm({
   const [passphrase, setPassphrase] = useState("");
   const [confirm, setConfirm] = useState("");
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
-  const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
 
   function setStep(next: PassphraseSetupStep) {
@@ -119,20 +108,12 @@ export function PassphraseSetupForm({
     }
   }
 
-  async function handleCopy() {
-    const text = recoveryCodes.join("\n");
-    await writeToClipboard(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
   function handleDone() {
     onComplete();
     setStep("create");
     setPassphrase("");
     setConfirm("");
     setRecoveryCodes([]);
-    setSaved(false);
   }
 
   // User-initiated cancel from the "create" step. Resets the form state so
@@ -205,46 +186,7 @@ export function PassphraseSetupForm({
 
   return (
     <YStack gap="$4" pt="$2">
-      <Grid
-        columns={2}
-        gap="$2"
-        rounded="$lg"
-        borderWidth={1}
-        borderColor="$borderColor"
-        bg="$muted"
-        p="$4"
-      >
-        {recoveryCodes.map((code, i) => (
-          <Text
-            key={i}
-            fontFamily="$mono"
-            fontSize="$3"
-            color="$color"
-            text="center"
-          >
-            {code}
-          </Text>
-        ))}
-      </Grid>
-      <Button
-        intent="outline"
-        width="100%"
-        icon={copied ? <Check size={16} /> : <Copy size={16} />}
-        onPress={() => void handleCopy()}
-      >
-        {copied ? "Copied!" : "Copy to Clipboard"}
-      </Button>
-      <Label flexDirection="row" items="center" gap="$2" size="$3">
-        <Checkbox checked={saved} onCheckedChange={(v) => setSaved(v === true)}>
-          <Checkbox.Indicator>
-            <Check size={12} />
-          </Checkbox.Indicator>
-        </Checkbox>
-        <Text>I have saved these recovery codes</Text>
-      </Label>
-      <Button onPress={handleDone} disabled={!saved} width="100%">
-        Done
-      </Button>
+      <RecoveryCodesPanel codes={recoveryCodes} onDone={handleDone} />
     </YStack>
   );
 }

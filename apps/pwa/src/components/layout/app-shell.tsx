@@ -17,7 +17,11 @@ import { subscribeLogout } from "@/lib/auth-broadcast";
 import { useUserLight } from "@/lib/api/light";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { JourneyTierBadge } from "@/components/layout/journey-tier-badge";
-import { navItems, isNavActive } from "@/components/layout/nav-items";
+import {
+  navItems,
+  isNavActive,
+  type NavItem,
+} from "@/components/layout/nav-items";
 import { useUserMenuItems } from "@/components/layout/use-user-menu";
 import { UpdateChecker } from "@/components/shared/update-checker";
 import { DailyTargetRings } from "@/components/shared/daily-target-rings";
@@ -34,6 +38,7 @@ import { TrialPill } from "@/components/billing/trial-pill";
 import {
   Button,
   Header,
+  Icon,
   IconButton,
   MacTrafficLightSpacer,
   Sidebar,
@@ -81,6 +86,41 @@ function NavShortcut({ shortcutKey }: { shortcutKey: string }) {
 }
 
 /**
+ * Collapsed-rail nav row: the kit `Sidebar.RailTile` — an icon with an
+ * always-visible caption beneath it (the kit docs' collapsed standard, see
+ * the Sidebar "Live preview"). Replaces the bare icon-only row so the rail
+ * keeps every destination's title when iconified. 18px / 1.75-stroke glyph is
+ * the kit's icon-collapsed treatment (the glyph is the sole identifier).
+ */
+function NavRailTile({
+  label,
+  icon,
+  isActive,
+  onPress,
+}: {
+  label: string;
+  icon: NavItem["icon"];
+  isActive?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Sidebar.RailTile
+      label={label}
+      isActive={isActive}
+      onPress={onPress}
+      {...({ "aria-label": label } as object)}
+    >
+      <Icon
+        source={icon}
+        size={18}
+        strokeWidth={1.75}
+        color="$sidebarForeground"
+      />
+    </Sidebar.RailTile>
+  );
+}
+
+/**
  * Outer shell: owns the Sidebar.Provider so every child component (including
  * the inner body, the nav items, the footer FeedbackButton) can call
  * `useSidebar()` to read state and close the mobile drawer on navigation.
@@ -103,7 +143,11 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const { user } = useUser();
-  const { isMobile, setOpenMobile } = useSidebar();
+  const { isMobile, setOpenMobile, state, collapsible } = useSidebar();
+  // Rail iconified (desktop, icon-collapse mode) — drives the title tooltips
+  // so the collapsed rail's glyphs stay identifiable.
+  const collapsed =
+    !isMobile && state === "collapsed" && collapsible === "icon";
   // Account/user menu — shared with the mobile bottom-nav Profile sheet so the
   // two never drift (see use-user-menu.ts).
   const menuItems = useUserMenuItems();
@@ -202,29 +246,39 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
             <Sidebar.Menu px="$2" gap={4}>
               {navItems.map((item) => {
                 const isActive = isNavActive(pathname, item.href);
-                const Icon = item.icon;
                 return (
                   <Sidebar.MenuItem key={item.href}>
-                    <Sidebar.MenuButton
-                      icon={<Icon size={18} />}
-                      isActive={isActive}
-                      height={40}
-                      rounded="$3"
-                      gap="$2.5"
-                      trailing={<NavShortcut shortcutKey={item.shortcutKey} />}
-                      onPress={() => handleNavigate(item.href)}
-                    >
-                      <Text
-                        flex={1}
-                        fontSize={14}
-                        fontWeight={isActive ? "600" : "500"}
-                        color="$sidebarForeground"
-                        numberOfLines={1}
-                        text="left"
+                    {collapsed ? (
+                      <NavRailTile
+                        label={item.label}
+                        icon={item.icon}
+                        isActive={isActive}
+                        onPress={() => handleNavigate(item.href)}
+                      />
+                    ) : (
+                      <Sidebar.MenuButton
+                        icon={<Icon source={item.icon} size={18} />}
+                        isActive={isActive}
+                        height={40}
+                        rounded="$3"
+                        gap="$2.5"
+                        trailing={
+                          <NavShortcut shortcutKey={item.shortcutKey} />
+                        }
+                        onPress={() => handleNavigate(item.href)}
                       >
-                        {item.label}
-                      </Text>
-                    </Sidebar.MenuButton>
+                        <Text
+                          flex={1}
+                          fontSize={14}
+                          fontWeight={isActive ? "600" : "500"}
+                          color="$sidebarForeground"
+                          numberOfLines={1}
+                          text="left"
+                        >
+                          {item.label}
+                        </Text>
+                      </Sidebar.MenuButton>
+                    )}
                   </Sidebar.MenuItem>
                 );
               })}
@@ -236,25 +290,33 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
               18px icon) so the rail reads as one cohesive system. */}
             <Sidebar.Menu px="$2" gap={4}>
               <Sidebar.MenuItem>
-                <Sidebar.MenuButton
-                  icon={<Keyboard size={18} />}
-                  onPress={() => setShortcutsDialogOpen(true)}
-                  height={40}
-                  rounded="$3"
-                  gap="$2.5"
-                  trailing={<ShortcutKeycap>?</ShortcutKeycap>}
-                >
-                  <Text
-                    flex={1}
-                    fontSize={14}
-                    fontWeight="500"
-                    color="$sidebarForeground"
-                    numberOfLines={1}
-                    text="left"
+                {collapsed ? (
+                  <NavRailTile
+                    label="Shortcuts"
+                    icon={Keyboard}
+                    onPress={() => setShortcutsDialogOpen(true)}
+                  />
+                ) : (
+                  <Sidebar.MenuButton
+                    icon={<Icon source={Keyboard} size={18} />}
+                    onPress={() => setShortcutsDialogOpen(true)}
+                    height={40}
+                    rounded="$3"
+                    gap="$2.5"
+                    trailing={<ShortcutKeycap>?</ShortcutKeycap>}
                   >
-                    Shortcuts
-                  </Text>
-                </Sidebar.MenuButton>
+                    <Text
+                      flex={1}
+                      fontSize={14}
+                      fontWeight="500"
+                      color="$sidebarForeground"
+                      numberOfLines={1}
+                      text="left"
+                    >
+                      Shortcuts
+                    </Text>
+                  </Sidebar.MenuButton>
+                )}
               </Sidebar.MenuItem>
               <Sidebar.MenuItem>
                 <FeedbackButton />

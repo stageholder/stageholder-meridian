@@ -1,13 +1,16 @@
+import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   ExternalLink,
   ArrowRight,
+  KeyRound,
   User,
   Target,
   CreditCard,
 } from "lucide-react";
 import {
   Button,
+  Dialog,
   H1,
   Paragraph,
   SizableText,
@@ -15,9 +18,12 @@ import {
   XStack,
   YStack,
   useMedia,
+  useToast,
 } from "@stageholder/ui";
+import { PassphraseChangeForm } from "@repo/features/encryption";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { TargetsSettings } from "@/components/settings/targets-settings";
+import { useEncryptionStore } from "@/lib/crypto/encryption-store";
 
 const HUB_URL = import.meta.env.VITE_HUB_URL ?? "https://id.stageholder.com";
 
@@ -39,6 +45,69 @@ const FLAT_CONTENT = {
   p: 0,
   mt: 0,
 } as const;
+
+/**
+ * Change-journal-passphrase entry — shown only once encryption is set up.
+ * Hosts the shared PassphraseChangeForm (also used by mobile's settings
+ * sheet) in a Dialog wired to the encryption store. checkStatus on mount:
+ * /settings is reachable without visiting the journal, so the wrapped key
+ * material may not be loaded yet — the change flow needs it.
+ */
+function ChangePassphraseBlock() {
+  const { isSetup, checkStatus, changePassphrase } = useEncryptionStore();
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    void checkStatus();
+  }, [checkStatus]);
+
+  if (!isSetup) return null;
+
+  return (
+    <>
+      <Button
+        intent="outline"
+        iconAfter={<KeyRound size={14} opacity={0.7} />}
+        onPress={() => setOpen(true)}
+      >
+        Change journal passphrase
+      </Button>
+      {/* Conditionally mounted — closing must UNMOUNT so the scrim clears
+          under disableExtraction (the habit-delete dialog pattern). */}
+      {open && (
+        <Dialog open disableRemoveScroll>
+          <Dialog.Portal>
+            <Dialog.Overlay />
+            <Dialog.Content
+              maxW={448}
+              onInteractOutside={(e: Event) => e.preventDefault()}
+            >
+              <YStack gap="$2">
+                <Dialog.Title>Change Journal Passphrase</Dialog.Title>
+                <Dialog.Description>
+                  Your entries stay encrypted — only the passphrase that unlocks
+                  them changes. Recovery codes keep working.
+                </Dialog.Description>
+              </YStack>
+              <PassphraseChangeForm
+                onChangePassphrase={changePassphrase}
+                onComplete={() => {
+                  setOpen(false);
+                  toast.show({
+                    title: "Passphrase changed",
+                    intent: "success",
+                  });
+                }}
+                onCancel={() => setOpen(false)}
+              />
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog>
+      )}
+    </>
+  );
+}
 
 function SettingsPage() {
   const navigate = useNavigate();
@@ -137,6 +206,7 @@ function SettingsPage() {
                       Security &amp; sign-in on Stageholder
                     </Button>
                   </a>
+                  <ChangePassphraseBlock />
                 </YStack>
               </YStack>
             </Tabs.Content>

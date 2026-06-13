@@ -15,6 +15,12 @@ export interface PassphrasePromptProps {
   onUnlock: (passphrase: string) => Promise<void>;
   /** Map a thrown error to a user-visible message. Default: generic. */
   mapError?: (err: unknown) => string;
+  /**
+   * Shows a "Forgot passphrase?" link under the unlock button; the host
+   * opens its recovery flow (PassphraseRecoveryForm in a Dialog/Sheet).
+   * Omit to hide the link (hosts that haven't wired recovery).
+   */
+  onForgot?: () => void;
 }
 
 const DEFAULT_ERROR_MESSAGE = "Wrong passphrase. Please try again.";
@@ -31,6 +37,7 @@ const DEFAULT_ERROR_MESSAGE = "Wrong passphrase. Please try again.";
 export function PassphrasePrompt({
   onUnlock,
   mapError,
+  onForgot,
 }: PassphrasePromptProps) {
   const [passphrase, setPassphrase] = useState("");
   const [loading, setLoading] = useState(false);
@@ -98,6 +105,11 @@ export function PassphrasePrompt({
               Unlock
             </Button>
           </Form.Trigger>
+          {onForgot ? (
+            <Button intent="ghost" size="sm" onPress={onForgot}>
+              Forgot passphrase? Use recovery codes
+            </Button>
+          ) : null}
         </Form>
       </YStack>
     </XStack>

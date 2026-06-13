@@ -1,8 +1,18 @@
 import { useEffect, useState } from "react";
-import { Button, Text, useToast, XStack, YStack } from "@stageholder/ui";
 import {
+  Button,
+  Dialog,
+  Text,
+  useToast,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
+import {
+  PASSPHRASE_RECOVERY_COPY,
   PassphrasePrompt,
+  PassphraseRecoveryForm,
   PassphraseSetupDialog,
+  type PassphraseRecoveryStep,
 } from "@repo/features/encryption";
 import { useEncryptionStore } from "@/lib/crypto/encryption-store";
 
@@ -24,10 +34,15 @@ export function EncryptionGate({ children }: { children: React.ReactNode }) {
     checkStatus,
     unlock,
     setupPassphrase,
+    recoverWithCodes,
   } = useEncryptionStore();
   const toast = useToast();
   const [showSetup, setShowSetup] = useState(false);
   const [checked, setChecked] = useState(false);
+  // Forgotten-passphrase recovery — opened from the lock screen's link.
+  const [recoverOpen, setRecoverOpen] = useState(false);
+  const [recoverStep, setRecoverStep] =
+    useState<PassphraseRecoveryStep>("redeem");
 
   useEffect(() => {
     if (!checked) {
@@ -45,14 +60,52 @@ export function EncryptionGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Encryption set up but locked — show the cross-platform unlock prompt.
+  // Encryption set up but locked — show the cross-platform unlock prompt
+  // (+ the recovery dialog for a forgotten passphrase).
   if (isSetup && !isUnlocked) {
     return (
-      <PassphrasePrompt
-        onUnlock={async (passphrase) => {
-          await unlock(passphrase);
-        }}
-      />
+      <>
+        <PassphrasePrompt
+          onUnlock={async (passphrase) => {
+            await unlock(passphrase);
+          }}
+          onForgot={() => setRecoverOpen(true)}
+        />
+        {/* Conditionally mounted (the delete-dialog pattern): closing must
+            UNMOUNT so the scrim clears under disableExtraction. Outside
+            interaction is blocked — on the newCodes step especially, the
+            fresh codes must be saved before dismissal. */}
+        {recoverOpen && (
+          <Dialog open disableRemoveScroll>
+            <Dialog.Portal>
+              <Dialog.Overlay />
+              <Dialog.Content
+                maxW={448}
+                onInteractOutside={(e: Event) => e.preventDefault()}
+              >
+                <YStack gap="$2">
+                  <Dialog.Title>
+                    {PASSPHRASE_RECOVERY_COPY[recoverStep].title}
+                  </Dialog.Title>
+                  <Dialog.Description>
+                    {PASSPHRASE_RECOVERY_COPY[recoverStep].description}
+                  </Dialog.Description>
+                </YStack>
+                <PassphraseRecoveryForm
+                  onStepChange={setRecoverStep}
+                  onRecover={(codes, newPassphrase) =>
+                    recoverWithCodes(codes, newPassphrase)
+                  }
+                  onComplete={() => {
+                    setRecoverOpen(false);
+                    setRecoverStep("redeem");
+                  }}
+                />
+              </Dialog.Content>
+            </Dialog.Portal>
+          </Dialog>
+        )}
+      </>
     );
   }
 

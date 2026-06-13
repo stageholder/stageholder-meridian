@@ -34,9 +34,12 @@ import {
 } from "@stageholder/ui";
 import { JournalList } from "@repo/features/journal";
 import {
+  PASSPHRASE_RECOVERY_COPY,
   PASSPHRASE_SETUP_COPY,
   PassphrasePrompt,
+  PassphraseRecoveryForm,
   PassphraseSetupForm,
+  type PassphraseRecoveryStep,
   type PassphraseSetupStep,
 } from "@repo/features/encryption";
 import type { Journal } from "@repo/core/types";
@@ -56,6 +59,7 @@ import {
   checkJournalStatus,
   decryptJournalList,
   getJournalDek,
+  recoverJournalWithCodes,
   setupJournalPassphrase,
   unlockJournal,
   useJournalCrypto,
@@ -74,6 +78,12 @@ export default function JournalScreen() {
   // when the wizard advances to the recovery codes.
   const [setupOpen, setSetupOpen] = useState(false);
   const [setupStep, setSetupStep] = useState<PassphraseSetupStep>("create");
+  // Forgotten-passphrase recovery — reachable from the lock screen's
+  // "Forgot passphrase?" link. Step mirrored so the sheet title swaps and
+  // dismissal is blocked while the NEW codes are on screen.
+  const [recoverOpen, setRecoverOpen] = useState(false);
+  const [recoverStep, setRecoverStep] =
+    useState<PassphraseRecoveryStep>("redeem");
 
   // Check encryption status once on mount (cheap GET; the unlock flow needs the
   // server's wrapped DEK + salt before it can derive anything).
@@ -155,13 +165,46 @@ export default function JournalScreen() {
     router.push("/journal/new");
   }
 
-  // ---- Locked: full-screen passphrase prompt ----
+  // ---- Locked: full-screen passphrase prompt (+ recovery flow) ----
   if (locked) {
     return (
       <YStack flex={1} bg="$background">
         <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-          <PassphrasePrompt onUnlock={handleUnlock} />
+          <PassphrasePrompt
+            onUnlock={handleUnlock}
+            onForgot={() => setRecoverOpen(true)}
+          />
         </SafeAreaView>
+
+        {/* Recovery — redeem saved codes + set a new passphrase, then the
+            NEW codes show once (dismissal blocked on that step, like the
+            setup wizard's). On completion the journal is unlocked with the
+            recovered DEK. */}
+        <FormSheet
+          hideFooter
+          open={recoverOpen}
+          onOpenChange={(open) => {
+            if (!open && recoverStep === "newCodes") return;
+            setRecoverOpen(open);
+            if (!open) setRecoverStep("redeem");
+          }}
+          title={PASSPHRASE_RECOVERY_COPY[recoverStep].title}
+          description={PASSPHRASE_RECOVERY_COPY[recoverStep].description}
+        >
+          <PassphraseRecoveryForm
+            key={recoverOpen ? "open" : "closed"}
+            onStepChange={setRecoverStep}
+            onRecover={async (codes, newPassphrase) => {
+              if (!user?.sub) throw new Error("Not signed in");
+              return recoverJournalWithCodes(codes, newPassphrase, user.sub);
+            }}
+            onComplete={() => {
+              setRecoverOpen(false);
+              setRecoverStep("redeem");
+              void checkJournalStatus();
+            }}
+          />
+        </FormSheet>
       </YStack>
     );
   }
