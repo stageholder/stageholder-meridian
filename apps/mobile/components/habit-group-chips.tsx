@@ -11,7 +11,7 @@
 
 import { Pill, Text, View, XStack } from "@stageholder/ui";
 import type { HabitGroup } from "@repo/core/types";
-import { Archive, Pencil, Plus } from "@tamagui/lucide-icons-2";
+import { Archive, ListOrdered, Pencil, Plus } from "@tamagui/lucide-icons-2";
 import { ScrollView as RNScrollView } from "react-native";
 
 /** The synthetic chip value for the Archived view. */
@@ -29,6 +29,8 @@ interface HabitGroupChipsProps {
   onEditActive: (group: HabitGroup) => void;
   /** Open the create-group sheet ("+ group" chip). */
   onCreate: () => void;
+  /** Open the reorder-groups sheet (shown when 2+ groups exist). */
+  onReorder: () => void;
 }
 
 export function HabitGroupChips({
@@ -37,6 +39,7 @@ export function HabitGroupChips({
   onSelect,
   onEditActive,
   onCreate,
+  onReorder,
 }: HabitGroupChipsProps) {
   const activeGroup =
     active && active !== ARCHIVED_CHIP
@@ -108,6 +111,12 @@ export function HabitGroupChips({
           </Text>
         </XStack>
       </Pill>
+
+      {groups.length > 1 ? (
+        <Pill size="sm" onPress={onReorder} aria-label="Reorder groups">
+          <ListOrdered size={12} color="$mutedForeground" />
+        </Pill>
+      ) : null}
 
       <Pill
         size="sm"

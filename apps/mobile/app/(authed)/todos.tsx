@@ -33,7 +33,7 @@ import {
 } from "@stageholder/ui";
 import { TodoItem } from "@repo/features/todos";
 import type { Todo, TodoList } from "@repo/core/types";
-import { Pencil, Plus } from "@tamagui/lucide-icons-2";
+import { ListOrdered, Pencil, Plus } from "@tamagui/lucide-icons-2";
 import { format } from "date-fns";
 import { useMemo, useState } from "react";
 import { ScrollView as RNScrollView } from "react-native";
@@ -47,6 +47,7 @@ import { CreateFab } from "@/components/create-fab";
 import { CreateTodoDialog } from "@/components/create-todo-dialog";
 import { EditTodoDialog } from "@/components/edit-todo-dialog";
 import { TodoListSheet } from "@/components/todo-list-sheet";
+import { TodoListReorderSheet } from "@/components/todo-list-reorder-sheet";
 import { IGNITION } from "@/lib/ignition-palette";
 
 import {
@@ -92,6 +93,8 @@ export default function TodosScreen() {
   const [activeListId, setActiveListId] = useState<string | null>(null);
   // List sheet — false = closed, null = create, a list = edit.
   const [listSheet, setListSheet] = useState<false | null | TodoList>(false);
+  // Reorder sheet.
+  const [reorderOpen, setReorderOpen] = useState(false);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -211,6 +214,15 @@ export default function TodosScreen() {
               </Text>
             </XStack>
           </Pill>
+          {lists.filter((l) => !l.isDefault).length > 1 ? (
+            <Pill
+              size="sm"
+              onPress={() => setReorderOpen(true)}
+              aria-label="Reorder lists"
+            >
+              <ListOrdered size={12} color="$mutedForeground" />
+            </Pill>
+          ) : null}
         </RNScrollView>
 
         {/* PullToRefresh.native is the scroller — its child is the padded
@@ -376,6 +388,14 @@ export default function TodosScreen() {
         open={editing !== null}
         onOpenChange={handleEditOpenChange}
         todo={editing}
+      />
+
+      {/* Reorder lists — vertical drag sheet; only shown when 2+ custom
+          lists exist (the trigger pill is hidden otherwise). */}
+      <TodoListReorderSheet
+        open={reorderOpen}
+        onOpenChange={setReorderOpen}
+        lists={lists}
       />
     </YStack>
   );

@@ -105,6 +105,16 @@ export function useDeleteTodoList() {
   });
 }
 
+export function useReorderTodoLists() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { items: { id: string; order: number }[] }) => {
+      await apiClient.post("/todo-lists/reorder", data);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: todoListKeys.all }),
+  });
+}
+
 /* ---------------------------- Mutations ------------------------------ */
 
 export type CreateTodoInput = {

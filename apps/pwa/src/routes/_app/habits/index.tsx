@@ -15,7 +15,11 @@ import {
 import { useHabits } from "@/lib/api/habits";
 import { useHabitGroups } from "@/lib/api/habit-groups";
 import { useCalendarData } from "@/lib/api/calendar";
-import { isEntryComplete } from "@repo/core/habits/entry-resolution";
+import {
+  matchesHabitStatus,
+  type HabitStatusFilter,
+  type HabitDayEntry,
+} from "@repo/core/habits/status-filter";
 import { HabitDateNav } from "@/components/habits/habit-date-nav";
 import { CreateHabitDialog } from "@/components/habits/create-habit-dialog";
 import { MoveToGroupDialog } from "@/components/habits/move-to-group-dialog";
@@ -33,54 +37,6 @@ import type { Habit, HabitGroup } from "@repo/core/types";
  * change once habits + view-mode telemetry justifies it.
  */
 const DEFAULT_VIEW_MODE: HabitViewMode = "card";
-
-/** Status filter (sidebar) — relative to the index's selected date. */
-export type HabitStatusFilter = "todo" | "done";
-
-/** A completion entry as it arrives from the calendar endpoint. */
-type DayEntry = { value: number; type?: string; targetCountSnapshot?: number };
-
-/**
- * Is this habit relevant (scheduled) on `date`? Daily + scheduled-day habits
- * follow their schedule; `weekly_target` (quota) habits can be done any day, so
- * they're always relevant. Habits created after `date` are not.
- */
-function isRelevantOnDate(habit: Habit, date: string): boolean {
-  const created = habit.createdAt?.slice(0, 10);
-  if (created && created > date) return false;
-  if (habit.frequency === "weekly_target") return true;
-  if (!habit.scheduledDays?.length) return true;
-  const dow = new Date(date + "T00:00:00").getDay();
-  return habit.scheduledDays.includes(dow);
-}
-
-/**
- * Status-filter predicate for `date`:
- *   • done — the day's entry meets the target.
- *   • todo — relevant on the day, not done, and not skipped (skip is a
- *     deliberate opt-out, not an outstanding task).
- */
-function matchesStatus(
-  habit: Habit,
-  status: HabitStatusFilter | undefined,
-  entry: DayEntry | undefined,
-  date: string,
-): boolean {
-  if (!status) return true;
-  const done = entry
-    ? isEntryComplete(
-        {
-          value: entry.value,
-          type: entry.type as "completion" | "skip" | "fail" | undefined,
-          targetCountSnapshot: entry.targetCountSnapshot,
-        },
-        habit,
-      )
-    : false;
-  if (status === "done") return done;
-  if (done || entry?.type === "skip") return false;
-  return isRelevantOnDate(habit, date);
-}
 
 export const Route = createFileRoute("/_app/habits/")({
   validateSearch: (
@@ -125,7 +81,7 @@ function HabitsPage() {
     status ? selectedMonth : "",
   );
   const entryByHabit = useMemo(() => {
-    const m = new Map<string, DayEntry>();
+    const m = new Map<string, HabitDayEntry>();
     for (const e of calendar?.[selectedDate]?.habitEntries ?? []) {
       m.set(e.habitId, {
         value: e.value,
@@ -141,7 +97,7 @@ function HabitsPage() {
   // A status filter (if any) is applied to the full set first.
   const sections = useMemo<Section[]>(() => {
     const all = ((habits ?? []) as Habit[]).filter((h) =>
-      matchesStatus(h, status, entryByHabit.get(h.id), selectedDate),
+      matchesHabitStatus(h, status, entryByHabit.get(h.id), selectedDate),
     );
     const byOrder = (a: Habit, b: Habit) => (a.order ?? 0) - (b.order ?? 0);
     const orderedGroups = groups

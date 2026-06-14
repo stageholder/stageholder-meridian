@@ -27,6 +27,7 @@ import {
   Button,
   EmptyState,
   PullToRefresh,
+  SegmentedControl,
   Spinner,
   Text,
   View,
@@ -34,6 +35,11 @@ import {
   useToast,
 } from "@stageholder/ui";
 import type { Habit, HabitGroup } from "@repo/core/types";
+import {
+  matchesHabitStatus,
+  type HabitStatusFilter,
+  type HabitDayEntry,
+} from "@repo/core/habits/status-filter";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import {
@@ -50,6 +56,7 @@ import {
   HabitGroupChips,
   type HabitChipSelection,
 } from "@/components/habit-group-chips";
+import { HabitGroupReorderSheet } from "@/components/habit-group-reorder-sheet";
 import { HabitGroupSection } from "@/components/habit-group-section";
 import { HabitGroupSheet } from "@/components/habit-group-sheet";
 import { HabitMoveToGroupSheet } from "@/components/habit-move-to-group-sheet";
@@ -61,7 +68,9 @@ import {
   useHabits,
   useUnarchiveHabit,
 } from "@/lib/api";
+import { useCalendarData } from "@/lib/api/hooks/calendar";
 import { IGNITION } from "@/lib/ignition-palette";
+import { localDateKey } from "@/lib/streak";
 
 /** One rendered section: a group, or the synthetic Ungrouped bucket. */
 interface Section {
@@ -97,10 +106,36 @@ export default function HabitsScreen() {
   );
   // The habit whose move-to-group picker is open (null = closed).
   const [movingHabit, setMovingHabit] = useState<Habit | null>(null);
+  // Status filter — "all" renders everything; "todo"/"done" filter by today's entry.
+  const [statusFilter, setStatusFilter] = useState<"all" | HabitStatusFilter>(
+    "all",
+  );
+  // Reorder-groups sheet.
+  const [reorderGroupsOpen, setReorderGroupsOpen] = useState(false);
 
   const isArchivedView = activeChip === ARCHIVED_CHIP;
   // Archived view fetches its own cache lazily (only when that chip is active).
   const archivedQuery = useArchivedHabits();
+
+  // Status filter data — today's date + the calendar month (only fetched when
+  // a status filter is active; disabled by passing an empty string).
+  const today = localDateKey();
+  const calendarMonth = today.slice(0, 7);
+  const { data: calendarData, isLoading: statusLoading } = useCalendarData(
+    statusFilter !== "all" ? calendarMonth : "",
+  );
+  // Map habitId → today's entry for the status-filter predicate.
+  const entryByHabit = useMemo<Map<string, HabitDayEntry>>(() => {
+    const m = new Map<string, HabitDayEntry>();
+    for (const e of calendarData?.[today]?.habitEntries ?? []) {
+      m.set(e.habitId, {
+        value: e.value,
+        type: e.type,
+        targetCountSnapshot: e.targetCountSnapshot,
+      });
+    }
+    return m;
+  }, [calendarData, today]);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -126,7 +161,12 @@ export default function HabitsScreen() {
 
   // Section habits by group: ordered groups first, Ungrouped LAST (and only
   // when it has members). Within each section, sort by the habit `order`.
+  // A status filter (if active) is applied to the full set before sectioning.
   const sections = useMemo<Section[]>(() => {
+    const activeStatus = statusFilter !== "all" ? statusFilter : undefined;
+    const filtered = habits.filter((h) =>
+      matchesHabitStatus(h, activeStatus, entryByHabit.get(h.id), today),
+    );
     const byOrder = (a: Habit, b: Habit) => (a.order ?? 0) - (b.order ?? 0);
 
     const result: Section[] = groups.map((g) => ({
@@ -135,10 +175,10 @@ export default function HabitsScreen() {
       color: g.color || "#6b7280",
       icon: g.icon,
       groupId: g.id,
-      habits: habits.filter((h) => h.groupId === g.id).sort(byOrder),
+      habits: filtered.filter((h) => h.groupId === g.id).sort(byOrder),
     }));
 
-    const ungrouped = habits.filter((h) => !h.groupId).sort(byOrder);
+    const ungrouped = filtered.filter((h) => !h.groupId).sort(byOrder);
     if (ungrouped.length > 0) {
       result.push({
         id: "__ungrouped__",
@@ -149,7 +189,7 @@ export default function HabitsScreen() {
       });
     }
     return result;
-  }, [habits, groups]);
+  }, [habits, groups, statusFilter, entryByHabit, today]);
 
   // When a real group is the active filter, render only that section.
   const visibleSections = useMemo(() => {
@@ -184,7 +224,22 @@ export default function HabitsScreen() {
 
   const archivedHabits = archivedQuery.data ?? [];
   const hasHabits = habits.length > 0;
-  const showEmpty = !habitsQuery.isLoading && !habitsQuery.error && !hasHabits;
+  // Hold loading while the status filter calendar data is still in-flight so
+  // we don't flash a wrong empty state.
+  const statusFilterLoading = statusFilter !== "all" && statusLoading;
+  const showEmpty =
+    !habitsQuery.isLoading &&
+    !habitsQuery.error &&
+    !statusFilterLoading &&
+    !hasHabits;
+  // Status-filter specific empty: habits exist but none match the filter today.
+  const filteredEmpty =
+    !habitsQuery.isLoading &&
+    !habitsQuery.error &&
+    !statusFilterLoading &&
+    hasHabits &&
+    statusFilter !== "all" &&
+    visibleSections.length === 0;
   const archivedEmpty =
     isArchivedView &&
     !archivedQuery.isLoading &&
@@ -198,16 +253,28 @@ export default function HabitsScreen() {
           <Text fontSize="$8" fontWeight="700" color="$color">
             Habits
           </Text>
+          {/* Status filter — All / To do / Done, relative to today. */}
+          <SegmentedControl
+            value={statusFilter}
+            onValueChange={(v) =>
+              setStatusFilter(v as "all" | HabitStatusFilter)
+            }
+          >
+            <SegmentedControl.Item value="all">All</SegmentedControl.Item>
+            <SegmentedControl.Item value="todo">To do</SegmentedControl.Item>
+            <SegmentedControl.Item value="done">Done</SegmentedControl.Item>
+          </SegmentedControl>
         </YStack>
 
         {/* Group chips rail — All · groups · pencil-on-active · "+ group" ·
-            Archived. PWA sidebar/group/archived surfaces as a chips row. */}
+            reorder · Archived. PWA sidebar/group/archived surfaces as chips. */}
         <HabitGroupChips
           groups={groups}
           active={activeChip}
           onSelect={setActiveChip}
           onEditActive={(g) => setGroupSheet(g)}
           onCreate={() => setGroupSheet(null)}
+          onReorder={() => setReorderGroupsOpen(true)}
         />
 
         {/* PullToRefresh.native is the scroller — its child is the padded
@@ -256,6 +323,14 @@ export default function HabitsScreen() {
               </View>
             ) : null}
 
+            {/* Status filter loading — hold the spinner while calendar data
+                is in-flight so we don't flash a wrong empty state. */}
+            {!isArchivedView && statusFilterLoading ? (
+              <View py="$10" items="center" justify="center">
+                <Spinner size="large" />
+              </View>
+            ) : null}
+
             {/* ── Archived view — restore per card, no drag. ── */}
             {isArchivedView ? (
               archivedEmpty ? (
@@ -295,6 +370,28 @@ export default function HabitsScreen() {
                     <EmptyState.Description>
                       Add a daily ritual you want to keep — a walk, a few pages,
                       ten minutes of stillness.
+                    </EmptyState.Description>
+                  </EmptyState>
+                ) : null}
+
+                {/* Filtered empty — habits exist but none match the status
+                    filter today. Message differs by filter direction. */}
+                {filteredEmpty ? (
+                  <EmptyState>
+                    <EmptyState.IconSlot>
+                      <Text fontSize={28}>
+                        {statusFilter === "todo" ? "✓" : "◎"}
+                      </Text>
+                    </EmptyState.IconSlot>
+                    <EmptyState.Title>
+                      {statusFilter === "todo"
+                        ? "All caught up"
+                        : "Nothing completed yet"}
+                    </EmptyState.Title>
+                    <EmptyState.Description>
+                      {statusFilter === "todo"
+                        ? "All your habits for today are done. Nice work."
+                        : "Check in on a habit to see it here."}
                     </EmptyState.Description>
                   </EmptyState>
                 ) : null}
@@ -373,6 +470,13 @@ export default function HabitsScreen() {
         onOpenChange={(next) => {
           if (!next) setMovingHabit(null);
         }}
+      />
+
+      {/* Reorder groups — driven Sortable Sheet. */}
+      <HabitGroupReorderSheet
+        open={reorderGroupsOpen}
+        onOpenChange={setReorderGroupsOpen}
+        groups={groups}
       />
     </YStack>
   );
