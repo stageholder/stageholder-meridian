@@ -84,6 +84,7 @@ export class MeController {
         max_habits: getMeridianLimit(req.user, "max_habits"),
         max_todo_lists: getMeridianLimit(req.user, "max_todo_lists"),
         max_active_todos: getMeridianLimit(req.user, "max_active_todos"),
+        max_habit_groups: getMeridianLimit(req.user, "max_habit_groups"),
       },
     };
   }

@@ -12,12 +12,19 @@ export {
 } from "./client";
 export { QueryProvider, type QueryProviderProps } from "./Provider";
 export { queryClient } from "./query-client";
-export { todoKeys, todoListKeys, habitKeys, journalKeys } from "./keys";
+export {
+  todoKeys,
+  todoListKeys,
+  habitKeys,
+  habitGroupKeys,
+  journalKeys,
+} from "./keys";
 export { getAccessToken, type GetAccessToken } from "./auth";
 
 // Resource hooks — re-exported so consumers do `import { useTodos } from "@/lib/api"`.
 export * from "./hooks/todos";
 export * from "./hooks/habits";
+export * from "./hooks/habit-groups";
 export * from "./hooks/journal";
 export * from "./hooks/today";
 export * from "./hooks/light";

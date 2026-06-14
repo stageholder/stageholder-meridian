@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { LayoutGrid, List as ListIcon, Plus, Target } from "lucide-react";
@@ -7,46 +7,180 @@ import {
   EmptyState,
   SegmentedControl,
   Skeleton,
+  Text,
   View,
   XStack,
   YStack,
 } from "@stageholder/ui";
 import { useHabits } from "@/lib/api/habits";
-import { HabitCard } from "@/components/habits/habit-card";
-import { HabitListItem } from "@/components/habits/habit-list-item";
+import { useHabitGroups } from "@/lib/api/habit-groups";
+import { useCalendarData } from "@/lib/api/calendar";
+import { isEntryComplete } from "@repo/core/habits/entry-resolution";
 import { HabitDateNav } from "@/components/habits/habit-date-nav";
 import { CreateHabitDialog } from "@/components/habits/create-habit-dialog";
+import { MoveToGroupDialog } from "@/components/habits/move-to-group-dialog";
+import {
+  HabitGroupSection,
+  type HabitViewMode,
+} from "@/components/habits/habit-group-section";
 import { CreateFab } from "@/components/shared/create-fab";
 import { parseDateLocal } from "@/lib/date";
-import type { Habit } from "@repo/core/types";
-
-type HabitViewMode = "card" | "list";
+import type { Habit, HabitGroup } from "@repo/core/types";
 
 /**
  * `useState` rather than localStorage for now — most users stick with
  * one mode per session. Promoting to a persisted preference is a one-line
- * change (swap to a Zustand slice or a `useLocalStorage` hook) once
- * habits + view-mode telemetry justifies it.
+ * change once habits + view-mode telemetry justifies it.
  */
 const DEFAULT_VIEW_MODE: HabitViewMode = "card";
 
+/** Status filter (sidebar) — relative to the index's selected date. */
+export type HabitStatusFilter = "todo" | "done";
+
+/** A completion entry as it arrives from the calendar endpoint. */
+type DayEntry = { value: number; type?: string; targetCountSnapshot?: number };
+
+/**
+ * Is this habit relevant (scheduled) on `date`? Daily + scheduled-day habits
+ * follow their schedule; `weekly_target` (quota) habits can be done any day, so
+ * they're always relevant. Habits created after `date` are not.
+ */
+function isRelevantOnDate(habit: Habit, date: string): boolean {
+  const created = habit.createdAt?.slice(0, 10);
+  if (created && created > date) return false;
+  if (habit.frequency === "weekly_target") return true;
+  if (!habit.scheduledDays?.length) return true;
+  const dow = new Date(date + "T00:00:00").getDay();
+  return habit.scheduledDays.includes(dow);
+}
+
+/**
+ * Status-filter predicate for `date`:
+ *   • done — the day's entry meets the target.
+ *   • todo — relevant on the day, not done, and not skipped (skip is a
+ *     deliberate opt-out, not an outstanding task).
+ */
+function matchesStatus(
+  habit: Habit,
+  status: HabitStatusFilter | undefined,
+  entry: DayEntry | undefined,
+  date: string,
+): boolean {
+  if (!status) return true;
+  const done = entry
+    ? isEntryComplete(
+        {
+          value: entry.value,
+          type: entry.type as "completion" | "skip" | "fail" | undefined,
+          targetCountSnapshot: entry.targetCountSnapshot,
+        },
+        habit,
+      )
+    : false;
+  if (status === "done") return done;
+  if (done || entry?.type === "skip") return false;
+  return isRelevantOnDate(habit, date);
+}
+
 export const Route = createFileRoute("/_app/habits/")({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { status?: HabitStatusFilter } => {
+    const s = search.status;
+    return s === "todo" || s === "done" ? { status: s } : {};
+  },
   component: HabitsPage,
 });
 
+/** One rendered section: a group (or the synthetic Ungrouped bucket). */
+interface Section {
+  id: string;
+  /** Display name; the color dot uses `color`. */
+  name: string;
+  color?: string;
+  /** Emoji icon — when present, shown instead of the color dot. */
+  icon?: string;
+  /** groupId for the reorder payload — null for Ungrouped. */
+  groupId: string | null;
+  habits: Habit[];
+}
+
 function HabitsPage() {
   const { data: habits, isLoading } = useHabits();
+  const { data: groups } = useHabitGroups();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [moveTarget, setMoveTarget] = useState<Habit | null>(null);
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [viewMode, setViewMode] = useState<HabitViewMode>(DEFAULT_VIEW_MODE);
 
   const isViewingToday = selectedDate === todayStr;
 
+  // Status filter (from the sidebar) — relative to the selected date. Entries
+  // come from the calendar endpoint (one cached monthly query, shared with the
+  // calendar page); only fetched when a status filter is active.
+  const { status } = Route.useSearch();
+  const selectedMonth = selectedDate.slice(0, 7);
+  const { data: calendar, isLoading: statusLoading } = useCalendarData(
+    status ? selectedMonth : "",
+  );
+  const entryByHabit = useMemo(() => {
+    const m = new Map<string, DayEntry>();
+    for (const e of calendar?.[selectedDate]?.habitEntries ?? []) {
+      m.set(e.habitId, {
+        value: e.value,
+        type: e.type,
+        targetCountSnapshot: e.targetCountSnapshot,
+      });
+    }
+    return m;
+  }, [calendar, selectedDate]);
+
+  // Section habits by group: ordered groups first, then "Ungrouped" LAST and
+  // only when it has members. Within each section, sort by the habit `order`.
+  // A status filter (if any) is applied to the full set first.
+  const sections = useMemo<Section[]>(() => {
+    const all = ((habits ?? []) as Habit[]).filter((h) =>
+      matchesStatus(h, status, entryByHabit.get(h.id), selectedDate),
+    );
+    const byOrder = (a: Habit, b: Habit) => (a.order ?? 0) - (b.order ?? 0);
+    const orderedGroups = groups
+      ? [...groups].sort(
+          (a: HabitGroup, b: HabitGroup) => (a.order ?? 0) - (b.order ?? 0),
+        )
+      : [];
+
+    const result: Section[] = orderedGroups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      color: g.color,
+      icon: g.icon,
+      groupId: g.id,
+      habits: all.filter((h) => h.groupId === g.id).sort(byOrder),
+    }));
+
+    const ungrouped = all.filter((h) => !h.groupId).sort(byOrder);
+    if (ungrouped.length > 0) {
+      result.push({
+        id: "__ungrouped__",
+        name: "Ungrouped",
+        color: "#6b7280",
+        groupId: null,
+        habits: ungrouped,
+      });
+    }
+    return result;
+  }, [habits, groups, status, entryByHabit, selectedDate]);
+
+  const hasHabits = (habits?.length ?? 0) > 0;
+  const filteredCount = sections.reduce((n, s) => n + s.habits.length, 0);
+  // While a status filter is active and its calendar data is still loading,
+  // hold the skeleton so we don't flash a wrong "nothing here" state.
+  const showSkeleton = isLoading || (!!status && statusLoading);
+
   return (
     <YStack gap="$6" p="$4">
-      {/* Header — the date filter (left), view-mode toggle + New Habit
-          (right). No page title; the app bar already reads "Habits". */}
+      {/* Header — date filter (left), view-mode toggle + New Habit (right). */}
       <XStack items="center" justify="space-between" gap="$3" flexWrap="wrap">
         <XStack items="center" gap="$3" flexWrap="wrap">
           <HabitDateNav
@@ -64,16 +198,6 @@ function HabitsPage() {
           )}
         </XStack>
         <XStack items="center" gap="$2">
-          {/* View toggle — kit SegmentedControl (alpha.8 renders icon-only
-              segments un-clamped; `currentColor` icons inherit the active
-              $primaryForeground / inactive $mutedForeground color).
-              · `height="$md"` matches the New Habit button's height token
-                exactly, so the two controls share a baseline.
-              · `display:block` drops each SVG's inline baseline gap so it sits
-                dead-center — the kit wraps icon children in a Text, which would
-                otherwise baseline-align (push) the glyph upward. `px` gives the
-                active pill horizontal breathing room; vertical centering comes
-                from the fixed Frame height + the segment's `items:center`. */}
           <SegmentedControl
             size="$3"
             height="$md"
@@ -129,117 +253,34 @@ function HabitsPage() {
         </XStack>
       </XStack>
 
-      {isLoading ? (
-        viewMode === "card" ? (
-          // Card-mode skeleton — responsive grid: 1 col mobile, 2 col
-          // tablet (≥ $md), 3 col desktop (≥ $lg). Explicit per-breakpoint
-          // width (not `flex={1}`) so a single card sits in the top-left
-          // at its natural column width, matching the loaded state.
-          <XStack flexWrap="wrap" gap="$4">
-            {[1, 2, 3].map((i) => (
-              <YStack
-                key={i}
-                width="100%"
-                $md={{ width: "49%" }}
-                $lg={{ width: "32%" }}
-                rounded="$6"
-                borderWidth={1}
-                borderColor="$borderColor"
-                bg="$card"
-                p="$5"
-              >
-                <XStack items="center" gap="$3">
-                  <Skeleton height={40} width={40} rounded="$lg" />
-                  <YStack gap="$2">
-                    <Skeleton height={16} width={96} rounded="$sm" />
-                    <Skeleton height={13} width={128} rounded="$sm" />
-                  </YStack>
-                </XStack>
-                <YStack mt="$4" gap="$2">
-                  <Skeleton height={8} width="100%" rounded={9999} />
+      {showSkeleton ? (
+        // Loading skeleton — a single vertical column of placeholder cards,
+        // matching the group-sectioned vertical Sortable layout.
+        <YStack gap="$3">
+          {[1, 2, 3].map((i) => (
+            <YStack
+              key={i}
+              width="100%"
+              rounded="$6"
+              borderWidth={1}
+              borderColor="$borderColor"
+              bg="$card"
+              p="$5"
+            >
+              <XStack items="center" gap="$3">
+                <Skeleton height={40} width={40} rounded="$lg" />
+                <YStack gap="$2">
+                  <Skeleton height={16} width={96} rounded="$sm" />
+                  <Skeleton height={13} width={128} rounded="$sm" />
                 </YStack>
-                <XStack mt="$3" justify="space-between">
-                  {[1, 2, 3, 4, 5, 6, 7].map((d) => (
-                    <YStack key={d} items="center" gap="$1">
-                      <Skeleton height={10} width={10} rounded="$sm" />
-                      <Skeleton height={14} width={14} rounded={9999} />
-                    </YStack>
-                  ))}
-                </XStack>
-                <XStack mt="$4" items="center" justify="space-between">
-                  <Skeleton height={13} width={64} rounded="$sm" />
-                  <Skeleton height={28} width={64} rounded="$lg" />
-                </XStack>
-              </YStack>
-            ))}
-          </XStack>
-        ) : (
-          // List-mode skeleton — 3 short rows so the loading layout
-          // matches the loaded list layout.
-          <YStack gap="$2">
-            {[1, 2, 3].map((i) => (
-              <XStack
-                key={i}
-                items="center"
-                gap="$3"
-                py="$3"
-                px="$3.5"
-                rounded="$4"
-                borderWidth={1}
-                borderColor="$borderColor"
-                bg="$card"
-              >
-                <Skeleton width={36} height={36} rounded="$lg" />
-                <YStack flex={1} gap="$1.5">
-                  <Skeleton height={14} width={160} rounded="$sm" />
-                  <Skeleton height={10} width={100} rounded="$sm" />
-                </YStack>
-                <Skeleton height={28} width={88} rounded="$lg" />
               </XStack>
-            ))}
-          </YStack>
-        )
-      ) : habits && habits.length > 0 ? (
-        viewMode === "card" ? (
-          // Card mode — responsive grid: 1 col mobile, 2 col tablet
-          // (≥ $md), 3 col desktop (≥ $lg). Each card is wrapped in a
-          // sized View — the HabitCard view itself stays platform-
-          // agnostic (its only layout hints are `flex` + `minW`), and
-          // the host owns the column strategy. `flex={1}` inside the
-          // View makes the card fill its assigned column.
-          <XStack flexWrap="wrap" gap="$4">
-            {habits.map((habit: Habit) => (
-              <View
-                key={habit.id}
-                width="100%"
-                $md={{ width: "49%" }}
-                $lg={{ width: "32%" }}
-              >
-                <HabitCard
-                  habit={habit}
-                  flex={1}
-                  minW={0}
-                  selectedDate={isViewingToday ? undefined : selectedDate}
-                />
-              </View>
-            ))}
-          </XStack>
-        ) : (
-          // List mode — vertical stack of compact rows. One row per
-          // habit, full content width. Density wins over visuals; the
-          // weekly dot strip + burst animations from the card view are
-          // traded for scannability.
-          <YStack gap="$2">
-            {habits.map((habit: Habit) => (
-              <HabitListItem
-                key={habit.id}
-                habit={habit}
-                selectedDate={isViewingToday ? undefined : selectedDate}
-              />
-            ))}
-          </YStack>
-        )
-      ) : (
+              <YStack mt="$4" gap="$2">
+                <Skeleton height={8} width="100%" rounded={9999} />
+              </YStack>
+            </YStack>
+          ))}
+        </YStack>
+      ) : !hasHabits ? (
         <EmptyState>
           <EmptyState.IconSlot>
             <Target size={20} />
@@ -249,6 +290,59 @@ function HabitsPage() {
             Create one to start tracking your progress.
           </EmptyState.Description>
         </EmptyState>
+      ) : filteredCount === 0 ? (
+        // A status filter is active but nothing matches for this day.
+        <EmptyState>
+          <EmptyState.IconSlot>
+            <Target size={20} />
+          </EmptyState.IconSlot>
+          <EmptyState.Title>
+            {status === "done" ? "Nothing completed yet" : "All caught up"}
+          </EmptyState.Title>
+          <EmptyState.Description>
+            {status === "done"
+              ? "No habits are marked done for this day."
+              : "No habits left to do for this day."}
+          </EmptyState.Description>
+        </EmptyState>
+      ) : (
+        <YStack gap="$6">
+          {sections
+            .filter((s) => s.habits.length > 0)
+            .map((section) => (
+              <YStack key={section.id} gap="$3">
+                {/* Group header — emoji (when set) or color dot, then name. */}
+                <XStack items="center" gap="$2.5" px="$1">
+                  {section.icon ? (
+                    <Text fontSize={16} lineHeight={16} shrink={0}>
+                      {section.icon}
+                    </Text>
+                  ) : (
+                    <View
+                      width={10}
+                      height={10}
+                      rounded={9999}
+                      shrink={0}
+                      style={{ backgroundColor: section.color || "#6b7280" }}
+                    />
+                  )}
+                  <Text fontSize="$5" fontWeight="600" color="$color">
+                    {section.name}
+                  </Text>
+                  <Text fontSize="$2" color="$mutedForeground">
+                    {section.habits.length}
+                  </Text>
+                </XStack>
+                <HabitGroupSection
+                  habits={section.habits}
+                  groupId={section.groupId}
+                  viewMode={viewMode}
+                  selectedDate={isViewingToday ? undefined : selectedDate}
+                  onMoveToGroup={setMoveTarget}
+                />
+              </YStack>
+            ))}
+        </YStack>
       )}
 
       {/* Mobile create affordance — opens the same dialog as the desktop button. */}
@@ -261,6 +355,14 @@ function HabitsPage() {
       <CreateHabitDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
+      />
+
+      <MoveToGroupDialog
+        habit={moveTarget}
+        open={!!moveTarget}
+        onOpenChange={(o) => {
+          if (!o) setMoveTarget(null);
+        }}
       />
     </YStack>
   );

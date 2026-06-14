@@ -20,7 +20,11 @@ import { habitsApi } from "./clients";
 export function useHabits() {
   return useQuery<Habit[]>({
     queryKey: ["habits"],
-    queryFn: () => habitsApi.list(),
+    // The grouped/sectioned habits UI renders the FULL active set client-side,
+    // so request all of it (server MAX_LIMIT=500) rather than the default first
+    // page of 20 — otherwise habits past #20 silently vanish from their group.
+    // Archived habits are excluded server-side.
+    queryFn: () => habitsApi.list({ limit: "500" }),
   });
 }
 
@@ -59,6 +63,7 @@ export function useCreateHabit() {
       unit?: string;
       color?: string;
       icon?: string;
+      groupId?: string | null;
     }
   >({
     mutationFn: (data) => habitsApi.create(data),
@@ -86,6 +91,7 @@ export function useUpdateHabit() {
         unit?: string;
         color?: string;
         icon?: string;
+        groupId?: string | null;
       };
     }
   >({
@@ -385,5 +391,50 @@ export function useFailHabitEntry() {
         void queryClient.invalidateQueries({ queryKey: key });
       }
     },
+  });
+}
+
+export function useReorderHabits() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    void,
+    Error,
+    { items: { id: string; order: number; groupId?: string | null }[] }
+  >({
+    mutationFn: (data) => habitsApi.reorder(data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["habits"] });
+    },
+  });
+}
+
+export function useArchiveHabit() {
+  const queryClient = useQueryClient();
+  return useMutation<Habit, Error, string>({
+    mutationFn: (id) => habitsApi.archive(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["habits"] });
+      void queryClient.invalidateQueries({ queryKey: ["habitsArchived"] });
+      void queryClient.invalidateQueries({ queryKey: ["calendar"] });
+    },
+  });
+}
+
+export function useUnarchiveHabit() {
+  const queryClient = useQueryClient();
+  return useMutation<Habit, Error, string>({
+    mutationFn: (id) => habitsApi.unarchive(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["habits"] });
+      void queryClient.invalidateQueries({ queryKey: ["habitsArchived"] });
+      void queryClient.invalidateQueries({ queryKey: ["calendar"] });
+    },
+  });
+}
+
+export function useArchivedHabits() {
+  return useQuery<Habit[]>({
+    queryKey: ["habitsArchived"],
+    queryFn: () => habitsApi.list({ archivedOnly: "true" }),
   });
 }

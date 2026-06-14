@@ -13,6 +13,7 @@ export const CreateHabitDto = z.object({
   unit: z.string().max(50).optional(),
   color: z.string().max(20).optional(),
   icon: z.string().max(50).optional(),
+  groupId: z.string().nullable().optional(),
 });
 export type CreateHabitDto = z.infer<typeof CreateHabitDto>;
 
@@ -30,5 +31,19 @@ export const UpdateHabitDto = z.object({
   unit: z.string().max(50).optional(),
   color: z.string().max(20).optional(),
   icon: z.string().max(50).optional(),
+  groupId: z.string().nullable().optional(),
 });
 export type UpdateHabitDto = z.infer<typeof UpdateHabitDto>;
+
+export const ReorderHabitsDto = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      order: z.number(),
+      // Optional: when present, also move the habit to this group in the same
+      // operation (drag-between-groups). `null` clears the group (→ Ungrouped).
+      groupId: z.string().nullable().optional(),
+    }),
+  ),
+});
+export type ReorderHabitsDto = z.infer<typeof ReorderHabitsDto>;

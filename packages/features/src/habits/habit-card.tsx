@@ -73,6 +73,15 @@ export interface HabitCardProps {
   /** Opens the host's habit detail page. */
   onOpenDetail: () => void;
 
+  /** Present → show "Archive" in the menu. Host wires the mutation. */
+  onArchive?: () => void;
+  /** Present → show "Unarchive" in the menu. Host wires the mutation. */
+  onUnarchive?: () => void;
+  /** Whether this habit is archived (drives the menu label + restore affordance). */
+  isArchived?: boolean;
+  /** Present → show "Move to group…" in the menu. Host opens the picker. */
+  onMoveToGroup?: () => void;
+
   /**
    * Optional render-prop for the bespoke web-only celebration effect
    * (`RadianceBurst` on PWA). The view tells the host when to play it via
@@ -119,6 +128,10 @@ export function HabitCard({
   onEdit,
   onDelete,
   onOpenDetail,
+  onArchive,
+  onUnarchive,
+  isArchived,
+  onMoveToGroup,
   renderCompletionEffect,
   flex,
   minW,
@@ -363,6 +376,21 @@ export function HabitCard({
               <DropdownMenu.Item onPress={onEdit}>
                 <DropdownMenu.Label>Edit</DropdownMenu.Label>
               </DropdownMenu.Item>
+              {onMoveToGroup && (
+                <DropdownMenu.Item onPress={onMoveToGroup}>
+                  <DropdownMenu.Label>Move to group…</DropdownMenu.Label>
+                </DropdownMenu.Item>
+              )}
+              {isArchived && onUnarchive && (
+                <DropdownMenu.Item onPress={onUnarchive}>
+                  <DropdownMenu.Label>Unarchive</DropdownMenu.Label>
+                </DropdownMenu.Item>
+              )}
+              {!isArchived && onArchive && (
+                <DropdownMenu.Item onPress={onArchive}>
+                  <DropdownMenu.Label>Archive</DropdownMenu.Label>
+                </DropdownMenu.Item>
+              )}
               <DropdownMenu.Item
                 intent="danger"
                 onPress={() => setDeleteOpen(true)}

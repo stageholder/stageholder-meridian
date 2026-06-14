@@ -2,6 +2,7 @@ import { Dialog, useToast } from "@stageholder/ui";
 import { DialogSheetAdapt } from "@/components/shared/dialog-sheet-adapt";
 import { HabitForm, type HabitFormValues } from "@repo/features/habits";
 import { useUpdateHabit } from "@/lib/api/habits";
+import { useHabitGroups } from "@/lib/api/habit-groups";
 import type { Habit } from "@repo/core/types";
 
 interface EditHabitSheetProps {
@@ -26,6 +27,7 @@ export function EditHabitSheet({
   onOpenChange,
 }: EditHabitSheetProps) {
   const updateHabit = useUpdateHabit();
+  const { data: groups } = useHabitGroups();
   const toast = useToast();
 
   const initial: HabitFormValues = {
@@ -38,6 +40,7 @@ export function EditHabitSheet({
     unit: habit.unit ?? "",
     color: habit.color ?? "#3b82f6",
     icon: habit.icon ?? "",
+    groupId: habit.groupId ?? null,
   };
 
   function handleSubmit(values: HabitFormValues) {
@@ -56,6 +59,7 @@ export function EditHabitSheet({
           unit: values.unit,
           color: values.color,
           icon: values.icon,
+          groupId: values.groupId ?? null,
         },
       },
       {
@@ -114,6 +118,7 @@ export function EditHabitSheet({
             submittingLabel="Saving…"
             isSubmitting={updateHabit.isPending}
             accentColor="var(--ring-habit)"
+            groups={groups}
             onSubmit={handleSubmit}
             onCancel={() => onOpenChange(false)}
           />

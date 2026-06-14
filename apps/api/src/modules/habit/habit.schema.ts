@@ -27,8 +27,12 @@ export class HabitModel {
   @Prop({ type: String }) color: string;
   @Prop({ type: String }) icon: string;
   @Prop({ type: String, required: true, index: true }) userSub: string;
+  @Prop({ type: String, default: null, index: true }) group_id: string | null;
+  @Prop({ type: Number, required: true, default: 0 }) order: number;
+  @Prop({ type: Date, default: null }) archived_at: Date;
   @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 
 export const HabitSchema = SchemaFactory.createForClass(HabitModel);
 HabitSchema.index({ userSub: 1, created_at: -1 });
+HabitSchema.index({ userSub: 1, group_id: 1, order: 1 });

@@ -11,10 +11,11 @@ import {
 } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { HabitService } from "./habit.service";
-import { CreateHabitDto, UpdateHabitDto } from "./habit.dto";
+import { CreateHabitDto, UpdateHabitDto, ReorderHabitsDto } from "./habit.dto";
 import {
   CreateHabitDto as CreateSchema,
   UpdateHabitDto as UpdateSchema,
+  ReorderHabitsDto as ReorderSchema,
 } from "./habit.dto";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe";
 import { StageholderRequest } from "../../common/types";
@@ -39,6 +40,7 @@ export class HabitController {
     @Query("limit") limit?: string,
     @Query("updatedSince") updatedSince?: string,
     @Query("includeSoftDeleted") includeSoftDeleted?: string,
+    @Query("archivedOnly") archivedOnly?: string,
   ) {
     if (updatedSince) {
       return this.service.findUpdatedSince(
@@ -47,12 +49,33 @@ export class HabitController {
         includeSoftDeleted === "true",
       );
     }
-
+    if (archivedOnly === "true") {
+      return this.service.listArchived(req.user.sub);
+    }
     return this.service.listByUser(
       req.user.sub,
       page ? +page : undefined,
       limit ? +limit : undefined,
     );
+  }
+
+  @Post("reorder")
+  async reorder(
+    @Req() req: StageholderRequest,
+    @Body(new ZodValidationPipe(ReorderSchema)) dto: ReorderHabitsDto,
+  ) {
+    await this.service.reorder(req.user.sub, dto);
+    return { reordered: true };
+  }
+
+  @Post(":id/archive")
+  async archive(@Req() req: StageholderRequest, @Param("id") id: string) {
+    return (await this.service.archive(req.user.sub, id)).toObject();
+  }
+
+  @Post(":id/unarchive")
+  async unarchive(@Req() req: StageholderRequest, @Param("id") id: string) {
+    return (await this.service.unarchive(req.user.sub, id)).toObject();
   }
 
   @Get(":id")

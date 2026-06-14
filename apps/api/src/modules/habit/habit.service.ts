@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import type { StageholderUser } from "@stageholder/sdk/core";
 import { HabitRepository } from "./habit.repository";
 import { Habit, HabitFrequency } from "./habit.entity";
-import { CreateHabitDto, UpdateHabitDto } from "./habit.dto";
+import { CreateHabitDto, UpdateHabitDto, ReorderHabitsDto } from "./habit.dto";
 import { enforceLimit } from "../../common/helpers/entitlement";
 import {
   buildPaginationMeta,
@@ -23,6 +23,8 @@ export class HabitService {
     await enforceLimit(user, "max_habits", () =>
       this.repository.countActiveForUser(userSub),
     );
+    const groupId = dto.groupId ?? null;
+    const order = await this.repository.countByGroup(userSub, groupId);
     const result = Habit.create({
       name: dto.name,
       description: dto.description,
@@ -34,6 +36,8 @@ export class HabitService {
       color: dto.color,
       icon: dto.icon,
       userSub,
+      groupId,
+      order,
     });
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);
@@ -94,8 +98,38 @@ export class HabitService {
     if (dto.unit !== undefined) habit.updateUnit(dto.unit);
     if (dto.color !== undefined) habit.updateColor(dto.color);
     if (dto.icon !== undefined) habit.updateIcon(dto.icon);
+    if (dto.groupId !== undefined) habit.updateGroupId(dto.groupId ?? null);
     await this.repository.save(habit);
     return habit;
+  }
+
+  async archive(userSub: string, id: string): Promise<Habit> {
+    const habit = await this.findById(userSub, id);
+    habit.archive();
+    await this.repository.save(habit);
+    return habit;
+  }
+
+  async unarchive(userSub: string, id: string): Promise<Habit> {
+    const habit = await this.findById(userSub, id);
+    habit.unarchive();
+    await this.repository.save(habit);
+    return habit;
+  }
+
+  async reorder(userSub: string, dto: ReorderHabitsDto): Promise<void> {
+    for (const item of dto.items) {
+      const habit = await this.repository.findById(userSub, item.id);
+      if (!habit || habit.archivedAt) continue;
+      habit.updateOrder(item.order);
+      if (item.groupId !== undefined) habit.updateGroupId(item.groupId ?? null);
+      await this.repository.save(habit);
+    }
+  }
+
+  async listArchived(userSub: string) {
+    const habits = await this.repository.findArchivedByUser(userSub);
+    return habits.map((h) => h.toObject());
   }
 
   async delete(userSub: string, id: string): Promise<void> {

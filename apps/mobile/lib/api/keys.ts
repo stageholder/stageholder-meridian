@@ -37,6 +37,13 @@ export const habitKeys = {
   details: () => [...habitKeys.all, "detail"] as const,
   detail: (id: string) => [...habitKeys.details(), id] as const,
   entries: (id: string) => [...habitKeys.detail(id), "entries"] as const,
+  // Archived habits live in their own cache so the default list stays lean —
+  // the server filters them out of /habits and surfaces them via ?archivedOnly.
+  archived: () => [...habitKeys.all, "archived"] as const,
+};
+
+export const habitGroupKeys = {
+  all: ["habitGroups"] as const,
 };
 
 export const journalKeys = {

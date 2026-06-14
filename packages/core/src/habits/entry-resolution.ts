@@ -57,6 +57,7 @@ export function countScheduledHabitsForDate(
   if (!habits) return 0;
   const dow = new Date(date + "T00:00:00").getDay();
   return habits.filter((h) => {
+    if (h.archivedAt) return false;
     if (h.frequency === "weekly_target") return false;
     const createdDate = h.createdAt?.slice(0, 10);
     if (createdDate && createdDate > date) return false;

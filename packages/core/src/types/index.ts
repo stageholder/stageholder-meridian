@@ -5,7 +5,7 @@ export type {
   JournalStatDay,
   JournalStats,
 } from "./journal";
-export type { Habit, HabitEntry } from "./habit";
+export type { Habit, HabitEntry, HabitGroup } from "./habit";
 export type { Tag } from "./tag";
 export type { Activity } from "./activity";
 export type { AppNotification } from "./notification";

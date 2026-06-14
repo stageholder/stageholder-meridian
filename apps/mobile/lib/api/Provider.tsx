@@ -72,7 +72,11 @@ export function QueryProvider({
         // v2: light-events entries were briefly cached as the raw {data,meta}
         // envelope (pre-factory hook); rehydrating that shape crashed the
         // Journey feed before the corrected refetch could land.
-        buster: "v2",
+        // v3: the Habit shape now carries groupId/order/archivedAt + the new
+        // habitGroups cache; old persisted Habit rows lack those fields, so the
+        // grouped/sectioned screen would render a stale (ungrouped, order-0)
+        // layout until the refetch landed.
+        buster: "v3",
       }}
     >
       <AuthTokenBridge />

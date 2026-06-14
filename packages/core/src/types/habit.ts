@@ -1,3 +1,15 @@
+export interface HabitGroup {
+  id: string;
+  userSub: string;
+  name: string;
+  color?: string;
+  icon?: string;
+  order: number;
+  creatorId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Habit {
   id: string;
   userSub: string;
@@ -10,6 +22,9 @@ export interface Habit {
   unit?: string;
   color?: string;
   icon?: string;
+  groupId?: string | null;
+  order: number;
+  archivedAt?: string | null;
   creatorId: string;
   createdAt: string;
   updatedAt: string;

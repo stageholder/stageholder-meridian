@@ -16,20 +16,31 @@ import {
   type HabitFormValues,
 } from "@repo/features/habits";
 
-import { useCreateHabit } from "@/lib/api";
+import { useCreateHabit, useHabitGroups } from "@/lib/api";
 import { IGNITION } from "@/lib/ignition-palette";
 
 interface CreateHabitDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Pre-select a group (e.g. the active group chip on the habits screen). */
+  groupId?: string;
 }
 
 export function CreateHabitDialog({
   open,
   onOpenChange,
+  groupId,
 }: CreateHabitDialogProps) {
   const createHabit = useCreateHabit();
+  const groupsQuery = useHabitGroups();
   const toast = useToast();
+
+  // The shared form's group picker is HIDDEN at 0 groups; the user always has
+  // the four seeded time-of-day groups, so it normally shows.
+  const groupOptions = (groupsQuery.data ?? []).map((g) => ({
+    id: g.id,
+    name: g.name,
+  }));
 
   function handleSubmit(values: HabitFormValues) {
     createHabit.mutate(
@@ -42,6 +53,7 @@ export function CreateHabitDialog({
         unit: values.unit,
         color: values.color,
         icon: values.icon,
+        groupId: values.groupId ?? null,
       },
       {
         onSuccess: () => {
@@ -67,7 +79,8 @@ export function CreateHabitDialog({
     >
       <HabitForm
         key={open ? "open" : "closed"}
-        initial={HABIT_FORM_DEFAULTS}
+        initial={{ ...HABIT_FORM_DEFAULTS, groupId: groupId ?? null }}
+        groups={groupOptions}
         submitLabel="Create"
         submittingLabel="Creating…"
         isSubmitting={createHabit.isPending}

@@ -10,3 +10,4 @@ export {
   type HabitFormProps,
   type HabitFormValues,
 } from "./habit-form";
+export * from "./habit-group-form";

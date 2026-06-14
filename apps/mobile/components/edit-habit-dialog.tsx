@@ -14,7 +14,7 @@ import { FormSheet, useToast } from "@stageholder/ui";
 import { HabitForm, type HabitFormValues } from "@repo/features/habits";
 import type { Habit } from "@repo/core/types";
 
-import { useUpdateHabit } from "@/lib/api";
+import { useHabitGroups, useUpdateHabit } from "@/lib/api";
 import { IGNITION } from "@/lib/ignition-palette";
 
 interface EditHabitDialogProps {
@@ -29,7 +29,13 @@ export function EditHabitDialog({
   onOpenChange,
 }: EditHabitDialogProps) {
   const updateHabit = useUpdateHabit();
+  const groupsQuery = useHabitGroups();
   const toast = useToast();
+
+  const groupOptions = (groupsQuery.data ?? []).map((g) => ({
+    id: g.id,
+    name: g.name,
+  }));
 
   const initial: HabitFormValues = {
     name: habit.name,
@@ -41,6 +47,7 @@ export function EditHabitDialog({
     unit: habit.unit ?? "",
     color: habit.color ?? "#3b82f6",
     icon: habit.icon ?? "",
+    groupId: habit.groupId ?? null,
   };
 
   function handleSubmit(values: HabitFormValues) {
@@ -59,6 +66,7 @@ export function EditHabitDialog({
           unit: values.unit,
           color: values.color,
           icon: values.icon,
+          groupId: values.groupId ?? null,
         },
       },
       {
@@ -87,6 +95,7 @@ export function EditHabitDialog({
         // Re-seed on each open (React idiom — no useEffect needed in the view).
         key={open ? "open" : "closed"}
         initial={initial}
+        groups={groupOptions}
         submitLabel="Save"
         submittingLabel="Saving…"
         isSubmitting={updateHabit.isPending}

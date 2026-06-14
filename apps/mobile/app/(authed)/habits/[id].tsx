@@ -46,8 +46,11 @@ import {
   weeklyCompletions,
 } from "@repo/core/habits/entry-resolution";
 import {
+  Archive,
+  ArchiveRestore,
   Check,
   ChevronLeft,
+  FolderInput,
   Minus,
   Pencil,
   SkipForward,
@@ -73,15 +76,18 @@ import {
 } from "react-native-safe-area-context";
 
 import { EditHabitDialog } from "@/components/edit-habit-dialog";
+import { HabitMoveToGroupSheet } from "@/components/habit-move-to-group-sheet";
 import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
 import { IGNITION } from "@/lib/ignition-palette";
 import {
+  useArchiveHabit,
   useCheckInHabit,
   useDeleteHabit,
   useFailHabit,
   useHabit,
   useHabitEntries,
   useSkipHabit,
+  useUnarchiveHabit,
   useUpdateHabitEntry,
 } from "@/lib/api";
 
@@ -98,12 +104,15 @@ export default function HabitDetailScreen() {
 
   const { data: habit, isLoading } = useHabit(id);
   const deleteHabit = useDeleteHabit();
+  const archiveHabit = useArchiveHabit();
+  const unarchiveHabit = useUnarchiveHabit();
   const checkIn = useCheckInHabit();
   const updateEntry = useUpdateHabitEntry();
   const skipEntry = useSkipHabit();
   const failEntry = useFailHabit();
 
   const [editOpen, setEditOpen] = useState(false);
+  const [moveToGroupOpen, setMoveToGroupOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const today = format(new Date(), "yyyy-MM-dd");
@@ -500,6 +509,28 @@ export default function HabitDetailScreen() {
     );
   }
 
+  function handleArchive() {
+    if (!habit) return;
+    archiveHabit.mutate(habit.id, {
+      onSuccess: () => {
+        toast.show({ title: `"${habit.name}" archived`, intent: "success" });
+        router.back();
+      },
+      onError: () =>
+        toast.show({ title: "Couldn't archive habit", intent: "danger" }),
+    });
+  }
+
+  function handleUnarchive() {
+    if (!habit) return;
+    unarchiveHabit.mutate(habit.id, {
+      onSuccess: () =>
+        toast.show({ title: `"${habit.name}" restored`, intent: "success" }),
+      onError: () =>
+        toast.show({ title: "Couldn't unarchive habit", intent: "danger" }),
+    });
+  }
+
   // Platform-native destructive confirm (the RN idiom; the PWA uses its
   // web AlertDialog for the same copy).
   function confirmDelete() {
@@ -543,6 +574,33 @@ export default function HabitDetailScreen() {
             <ChevronLeft size={20} />
           </IconButton>
           <XStack items="center" gap="$1">
+            <IconButton
+              variant="ghost"
+              size="sm"
+              aria-label="Move to group"
+              onPress={() => setMoveToGroupOpen(true)}
+            >
+              <FolderInput size={18} />
+            </IconButton>
+            {habit?.archivedAt ? (
+              <IconButton
+                variant="ghost"
+                size="sm"
+                aria-label="Unarchive habit"
+                onPress={handleUnarchive}
+              >
+                <ArchiveRestore size={18} />
+              </IconButton>
+            ) : (
+              <IconButton
+                variant="ghost"
+                size="sm"
+                aria-label="Archive habit"
+                onPress={handleArchive}
+              >
+                <Archive size={18} />
+              </IconButton>
+            )}
             <IconButton
               variant="ghost"
               size="sm"
@@ -778,6 +836,12 @@ export default function HabitDetailScreen() {
           onOpenChange={setEditOpen}
         />
       ) : null}
+
+      <HabitMoveToGroupSheet
+        habit={habit ?? null}
+        open={moveToGroupOpen}
+        onOpenChange={setMoveToGroupOpen}
+      />
     </YStack>
   );
 }

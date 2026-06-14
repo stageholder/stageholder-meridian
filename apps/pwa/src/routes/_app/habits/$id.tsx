@@ -1,10 +1,19 @@
 import { useState, useMemo } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { format, subDays, startOfMonth, endOfMonth, getDay } from "date-fns";
-import { ArrowLeft, Check, Minus, SkipForward, Undo2, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Minus,
+  MoreHorizontal,
+  SkipForward,
+  Undo2,
+  X,
+} from "lucide-react";
 import {
   AlertDialog,
   Button,
+  DropdownMenu,
   EventCalendar,
   H1,
   H3,
@@ -20,6 +29,7 @@ import {
   YStack,
 } from "@stageholder/ui";
 import { EditHabitSheet } from "@/components/habits/edit-habit-sheet";
+import { MoveToGroupDialog } from "@/components/habits/move-to-group-dialog";
 import {
   useHabit,
   useHabitEntries,
@@ -28,6 +38,8 @@ import {
   useSkipHabitEntry,
   useFailHabitEntry,
   useDeleteHabit,
+  useArchiveHabit,
+  useUnarchiveHabit,
 } from "@/lib/api/habits";
 import type { HabitEntry } from "@repo/core/types";
 import {
@@ -49,12 +61,15 @@ function HabitDetailPage() {
 
   const { data: habit, isLoading } = useHabit(id);
   const deleteHabit = useDeleteHabit();
+  const archiveHabit = useArchiveHabit();
+  const unarchiveHabit = useUnarchiveHabit();
   const createEntry = useCreateHabitEntry();
   const updateEntry = useUpdateHabitEntry();
   const skipEntryMutation = useSkipHabitEntry();
   const failEntry = useFailHabitEntry();
   const toast = useToast();
   const [editOpen, setEditOpen] = useState(false);
+  const [moveToGroupOpen, setMoveToGroupOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const today = format(new Date(), "yyyy-MM-dd");
@@ -489,6 +504,31 @@ function HabitDetailPage() {
 
   const [deleteOpen, setDeleteOpen] = useState(false);
 
+  function handleArchive() {
+    if (!habit) return;
+    archiveHabit.mutate(habit.id, {
+      onSuccess: () => {
+        toast.show({ title: `"${habit.name}" archived`, intent: "success" });
+        navigate({ to: "/habits" });
+      },
+      onError: () =>
+        toast.show({ title: "Couldn't archive habit", intent: "danger" }),
+    });
+  }
+
+  function handleUnarchive() {
+    if (!habit) return;
+    unarchiveHabit.mutate(habit.id, {
+      onSuccess: () =>
+        toast.show({
+          title: `"${habit.name}" restored`,
+          intent: "success",
+        }),
+      onError: () =>
+        toast.show({ title: "Couldn't unarchive habit", intent: "danger" }),
+    });
+  }
+
   function confirmDelete() {
     deleteHabit.mutate(id, {
       onSuccess: () => {
@@ -576,6 +616,27 @@ function HabitDetailPage() {
           <Button intent="destructive" onPress={() => setDeleteOpen(true)}>
             Delete
           </Button>
+          <DropdownMenu>
+            <DropdownMenu.Trigger asChild>
+              <IconButton variant="ghost" size="sm" aria-label="More actions">
+                <MoreHorizontal size={16} />
+              </IconButton>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content minW={180}>
+              <DropdownMenu.Item onPress={() => setMoveToGroupOpen(true)}>
+                <DropdownMenu.Label>Move to group…</DropdownMenu.Label>
+              </DropdownMenu.Item>
+              {habit.archivedAt ? (
+                <DropdownMenu.Item onPress={handleUnarchive}>
+                  <DropdownMenu.Label>Unarchive</DropdownMenu.Label>
+                </DropdownMenu.Item>
+              ) : (
+                <DropdownMenu.Item onPress={handleArchive}>
+                  <DropdownMenu.Label>Archive</DropdownMenu.Label>
+                </DropdownMenu.Item>
+              )}
+            </DropdownMenu.Content>
+          </DropdownMenu>
         </XStack>
       </XStack>
 
@@ -1025,6 +1086,12 @@ function HabitDetailPage() {
         habit={habit}
         open={editOpen}
         onOpenChange={setEditOpen}
+      />
+
+      <MoveToGroupDialog
+        habit={habit}
+        open={moveToGroupOpen}
+        onOpenChange={setMoveToGroupOpen}
       />
 
       {/* Conditionally mounted so CLOSING UNMOUNTS the dialog (overlay removed

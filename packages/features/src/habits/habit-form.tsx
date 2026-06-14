@@ -41,7 +41,22 @@ export interface HabitFormValues {
   unit?: string;
   color: string;
   icon?: string;
+  /**
+   * Group membership. `undefined`/`""`/`null` ⇒ Ungrouped. The host threads
+   * this into its create/update mutation (`groupId`). Only surfaced when the
+   * host passes a non-empty `groups` list (Task 4.6).
+   */
+  groupId?: string | null;
 }
+
+/** Minimal group shape the form needs for the picker — id + display name. */
+export interface HabitFormGroupOption {
+  id: string;
+  name: string;
+}
+
+/** Sentinel Select value for "no group" — Select can't hold an empty string. */
+const NO_GROUP_VALUE = "__none__";
 
 /** The default seed for a brand-new habit (create flow). */
 export const HABIT_FORM_DEFAULTS: HabitFormValues = {
@@ -93,6 +108,11 @@ export interface HabitFormProps {
    * `RING_CATEGORY.habit.color` (kept symmetric with `HabitCard`).
    */
   accentColor: string;
+  /**
+   * Groups available for the "Group" picker. When empty/omitted the picker is
+   * HIDDEN — a user with no groups never sees grouping chrome (Task 4.6).
+   */
+  groups?: HabitFormGroupOption[];
   /** Fired on form submit when the name is non-empty. */
   onSubmit: (values: HabitFormValues) => void | Promise<void>;
   /** Fired on Cancel press (or whatever close gesture the host wires up). */
@@ -125,6 +145,7 @@ export function HabitForm({
   submittingLabel,
   isSubmitting,
   accentColor,
+  groups,
   onSubmit,
   onCancel,
 }: HabitFormProps) {
@@ -151,6 +172,10 @@ export function HabitForm({
     initial.scheduledDays ?? [],
   );
   const [weeklyTarget, setWeeklyTarget] = useState(initial.weeklyTarget ?? 2);
+  const [groupId, setGroupId] = useState<string | null>(
+    initial.groupId ?? null,
+  );
+  const hasGroups = !!groups && groups.length > 0;
 
   // <md the create form is itself a bottom Sheet; a Popover opened inside a
   // Sheet renders behind it, so the emoji picker switches to a modal Sheet
@@ -203,6 +228,9 @@ export function HabitForm({
       unit: unit.trim() || undefined,
       color,
       icon: icon || undefined,
+      // Only thread groupId when the picker is shown; otherwise leave it out so
+      // the host's create/update payload is untouched for group-less users.
+      ...(hasGroups ? { groupId } : {}),
     });
   }
 
@@ -415,6 +443,32 @@ export function HabitForm({
             ))}
           </XStack>
         </YStack>
+
+        {/* Group picker — only rendered when the host supplies groups, so a
+            user with no groups never sees grouping chrome. Mirrors the
+            Frequency Select's native `inSheet` handling. */}
+        {hasGroups && (
+          <YStack>
+            <Label htmlFor="habit-form-group">Group</Label>
+            <Select
+              value={groupId ?? NO_GROUP_VALUE}
+              onValueChange={(value) =>
+                setGroupId(value === NO_GROUP_VALUE ? null : value)
+              }
+              inSheet={isWeb ? undefined : true}
+            >
+              <Select.Trigger mt="$1" width="100%" />
+              <Select.Content>
+                <Select.Item value={NO_GROUP_VALUE}>Ungrouped</Select.Item>
+                {groups!.map((g) => (
+                  <Select.Item key={g.id} value={g.id}>
+                    {g.name}
+                  </Select.Item>
+                ))}
+              </Select.Content>
+            </Select>
+          </YStack>
+        )}
 
         {/* Full-width 50/50 lg buttons on mobile (the bottom sheet);
             right-aligned, content-width on DESKTOP. `$md` is min-width 768

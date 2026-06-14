@@ -34,6 +34,9 @@ export class HabitRepository {
           color: data.color,
           icon: data.icon,
           userSub: data.userSub,
+          group_id: data.groupId ?? null,
+          order: data.order,
+          archived_at: data.archivedAt ? new Date(data.archivedAt) : null,
         },
       },
       { upsert: true },
@@ -48,7 +51,9 @@ export class HabitRepository {
   }
 
   async findByUser(userSub: string): Promise<Habit[]> {
-    const docs = await this.model.find({ userSub, deleted_at: null }).lean();
+    const docs = await this.model
+      .find({ userSub, deleted_at: null, archived_at: null })
+      .lean();
     return docs.map((doc) => this.toDomain(doc));
   }
 
@@ -60,14 +65,43 @@ export class HabitRepository {
     const total = await this.model.countDocuments({
       userSub,
       deleted_at: null,
+      archived_at: null,
     });
     const docs = await this.model
-      .find({ userSub, deleted_at: null })
+      .find({ userSub, deleted_at: null, archived_at: null })
       .sort({ created_at: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean();
     return { docs: docs.map((doc) => this.toDomain(doc)), total };
+  }
+
+  /** Habits in one group, ordered. groupId `null` returns the Ungrouped set. */
+  async findByGroup(userSub: string, groupId: string | null): Promise<Habit[]> {
+    const docs = await this.model
+      .find({ userSub, deleted_at: null, archived_at: null, group_id: groupId })
+      .sort({ order: 1, created_at: -1 })
+      .lean();
+    return docs.map((doc) => this.toDomain(doc));
+  }
+
+  /** Archived (non-deleted) habits for the Archived view. */
+  async findArchivedByUser(userSub: string): Promise<Habit[]> {
+    const docs = await this.model
+      .find({ userSub, deleted_at: null, archived_at: { $ne: null } })
+      .sort({ created_at: -1 })
+      .lean();
+    return docs.map((doc) => this.toDomain(doc));
+  }
+
+  /** Count active habits already in a group (for initial `order` on create). */
+  async countByGroup(userSub: string, groupId: string | null): Promise<number> {
+    return this.model.countDocuments({
+      userSub,
+      deleted_at: null,
+      archived_at: null,
+      group_id: groupId,
+    });
   }
 
   async countByUser(userSub: string): Promise<number> {
@@ -85,7 +119,7 @@ export class HabitRepository {
 
   async findIdsByUser(userSub: string): Promise<string[]> {
     const docs = await this.model
-      .find({ userSub, deleted_at: null })
+      .find({ userSub, deleted_at: null, archived_at: null })
       .select("_id")
       .lean();
     return docs.map((d) => d._id as string);
@@ -105,6 +139,7 @@ export class HabitRepository {
       .find({
         userSub,
         deleted_at: null,
+        archived_at: null,
         created_at: { $lte: endOfDay },
       })
       .select("_id")
@@ -116,6 +151,18 @@ export class HabitRepository {
     await this.model.updateOne(
       { _id: id, userSub },
       { $set: { deleted_at: new Date() } },
+    );
+  }
+
+  /**
+   * On habit-group deletion, orphan its members rather than cascade-deleting
+   * them: clear `group_id` so the habits fall back to "Ungrouped". History
+   * (entries/streaks) is untouched.
+   */
+  async clearGroup(userSub: string, groupId: string): Promise<void> {
+    await this.model.updateMany(
+      { userSub, group_id: groupId, deleted_at: null },
+      { $set: { group_id: null } },
     );
   }
 
@@ -131,6 +178,11 @@ export class HabitRepository {
     since: string,
     includeSoftDeleted = false,
   ): Promise<Habit[]> {
+    // NOTE: archived habits are intentionally INCLUDED here (unlike findByUser
+    // and the ring-count queries). Sync must deliver the archive-state
+    // transition so a cached client moves the habit out of its active list;
+    // the client-side ring math excludes archivedAt itself. Only deleted_at is
+    // filtered (when not includeSoftDeleted).
     const filter: any = {
       userSub,
       updated_at: { $gt: new Date(since) },
@@ -157,6 +209,11 @@ export class HabitRepository {
         color: doc.color,
         icon: doc.icon,
         userSub: doc.userSub,
+        groupId: doc.group_id ?? null,
+        order: doc.order ?? 0,
+        archivedAt: doc.archived_at
+          ? new Date(doc.archived_at).toISOString()
+          : null,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at,
       },

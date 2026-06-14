@@ -22,6 +22,14 @@ interface HabitCardProps {
   /** Flex layout hints forwarded to the card root (auto-fit grid). */
   flex?: number;
   minW?: number;
+  /** Present → "Archive" appears in the card menu (host wires the mutation). */
+  onArchive?: () => void;
+  /** Present → "Restore" appears in the card menu. */
+  onUnarchive?: () => void;
+  /** Whether this habit is archived (drives the menu label). */
+  isArchived?: boolean;
+  /** Present → "Move to group…" appears in the card menu. */
+  onMoveToGroup?: () => void;
 }
 
 /**
@@ -38,7 +46,16 @@ interface HabitCardProps {
  *  - The orange habit category color (CSS vars driven by the design
  *    tokens shared with activity-rings + calendar).
  */
-export function HabitCard({ habit, selectedDate, flex, minW }: HabitCardProps) {
+export function HabitCard({
+  habit,
+  selectedDate,
+  flex,
+  minW,
+  onArchive,
+  onUnarchive,
+  isArchived,
+  onMoveToGroup,
+}: HabitCardProps) {
   const today = format(new Date(), "yyyy-MM-dd");
   const activeDate = selectedDate || today;
   const isViewingToday = !selectedDate || selectedDate === today;
@@ -204,6 +221,10 @@ export function HabitCard({ habit, selectedDate, flex, minW }: HabitCardProps) {
         onOpenDetail={() =>
           void navigate({ to: "/habits/$id", params: { id: habit.id } })
         }
+        onArchive={onArchive}
+        onUnarchive={onUnarchive}
+        isArchived={isArchived}
+        onMoveToGroup={onMoveToGroup}
         renderCompletionEffect={(active) => <RadianceBurst active={active} />}
         flex={flex}
         minW={minW}

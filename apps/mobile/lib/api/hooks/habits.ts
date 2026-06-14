@@ -33,8 +33,13 @@ export function useHabits() {
   return useQuery({
     queryKey: habitKeys.list(),
     queryFn: async () => {
+      // The grouped/sectioned habits UI renders the FULL active set client-side,
+      // so request all of it (server MAX_LIMIT=500) rather than the default
+      // first page of 20 — otherwise habits past #20 silently vanish from their
+      // group. Archived habits are excluded server-side.
       const { data } = await apiClient.get<{ data: Habit[] } | Habit[]>(
         "/habits",
+        { params: { limit: 500 } },
       );
       return Array.isArray(data) ? data : data.data;
     },
@@ -88,6 +93,8 @@ export type CreateHabitInput = {
   unit?: string;
   color?: string;
   icon?: string;
+  /** Group membership — null/omitted = Ungrouped. */
+  groupId?: string | null;
 };
 
 export function useCreateHabit() {
@@ -165,6 +172,70 @@ export function useDeleteHabit() {
       for (const [key, prev] of ctx.snapshots) qc.setQueryData(key, prev);
     },
     onSettled: () => qc.invalidateQueries({ queryKey: habitKeys.lists() }),
+  });
+}
+
+/* ------------------- Reorder / archive / archived list -------------------- */
+// Group-grid parity with the PWA (apps/pwa/src/lib/api/habits.ts):
+//   - reorder    — sparse {id, order, groupId?} update; including groupId moves
+//                  the habit between groups in the same call (drag-between).
+//   - archive    — soft-hides a habit from the default list, preserving history.
+//   - unarchive  — restores it.
+//   - archived   — the Archived view's own cache (server ?archivedOnly=true).
+
+export function useReorderHabits() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      items: { id: string; order: number; groupId?: string | null }[];
+    }) => {
+      await apiClient.post("/habits/reorder", data);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: habitKeys.lists() }),
+  });
+}
+
+export function useArchiveHabit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data } = await apiClient.post<Habit>(`/habits/${id}/archive`, {});
+      return data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: habitKeys.lists() });
+      void qc.invalidateQueries({ queryKey: habitKeys.archived() });
+    },
+  });
+}
+
+export function useUnarchiveHabit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data } = await apiClient.post<Habit>(
+        `/habits/${id}/unarchive`,
+        {},
+      );
+      return data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: habitKeys.lists() });
+      void qc.invalidateQueries({ queryKey: habitKeys.archived() });
+    },
+  });
+}
+
+export function useArchivedHabits() {
+  return useQuery({
+    queryKey: habitKeys.archived(),
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ data: Habit[] } | Habit[]>(
+        "/habits",
+        { params: { archivedOnly: "true" } },
+      );
+      return Array.isArray(data) ? data : data.data;
+    },
   });
 }
 

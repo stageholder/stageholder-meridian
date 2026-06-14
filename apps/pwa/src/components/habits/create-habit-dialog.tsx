@@ -6,10 +6,16 @@ import {
   type HabitFormValues,
 } from "@repo/features/habits";
 import { useCreateHabit } from "@/lib/api/habits";
+import { useHabitGroups } from "@/lib/api/habit-groups";
 
 interface CreateHabitDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Pre-select this group in the form's Group picker (e.g. creating from a
+   * single-group view). `null`/omitted ⇒ Ungrouped.
+   */
+  defaultGroupId?: string | null;
 }
 
 /**
@@ -24,8 +30,10 @@ interface CreateHabitDialogProps {
 export function CreateHabitDialog({
   open,
   onOpenChange,
+  defaultGroupId,
 }: CreateHabitDialogProps) {
   const createHabit = useCreateHabit();
+  const { data: groups } = useHabitGroups();
   const toast = useToast();
 
   function handleSubmit(values: HabitFormValues) {
@@ -40,6 +48,7 @@ export function CreateHabitDialog({
         unit: values.unit,
         color: values.color,
         icon: values.icon,
+        groupId: values.groupId ?? null,
       },
       {
         onSuccess: () => {
@@ -90,13 +99,18 @@ export function CreateHabitDialog({
         >
           <Dialog.Title>New Habit</Dialog.Title>
           <HabitForm
-            // Re-seed on each open — empty defaults on re-open after submit.
-            key={open ? "open" : "closed"}
-            initial={HABIT_FORM_DEFAULTS}
+            // Re-seed on each open (+ on defaultGroupId change) — empty defaults
+            // on re-open after submit, with the active group pre-selected.
+            key={`${open ? "open" : "closed"}-${defaultGroupId ?? ""}`}
+            initial={{
+              ...HABIT_FORM_DEFAULTS,
+              groupId: defaultGroupId ?? null,
+            }}
             submitLabel="Create"
             submittingLabel="Creating…"
             isSubmitting={createHabit.isPending}
             accentColor="var(--ring-habit)"
+            groups={groups}
             onSubmit={handleSubmit}
             onCancel={() => onOpenChange(false)}
           />

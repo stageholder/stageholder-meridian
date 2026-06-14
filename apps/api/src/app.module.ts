@@ -27,6 +27,7 @@ import { EncryptionModule } from "./modules/encryption";
 import { JournalSecurityModule } from "./modules/journal-security/journal-security.module";
 import { MeModule } from "./modules/me/me.module";
 import { UserModule } from "./modules/user/user.module";
+import { HabitGroupModule } from "./modules/habit-group/habit-group.module";
 import { HubWebhookModule } from "./modules/hub-webhook/hub-webhook.module";
 
 @Module({
@@ -80,6 +81,7 @@ import { HubWebhookModule } from "./modules/hub-webhook/hub-webhook.module";
     TodoModule,
     JournalModule,
     HabitModule,
+    HabitGroupModule,
     HabitEntryModule,
     ActivityModule,
     NotificationModule,

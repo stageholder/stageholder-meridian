@@ -18,6 +18,7 @@ import { Route as AppJourneyRouteImport } from "./routes/_app/journey";
 import { Route as AppCalendarRouteImport } from "./routes/_app/calendar";
 import { Route as AppTodosRouteRouteImport } from "./routes/_app/todos/route";
 import { Route as AppJournalRouteRouteImport } from "./routes/_app/journal/route";
+import { Route as AppHabitsRouteRouteImport } from "./routes/_app/habits/route";
 import { Route as AppTodosIndexRouteImport } from "./routes/_app/todos/index";
 import { Route as AppSettingsIndexRouteImport } from "./routes/_app/settings/index";
 import { Route as AppJournalIndexRouteImport } from "./routes/_app/journal/index";
@@ -31,10 +32,12 @@ import { Route as AppTodosCompletedRouteImport } from "./routes/_app/todos/compl
 import { Route as AppTodosListIdRouteImport } from "./routes/_app/todos/$listId";
 import { Route as AppJournalNewRouteImport } from "./routes/_app/journal/new";
 import { Route as AppJournalIdRouteImport } from "./routes/_app/journal/$id";
+import { Route as AppHabitsArchivedRouteImport } from "./routes/_app/habits/archived";
 import { Route as AppHabitsIdRouteImport } from "./routes/_app/habits/$id";
 import { Route as AppSettingsBillingIndexRouteImport } from "./routes/_app/settings/billing/index";
 import { Route as AppSettingsBillingUpgradeRouteImport } from "./routes/_app/settings/billing/upgrade";
 import { Route as AppSettingsBillingSuccessRouteImport } from "./routes/_app/settings/billing/success";
+import { Route as AppHabitsGroupGroupIdRouteImport } from "./routes/_app/habits/group.$groupId";
 
 const AuthRouteRoute = AuthRouteRouteImport.update({
   id: "/_auth",
@@ -79,6 +82,11 @@ const AppJournalRouteRoute = AppJournalRouteRouteImport.update({
   path: "/journal",
   getParentRoute: () => AppRouteRoute,
 } as any);
+const AppHabitsRouteRoute = AppHabitsRouteRouteImport.update({
+  id: "/habits",
+  path: "/habits",
+  getParentRoute: () => AppRouteRoute,
+} as any);
 const AppTodosIndexRoute = AppTodosIndexRouteImport.update({
   id: "/",
   path: "/",
@@ -95,9 +103,9 @@ const AppJournalIndexRoute = AppJournalIndexRouteImport.update({
   getParentRoute: () => AppJournalRouteRoute,
 } as any);
 const AppHabitsIndexRoute = AppHabitsIndexRouteImport.update({
-  id: "/habits/",
-  path: "/habits/",
-  getParentRoute: () => AppRouteRoute,
+  id: "/",
+  path: "/",
+  getParentRoute: () => AppHabitsRouteRoute,
 } as any);
 const AuthAuthLoginRoute = AuthAuthLoginRouteImport.update({
   id: "/auth/login",
@@ -144,10 +152,15 @@ const AppJournalIdRoute = AppJournalIdRouteImport.update({
   path: "/$id",
   getParentRoute: () => AppJournalRouteRoute,
 } as any);
+const AppHabitsArchivedRoute = AppHabitsArchivedRouteImport.update({
+  id: "/archived",
+  path: "/archived",
+  getParentRoute: () => AppHabitsRouteRoute,
+} as any);
 const AppHabitsIdRoute = AppHabitsIdRouteImport.update({
-  id: "/habits/$id",
-  path: "/habits/$id",
-  getParentRoute: () => AppRouteRoute,
+  id: "/$id",
+  path: "/$id",
+  getParentRoute: () => AppHabitsRouteRoute,
 } as any);
 const AppSettingsBillingIndexRoute = AppSettingsBillingIndexRouteImport.update({
   id: "/settings/billing/",
@@ -166,9 +179,15 @@ const AppSettingsBillingSuccessRoute =
     path: "/settings/billing/success",
     getParentRoute: () => AppRouteRoute,
   } as any);
+const AppHabitsGroupGroupIdRoute = AppHabitsGroupGroupIdRouteImport.update({
+  id: "/group/$groupId",
+  path: "/group/$groupId",
+  getParentRoute: () => AppHabitsRouteRoute,
+} as any);
 
 export interface FileRoutesByFullPath {
   "/": typeof AppIndexRoute;
+  "/habits": typeof AppHabitsRouteRouteWithChildren;
   "/journal": typeof AppJournalRouteRouteWithChildren;
   "/todos": typeof AppTodosRouteRouteWithChildren;
   "/calendar": typeof AppCalendarRoute;
@@ -176,6 +195,7 @@ export interface FileRoutesByFullPath {
   "/goodbye": typeof AuthGoodbyeRoute;
   "/onboarding": typeof AuthOnboardingRoute;
   "/habits/$id": typeof AppHabitsIdRoute;
+  "/habits/archived": typeof AppHabitsArchivedRoute;
   "/journal/$id": typeof AppJournalIdRoute;
   "/journal/new": typeof AppJournalNewRoute;
   "/todos/$listId": typeof AppTodosListIdRoute;
@@ -189,6 +209,7 @@ export interface FileRoutesByFullPath {
   "/journal/": typeof AppJournalIndexRoute;
   "/settings/": typeof AppSettingsIndexRoute;
   "/todos/": typeof AppTodosIndexRoute;
+  "/habits/group/$groupId": typeof AppHabitsGroupGroupIdRoute;
   "/settings/billing/success": typeof AppSettingsBillingSuccessRoute;
   "/settings/billing/upgrade": typeof AppSettingsBillingUpgradeRoute;
   "/settings/billing/": typeof AppSettingsBillingIndexRoute;
@@ -200,6 +221,7 @@ export interface FileRoutesByTo {
   "/goodbye": typeof AuthGoodbyeRoute;
   "/onboarding": typeof AuthOnboardingRoute;
   "/habits/$id": typeof AppHabitsIdRoute;
+  "/habits/archived": typeof AppHabitsArchivedRoute;
   "/journal/$id": typeof AppJournalIdRoute;
   "/journal/new": typeof AppJournalNewRoute;
   "/todos/$listId": typeof AppTodosListIdRoute;
@@ -213,6 +235,7 @@ export interface FileRoutesByTo {
   "/journal": typeof AppJournalIndexRoute;
   "/settings": typeof AppSettingsIndexRoute;
   "/todos": typeof AppTodosIndexRoute;
+  "/habits/group/$groupId": typeof AppHabitsGroupGroupIdRoute;
   "/settings/billing/success": typeof AppSettingsBillingSuccessRoute;
   "/settings/billing/upgrade": typeof AppSettingsBillingUpgradeRoute;
   "/settings/billing": typeof AppSettingsBillingIndexRoute;
@@ -221,6 +244,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   "/_app": typeof AppRouteRouteWithChildren;
   "/_auth": typeof AuthRouteRouteWithChildren;
+  "/_app/habits": typeof AppHabitsRouteRouteWithChildren;
   "/_app/journal": typeof AppJournalRouteRouteWithChildren;
   "/_app/todos": typeof AppTodosRouteRouteWithChildren;
   "/_app/calendar": typeof AppCalendarRoute;
@@ -229,6 +253,7 @@ export interface FileRoutesById {
   "/_auth/onboarding": typeof AuthOnboardingRoute;
   "/_app/": typeof AppIndexRoute;
   "/_app/habits/$id": typeof AppHabitsIdRoute;
+  "/_app/habits/archived": typeof AppHabitsArchivedRoute;
   "/_app/journal/$id": typeof AppJournalIdRoute;
   "/_app/journal/new": typeof AppJournalNewRoute;
   "/_app/todos/$listId": typeof AppTodosListIdRoute;
@@ -242,6 +267,7 @@ export interface FileRoutesById {
   "/_app/journal/": typeof AppJournalIndexRoute;
   "/_app/settings/": typeof AppSettingsIndexRoute;
   "/_app/todos/": typeof AppTodosIndexRoute;
+  "/_app/habits/group/$groupId": typeof AppHabitsGroupGroupIdRoute;
   "/_app/settings/billing/success": typeof AppSettingsBillingSuccessRoute;
   "/_app/settings/billing/upgrade": typeof AppSettingsBillingUpgradeRoute;
   "/_app/settings/billing/": typeof AppSettingsBillingIndexRoute;
@@ -250,6 +276,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
     | "/"
+    | "/habits"
     | "/journal"
     | "/todos"
     | "/calendar"
@@ -257,6 +284,7 @@ export interface FileRouteTypes {
     | "/goodbye"
     | "/onboarding"
     | "/habits/$id"
+    | "/habits/archived"
     | "/journal/$id"
     | "/journal/new"
     | "/todos/$listId"
@@ -270,6 +298,7 @@ export interface FileRouteTypes {
     | "/journal/"
     | "/settings/"
     | "/todos/"
+    | "/habits/group/$groupId"
     | "/settings/billing/success"
     | "/settings/billing/upgrade"
     | "/settings/billing/";
@@ -281,6 +310,7 @@ export interface FileRouteTypes {
     | "/goodbye"
     | "/onboarding"
     | "/habits/$id"
+    | "/habits/archived"
     | "/journal/$id"
     | "/journal/new"
     | "/todos/$listId"
@@ -294,6 +324,7 @@ export interface FileRouteTypes {
     | "/journal"
     | "/settings"
     | "/todos"
+    | "/habits/group/$groupId"
     | "/settings/billing/success"
     | "/settings/billing/upgrade"
     | "/settings/billing";
@@ -301,6 +332,7 @@ export interface FileRouteTypes {
     | "__root__"
     | "/_app"
     | "/_auth"
+    | "/_app/habits"
     | "/_app/journal"
     | "/_app/todos"
     | "/_app/calendar"
@@ -309,6 +341,7 @@ export interface FileRouteTypes {
     | "/_auth/onboarding"
     | "/_app/"
     | "/_app/habits/$id"
+    | "/_app/habits/archived"
     | "/_app/journal/$id"
     | "/_app/journal/new"
     | "/_app/todos/$listId"
@@ -322,6 +355,7 @@ export interface FileRouteTypes {
     | "/_app/journal/"
     | "/_app/settings/"
     | "/_app/todos/"
+    | "/_app/habits/group/$groupId"
     | "/_app/settings/billing/success"
     | "/_app/settings/billing/upgrade"
     | "/_app/settings/billing/";
@@ -397,6 +431,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AppJournalRouteRouteImport;
       parentRoute: typeof AppRouteRoute;
     };
+    "/_app/habits": {
+      id: "/_app/habits";
+      path: "/habits";
+      fullPath: "/habits";
+      preLoaderRoute: typeof AppHabitsRouteRouteImport;
+      parentRoute: typeof AppRouteRoute;
+    };
     "/_app/todos/": {
       id: "/_app/todos/";
       path: "/";
@@ -420,10 +461,10 @@ declare module "@tanstack/react-router" {
     };
     "/_app/habits/": {
       id: "/_app/habits/";
-      path: "/habits";
+      path: "/";
       fullPath: "/habits/";
       preLoaderRoute: typeof AppHabitsIndexRouteImport;
-      parentRoute: typeof AppRouteRoute;
+      parentRoute: typeof AppHabitsRouteRoute;
     };
     "/_auth/auth/login": {
       id: "/_auth/auth/login";
@@ -488,12 +529,19 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AppJournalIdRouteImport;
       parentRoute: typeof AppJournalRouteRoute;
     };
+    "/_app/habits/archived": {
+      id: "/_app/habits/archived";
+      path: "/archived";
+      fullPath: "/habits/archived";
+      preLoaderRoute: typeof AppHabitsArchivedRouteImport;
+      parentRoute: typeof AppHabitsRouteRoute;
+    };
     "/_app/habits/$id": {
       id: "/_app/habits/$id";
-      path: "/habits/$id";
+      path: "/$id";
       fullPath: "/habits/$id";
       preLoaderRoute: typeof AppHabitsIdRouteImport;
-      parentRoute: typeof AppRouteRoute;
+      parentRoute: typeof AppHabitsRouteRoute;
     };
     "/_app/settings/billing/": {
       id: "/_app/settings/billing/";
@@ -516,8 +564,33 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AppSettingsBillingSuccessRouteImport;
       parentRoute: typeof AppRouteRoute;
     };
+    "/_app/habits/group/$groupId": {
+      id: "/_app/habits/group/$groupId";
+      path: "/group/$groupId";
+      fullPath: "/habits/group/$groupId";
+      preLoaderRoute: typeof AppHabitsGroupGroupIdRouteImport;
+      parentRoute: typeof AppHabitsRouteRoute;
+    };
   }
 }
+
+interface AppHabitsRouteRouteChildren {
+  AppHabitsIdRoute: typeof AppHabitsIdRoute;
+  AppHabitsArchivedRoute: typeof AppHabitsArchivedRoute;
+  AppHabitsIndexRoute: typeof AppHabitsIndexRoute;
+  AppHabitsGroupGroupIdRoute: typeof AppHabitsGroupGroupIdRoute;
+}
+
+const AppHabitsRouteRouteChildren: AppHabitsRouteRouteChildren = {
+  AppHabitsIdRoute: AppHabitsIdRoute,
+  AppHabitsArchivedRoute: AppHabitsArchivedRoute,
+  AppHabitsIndexRoute: AppHabitsIndexRoute,
+  AppHabitsGroupGroupIdRoute: AppHabitsGroupGroupIdRoute,
+};
+
+const AppHabitsRouteRouteWithChildren = AppHabitsRouteRoute._addFileChildren(
+  AppHabitsRouteRouteChildren,
+);
 
 interface AppJournalRouteRouteChildren {
   AppJournalIdRoute: typeof AppJournalIdRoute;
@@ -556,13 +629,12 @@ const AppTodosRouteRouteWithChildren = AppTodosRouteRoute._addFileChildren(
 );
 
 interface AppRouteRouteChildren {
+  AppHabitsRouteRoute: typeof AppHabitsRouteRouteWithChildren;
   AppJournalRouteRoute: typeof AppJournalRouteRouteWithChildren;
   AppTodosRouteRoute: typeof AppTodosRouteRouteWithChildren;
   AppCalendarRoute: typeof AppCalendarRoute;
   AppJourneyRoute: typeof AppJourneyRoute;
   AppIndexRoute: typeof AppIndexRoute;
-  AppHabitsIdRoute: typeof AppHabitsIdRoute;
-  AppHabitsIndexRoute: typeof AppHabitsIndexRoute;
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute;
   AppSettingsBillingSuccessRoute: typeof AppSettingsBillingSuccessRoute;
   AppSettingsBillingUpgradeRoute: typeof AppSettingsBillingUpgradeRoute;
@@ -570,13 +642,12 @@ interface AppRouteRouteChildren {
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
+  AppHabitsRouteRoute: AppHabitsRouteRouteWithChildren,
   AppJournalRouteRoute: AppJournalRouteRouteWithChildren,
   AppTodosRouteRoute: AppTodosRouteRouteWithChildren,
   AppCalendarRoute: AppCalendarRoute,
   AppJourneyRoute: AppJourneyRoute,
   AppIndexRoute: AppIndexRoute,
-  AppHabitsIdRoute: AppHabitsIdRoute,
-  AppHabitsIndexRoute: AppHabitsIndexRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,
   AppSettingsBillingSuccessRoute: AppSettingsBillingSuccessRoute,
   AppSettingsBillingUpgradeRoute: AppSettingsBillingUpgradeRoute,

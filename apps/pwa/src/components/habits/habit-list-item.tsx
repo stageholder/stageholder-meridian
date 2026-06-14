@@ -28,6 +28,14 @@ interface HabitListItemProps {
   habit: Habit;
   /** When set, the row shows status for this date instead of today. */
   selectedDate?: string;
+  /** Present → "Archive" appears in the menu (host wires the mutation). */
+  onArchive?: () => void;
+  /** Present → "Unarchive" appears in the menu. */
+  onUnarchive?: () => void;
+  /** Whether this habit is archived (drives the menu label). */
+  isArchived?: boolean;
+  /** Present → "Move to group…" appears in the menu. */
+  onMoveToGroup?: () => void;
 }
 
 /**
@@ -45,7 +53,14 @@ interface HabitListItemProps {
  * `packages/features/src/habits/habit-list-item.tsx` so the future RN
  * mobile habits screen can use the same view.
  */
-export function HabitListItem({ habit, selectedDate }: HabitListItemProps) {
+export function HabitListItem({
+  habit,
+  selectedDate,
+  onArchive,
+  onUnarchive,
+  isArchived,
+  onMoveToGroup,
+}: HabitListItemProps) {
   const today = format(new Date(), "yyyy-MM-dd");
   const activeDate = selectedDate || today;
   const isViewingToday = !selectedDate || selectedDate === today;
@@ -373,6 +388,21 @@ export function HabitListItem({ habit, selectedDate }: HabitListItemProps) {
                 <DropdownMenu.Label>Mark failed</DropdownMenu.Label>
               </DropdownMenu.Item>
             ) : null}
+            {onMoveToGroup && (
+              <DropdownMenu.Item onPress={onMoveToGroup}>
+                <DropdownMenu.Label>Move to group…</DropdownMenu.Label>
+              </DropdownMenu.Item>
+            )}
+            {isArchived && onUnarchive && (
+              <DropdownMenu.Item onPress={onUnarchive}>
+                <DropdownMenu.Label>Unarchive</DropdownMenu.Label>
+              </DropdownMenu.Item>
+            )}
+            {!isArchived && onArchive && (
+              <DropdownMenu.Item onPress={onArchive}>
+                <DropdownMenu.Label>Archive</DropdownMenu.Label>
+              </DropdownMenu.Item>
+            )}
             <DropdownMenu.Separator />
             <DropdownMenu.Item
               intent="danger"

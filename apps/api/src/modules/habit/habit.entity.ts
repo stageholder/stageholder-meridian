@@ -13,6 +13,9 @@ export interface HabitProps extends EntityProps {
   color?: string;
   icon?: string;
   userSub: string;
+  groupId?: string | null;
+  order: number;
+  archivedAt?: string | null;
 }
 
 export class Habit extends Entity<HabitProps> {
@@ -50,6 +53,15 @@ export class Habit extends Entity<HabitProps> {
   get userSub(): string {
     return this.get("userSub");
   }
+  get groupId(): string | null | undefined {
+    return this.get("groupId");
+  }
+  get order(): number {
+    return this.get("order");
+  }
+  get archivedAt(): string | null | undefined {
+    return this.get("archivedAt");
+  }
 
   updateName(name: string): void {
     this.set("name", name);
@@ -78,6 +90,18 @@ export class Habit extends Entity<HabitProps> {
   updateIcon(icon: string | undefined): void {
     this.set("icon", icon);
   }
+  updateGroupId(groupId: string | null): void {
+    this.set("groupId", groupId);
+  }
+  updateOrder(order: number): void {
+    this.set("order", order);
+  }
+  archive(): void {
+    this.set("archivedAt", new Date().toISOString());
+  }
+  unarchive(): void {
+    this.set("archivedAt", null);
+  }
 
   static create(
     props: Omit<HabitProps, "id" | "createdAt" | "updatedAt">,
@@ -91,6 +115,9 @@ export class Habit extends Entity<HabitProps> {
       new Habit({
         ...props,
         frequency: props.frequency || "daily",
+        groupId: props.groupId ?? null,
+        order: props.order ?? 0,
+        archivedAt: props.archivedAt ?? null,
       } as HabitProps),
     );
   }

@@ -8,7 +8,8 @@ const PRODUCT_SLUG = "meridian";
 export type MeridianFeatureSlug =
   | "max_habits"
   | "max_todo_lists"
-  | "max_active_todos";
+  | "max_active_todos"
+  | "max_habit_groups";
 
 /**
  * Free-tier limits. Used as the fallback when the user has no Meridian
@@ -25,6 +26,7 @@ const FREE_TIER_DEFAULTS: Record<MeridianFeatureSlug, number> = {
   max_habits: 5,
   max_todo_lists: 3,
   max_active_todos: 10,
+  max_habit_groups: 5,
 };
 
 /**
@@ -82,6 +84,7 @@ const FEATURE_LABELS: Record<MeridianFeatureSlug, string> = {
   max_habits: "habits",
   max_todo_lists: "todo lists",
   max_active_todos: "active todos",
+  max_habit_groups: "habit groups",
 };
 
 /**

@@ -1,5 +1,5 @@
 import type { ApiClientLike } from "./client";
-import type { Habit, HabitEntry } from "@repo/core/types";
+import type { Habit, HabitEntry, HabitGroup } from "@repo/core/types";
 
 /**
  * Habits API client. Routes are rooted at `/habits` — scoping is per
@@ -18,6 +18,7 @@ export function createHabitsApi(client: ApiClientLike) {
       unit?: string;
       color?: string;
       icon?: string;
+      groupId?: string | null;
     }): Promise<Habit> => {
       const res = await client.post(`/habits`, data);
       return res.data;
@@ -42,6 +43,7 @@ export function createHabitsApi(client: ApiClientLike) {
         unit?: string;
         color?: string;
         icon?: string;
+        groupId?: string | null;
       },
     ): Promise<Habit> => {
       const res = await client.patch(`/habits/${id}`, data);
@@ -49,6 +51,58 @@ export function createHabitsApi(client: ApiClientLike) {
     },
     delete: async (id: string): Promise<void> => {
       await client.delete(`/habits/${id}`);
+    },
+
+    // Reorder habits (within a group) and/or move between groups. Mirrors
+    // `reorderTodos`: an array of {id, order, groupId?} so the server applies a
+    // sparse update; including groupId moves the habit in the same call.
+    reorder: async (data: {
+      items: { id: string; order: number; groupId?: string | null }[];
+    }): Promise<void> => {
+      await client.post(`/habits/reorder`, data);
+    },
+    archive: async (id: string): Promise<Habit> => {
+      const res = await client.post(`/habits/${id}/archive`, {});
+      return res.data;
+    },
+    unarchive: async (id: string): Promise<Habit> => {
+      const res = await client.post(`/habits/${id}/unarchive`, {});
+      return res.data;
+    },
+
+    // Habit Groups
+    createGroup: async (data: {
+      name: string;
+      color?: string;
+      icon?: string;
+    }): Promise<HabitGroup> => {
+      const res = await client.post(`/habit-groups`, data);
+      return res.data;
+    },
+    listGroups: async (
+      params?: Record<string, string>,
+    ): Promise<HabitGroup[]> => {
+      const res = await client.get(`/habit-groups`, { params });
+      return res.data?.data ?? res.data;
+    },
+    getGroup: async (groupId: string): Promise<HabitGroup> => {
+      const res = await client.get(`/habit-groups/${groupId}`);
+      return res.data;
+    },
+    updateGroup: async (
+      groupId: string,
+      data: { name?: string; color?: string; icon?: string },
+    ): Promise<HabitGroup> => {
+      const res = await client.patch(`/habit-groups/${groupId}`, data);
+      return res.data;
+    },
+    deleteGroup: async (groupId: string): Promise<void> => {
+      await client.delete(`/habit-groups/${groupId}`);
+    },
+    reorderGroups: async (data: {
+      items: { id: string; order: number }[];
+    }): Promise<void> => {
+      await client.post(`/habit-groups/reorder`, data);
     },
 
     // Habit Entries
