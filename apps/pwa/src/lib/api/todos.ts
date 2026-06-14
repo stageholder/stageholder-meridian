@@ -103,6 +103,17 @@ export function useDeleteTodoList() {
   });
 }
 
+export function useReorderTodoLists() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, { items: { id: string; order: number }[] }>({
+    mutationFn: (data) => todosApi.reorderLists(data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["todoLists"] });
+    },
+  });
+}
+
 export function useCreateTodo() {
   const queryClient = useQueryClient();
 

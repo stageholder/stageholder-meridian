@@ -20,6 +20,7 @@ export class TodoListModel {
   @Prop({ type: String, required: true, trim: true }) name: string;
   @Prop({ type: String }) color: string;
   @Prop({ type: String }) icon: string;
+  @Prop({ type: Number, required: true, default: 0 }) order: number;
   @Prop({ type: String, required: true, index: true }) userSub: string;
   @Prop({ type: Boolean, default: false }) is_default: boolean;
   @Prop({ type: Date, default: null }) deleted_at: Date;
@@ -28,6 +29,7 @@ export class TodoListModel {
 export const TodoListSchema = SchemaFactory.createForClass(TodoListModel);
 
 TodoListSchema.index({ userSub: 1, created_at: -1 });
+TodoListSchema.index({ userSub: 1, order: 1 });
 TodoListSchema.index(
   { userSub: 1, is_default: 1 },
   {

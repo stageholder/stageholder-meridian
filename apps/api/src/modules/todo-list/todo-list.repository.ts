@@ -52,6 +52,7 @@ export class TodoListRepository implements OnApplicationBootstrap {
           name: enc.name,
           color: data.color,
           icon: data.icon,
+          order: data.order,
           userSub: data.userSub,
           is_default: data.isDefault,
         },
@@ -68,7 +69,10 @@ export class TodoListRepository implements OnApplicationBootstrap {
   }
 
   async findByUser(userSub: string): Promise<TodoList[]> {
-    const docs = await this.model.find({ userSub, deleted_at: null }).lean();
+    const docs = await this.model
+      .find({ userSub, deleted_at: null })
+      .sort({ is_default: -1, order: 1, created_at: 1 })
+      .lean();
     return docs.map((doc) => this.toDomain(doc));
   }
 
@@ -98,7 +102,7 @@ export class TodoListRepository implements OnApplicationBootstrap {
     });
     const docs = await this.model
       .find({ userSub, deleted_at: null })
-      .sort({ is_default: -1, created_at: -1 })
+      .sort({ is_default: -1, order: 1, created_at: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean();
@@ -143,6 +147,7 @@ export class TodoListRepository implements OnApplicationBootstrap {
         name: dec.name,
         color: doc.color,
         icon: doc.icon,
+        order: doc.order ?? 0,
         userSub: doc.userSub,
         isDefault: doc.is_default ?? false,
         createdAt: doc.created_at,

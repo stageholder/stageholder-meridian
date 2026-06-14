@@ -15,3 +15,8 @@ export const UpdateTodoListDto = z.object({
   isShared: z.boolean().optional(),
 });
 export type UpdateTodoListDto = z.infer<typeof UpdateTodoListDto>;
+
+export const ReorderTodoListsDto = z.object({
+  items: z.array(z.object({ id: z.string(), order: z.number() })),
+});
+export type ReorderTodoListsDto = z.infer<typeof ReorderTodoListsDto>;

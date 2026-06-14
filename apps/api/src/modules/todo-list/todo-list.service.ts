@@ -6,7 +6,11 @@ import {
 import type { StageholderUser } from "@stageholder/sdk/core";
 import { TodoListRepository } from "./todo-list.repository";
 import { TodoList } from "./todo-list.entity";
-import { CreateTodoListDto, UpdateTodoListDto } from "./todo-list.dto";
+import {
+  CreateTodoListDto,
+  UpdateTodoListDto,
+  ReorderTodoListsDto,
+} from "./todo-list.dto";
 import { TodoRepository } from "../todo/todo.repository";
 import { enforceLimit } from "../../common/helpers/entitlement";
 import {
@@ -30,6 +34,7 @@ export class TodoListService {
     const result = TodoList.create({
       name: "Inbox",
       color: "#3b82f6",
+      order: 0,
       userSub,
       isDefault: true,
     });
@@ -47,18 +52,29 @@ export class TodoListService {
     dto: CreateTodoListDto,
     user: StageholderUser,
   ): Promise<TodoList> {
-    await enforceLimit(user, "max_todo_lists", () =>
-      this.repository.countForUser(userSub),
-    );
+    const currentCount = await this.repository.countForUser(userSub);
+    await enforceLimit(user, "max_todo_lists", async () => currentCount);
     const result = TodoList.create({
       name: dto.name,
       color: dto.color,
       icon: dto.icon,
+      // New lists land at the end of the user's ordering (Inbox is 0).
+      order: currentCount,
       userSub,
     });
     if (!result.ok) throw result.error;
     await this.repository.save(result.value);
     return result.value;
+  }
+
+  async reorder(userSub: string, dto: ReorderTodoListsDto): Promise<void> {
+    for (const item of dto.items) {
+      const list = await this.repository.findById(userSub, item.id);
+      if (list) {
+        list.updateOrder(item.order);
+        await this.repository.save(list);
+      }
+    }
   }
 
   async findByUser(

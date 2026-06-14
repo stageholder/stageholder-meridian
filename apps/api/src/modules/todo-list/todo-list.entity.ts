@@ -4,6 +4,7 @@ export interface TodoListProps extends EntityProps {
   name: string;
   color?: string;
   icon?: string;
+  order: number;
   userSub: string;
   isDefault: boolean;
 }
@@ -22,6 +23,9 @@ export class TodoList extends Entity<TodoListProps> {
   get icon(): string | undefined {
     return this.get("icon");
   }
+  get order(): number {
+    return this.get("order");
+  }
   get userSub(): string {
     return this.get("userSub");
   }
@@ -38,13 +42,17 @@ export class TodoList extends Entity<TodoListProps> {
   updateIcon(icon: string | undefined): void {
     this.set("icon", icon);
   }
+  updateOrder(order: number): void {
+    this.set("order", order);
+  }
 
   static create(
     props: Omit<
       TodoListProps,
-      "id" | "createdAt" | "updatedAt" | "isDefault"
+      "id" | "createdAt" | "updatedAt" | "isDefault" | "order"
     > & {
       isDefault?: boolean;
+      order?: number;
     },
   ): Result<TodoList> {
     if (!props.name || props.name.trim().length === 0)
@@ -54,6 +62,7 @@ export class TodoList extends Entity<TodoListProps> {
       new TodoList({
         ...props,
         isDefault: props.isDefault ?? false,
+        order: props.order ?? 0,
       } as TodoListProps),
     );
   }

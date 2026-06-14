@@ -1,5 +1,5 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useState, type ReactElement } from "react";
+import { useRef, useState, type DragEvent, type ReactElement } from "react";
 import { format } from "date-fns";
 import {
   Sun,
@@ -10,6 +10,7 @@ import {
   MoreHorizontal,
   Pencil,
   Trash2,
+  GripVertical,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -23,7 +24,12 @@ import {
   View,
   XStack,
 } from "@stageholder/ui";
-import { useAllTodos, useTodoLists, useDeleteTodoList } from "@/lib/api/todos";
+import {
+  useAllTodos,
+  useTodoLists,
+  useDeleteTodoList,
+  useReorderTodoLists,
+} from "@/lib/api/todos";
 import { CreateListDialog } from "./create-list-dialog";
 import type { Todo, TodoList } from "@repo/core/types";
 
@@ -48,12 +54,19 @@ const LABEL_PROPS = {
   text: "left",
 } as const;
 
-/** Trailing pending-count, right-aligned, tabular so digits don't jitter. */
-function RowCount({ value }: { value: number }) {
+// Width of the hover-reveal drag-handle in a list row's right overlay.
+const HANDLE_W = 18;
+
+/** Trailing pending-count, right-aligned, tabular so digits don't jitter.
+ *  `dim` fades it out on row hover so the drag grip + kebab can take its place. */
+function RowCount({ value, dim }: { value: number; dim?: boolean }) {
   return (
     <Text
       fontSize={12}
       color="$mutedForeground"
+      transition="quick"
+      opacity={1}
+      $group-hover={dim ? { opacity: 0 } : undefined}
       style={{ fontVariantNumeric: "tabular-nums" }}
     >
       {value}
@@ -233,78 +246,163 @@ function ListMenu({
 }
 
 /**
- * Custom-list row: a kit `Sidebar.MenuButton` (color dot + name + idle count)
- * with the kebab menu overlaid as a SIBLING (absolutely positioned over the
- * trailing area) rather than nested inside the button — keeping the kebab's
- * DropdownMenu out of the navigable `<button>` so opening it never navigates.
- * The count fades out / the kebab fades in on row hover (or while open).
+ * Custom-list row — ONE full-width pill (matching the nav rows). The color dot
+ * sits at the pill's left, aligned with the nav icons. On hover, a RIGHT-side
+ * overlay reveals the drag grip + the Edit/Delete kebab together:
+ *   • the grip is the ONLY draggable element (HTML5 DnD), so a row click still
+ *     navigates; it lifts the WHOLE row as the drag ghost.
+ *   • the overlay is a SIBLING of the pill (clicking it never navigates) and is
+ *     `pointerEvents:none` while hidden, so the whole row stays clickable.
+ * Plain `onPress` + explicit hover/active bg (no latched press-bg) → the
+ * highlight never sticks after a drag. Drop target shows a $primary line above.
+ * (Exact parity with the habits group sidebar.)
  */
 function ListNavRow({
   list,
+  index,
   active,
   count,
+  dragging,
+  isOver,
   onNavigate,
+  onDragStartHandle,
+  onDragEndHandle,
+  onDragOverRow,
+  onDropRow,
 }: {
   list: TodoList;
+  index: number;
   active: boolean;
   count?: number;
+  dragging: boolean;
+  isOver: boolean;
   onNavigate?: () => void;
+  onDragStartHandle: () => void;
+  onDragEndHandle: () => void;
+  onDragOverRow: () => void;
+  onDropRow: () => void;
 }) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const rowRef = useRef<HTMLElement | null>(null);
   return (
-    <Sidebar.MenuItem group>
-      <Sidebar.MenuButton
-        icon={
-          <View
-            width={10}
-            height={10}
-            rounded={9999}
-            shrink={0}
-            style={{ backgroundColor: list.color || "#6b7280" }}
-          />
-        }
-        isActive={active}
+    <View
+      group
+      position="relative"
+      opacity={dragging ? 0.4 : 1}
+      {...({
+        onDragOver: (e: DragEvent) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          onDragOverRow();
+        },
+        onDrop: (e: DragEvent) => {
+          e.preventDefault();
+          onDropRow();
+        },
+      } as object)}
+    >
+      {isOver ? (
+        <View
+          position="absolute"
+          l="$2"
+          r="$2"
+          t={-1}
+          height={2}
+          rounded="$pill"
+          bg="$primary"
+          pointerEvents="none"
+          style={{ zIndex: 1 } as object}
+        />
+      ) : null}
+
+      <View
+        ref={rowRef as never}
         onPress={() => {
           void navigate({ to: "/todos/$listId", params: { listId: list.id } });
           onNavigate?.();
         }}
-        trailing={
-          count && count > 0 ? (
-            <Text
-              fontSize={12}
-              color="$mutedForeground"
-              transition="quick"
-              opacity={menuOpen ? 0 : 1}
-              $group-hover={{ opacity: 0 }}
-              style={{ fontVariantNumeric: "tabular-nums" }}
-            >
-              {count}
-            </Text>
-          ) : undefined
-        }
-        {...ROW_PROPS}
+        cursor="pointer"
+        height={ROW_PROPS.height}
+        rounded={ROW_PROPS.rounded}
+        flexDirection="row"
+        items="center"
+        gap="$2.5"
+        px="$2"
+        transition="quick"
+        bg={active ? "$sidebarAccent" : "transparent"}
+        hoverStyle={{ bg: "$sidebarAccent" }}
       >
-        <Text {...LABEL_PROPS} fontWeight={active ? "600" : "500"}>
+        <View
+          width={10}
+          height={10}
+          rounded={9999}
+          shrink={0}
+          style={{ backgroundColor: list.color || "#6b7280" }}
+        />
+        <Text
+          flex={1}
+          fontSize={14}
+          color="$sidebarForeground"
+          numberOfLines={1}
+          fontWeight={active ? "600" : "500"}
+          style={{ textAlign: "left", minWidth: 0 } as object}
+        >
           {list.name}
         </Text>
-      </Sidebar.MenuButton>
+        {count && count > 0 ? <RowCount value={count} dim /> : null}
+      </View>
 
-      {/* Kebab overlay — sibling of the button, fades in on hover / when open. */}
-      <View
+      {/* Right-side overlay — drag grip + Edit/Delete kebab, revealed on hover.
+          `pointerEvents:none` while hidden so the whole row stays clickable. */}
+      <XStack
         position="absolute"
         r="$2"
         t={0}
         b={0}
         items="center"
-        justify="center"
+        gap="$1"
         transition="quick"
         opacity={menuOpen ? 1 : 0}
-        $group-hover={{ opacity: 1 }}
+        pointerEvents={menuOpen ? "auto" : "none"}
+        $group-hover={{ opacity: 1, pointerEvents: "auto" }}
       >
+        <View
+          width={HANDLE_W}
+          height={ROW_PROPS.height}
+          items="center"
+          justify="center"
+          cursor="grab"
+          transition="quick"
+          hoverStyle={{ opacity: 0.7 }}
+          aria-label={`Reorder ${list.name}`}
+          {...({
+            draggable: true,
+            onDragStart: (e: DragEvent) => {
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("text/plain", String(index));
+              // Lift the whole row as the drag ghost (not just the grip icon).
+              const el = rowRef.current;
+              if (el) {
+                const rect = el.getBoundingClientRect();
+                e.dataTransfer.setDragImage(
+                  el,
+                  e.clientX - rect.left,
+                  e.clientY - rect.top,
+                );
+              }
+              onDragStartHandle();
+            },
+            onDragEnd: () => onDragEndHandle(),
+          } as object)}
+        >
+          <Text color="$mutedForeground" lineHeight={0}>
+            <GripVertical size={13} />
+          </Text>
+        </View>
         <ListMenu list={list} open={menuOpen} onOpenChange={setMenuOpen} />
-      </View>
-    </Sidebar.MenuItem>
+      </XStack>
+    </View>
   );
 }
 
@@ -343,11 +441,35 @@ export function TodoListSidebar({ onNavigate }: TodoListSidebarProps = {}) {
     listCounts.set(t.listId, (listCounts.get(t.listId) ?? 0) + 1);
   }
 
-  const sortedLists = lists
-    ? [...lists].sort((a, b) =>
-        a.isDefault === b.isDefault ? 0 : a.isDefault ? -1 : 1,
-      )
+  // Custom (non-default) lists, ordered for the draggable "Lists" section. The
+  // default Inbox lives in the primary nav, not here, so it isn't reorderable.
+  const customLists = lists
+    ? [...lists]
+        .filter((l: TodoList) => !l.isDefault)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     : [];
+
+  // Handle-only drag-reorder (the grip on each list row) — mirrors the habits
+  // group sidebar.
+  const reorderLists = useReorderTodoLists();
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+
+  function commitReorder(from: number | null, to: number) {
+    setDragIndex(null);
+    setOverIndex(null);
+    if (from === null || from === to) return;
+    const next = [...customLists];
+    const [moved] = next.splice(from, 1);
+    if (!moved) return;
+    // Drop indicator sits ABOVE the target → insert before it; moving down
+    // shifts the target left by one after removal.
+    const target = from < to ? to - 1 : to;
+    next.splice(target, 0, moved);
+    reorderLists.mutate({
+      items: next.map((l, i) => ({ id: l.id, order: i })),
+    });
+  }
 
   const go = (onPress: () => void) => () => {
     onPress();
@@ -422,17 +544,31 @@ export function TodoListSidebar({ onNavigate }: TodoListSidebarProps = {}) {
         </XStack>
 
         <Sidebar.Menu gap={2}>
-          {sortedLists
-            .filter((list: TodoList) => !list.isDefault)
-            .map((list: TodoList) => (
-              <ListNavRow
-                key={list.id}
-                list={list}
-                active={pathname === `${basePath}/${list.id}`}
-                count={listCounts.get(list.id)}
-                onNavigate={onNavigate}
-              />
-            ))}
+          {customLists.map((list: TodoList, index: number) => (
+            <ListNavRow
+              key={list.id}
+              list={list}
+              index={index}
+              active={pathname === `${basePath}/${list.id}`}
+              count={listCounts.get(list.id)}
+              onNavigate={onNavigate}
+              dragging={dragIndex === index}
+              isOver={
+                overIndex === index && dragIndex !== null && dragIndex !== index
+              }
+              onDragStartHandle={() => setDragIndex(index)}
+              onDragEndHandle={() => {
+                setDragIndex(null);
+                setOverIndex(null);
+              }}
+              onDragOverRow={() => {
+                if (dragIndex !== null && overIndex !== index) {
+                  setOverIndex(index);
+                }
+              }}
+              onDropRow={() => commitReorder(dragIndex, index)}
+            />
+          ))}
         </Sidebar.Menu>
       </Sidebar.Content>
 

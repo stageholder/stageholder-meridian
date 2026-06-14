@@ -40,6 +40,13 @@ export function createTodosApi(client: ApiClientLike) {
     deleteList: async (listId: string): Promise<void> => {
       await client.delete(`/todo-lists/${listId}`);
     },
+    /** Reorder todo lists — batch `{ items: [{ id, order }] }`, mirroring
+     *  `reorderTodos`. The server applies a sparse update by id. */
+    reorderLists: async (data: {
+      items: { id: string; order: number }[];
+    }): Promise<void> => {
+      await client.post(`/todo-lists/reorder`, data);
+    },
 
     // Todos
     createTodo: async (

@@ -11,10 +11,15 @@ import {
 } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { TodoListService } from "./todo-list.service";
-import { CreateTodoListDto, UpdateTodoListDto } from "./todo-list.dto";
+import {
+  CreateTodoListDto,
+  UpdateTodoListDto,
+  ReorderTodoListsDto,
+} from "./todo-list.dto";
 import {
   CreateTodoListDto as CreateSchema,
   UpdateTodoListDto as UpdateSchema,
+  ReorderTodoListsDto as ReorderSchema,
 } from "./todo-list.dto";
 import { ZodValidationPipe } from "../../common/zod-validation.pipe";
 import { StageholderRequest } from "../../common/types";
@@ -52,6 +57,15 @@ export class TodoListController {
       page ? +page : undefined,
       limit ? +limit : undefined,
     );
+  }
+
+  @Post("reorder")
+  async reorder(
+    @Req() req: StageholderRequest,
+    @Body(new ZodValidationPipe(ReorderSchema)) dto: ReorderTodoListsDto,
+  ) {
+    await this.service.reorder(req.user.sub, dto);
+    return { reordered: true };
   }
 
   @Get(":id")

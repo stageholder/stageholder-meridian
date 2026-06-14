@@ -4,6 +4,7 @@ export interface TodoList {
   name: string;
   color?: string;
   icon?: string;
+  order: number;
   isShared: boolean;
   isDefault: boolean;
   creatorId: string;
