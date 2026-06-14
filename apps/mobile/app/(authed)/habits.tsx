@@ -27,7 +27,6 @@ import {
   Button,
   EmptyState,
   PullToRefresh,
-  SegmentedControl,
   Spinner,
   Text,
   View,
@@ -61,6 +60,7 @@ import { HabitGroupSection } from "@/components/habit-group-section";
 import { HabitGroupSheet } from "@/components/habit-group-sheet";
 import { HabitMoveToGroupSheet } from "@/components/habit-move-to-group-sheet";
 import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
+import { StatusFilterTabs } from "@/components/status-filter-tabs";
 import {
   useArchiveHabit,
   useArchivedHabits,
@@ -254,16 +254,12 @@ export default function HabitsScreen() {
             Habits
           </Text>
           {/* Status filter — All / To do / Done, relative to today. */}
-          <SegmentedControl
+          <StatusFilterTabs
             value={statusFilter}
             onValueChange={(v) =>
               setStatusFilter(v as "all" | HabitStatusFilter)
             }
-          >
-            <SegmentedControl.Item value="all">All</SegmentedControl.Item>
-            <SegmentedControl.Item value="todo">To do</SegmentedControl.Item>
-            <SegmentedControl.Item value="done">Done</SegmentedControl.Item>
-          </SegmentedControl>
+          />
         </YStack>
 
         {/* Group chips rail — All · groups · pencil-on-active · "+ group" ·

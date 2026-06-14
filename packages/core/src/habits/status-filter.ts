@@ -2,8 +2,8 @@
 // mobile habits screen so "To do" / "Done" mean the same thing on both. Pure,
 // no React/platform deps.
 
-import { isEntryComplete } from "./entry-resolution.js";
-import type { Habit } from "../types/index.js";
+import { isEntryComplete } from "./entry-resolution";
+import type { Habit } from "../types";
 
 /** The status filter applied to the habit list (relative to a date). */
 export type HabitStatusFilter = "todo" | "done";

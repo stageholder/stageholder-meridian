@@ -14,10 +14,18 @@
 // On drag-end: recomputes { id, order: i }[] over the new array and fires
 // useReorderHabitGroups.mutate immediately — no separate Save needed.
 
-import { Sheet, Sortable, Text, View, XStack, YStack } from "@stageholder/ui";
+import {
+  Button,
+  Sheet,
+  Sortable,
+  Text,
+  View,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 import { reorderItems } from "@stageholder/ui";
 import type { HabitGroup } from "@repo/core/types";
-import { GripVertical } from "@tamagui/lucide-icons-2";
+import { GripVertical, X } from "@tamagui/lucide-icons-2";
 import { useState, useEffect } from "react";
 
 import { useReorderHabitGroups } from "@/lib/api";
@@ -59,20 +67,29 @@ export function HabitGroupReorderSheet({
       open={open}
       onOpenChange={onOpenChange}
       modal
-      dismissOnSnapToBottom
+      // Drag/swipe-to-close is disabled — reordering happens by dragging the
+      // rows, so a stray sheet drag would be ambiguous. Close via the X.
+      disableDrag
       transition="medium"
       snapPointsMode="constant"
       snapPoints={[420]}
     >
       <Sheet.Overlay />
-      <Sheet.Frame pt={0}>
-        <Sheet.Handle mt="$3" mb="$2" />
-
-        {/* Title */}
-        <XStack px="$4" pb="$3" items="center">
+      {/* handle={false} — no grabber (the sheet isn't draggable). */}
+      <Sheet.Frame pt={0} handle={false}>
+        {/* Title + close button */}
+        <XStack px="$4" pt="$4" pb="$3" items="center" gap="$2">
           <Text fontSize="$6" fontWeight="700" color="$color" flex={1}>
             Reorder groups
           </Text>
+          <Button
+            iconOnly
+            size="sm"
+            intent="ghost"
+            icon={<X size={20} />}
+            onPress={() => onOpenChange(false)}
+            aria-label="Close"
+          />
         </XStack>
 
         <Sheet.ScrollView>

@@ -48,6 +48,10 @@ import { CreateTodoDialog } from "@/components/create-todo-dialog";
 import { EditTodoDialog } from "@/components/edit-todo-dialog";
 import { TodoListSheet } from "@/components/todo-list-sheet";
 import { TodoListReorderSheet } from "@/components/todo-list-reorder-sheet";
+import {
+  StatusFilterTabs,
+  type StatusFilter,
+} from "@/components/status-filter-tabs";
 import { IGNITION } from "@/lib/ignition-palette";
 
 import {
@@ -91,6 +95,9 @@ export default function TodosScreen() {
   // List filter — null = All. Filtering is client-side over the one
   // all-todos cache (cheap at mobile scale; no per-list refetch churn).
   const [activeListId, setActiveListId] = useState<string | null>(null);
+  // Status filter — "all" shows open + completed; "todo" hides completed;
+  // "done" shows only completed (mirrors the habits screen filter).
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   // List sheet — false = closed, null = create, a list = edit.
   const [listSheet, setListSheet] = useState<false | null | TodoList>(false);
   // Reorder sheet.
@@ -145,6 +152,19 @@ export default function TodosScreen() {
   const isEmpty =
     !todosQuery.isLoading && !todosQuery.error && todos.length === 0;
 
+  // Status filter gating: "todo" hides the completed section, "done" hides the
+  // open buckets, "all" shows both.
+  const showOpen = statusFilter !== "done";
+  const showDone = statusFilter !== "todo";
+  const openCount = BUCKET_ORDER.reduce((n, b) => n + buckets[b].length, 0);
+  // Todos exist, but the active filter side is empty (e.g. "Done" with no
+  // completed todos). Distinct from the all-empty EmptyState above.
+  const filteredEmpty =
+    !isEmpty &&
+    !todosQuery.isLoading &&
+    ((statusFilter === "todo" && openCount === 0) ||
+      (statusFilter === "done" && done.length === 0));
+
   return (
     <YStack flex={1} bg="$background">
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
@@ -152,6 +172,11 @@ export default function TodosScreen() {
           <Text fontSize="$8" fontWeight="700" color="$color">
             Todos
           </Text>
+          {/* Status filter — All / To do / Done. */}
+          <StatusFilterTabs
+            value={statusFilter}
+            onValueChange={setStatusFilter}
+          />
         </YStack>
 
         {/* List chips rail — All · each list (color dot) · pencil-on-active ·
@@ -280,47 +305,72 @@ export default function TodosScreen() {
               </EmptyState>
             ) : null}
 
+            {/* Filtered-empty — todos exist but none match the active filter. */}
+            {filteredEmpty ? (
+              <EmptyState>
+                <EmptyState.IconSlot>
+                  <Text fontSize={28}>
+                    {statusFilter === "done" ? "◎" : "✓"}
+                  </Text>
+                </EmptyState.IconSlot>
+                <EmptyState.Title>
+                  {statusFilter === "done"
+                    ? "Nothing completed yet"
+                    : "All caught up"}
+                </EmptyState.Title>
+                <EmptyState.Description>
+                  {statusFilter === "done"
+                    ? "Completed todos will show up here."
+                    : "No open todos — nice work."}
+                </EmptyState.Description>
+              </EmptyState>
+            ) : null}
+
             {/* Open todos — date-bucketed sections (PWA today/upcoming/inbox
                 views, stacked). A section renders only when non-empty;
                 Overdue's header reads destructive. */}
-            {BUCKET_ORDER.map((bucket) =>
-              buckets[bucket].length === 0 ? null : (
-                <YStack key={bucket} gap="$2" pt="$1">
-                  <XStack items="center" gap="$2" px="$2.5">
-                    <Text
-                      fontSize="$1"
-                      fontWeight="600"
-                      color={
-                        bucket === "overdue"
-                          ? "$destructive"
-                          : "$mutedForeground"
-                      }
-                      letterSpacing={0.6}
-                      textTransform="uppercase"
-                    >
-                      {BUCKET_LABEL[bucket]} · {buckets[bucket].length}
-                    </Text>
-                    <View flex={1}>
-                      <Separator />
-                    </View>
-                  </XStack>
-                  {buckets[bucket].map((todo) => (
-                    <TodoItem
-                      key={todo.id}
-                      todo={todo}
-                      onToggle={() =>
-                        toggleTodo.mutate({ id: todo.id, status: todo.status })
-                      }
-                      onDelete={() => deleteTodo.mutate(todo.id)}
-                      onOpenDetail={() => setEditing(todo)}
-                    />
-                  ))}
-                </YStack>
-              ),
-            )}
+            {showOpen &&
+              BUCKET_ORDER.map((bucket) =>
+                buckets[bucket].length === 0 ? null : (
+                  <YStack key={bucket} gap="$2" pt="$1">
+                    <XStack items="center" gap="$2" px="$2.5">
+                      <Text
+                        fontSize="$1"
+                        fontWeight="600"
+                        color={
+                          bucket === "overdue"
+                            ? "$destructive"
+                            : "$mutedForeground"
+                        }
+                        letterSpacing={0.6}
+                        textTransform="uppercase"
+                      >
+                        {BUCKET_LABEL[bucket]} · {buckets[bucket].length}
+                      </Text>
+                      <View flex={1}>
+                        <Separator />
+                      </View>
+                    </XStack>
+                    {buckets[bucket].map((todo) => (
+                      <TodoItem
+                        key={todo.id}
+                        todo={todo}
+                        onToggle={() =>
+                          toggleTodo.mutate({
+                            id: todo.id,
+                            status: todo.status,
+                          })
+                        }
+                        onDelete={() => deleteTodo.mutate(todo.id)}
+                        onOpenDetail={() => setEditing(todo)}
+                      />
+                    ))}
+                  </YStack>
+                ),
+              )}
 
             {/* Completed section */}
-            {done.length > 0 ? (
+            {showDone && done.length > 0 ? (
               <YStack gap="$2" pt="$2">
                 <XStack items="center" gap="$2" px="$2.5">
                   <Text

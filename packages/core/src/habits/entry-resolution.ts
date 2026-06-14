@@ -1,5 +1,5 @@
 import { addDays, format, startOfWeek, subWeeks } from "date-fns";
-import type { Habit, HabitEntry } from "../types/index.js";
+import type { Habit, HabitEntry } from "../types";
 
 /**
  * Pure, cross-platform habit entry math. Originally lived in

@@ -113,7 +113,10 @@ export function TourStep({
                 {/* lucide-icons-2 reads its own `color` prop (no CSS cascade). */}
                 <Icon size={16} color="$primary" />
               </XStack>
-              <YStack>
+              {/* flex={1} minW={0} lets the text column actually shrink to the
+                  remaining row width so the description wraps inside the card
+                  instead of overflowing past its right edge on native. */}
+              <YStack flex={1} minW={0} gap="$0.5">
                 <Text fontSize="$3" fontWeight="500" color="$color">
                   {feature.title}
                 </Text>
