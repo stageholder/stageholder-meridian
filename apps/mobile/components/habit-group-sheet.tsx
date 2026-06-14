@@ -126,7 +126,10 @@ export function HabitGroupSheet({
     >
       <HabitGroupForm
         // Re-seed on each open (React idiom — no useEffect needed in the view).
-        key={group?.id ?? "create"}
+        // Create mode keys on `open` too, so each fresh open remounts a blank
+        // form — a constant "create" key reused the prior instance, leaving the
+        // last-typed name behind on the next create.
+        key={group?.id ?? `create-${open}`}
         initial={
           group
             ? {

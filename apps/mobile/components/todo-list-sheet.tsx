@@ -118,7 +118,10 @@ export function TodoListSheet({
       }
     >
       <TodoListForm
-        key={list?.id ?? "create"}
+        // Create mode keys on `open` too, so each fresh open remounts a blank
+        // form — a constant "create" key reused the prior instance, leaving the
+        // last-typed name behind on the next create.
+        key={list?.id ?? `create-${open}`}
         initial={
           list
             ? { name: list.name, color: list.color ?? "#3b82f6" }
