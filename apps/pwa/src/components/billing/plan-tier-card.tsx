@@ -14,6 +14,7 @@ import {
 } from "@stageholder/sdk/spa";
 import { BillingError } from "@stageholder/sdk/core";
 import { openURL } from "@repo/core/platform/linking";
+import { billingReturnUrl, openBillingURL } from "@/lib/billing-return";
 import { OrbitIllustration } from "./orbit-illustration";
 import {
   ArrowUpRight,
@@ -102,9 +103,9 @@ export function PlanTierCard({
         product: "meridian",
         planSlug: plan.slug,
         billingCycle: cycle,
-        returnUrl: `${window.location.origin}/settings/billing/success`,
+        returnUrl: billingReturnUrl("/settings/billing/success"),
       });
-      openURL(url);
+      openBillingURL(url);
     } catch (err) {
       if (err instanceof BillingError) {
         setErrorState({ code: err.code, message: err.message });
@@ -175,9 +176,9 @@ export function PlanTierCard({
     try {
       const { url } = await billingPortal.mutateAsync({
         orgId: org.id,
-        returnUrl: `${window.location.origin}/settings/billing`,
+        returnUrl: billingReturnUrl("/settings/billing"),
       });
-      openURL(url);
+      openBillingURL(url);
     } catch (err) {
       setErrorState({
         code: null,

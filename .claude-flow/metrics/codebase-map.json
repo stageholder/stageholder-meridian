@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-06-14T09:22:31.696Z",
+  "timestamp": "2026-06-17T04:30:12.054Z",
   "projectRoot": "/Users/garda_dafi/Project/stageholder-meridian",
   "structure": {
     "hasPackageJson": true,
@@ -7,5 +7,5 @@
     "hasClaudeConfig": true,
     "hasClaudeFlow": true
   },
-  "scannedAt": 1781428951696
+  "scannedAt": 1781670612054
 }

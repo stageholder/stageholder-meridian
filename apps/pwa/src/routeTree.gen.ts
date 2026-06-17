@@ -23,6 +23,7 @@ import { Route as AppTodosIndexRouteImport } from "./routes/_app/todos/index";
 import { Route as AppSettingsIndexRouteImport } from "./routes/_app/settings/index";
 import { Route as AppJournalIndexRouteImport } from "./routes/_app/journal/index";
 import { Route as AppHabitsIndexRouteImport } from "./routes/_app/habits/index";
+import { Route as AuthBillingCompleteRouteImport } from "./routes/_auth/billing.complete";
 import { Route as AuthAuthLoginRouteImport } from "./routes/_auth/auth.login";
 import { Route as AuthAuthErrorRouteImport } from "./routes/_auth/auth.error";
 import { Route as AuthAuthCallbackRouteImport } from "./routes/_auth/auth.callback";
@@ -106,6 +107,11 @@ const AppHabitsIndexRoute = AppHabitsIndexRouteImport.update({
   id: "/",
   path: "/",
   getParentRoute: () => AppHabitsRouteRoute,
+} as any);
+const AuthBillingCompleteRoute = AuthBillingCompleteRouteImport.update({
+  id: "/billing/complete",
+  path: "/billing/complete",
+  getParentRoute: () => AuthRouteRoute,
 } as any);
 const AuthAuthLoginRoute = AuthAuthLoginRouteImport.update({
   id: "/auth/login",
@@ -205,6 +211,7 @@ export interface FileRoutesByFullPath {
   "/auth/callback": typeof AuthAuthCallbackRoute;
   "/auth/error": typeof AuthAuthErrorRoute;
   "/auth/login": typeof AuthAuthLoginRoute;
+  "/billing/complete": typeof AuthBillingCompleteRoute;
   "/habits/": typeof AppHabitsIndexRoute;
   "/journal/": typeof AppJournalIndexRoute;
   "/settings/": typeof AppSettingsIndexRoute;
@@ -231,6 +238,7 @@ export interface FileRoutesByTo {
   "/auth/callback": typeof AuthAuthCallbackRoute;
   "/auth/error": typeof AuthAuthErrorRoute;
   "/auth/login": typeof AuthAuthLoginRoute;
+  "/billing/complete": typeof AuthBillingCompleteRoute;
   "/habits": typeof AppHabitsIndexRoute;
   "/journal": typeof AppJournalIndexRoute;
   "/settings": typeof AppSettingsIndexRoute;
@@ -263,6 +271,7 @@ export interface FileRoutesById {
   "/_auth/auth/callback": typeof AuthAuthCallbackRoute;
   "/_auth/auth/error": typeof AuthAuthErrorRoute;
   "/_auth/auth/login": typeof AuthAuthLoginRoute;
+  "/_auth/billing/complete": typeof AuthBillingCompleteRoute;
   "/_app/habits/": typeof AppHabitsIndexRoute;
   "/_app/journal/": typeof AppJournalIndexRoute;
   "/_app/settings/": typeof AppSettingsIndexRoute;
@@ -294,6 +303,7 @@ export interface FileRouteTypes {
     | "/auth/callback"
     | "/auth/error"
     | "/auth/login"
+    | "/billing/complete"
     | "/habits/"
     | "/journal/"
     | "/settings/"
@@ -320,6 +330,7 @@ export interface FileRouteTypes {
     | "/auth/callback"
     | "/auth/error"
     | "/auth/login"
+    | "/billing/complete"
     | "/habits"
     | "/journal"
     | "/settings"
@@ -351,6 +362,7 @@ export interface FileRouteTypes {
     | "/_auth/auth/callback"
     | "/_auth/auth/error"
     | "/_auth/auth/login"
+    | "/_auth/billing/complete"
     | "/_app/habits/"
     | "/_app/journal/"
     | "/_app/settings/"
@@ -465,6 +477,13 @@ declare module "@tanstack/react-router" {
       fullPath: "/habits/";
       preLoaderRoute: typeof AppHabitsIndexRouteImport;
       parentRoute: typeof AppHabitsRouteRoute;
+    };
+    "/_auth/billing/complete": {
+      id: "/_auth/billing/complete";
+      path: "/billing/complete";
+      fullPath: "/billing/complete";
+      preLoaderRoute: typeof AuthBillingCompleteRouteImport;
+      parentRoute: typeof AuthRouteRoute;
     };
     "/_auth/auth/login": {
       id: "/_auth/auth/login";
@@ -664,6 +683,7 @@ interface AuthRouteRouteChildren {
   AuthAuthCallbackRoute: typeof AuthAuthCallbackRoute;
   AuthAuthErrorRoute: typeof AuthAuthErrorRoute;
   AuthAuthLoginRoute: typeof AuthAuthLoginRoute;
+  AuthBillingCompleteRoute: typeof AuthBillingCompleteRoute;
 }
 
 const AuthRouteRouteChildren: AuthRouteRouteChildren = {
@@ -672,6 +692,7 @@ const AuthRouteRouteChildren: AuthRouteRouteChildren = {
   AuthAuthCallbackRoute: AuthAuthCallbackRoute,
   AuthAuthErrorRoute: AuthAuthErrorRoute,
   AuthAuthLoginRoute: AuthAuthLoginRoute,
+  AuthBillingCompleteRoute: AuthBillingCompleteRoute,
 };
 
 const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(

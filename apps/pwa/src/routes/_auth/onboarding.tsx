@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button, View, XStack, YStack } from "@stageholder/ui";
+import { Button, Text, View, XStack, YStack } from "@stageholder/ui";
+import { useUser as useSdkUser } from "@stageholder/sdk/spa";
 import { useUser } from "@/hooks/use-user";
 import { apiClient } from "@/lib/api-client";
 import {
@@ -28,23 +29,22 @@ async function postCompletion(): Promise<void> {
 function OnboardingPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user, isLoading } = useUser();
+  // Auth + identity come from the SDK SESSION (token-backed). hasCompletedOnboarding
+  // comes from `/me` (use-user) — used ONLY for the "already onboarded" shortcut,
+  // never for the auth gate.
+  const sdk = useSdkUser();
+  const { user } = useUser();
   const [step, setStep] = useState(0);
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
 
   useEffect(() => {
-    if (isLoading) return;
-    if (!user) {
-      navigate({ to: "/auth/login" });
-      return;
-    }
-    // Already onboarded — don't let the user re-enter the flow by typing
-    // the URL. The _app gate handles the inverse (not-onboarded hitting
-    // /) so /onboarding and the app shell are fully separated lanes.
-    if (user.hasCompletedOnboarding) {
+    // Only redirect FORWARD (already onboarded → app). NEVER redirect back to
+    // /auth/login from here — that's what caused the onboarding↔login loop.
+    // If the session/identity isn't available, we render an error below.
+    if (user?.hasCompletedOnboarding) {
       navigate({ to: "/" });
     }
-  }, [user, isLoading, navigate]);
+  }, [user?.hasCompletedOnboarding, navigate]);
 
   // Throws on failure — CompleteStep catches and surfaces the inline error.
   const finishOnboarding = useCallback(async () => {
@@ -52,31 +52,68 @@ function OnboardingPage() {
     // Invalidate the meta query so the _app `beforeLoad` gate re-evaluates
     // and routes the user into the shell instead of bouncing back here.
     await queryClient.invalidateQueries({
-      queryKey: ["meridian-user-meta", user?.sub],
+      queryKey: ["meridian-user-meta", sdk.user?.sub],
     });
     navigate({ to: "/" });
-  }, [queryClient, navigate, user?.sub]);
+  }, [queryClient, navigate, sdk.user?.sub]);
 
   const handleSkip = useCallback(async () => {
     try {
       await postCompletion();
       await queryClient.invalidateQueries({
-        queryKey: ["meridian-user-meta", user?.sub],
+        queryKey: ["meridian-user-meta", sdk.user?.sub],
       });
       navigate({ to: "/" });
     } catch {
       // Skip failed. Intentionally silent — CompleteStep is the primary
       // error surface; the user can finish the flow normally or retry skip.
     }
-  }, [queryClient, navigate, user?.sub]);
+  }, [queryClient, navigate, sdk.user?.sub]);
 
-  if (!user) return null;
+  // While the SDK session is still resolving, show a quiet loading state.
+  if (sdk.isLoading) {
+    return (
+      <YStack minH={"100vh" as never} items="center" justify="center" px="$6">
+        <Text fontSize="$3" color="$mutedForeground">
+          Loading…
+        </Text>
+      </YStack>
+    );
+  }
+
+  // No session/identity — show an error and let the user retry. We do NOT
+  // redirect back to /auth/login (that's the loop). A manual "Try again"
+  // re-runs the boot, and the route guard handles a genuinely signed-out user.
+  if (!sdk.user) {
+    return (
+      <YStack
+        minH={"100vh" as never}
+        items="center"
+        justify="center"
+        px="$6"
+        gap="$4"
+      >
+        <YStack maxW={420} items="center" gap="$2">
+          <Text fontSize="$6" fontWeight="600" text="center">
+            We couldn&rsquo;t load your account
+          </Text>
+          <Text fontSize="$3" color="$mutedForeground" text="center">
+            Your session didn&rsquo;t finish loading. Please try again.
+          </Text>
+        </YStack>
+        <Button onPress={() => window.location.reload()}>Try again</Button>
+      </YStack>
+    );
+  }
 
   const stepComponent = (() => {
     switch (step) {
       case 0:
         return (
-          <WelcomeStep name={user.name ?? ""} onContinue={() => setStep(1)} />
+          <WelcomeStep
+            name={sdk.user.name ?? ""}
+            onContinue={() => setStep(1)}
+          />
         );
       case 1:
         return <ProfileStep onContinue={() => setStep(2)} />;

@@ -6,7 +6,7 @@ import {
   useSubscription,
 } from "@stageholder/sdk/spa";
 import { useNavigate } from "@tanstack/react-router";
-import { openURL } from "@repo/core/platform/linking";
+import { billingReturnUrl, openBillingURL } from "@/lib/billing-return";
 import { ArrowUpRight, ExternalLink } from "lucide-react";
 import { OrbitIllustration } from "./orbit-illustration";
 import {
@@ -178,10 +178,10 @@ export function CurrentPlanHero({
                   billingPortal
                     .mutateAsync({
                       orgId: org.id,
-                      returnUrl: `${window.location.origin}/app/settings/billing`,
+                      returnUrl: billingReturnUrl("/settings/billing"),
                     })
                     .then(({ url }) => {
-                      openURL(url);
+                      openBillingURL(url);
                     })
                     .catch((err) =>
                       // eslint-disable-next-line no-console

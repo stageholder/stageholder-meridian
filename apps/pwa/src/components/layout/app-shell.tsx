@@ -30,6 +30,7 @@ import { CommandPalette } from "@/components/shared/command-palette";
 import { ShortcutsDialog } from "@/components/shared/shortcuts-dialog";
 import { MeridianLogo } from "@/components/shared/meridian-logo";
 import { useGlobalShortcuts } from "@/hooks/use-global-shortcuts";
+import { useBillingReturnRefresh } from "@/hooks/use-billing-return-refresh";
 import { CreateTodoDialog } from "@/components/todos/create-todo-dialog";
 import { useUser } from "@/hooks/use-user";
 import { LocalUserButton } from "@/components/layout/local-user-button";
@@ -167,6 +168,11 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
     [],
   );
   useGlobalShortcuts(shortcutCallbacks);
+
+  // Desktop-only: after the user pays in the system browser (checkout/portal
+  // opened externally), refresh session + billing caches on return so the new
+  // plan shows without a restart. No-op on web. See use-billing-return-refresh.
+  useBillingReturnRefresh();
 
   // Browser-style nav for desktop. `useCanGoBack` reflects the router's
   // internal history pointer; forward is always enabled because the

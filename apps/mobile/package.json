@@ -11,7 +11,9 @@
     "dev:android": "expo start --localhost --android",
     "dev:tunnel": "expo start --tunnel",
     "ios": "expo run:ios",
-    "android": "expo run:android",
+    "android": "bash scripts/android-dev.sh",
+    "android:expo": "expo run:android",
+    "android:reverse": "bash scripts/android-reverse.sh",
     "prebuild": "expo prebuild",
     "typecheck": "tsc --noEmit"
   },
