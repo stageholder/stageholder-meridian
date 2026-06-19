@@ -35,6 +35,8 @@ export interface TodayTodosProps {
   onViewAll?: () => void;
   /** Mount animation index — passed through to BentoCard. */
   index?: number;
+  /** Stretch to fill its column so it matches a paired card's height. */
+  fill?: boolean;
 }
 
 /**
@@ -51,6 +53,7 @@ export function TodayTodos({
   onToggleTodo,
   onViewAll,
   index = 0,
+  fill,
 }: TodayTodosProps) {
   const today = format(new Date(), "yyyy-MM-dd");
 
@@ -68,6 +71,7 @@ export function TodayTodos({
       title="Today's Todos"
       onTitlePress={onViewAll}
       index={index}
+      fill={fill}
       action={
         <XStack items="center" gap="$2">
           {total > 0 ? (

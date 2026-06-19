@@ -11,7 +11,13 @@ import { useCalendarData } from "@/lib/api/calendar";
  * per-habit progress map from today's calendar entries, and renders the
  * shared cross-platform view.
  */
-export function HabitSummary({ index = 0 }: { index?: number }) {
+export function HabitSummary({
+  index = 0,
+  fill,
+}: {
+  index?: number;
+  fill?: boolean;
+}) {
   const navigate = useNavigate();
   const { data: habits, isLoading: habitsLoading } = useHabits();
   const currentMonth = format(new Date(), "yyyy-MM");
@@ -42,6 +48,7 @@ export function HabitSummary({ index = 0 }: { index?: number }) {
       isLoading={habitsLoading || calendarLoading}
       onViewAll={() => void navigate({ to: "/habits" })}
       index={index}
+      fill={fill}
     />
   );
 }

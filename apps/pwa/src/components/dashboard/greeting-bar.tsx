@@ -26,7 +26,20 @@ export function GreetingBar() {
       $sm={{ flexDirection: "row", items: "center", justify: "space-between" }}
     >
       <YStack>
-        <H1 fontSize="$8" fontWeight="700" letterSpacing={-0.5} color="$color">
+        {/* `size="$8"` (not `fontSize`) so fontSize (26) AND lineHeight (38)
+            come from one token — H1 otherwise defaults to `size:'$10'` whose
+            57px line-height left ~15px of dead leading above the caps.
+            `mt={-8}` then trims the remaining ~10px of above-cap leading inside
+            the 38px line-box (Tamagui has no leading-trim) so the heading's cap
+            sits flush with the page's top padding, matching the left inset.
+            Nudge this value if the top still reads off. */}
+        <H1
+          size="$8"
+          fontWeight="700"
+          letterSpacing={-0.5}
+          color="$color"
+          mt={-8}
+        >
           {greeting}
           {user?.name ? `, ${user.name.split(" ")[0]}` : ""}
         </H1>

@@ -1,14 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { View, XStack, YStack } from "@stageholder/ui";
-import {
-  ActivityRings,
-  ActivityRingsBreakdown,
-} from "@/components/activity-rings";
+import { View, YStack } from "@stageholder/ui";
 import { useUserLight } from "@/lib/api/light";
-import { LevelProgress, LevelUpCelebration } from "@repo/features/light";
+import { LevelUpCelebration } from "@repo/features/light";
 import { useLevelUp } from "@/lib/hooks/use-level-up";
 import { GreetingBar } from "@/components/dashboard/greeting-bar";
+import { DashboardHero } from "@/components/dashboard/dashboard-hero";
 import { BentoCard } from "@repo/features/dashboard";
 import { TodayTodos } from "@/components/dashboard/today-todos";
 import { HabitSummary } from "@/components/dashboard/habit-summary";
@@ -26,78 +23,48 @@ function DashboardPage() {
   const { levelUpTier, dismiss } = useLevelUp(userLight);
 
   return (
-    // Stack-based dashboard: a vertical column of rows. The two paired rows lay
-    // their cards side-by-side (5/7 split) from $md up and stack on phones.
-    // Tamagui is flexbox-only, so this is plain XStack/YStack — no CSS grid.
+    // Motivation-first dashboard: a full-width hero (rings + level + breakdown)
+    // leads, then everything else is laid out as same-height PAIRS so no card
+    // is ever stretched against a taller neighbor (the old empty-space bug).
+    // Tamagui is flexbox-only — plain XStack/YStack, no CSS grid.
     <YStack gap="$4" p="$4" $lg={{ p: "$5" }}>
       {/* Greeting — full width. Tamagui native staggered mount fade. */}
       <View enterStyle={{ opacity: 0, y: 12 }} transition="medium">
         <GreetingBar />
       </View>
 
-      {/* Daily progress + weekly activity. Left column stacks two cards:
-          the overview (combined rings + level) and the per-category
-          breakdown. They stack under the weekly chart on phones. */}
-      <YStack gap="$4" $md={{ flexDirection: "row" }}>
-        <View $md={{ flex: 5 }}>
-          <YStack gap="$4">
-            {/* Overview — combined rings (centered) + level progress. */}
-            <BentoCard index={1}>
-              <Link
-                to="/journey"
-                style={{ display: "block", textDecoration: "none" }}
-              >
-                {/* The bare ring is content-width; center it in the card. */}
-                <XStack justify="center">
-                  <ActivityRings date={today} size="xl" bare />
-                </XStack>
-                {userLight ? (
-                  // LevelProgress owns no margin (its only prop is `userLight`);
-                  // space it from the rings with a Tamagui margin wrapper.
-                  <View mt="$5">
-                    <LevelProgress userLight={userLight} />
-                  </View>
-                ) : null}
-              </Link>
-            </BentoCard>
+      {/* Hero — full width: combined rings + Light/level + category breakdown. */}
+      <DashboardHero date={today} userLight={userLight} />
 
-            {/* Breakdown — one row per category, ring on the trailing edge. */}
-            <BentoCard index={2}>
-              <Link
-                to="/journey"
-                style={{ display: "block", textDecoration: "none" }}
-              >
-                <ActivityRingsBreakdown date={today} />
-              </Link>
-            </BentoCard>
-          </YStack>
+      {/* Action pair — equal 1:1 columns; `fill` stretches both to one height
+          so the shorter list doesn't leave a gap under its partner. */}
+      <YStack gap="$4" $md={{ flexDirection: "row" }}>
+        <View $md={{ flex: 1 }}>
+          <TodayTodos index={2} fill />
         </View>
-        <View $md={{ flex: 7 }}>
-          <BentoCard title="Weekly Activity" index={3}>
-            <WeeklyActivityChart />
+        <View $md={{ flex: 1 }}>
+          <HabitSummary index={3} fill />
+        </View>
+      </YStack>
+
+      {/* Weekly Activity — full width (a 7-day timeline reads best wide). */}
+      <BentoCard title="Weekly Activity" index={4}>
+        <WeeklyActivityChart />
+      </BentoCard>
+
+      {/* Growth charts — equal 1:1 pair (both are 200px, so naturally level). */}
+      <YStack gap="$4" $md={{ flexDirection: "row" }}>
+        <View $md={{ flex: 1 }}>
+          <BentoCard title="Journal Growth" index={5} fill>
+            <JournalGrowthChart />
+          </BentoCard>
+        </View>
+        <View $md={{ flex: 1 }}>
+          <BentoCard title="Light Growth" index={6} fill>
+            <LightEarnedChart />
           </BentoCard>
         </View>
       </YStack>
-
-      {/* Today's todos + habit summary */}
-      <YStack gap="$4" $md={{ flexDirection: "row" }}>
-        <View $md={{ flex: 5 }}>
-          <TodayTodos index={4} />
-        </View>
-        <View $md={{ flex: 7 }}>
-          <HabitSummary index={5} />
-        </View>
-      </YStack>
-
-      {/* Journal growth — full width */}
-      <BentoCard title="Journal Growth" index={6}>
-        <JournalGrowthChart />
-      </BentoCard>
-
-      {/* Light growth — full width */}
-      <BentoCard title="Light Growth" index={7}>
-        <LightEarnedChart />
-      </BentoCard>
 
       {levelUpTier ? (
         <LevelUpCelebration tier={levelUpTier} onDismiss={dismiss} />

@@ -22,6 +22,12 @@ export interface BentoCardProps {
    * (each card fades in 75ms after the previous).
    */
   index?: number;
+  /**
+   * Stretch the card to fill its parent's height (`height: 100%`). Set this
+   * on both cards of a side-by-side pair (inside a flex row whose columns
+   * stretch) so they render at equal height instead of one ending short.
+   */
+  fill?: boolean;
 }
 
 /**
@@ -40,6 +46,7 @@ export function BentoCard({
   onTitlePress,
   action,
   index = 0,
+  fill,
 }: BentoCardProps) {
   return (
     <Card
@@ -47,6 +54,9 @@ export function BentoCard({
       // opacity 0 + translateY(12px) → 1/0), delayed per grid index.
       enterStyle={{ opacity: 0, y: 12 }}
       transition={["medium", { delay: index * 75 }]}
+      // Equal-height pairs: fill the stretched flex column so two side-by-side
+      // cards match instead of leaving a gap under the shorter one.
+      height={fill ? "100%" : undefined}
     >
       {title || action ? (
         <Card.Header>

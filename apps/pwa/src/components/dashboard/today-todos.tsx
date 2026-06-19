@@ -9,7 +9,13 @@ import type { Todo } from "@repo/core/types";
  * wires TanStack `useNavigate` to `onViewAll`, and renders the shared
  * cross-platform view.
  */
-export function TodayTodos({ index = 0 }: { index?: number }) {
+export function TodayTodos({
+  index = 0,
+  fill,
+}: {
+  index?: number;
+  fill?: boolean;
+}) {
   const navigate = useNavigate();
   const { data: todos, isLoading } = useAllTodos();
   const { total, percentage } = useTodoStats();
@@ -30,6 +36,7 @@ export function TodayTodos({ index = 0 }: { index?: number }) {
       }
       onViewAll={() => void navigate({ to: "/todos" })}
       index={index}
+      fill={fill}
     />
   );
 }
