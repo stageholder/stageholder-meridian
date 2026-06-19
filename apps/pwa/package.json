@@ -21,7 +21,7 @@
     "@repo/core": "*",
     "@repo/crypto": "*",
     "@repo/ui": "*",
-    "@stageholder/sdk": "^1.0.0-alpha.47",
+    "@stageholder/sdk": "^1.0.0-alpha.50",
     "@stageholder/ui": "^0.3.0-alpha.46",
     "@tamagui/config": "2.0.0",
     "@tamagui/lucide-icons-2": "2.0.0",

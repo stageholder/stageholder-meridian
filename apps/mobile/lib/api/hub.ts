@@ -23,7 +23,13 @@ import { getAccessToken } from "./auth";
 /** Hub base URL — same env the StageholderProvider boots from. */
 function resolveHubUrl(): string {
   const fromEnv = process.env.EXPO_PUBLIC_STAGEHOLDER_ISSUER_URL;
-  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  if (fromEnv) {
+    // The issuer URL carries the `/oidc` mount path (oidc-provider lives
+    // there), but the Hub's REST API is served at the ORIGIN root (`/api/*`).
+    // Strip a trailing `/oidc` (and any trailing slash) so REST calls hit
+    // `<origin>/api/...` rather than 404ing under `<origin>/oidc/api/...`.
+    return fromEnv.replace(/\/$/, "").replace(/\/oidc$/, "");
+  }
   throw new Error(
     "[meridian/hub] EXPO_PUBLIC_STAGEHOLDER_ISSUER_URL is not set — the " +
       "billing/profile screens need the Hub origin.",

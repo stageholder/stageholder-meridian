@@ -43,6 +43,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { QueryProvider } from "@/lib/api";
+import { PaywallHost } from "@/components/paywall-sheet";
 import { useAppFonts } from "@/lib/fonts";
 import { expoHapticImpl } from "@/lib/haptic-impl";
 import { initTheme, useAppTheme } from "@/lib/platform/theme";
@@ -178,6 +179,10 @@ export default function RootLayout() {
                           <Stack.Screen name="sign-in" />
                           <Stack.Screen name="(authed)" />
                         </Stack>
+                        {/* Server-driven paywall — listens for the API's 402
+                            limit_reached event and slides up the upgrade sheet
+                            over whatever screen the user is on. */}
+                        <PaywallHost />
                       </ToastProvider>
                     </CelebrationProvider>
                   </HapticProvider>

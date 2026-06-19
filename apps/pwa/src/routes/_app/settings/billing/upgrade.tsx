@@ -11,6 +11,7 @@ import { CycleToggle } from "@/components/billing/cycle-toggle";
 import { PlanTierCard } from "@/components/billing/plan-tier-card";
 import { ComparisonSheet } from "@/components/billing/comparison-sheet";
 import {
+  Banner,
   H1,
   Paragraph,
   Skeleton,
@@ -44,6 +45,15 @@ function UpgradePage() {
     () => bestYearlyDiscountLabel(plans),
     [plans],
   );
+
+  // Store-billed (App Store / Play via IAP) subscriptions can't be changed
+  // from the web — a web checkout would start a SECOND subscription on a
+  // different biller for the same product (contract §4). Point the user to
+  // their phone instead. Default provider to "polar" when absent.
+  const storeBilled =
+    !!sub &&
+    (sub.provider === "app_store" || sub.provider === "play") &&
+    (sub.status === "active" || sub.status === "trialing");
 
   return (
     // allowlist: billing-paper texture (globals.css keyframe/bg, no token equivalent)
@@ -146,81 +156,58 @@ function UpgradePage() {
         </YStack>
 
         {/* Plans */}
-        <View position="relative">
-          {/* Desktop-only register hairline the cards sit on. */}
-          <View
-            aria-hidden
-            position="absolute"
-            l={0}
-            r={0}
-            t="50%"
-            mt={-0.5}
-            z={0}
-            height={1}
-            bg="$borderColor"
-            opacity={0.6}
-            pointerEvents="none"
-            display="none"
-            $md={{ display: "flex" }}
-          />
+        {storeBilled ? (
+          // Active plan is billed through the phone's app store — don't sell a
+          // web (Polar) plan on top of it. Direct management to the device.
+          <Banner intent="info">
+            <Banner.Body>
+              <Banner.Title>Your plan is managed on your phone</Banner.Title>
+              <Banner.Description>
+                You subscribed through the{" "}
+                {sub?.provider === "play" ? "Google Play Store" : "App Store"}{" "}
+                in the Meridian mobile app. To change or cancel this plan, open
+                the app on your phone, or manage it in your device&apos;s
+                subscription settings. Buying here would start a separate
+                subscription.
+              </Banner.Description>
+            </Banner.Body>
+          </Banner>
+        ) : (
+          <View position="relative">
+            {/* Desktop-only register hairline the cards sit on. */}
+            <View
+              aria-hidden
+              position="absolute"
+              l={0}
+              r={0}
+              t="50%"
+              mt={-0.5}
+              z={0}
+              height={1}
+              bg="$borderColor"
+              opacity={0.6}
+              pointerEvents="none"
+              display="none"
+              $md={{ display: "flex" }}
+            />
 
-          {isLoading || !ordered || !features ? (
-            <PlanGridSkeleton />
-          ) : media.md ? (
-            // md+ : flex grid. Cards flex to fill, wrapping below minWidth.
-            // The featured card lifts via a negative margin (transform-free so
-            // it never fights the enterStyle reveal).
-            <XStack render="ul" position="relative" flexWrap="wrap" gap="$6">
-              {ordered.map((plan, i) => (
-                <View
-                  key={plan.id}
-                  render="li"
-                  flex={1}
-                  minW={260}
-                  enterStyle={{ opacity: 0, y: 14 }}
-                  transition={["medium", { delay: i * 70 }]}
-                  // Featured card lifts out of the row (this branch is md+ only).
-                  mt={plan.isFeatured ? -24 : 0}
-                >
-                  <PlanTierCard
-                    plan={plan}
-                    catalog={features}
-                    cycle={cycle}
-                    isCurrent={sub?.plan === plan.slug}
-                  />
-                </View>
-              ))}
-            </XStack>
-          ) : (
-            // mobile : swipeable snap carousel. Fixed-width slides + a peek of
-            // the next card signal "swipe for more"; the bar is hidden but the
-            // surface scroll-snaps to each plan.
-            <YStack gap="$3">
-              <XStack
-                render="ul"
-                className="scrollbar-hide"
-                flexWrap="nowrap"
-                gap="$4"
-                pb="$2"
-                style={
-                  {
-                    overflowX: "auto",
-                    overflowY: "hidden",
-                    scrollSnapType: "x mandatory",
-                    scrollPaddingLeft: 0,
-                    WebkitOverflowScrolling: "touch",
-                  } as object
-                }
-              >
+            {isLoading || !ordered || !features ? (
+              <PlanGridSkeleton />
+            ) : media.md ? (
+              // md+ : flex grid. Cards flex to fill, wrapping below minWidth.
+              // The featured card lifts via a negative margin (transform-free so
+              // it never fights the enterStyle reveal).
+              <XStack render="ul" position="relative" flexWrap="wrap" gap="$6">
                 {ordered.map((plan, i) => (
                   <View
                     key={plan.id}
                     render="li"
-                    width={280}
-                    shrink={0}
+                    flex={1}
+                    minW={260}
                     enterStyle={{ opacity: 0, y: 14 }}
                     transition={["medium", { delay: i * 70 }]}
-                    style={{ scrollSnapAlign: "start" } as object}
+                    // Featured card lifts out of the row (this branch is md+ only).
+                    mt={plan.isFeatured ? -24 : 0}
                   >
                     <PlanTierCard
                       plan={plan}
@@ -231,21 +218,70 @@ function UpgradePage() {
                   </View>
                 ))}
               </XStack>
-              {ordered.length > 1 && (
-                <Text text="center" fontSize="$1" color="$mutedForeground">
-                  Swipe to compare plans
-                </Text>
-              )}
-            </YStack>
-          )}
-        </View>
-
-        {/* Comparison sheet */}
-        {!isLoading && ordered && features && features.length > 0 && (
-          <View mt={96} enterStyle={{ opacity: 0, y: 14 }} transition="medium">
-            <ComparisonSheet plans={ordered} features={features} />
+            ) : (
+              // mobile : swipeable snap carousel. Fixed-width slides + a peek of
+              // the next card signal "swipe for more"; the bar is hidden but the
+              // surface scroll-snaps to each plan.
+              <YStack gap="$3">
+                <XStack
+                  render="ul"
+                  className="scrollbar-hide"
+                  flexWrap="nowrap"
+                  gap="$4"
+                  pb="$2"
+                  style={
+                    {
+                      overflowX: "auto",
+                      overflowY: "hidden",
+                      scrollSnapType: "x mandatory",
+                      scrollPaddingLeft: 0,
+                      WebkitOverflowScrolling: "touch",
+                    } as object
+                  }
+                >
+                  {ordered.map((plan, i) => (
+                    <View
+                      key={plan.id}
+                      render="li"
+                      width={280}
+                      shrink={0}
+                      enterStyle={{ opacity: 0, y: 14 }}
+                      transition={["medium", { delay: i * 70 }]}
+                      style={{ scrollSnapAlign: "start" } as object}
+                    >
+                      <PlanTierCard
+                        plan={plan}
+                        catalog={features}
+                        cycle={cycle}
+                        isCurrent={sub?.plan === plan.slug}
+                      />
+                    </View>
+                  ))}
+                </XStack>
+                {ordered.length > 1 && (
+                  <Text text="center" fontSize="$1" color="$mutedForeground">
+                    Swipe to compare plans
+                  </Text>
+                )}
+              </YStack>
+            )}
           </View>
         )}
+
+        {/* Comparison sheet */}
+        {!storeBilled &&
+          !isLoading &&
+          ordered &&
+          features &&
+          features.length > 0 && (
+            <View
+              mt={96}
+              enterStyle={{ opacity: 0, y: 14 }}
+              transition="medium"
+            >
+              <ComparisonSheet plans={ordered} features={features} />
+            </View>
+          )}
 
         {/* Closing mark */}
         <XStack

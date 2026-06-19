@@ -75,10 +75,41 @@ A user could hold a Polar sub AND a store sub for the same product/org pair.
 
 ## 5. Operational setup (blocked on developer-program registration)
 
-1. App Store Connect: create the app, subscription group, products
-   (e.g. `meridian_pro_monthly`, `meridian_pro_yearly`); enable the
-   In-App Purchase capability; Paid Apps agreement + banking.
-2. Play Console: app + subscription products with matching base-plan ids.
+### 5.0 Canonical product catalog (authoritative — all three layers must match)
+
+This is the single source of truth for store product IDs. The **same**
+identifiers must be used in (a) App Store Connect + Play Console, (b) the
+RevenueCat "default" Offering packages, and (c) the Hub `store_products`
+mapping table (§2). Meridian sells one fixed-price paid plan
+(`meridian-unlimited`, product slug `meridian`) on a personal org — see §6.
+
+| Store product ID             | Platform(s)      | Cycle   | → plan slug          | → product slug | RC package    |
+| ---------------------------- | ---------------- | ------- | -------------------- | -------------- | ------------- |
+| `meridian_unlimited_monthly` | app_store + play | monthly | `meridian-unlimited` | `meridian`     | `$rc_monthly` |
+| `meridian_unlimited_yearly`  | app_store + play | yearly  | `meridian-unlimited` | `meridian`     | `$rc_annual`  |
+
+Notes:
+
+- **Use the identical product ID string on both stores.** Play Console
+  subscription IDs and App Store Connect product IDs are independent
+  namespaces, so reusing the string keeps the Hub mapping platform-agnostic
+  (the `store_products` row still carries `platform`, but the ID matches).
+- On Play, the subscription has a single base plan per cycle; name the base
+  plan after the cycle (`monthly` / `yearly`) under the subscription ID above.
+- Hub `store_products` seed rows (one per platform × product):
+  - `(meridian_unlimited_monthly, app_store, meridian-unlimited, meridian)`
+  - `(meridian_unlimited_monthly, play,      meridian-unlimited, meridian)`
+  - `(meridian_unlimited_yearly,  app_store, meridian-unlimited, meridian)`
+  - `(meridian_unlimited_yearly,  play,      meridian-unlimited, meridian)`
+- The client never hardcodes these — RevenueCat's Offering drives the paywall
+  list and `priceString`. This table exists so the store config, RC offering,
+  and Hub mapping don't drift.
+
+1. App Store Connect: create the app, a subscription group, and the products
+   from §5.0 (`meridian_unlimited_monthly`, `meridian_unlimited_yearly`);
+   enable the In-App Purchase capability; Paid Apps agreement + banking.
+2. Play Console: app + subscription products using the **same** IDs as §5.0,
+   each with a base plan per cycle.
 3. RevenueCat: project + iOS/Android apps, attach store credentials
    (App Store Connect API key, Play service account), one Offering
    ("default") containing the packages; webhook → Hub endpoint (§2).

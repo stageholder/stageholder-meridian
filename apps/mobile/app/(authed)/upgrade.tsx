@@ -30,7 +30,11 @@ import {
   YStack,
   useToast,
 } from "@stageholder/ui";
-import { useStageholder, useUser } from "@stageholder/sdk/react-native";
+import {
+  useStageholder,
+  useSubscription,
+  useUser,
+} from "@stageholder/sdk/react-native";
 import { ChevronLeft } from "@tamagui/lucide-icons-2";
 import { useRouter } from "expo-router";
 import {
@@ -38,13 +42,17 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 
+import { openURL } from "@repo/core/platform/linking";
 import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
 import {
   configurePurchases,
   getCurrentOfferingPackages,
   iapEnabled,
+  PRIVACY_POLICY_URL,
   purchase,
+  reconcileEntitlement,
   restorePurchases,
+  TERMS_OF_USE_URL,
   type IapPackage,
 } from "@/lib/purchases";
 
@@ -72,6 +80,18 @@ export default function UpgradeScreen() {
   const { refreshSession } = useStageholder();
 
   const enabled = iapEnabled();
+  // §4 prevention: if the active plan is a PAID web (Polar) subscription,
+  // buying in-app would create a SECOND subscription across two billers for the
+  // same product. Block the purchase UI and point to web management instead.
+  // The auto-provisioned free tier is also an `active` "polar" claim, so it
+  // MUST be excluded (`!isFreeTier`) — a free user is exactly who we want to
+  // sell to. Default provider to "polar" when absent (older Hub tokens).
+  const sub = useSubscription();
+  const polarManaged =
+    !!sub &&
+    !sub.isFreeTier &&
+    (sub.provider ?? "polar") === "polar" &&
+    (sub.status === "active" || sub.status === "trialing");
   const [packages, setPackages] = useState<IapPackage[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -98,9 +118,9 @@ export default function UpgradeScreen() {
       const bought = await purchase(pkg);
       if (!bought) return; // user cancelled — no noise
       // Entitlement flows store → RevenueCat webhook → Hub → session claim.
-      // Refresh so the new plan lands as soon as the Hub has it; the toast
-      // covers the (short) webhook lag honestly.
-      await refreshSession().catch(() => {});
+      // Poll the session a few times (detached) so the new plan lands as the
+      // webhook arrives without the user refreshing; the toast covers the lag.
+      void reconcileEntitlement(refreshSession);
       toast.show({
         title: "Purchase complete",
         message: "Your plan is activating — this can take a moment.",
@@ -118,7 +138,7 @@ export default function UpgradeScreen() {
     setRestoring(true);
     try {
       await restorePurchases();
-      await refreshSession().catch(() => {});
+      void reconcileEntitlement(refreshSession);
       toast.show({ title: "Purchases restored", intent: "success" });
     } catch {
       toast.show({ title: "Nothing to restore", intent: "info" });
@@ -178,7 +198,20 @@ export default function UpgradeScreen() {
               </Paragraph>
             </YStack>
 
-            {!enabled ? (
+            {polarManaged ? (
+              // Active plan is web-billed (Polar) — don't sell a second,
+              // store-billed subscription on top of it (contract §4).
+              <Banner intent="info">
+                <Banner.Body>
+                  <Banner.Title>Your plan is managed on the web</Banner.Title>
+                  <Banner.Description>
+                    Your current subscription is billed through the Meridian web
+                    app. Manage or change it there — buying here would start a
+                    separate in-app subscription.
+                  </Banner.Description>
+                </Banner.Body>
+              </Banner>
+            ) : !enabled ? (
               // Pre-store-launch builds: keys not configured yet.
               <Banner intent="info">
                 <Banner.Body>
@@ -266,6 +299,26 @@ export default function UpgradeScreen() {
                   hours before the end of the current period. Manage or cancel
                   anytime in your app store account settings.
                 </Paragraph>
+
+                {/* Required legal links (App Store guideline 3.1.2 + Play). */}
+                <XStack gap="$4" mt="$1">
+                  <Text
+                    fontSize="$1"
+                    color="$mutedForeground"
+                    textDecorationLine="underline"
+                    onPress={() => openURL(TERMS_OF_USE_URL)}
+                  >
+                    Terms of Use
+                  </Text>
+                  <Text
+                    fontSize="$1"
+                    color="$mutedForeground"
+                    textDecorationLine="underline"
+                    onPress={() => openURL(PRIVACY_POLICY_URL)}
+                  >
+                    Privacy Policy
+                  </Text>
+                </XStack>
               </YStack>
             )}
           </YStack>

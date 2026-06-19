@@ -30,6 +30,7 @@ import { useEffect, useState } from "react";
 
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { isOnboarded } from "@/lib/onboarding";
+import { configurePurchases } from "@/lib/purchases";
 
 export default function AuthedLayout() {
   const { state } = useStageholder();
@@ -61,6 +62,16 @@ export default function AuthedLayout() {
       cancelled = true;
     };
   }, [sub, onOnboarding]);
+
+  // Configure RevenueCat as soon as we have an identity — at the authed root,
+  // not just on the paywall mount — so restore/purchase work from anywhere and
+  // store events are keyed to this user the moment they sign in.
+  // `configurePurchases` is idempotent (caches per-sub, no-ops when IAP is off);
+  // a different sub (account switch) re-configures.
+  useEffect(() => {
+    if (!sub) return;
+    void configurePurchases(sub);
+  }, [sub]);
 
   // The onboarding redirect must be IMPERATIVE (effect + router.replace), not
   // a render-time <Redirect> that replaces <Tabs>: the wizard route lives

@@ -23,7 +23,7 @@
 // for plain members. Registered as a hidden tab (`href: null`); reached from
 // the Profile sheet and Settings → Account.
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Badge,
   Banner,
@@ -44,10 +44,11 @@ import { openURL } from "@repo/core/platform/linking";
 import {
   useEnterprise,
   useOrg,
+  useStageholder,
   useSubscription,
 } from "@stageholder/sdk/react-native";
 import { ChevronLeft, Download, ExternalLink } from "@tamagui/lucide-icons-2";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Platform } from "react-native";
 import {
   SafeAreaView,
@@ -99,10 +100,30 @@ export default function BillingScreen() {
   const sub = useSubscription();
   const enterprise = useEnterprise();
   const { org, activeOrgId } = useOrg();
+  const { refreshSession } = useStageholder();
   const canManage = canManageBilling(org?.role);
+
+  // Re-pull the session whenever this screen regains focus — catches the
+  // entitlement landing after a store purchase (the /upgrade poll + the
+  // navigation here) or after an app background-return, so the plan card and
+  // provider branch are never stale.
+  useFocusEffect(
+    useCallback(() => {
+      void refreshSession().catch(() => {});
+    }, [refreshSession]),
+  );
 
   const invoicesQuery = useInvoices(canManage ? activeOrgId : undefined);
   const portal = useBillingPortal();
+
+  // Which biller owns the active subscription (SDK `provider` claim). Drives
+  // where plan management lives. Default to "polar" when absent (older Hub
+  // tokens predate the field, and a missing provider means web-billed).
+  const provider = sub?.provider ?? "polar";
+  const storeBilled = provider === "app_store" || provider === "play";
+  // Is this a store-distributed build (RevenueCat key present)? On store builds
+  // we must not surface external payment links (App Store guideline 3.1.1).
+  const storeBuild = iapEnabled();
 
   function openPortal() {
     if (!activeOrgId) return;
@@ -229,36 +250,53 @@ export default function BillingScreen() {
                 ) : null}
 
                 {canManage && activeOrgId ? (
-                  iapEnabled() ? (
-                    // STORE BUILD: purchases run through StoreKit / Play
-                    // Billing (apps/mobile/lib/purchases.ts) — no external
-                    // payment links on this screen (App Store guideline
-                    // 3.1.1). Store subs are managed in the OS subscription
-                    // settings, not the Polar portal.
-                    //
-                    // TODO(provider): once the Hub claim carries `provider`
-                    // (docs/iap-hub-contract.md §4), web-billed Polar subs
-                    // should branch back to the portal button here.
+                  storeBilled ? (
+                    // STORE-BILLED sub (provider app_store|play): bought via
+                    // StoreKit / Play Billing. Payment, cancel, and plan
+                    // changes live in the OS subscription settings — the Polar
+                    // portal can't touch these. On a store build we also offer
+                    // an in-app plan change through the store paywall.
                     <YStack gap="$2">
+                      {storeBuild ? (
+                        <Button
+                          intent="primary"
+                          onPress={() => router.push("/upgrade")}
+                        >
+                          Change plan
+                        </Button>
+                      ) : null}
+                      <Button
+                        intent={storeBuild ? "outline" : "primary"}
+                        iconAfter={<ExternalLink size={14} opacity={0.7} />}
+                        onPress={() => openURL(storeManagementUrl())}
+                      >
+                        Manage in{" "}
+                        {Platform.OS === "ios" ? "App Store" : "Google Play"}
+                      </Button>
+                    </YStack>
+                  ) : storeBuild ? (
+                    // STORE BUILD, web-billed (Polar) or free plan. Guideline
+                    // 3.1.1 forbids external payment links here, so the Polar
+                    // portal button is hidden (contract §6). A free user (the
+                    // auto-provisioned free tier is an active "polar" claim, so
+                    // gate on !isFreeTier) can still upgrade in-app via the
+                    // store paywall; a PAID web-billed user is told where their
+                    // plan is managed.
+                    sub && !sub.isFreeTier ? (
+                      <Paragraph fontSize="$2" color="$mutedForeground">
+                        This plan is billed on the web. Manage your payment
+                        method and plan from the Meridian web app.
+                      </Paragraph>
+                    ) : (
                       <Button
                         intent="primary"
                         onPress={() => router.push("/upgrade")}
                       >
-                        {sub ? "Change plan" : "Upgrade plan"}
+                        Upgrade plan
                       </Button>
-                      {sub ? (
-                        <Button
-                          intent="outline"
-                          iconAfter={<ExternalLink size={14} opacity={0.7} />}
-                          onPress={() => openURL(storeManagementUrl())}
-                        >
-                          Manage in{" "}
-                          {Platform.OS === "ios" ? "App Store" : "Google Play"}
-                        </Button>
-                      ) : null}
-                    </YStack>
+                    )
                   ) : (
-                    // WEB-BILLED (pre-store / dev builds): the Polar portal
+                    // NON-store build (dev / web-distributed): the Polar portal
                     // owns payment method, cancel, and plan changes.
                     <Button
                       intent="primary"

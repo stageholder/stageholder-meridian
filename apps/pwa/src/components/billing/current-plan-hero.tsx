@@ -48,7 +48,14 @@ export function CurrentPlanHero({
     return <HeroSkeleton />;
   }
 
-  const isFree = !sub;
+  // Free = no claim OR the auto-provisioned free-tier claim (which is an
+  // `active` "polar" claim, so `!sub` alone misses it → the hero would wrongly
+  // show a "Manage payment" portal button for free users).
+  const isFree = !sub || !!sub.isFreeTier;
+  // Store-billed (App Store / Play via IAP): payment lives on the phone, not in
+  // the Polar portal. Hide the portal button and point to the device instead
+  // (contract §4). Default provider to "polar" when absent.
+  const storeBilled = sub?.provider === "app_store" || sub?.provider === "play";
   const planName = sub?.planName ?? "Free";
   const status = sub?.status ?? "active";
   const seats =
@@ -169,7 +176,7 @@ export function CurrentPlanHero({
               {isFree ? "Upgrade your plan" : "Change plan"}
             </Button>
 
-            {canManage && !isFree && org && (
+            {canManage && !isFree && org && !storeBilled && (
               <Button
                 intent="outline"
                 disabled={portalPending}
@@ -193,6 +200,21 @@ export function CurrentPlanHero({
               </Button>
             )}
           </XStack>
+
+          {!isFree && storeBilled && (
+            <Text
+              borderLeftWidth={2}
+              borderColor="$borderColor"
+              pl="$4"
+              fontSize="$1"
+              color="$mutedForeground"
+            >
+              This plan is billed through the{" "}
+              {sub?.provider === "play" ? "Google Play Store" : "App Store"} in
+              the Meridian mobile app. Manage payment, change, or cancel it from
+              your phone&apos;s subscription settings.
+            </Text>
+          )}
 
           {!canManage && !isFree && (
             <Text

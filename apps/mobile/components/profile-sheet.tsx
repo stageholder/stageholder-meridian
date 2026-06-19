@@ -42,6 +42,7 @@ import {
 import { useRouter } from "expo-router";
 
 import { useAppTheme } from "@/lib/platform/theme";
+import { logOutPurchases } from "@/lib/purchases";
 
 interface ProfileSheetProps {
   open: boolean;
@@ -107,6 +108,9 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
   async function handleSignOut() {
     setSigningOut(true);
     try {
+      // Reset RevenueCat identity FIRST so a shared device doesn't attribute
+      // the next signed-in user's purchases/restores to this user's appUserID.
+      await logOutPurchases();
       // Root layout's onSignedOut redirects to /sign-in once the session is
       // cleared — no manual navigation. The sheet unmounts with the tree.
       await signOut();
