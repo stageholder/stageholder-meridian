@@ -209,9 +209,17 @@ export function JournalCelebration({ trigger }: JournalCelebrationProps) {
         />
       ))}
 
-      {/* Target reached banner — anchored to top, no text overlap */}
+      {/* Target reached banner — centered in the gap BETWEEN the gold progress
+          line and the first line of body text, so it overlaps neither.
+          Vertical map of the editor's relative container (this overlay is its
+          inset:0 child): gold line center ≈24px; progress strip ends at 60px
+          (MeridianProgress 48px + 12px marginBottom); the body's default 16px
+          top padding pushes the first text line to ≈76px. The ~34px pill is
+          centered in that ~28–76px gap → top ≈36px, nudged +4px to 40px for a
+          touch more breathing room below the line. (t=12 sat on the line;
+          t=68 dropped it onto the text — 40 threads the gap.) */}
       {showBanner && (
-        <XStack position="absolute" l={0} r={0} t={12} justify="center">
+        <XStack position="absolute" l={0} r={0} t={40} justify="center">
           {/* allowlist: journal-celebration-banner — bespoke celebration
               keyframe. The frosted blur + oklch tint are web-only CSS (no
               token equivalent), riding the style hatch. */}
