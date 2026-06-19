@@ -26,8 +26,21 @@ import { useAutosave } from "@/lib/hooks/use-autosave";
 import type { JournalContent } from "@repo/core/types";
 
 export const Route = createFileRoute("/_app/journal/$id")({
-  component: JournalEntryPage,
+  component: JournalEntryRoute,
 });
+
+// Remount the editor per entry id. TanStack Router keeps the SAME component
+// instance across param-only navigations (/journal/A → /journal/B), so without
+// a fresh key the one-shot `initialized` seed effect in JournalEntryPage never
+// re-runs — the pane keeps showing the previously opened entry's title/content
+// (the "clicking a different entry doesn't load" bug). `key={id}` forces a full
+// remount: all form state re-seeds from the new entry, and useAutosave's
+// unmount-flush commits the prior entry's pending edits to the correct id
+// before the switch (also prevents writing entry A's text into entry B).
+function JournalEntryRoute() {
+  const { id } = Route.useParams();
+  return <JournalEntryPage key={id} />;
+}
 
 const moods = [
   { value: 1, label: "Terrible", emoji: "\u{1F622}" },
