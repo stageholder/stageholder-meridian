@@ -30,10 +30,14 @@ const OUT = path.join(
 );
 
 const CANVAS = 1024;
-// Fraction of the canvas the spiral mark occupies; the remainder is even
-// padding so the rings don't crowd the squircle edge (macOS icon grid leaves
-// the glyph inset from the tile).
-const MARK_SCALE = 0.62;
+// Fraction of the canvas the VISIBLE spiral occupies (after trimming the mark's
+// own transparent padding — see `.trim()` below; without it `meridian_mark.png`
+// carries ~33% built-in margin, so the glyph rendered far smaller than this
+// number suggested). macOS (Tahoe+) masks the full-bleed tile into the rounded
+// icon shape, so the tile is edge-to-edge and only the glyph needs insetting.
+// 0.82 = a bold, dominant mark with a thin breathing margin; its straight-axis
+// edges sit ~9% off the canvas edge, clear of the squircle's corner rounding.
+const MARK_SCALE = 0.82;
 
 // oklch(L C H) → sRGB (Björn Ottosson reference math). Kept inline so the tile
 // color is computed straight from the theme token, no hand-copied hex to drift.
@@ -65,6 +69,10 @@ console.log(
 
 const markSize = Math.round(CANVAS * MARK_SCALE);
 const mark = await sharp(SRC)
+  // Trim the transparent margin baked into meridian_mark.png so MARK_SCALE
+  // sizes the SPIRAL, not the padded box. Without this the glyph shrinks by the
+  // mark's internal padding (~33%) and looks tiny no matter the scale.
+  .trim()
   .resize(markSize, markSize, {
     fit: "contain",
     background: { r: 0, g: 0, b: 0, alpha: 0 },
