@@ -4,11 +4,13 @@ import {
   Popover,
   Progress,
   ProgressRing,
+  RippleButton,
   Text,
   XStack,
   YStack,
 } from "@stageholder/ui";
 import { StarVisual } from "@repo/features/light";
+import { useAppTheme } from "@/lib/platform/theme";
 import {
   getTierProgress,
   getNextTier,
@@ -19,20 +21,26 @@ import type { UserLight } from "@repo/core/types";
 // Per-tier COLOR VALUES. `ring` is the brightest mid-stop — applied as a SOLID
 // color via Tamagui's color/fillColor props (no gradient text clip). `track` is
 // the unfilled ring. Single source for both the desktop and mobile badges.
+//
+// `ring` is tuned for the DARK header (bright/pale tints pop on dark). On the
+// LIGHT header those same pale golds (#fde68a, #fbbf24, #eab308…) wash out and
+// the tier title becomes unreadable — so each tier also carries `ringLight`, a
+// darker same-hue variant (~Tailwind -600/-700) with real contrast on white.
+// The component picks per resolved theme.
 const tierColors: Record<
   number,
-  { ring: `#${string}`; track: `rgba(${string})` }
+  { ring: `#${string}`; ringLight: `#${string}`; track: `rgba(${string})` }
 > = {
-  1: { ring: "#cbd5e1", track: "rgba(148,163,184,0.15)" },
-  2: { ring: "#ef4444", track: "rgba(239,68,68,0.15)" },
-  3: { ring: "#f59e0b", track: "rgba(245,158,11,0.15)" },
-  4: { ring: "#f97316", track: "rgba(249,115,22,0.15)" },
-  5: { ring: "#f97316", track: "rgba(249,115,22,0.15)" },
-  6: { ring: "#eab308", track: "rgba(234,179,8,0.15)" },
-  7: { ring: "#fbbf24", track: "rgba(251,191,36,0.15)" },
-  8: { ring: "#fde68a", track: "rgba(253,230,138,0.15)" },
-  9: { ring: "#eab308", track: "rgba(234,179,8,0.15)" },
-  10: { ring: "#fbbf24", track: "rgba(251,191,36,0.15)" },
+  1: { ring: "#cbd5e1", ringLight: "#64748b", track: "rgba(148,163,184,0.15)" },
+  2: { ring: "#ef4444", ringLight: "#dc2626", track: "rgba(239,68,68,0.15)" },
+  3: { ring: "#f59e0b", ringLight: "#d97706", track: "rgba(245,158,11,0.15)" },
+  4: { ring: "#f97316", ringLight: "#ea580c", track: "rgba(249,115,22,0.15)" },
+  5: { ring: "#f97316", ringLight: "#ea580c", track: "rgba(249,115,22,0.15)" },
+  6: { ring: "#eab308", ringLight: "#ca8a04", track: "rgba(234,179,8,0.15)" },
+  7: { ring: "#fbbf24", ringLight: "#d97706", track: "rgba(251,191,36,0.15)" },
+  8: { ring: "#fde68a", ringLight: "#b45309", track: "rgba(253,230,138,0.15)" },
+  9: { ring: "#eab308", ringLight: "#ca8a04", track: "rgba(234,179,8,0.15)" },
+  10: { ring: "#fbbf24", ringLight: "#d97706", track: "rgba(251,191,36,0.15)" },
 };
 
 /**
@@ -53,9 +61,16 @@ const tierColors: Record<
 export function JourneyTierBadge({ userLight }: { userLight: UserLight }) {
   const navigate = useNavigate();
 
+  const { resolvedTheme } = useAppTheme();
+  const isLight = resolvedTheme !== "dark";
+
   const progress = getTierProgress(userLight.totalLight, userLight.currentTier);
   const nextTier = getNextTier(userLight.currentTier);
-  const colors = tierColors[userLight.currentTier] ?? tierColors[1]!;
+  const colorSet = tierColors[userLight.currentTier] ?? tierColors[1]!;
+  // Brand identity color for this tier, contrast-corrected per theme. Used for
+  // the title text AND the progress-ring fill so both stay legible on light.
+  const tierColor = isLight ? colorSet.ringLight : colorSet.ring;
+  const colors = { ring: tierColor, track: colorSet.track };
 
   return (
     <>
@@ -91,8 +106,13 @@ export function JourneyTierBadge({ userLight }: { userLight: UserLight }) {
         $md={{ display: "flex" }}
       >
         <Popover placement="bottom-end">
+          {/* RippleButton (not the default Button) so the trigger gives ripple
+              press feedback instead of a press-scale — matching the kit-canonical
+              DropdownMenu triggers (habit card / sidebar menus). The scale also
+              shifted this popover's floating-ui anchor mid-open; ripple keeps it
+              a stable anchor. */}
           <Popover.Trigger asChild>
-            <Button
+            <RippleButton
               intent="ghost"
               size="sm"
               shrink={0}
@@ -120,7 +140,7 @@ export function JourneyTierBadge({ userLight }: { userLight: UserLight }) {
               >
                 <StarVisual tier={userLight.currentTier} size="xs" />
               </ProgressRing>
-            </Button>
+            </RippleButton>
           </Popover.Trigger>
           <Popover.Content width={256} maxW="calc(100vw - 2rem)" p={0}>
             <YStack items="center" gap="$2" px="$4" pt="$4" pb="$3">
