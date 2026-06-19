@@ -20,6 +20,7 @@ import {
 } from "@stageholder/ui";
 // The title uses a raw tamagui Input (see below) — bare, no kit Frame chrome.
 import { Input as BareInput } from "tamagui";
+import { BLOCK_GUTTER } from "@repo/features/journal";
 import { useJournal, useDeleteJournal } from "@/lib/api/journals";
 import { useAutosave } from "@/lib/hooks/use-autosave";
 import type { JournalContent } from "@repo/core/types";
@@ -160,13 +161,16 @@ function JournalEntryPage() {
     // Padding is via Tamagui spacing tokens ($6 ≈ 24px horizontal,
     // breathing room on both sides).
     <YStack flex={1} height="100%" overflow="hidden">
-      <YStack shrink={0} px="$4" pt="$4" overflow="hidden">
+      {/* No horizontal padding on the header: the only horizontal inset is the
+          block gutter (BLOCK_GUTTER), applied directly to the title / pills so
+          they line up with the gutter-indented body text. */}
+      <YStack shrink={0} pt="$4" overflow="hidden">
         <Hide above="md">
-          <View mb="$3">
+          <View mb="$3" pl={BLOCK_GUTTER}>
             {/* `self="flex-start"` stops the ghost button from stretching
                 full-width (which centered its label — the "strange" look);
-                `ml="$-2"` pulls the icon out to the content gutter so the
-                "←" lines up with the title's left edge below it. */}
+                `ml="$-2"` nudges the icon back so the "←" lines up with the
+                gutter-indented title's left edge below it. */}
             <Button
               intent="ghost"
               size="sm"
@@ -180,8 +184,16 @@ function JournalEntryPage() {
           </View>
         </Hide>
 
-        {/* Title + delete */}
-        <XStack mb="$3" items="center" gap="$2">
+        {/* Title + delete. `pl`/`pr={BLOCK_GUTTER}` inset the row by the block
+            gutter on both sides so the title lines up with the body text and the
+            delete button sits at the content's right edge (not the screen edge). */}
+        <XStack
+          mb="$3"
+          pl={BLOCK_GUTTER}
+          pr={BLOCK_GUTTER}
+          items="center"
+          gap="$2"
+        >
           {/* Bare title — a raw tamagui Input, not the kit Input: the kit
               wraps its field in a bordered Frame whose focus ring (the boxed
               outline) can't be reached from call-site props. `px={0}` keeps
@@ -216,8 +228,15 @@ function JournalEntryPage() {
           </IconButton>
         </XStack>
 
-        {/* Metadata pills row */}
-        <XStack mb="$4" flexWrap="wrap" items="center" gap="$2">
+        {/* Metadata pills row — indented by the block gutter to align with the
+            title above and the body text below. */}
+        <XStack
+          mb="$4"
+          pl={BLOCK_GUTTER}
+          flexWrap="wrap"
+          items="center"
+          gap="$2"
+        >
           {/* Date pill (read-only for existing entries) */}
           <XStack items="center" gap="$1">
             <Text color="$mutedForeground" lineHeight={0}>

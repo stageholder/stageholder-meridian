@@ -1,6 +1,5 @@
 import {
   CheckSquare,
-  Heart,
   BookOpen,
   Target,
   CalendarDays,
@@ -33,7 +32,7 @@ const FEATURES: Feature[] = [
     icon: Target,
     title: "Habits",
     description: "Track daily habits and build streaks over time.",
-    goals: ["health", "habits"],
+    goals: ["habits"],
   },
   {
     icon: BookOpen,
@@ -46,12 +45,6 @@ const FEATURES: Feature[] = [
     title: "Calendar",
     description: "View all your tasks and habits in a calendar view.",
     goals: ["productivity", "habits"],
-  },
-  {
-    icon: Heart,
-    title: "Health Tracking",
-    description: "Monitor your wellness habits and see your progress.",
-    goals: ["health"],
   },
 ];
 

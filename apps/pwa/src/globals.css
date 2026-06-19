@@ -182,21 +182,20 @@ label[for] {
   cursor: text;
 }
 
-/* Journal editor content body padding override.
-   The kit's RichTextEditor ships generous default body padding for
-   standalone use. Inside the journal page we set all four sides to
-   $4 (16px) so the writing surface reads as a uniformly inset frame
-   that aligns with the title's horizontal padding above.
+/* Journal editor content body padding.
+   The block variant owns its own padding — `.sh-rte-content--block` reads the
+   `--sh-rte-block-gutter` (BLOCK_GUTTER) for the left drag-handle gutter and the
+   `bodyPadding.right` we pass to mirror it — so we DON'T override it here (doing
+   so would flatten the gutter that block text is meant to indent past). There is
+   no extra column padding around the editor: the gutter is the journal content's
+   only horizontal inset, and the title / metadata / progress are inset by the
+   same BLOCK_GUTTER value so everything shares one left + right edge.
 
    First-child margin reset: browsers give <p>, <h1>, <ul>, etc. a
-   default top margin (~1em). With ProseMirror's padding-top already
-   at 16px, the first paragraph's default margin stacked on top of
-   that produced ~32px of visible gap between toolbar and text. We
+   default top margin (~1em), which would stack on top of the content's
+   padding-top and read as an oversized gap before the first line. We
    strip the first child's top margin (and last child's bottom margin)
-   so the visible inset equals exactly the ProseMirror padding. */
-.journal-editor-body .ProseMirror {
-  padding: 1rem;
-}
+   so the visible top inset equals exactly the content padding. */
 .journal-editor-body .ProseMirror > *:first-child {
   margin-top: 0;
 }
@@ -214,6 +213,22 @@ label[for] {
    The click-to-focus behavior itself is wired up in JournalEditor. */
 .journal-editor-body {
   cursor: text;
+}
+/* The editor body wrapper is set to `overflow: scroll` in the shared
+   component (Tamagui's overflow type has no `auto`), which forces both
+   scrollbar gutters to render permanently — they read as a faint border on
+   the right edge and along the bottom even on an empty entry. Relax to `auto`
+   so the vertical bar appears only when an entry overflows, and the horizontal
+   one never shows (content can't overflow sideways).
+
+   `!important` is REQUIRED here: this app runs Tamagui with extraction
+   disabled (Tailwind coexistence), so `overflow="scroll"` lands as an INLINE
+   style on the element — a plain class selector (any specificity) loses to it.
+   `!important` in an author stylesheet is the one thing that outranks a
+   non-important inline style. */
+.journal-editor-body {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
 }
 .journal-editor-body button,
 .journal-editor-body [role="button"],

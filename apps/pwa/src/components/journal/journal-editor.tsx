@@ -3,8 +3,10 @@ import { generateJSON } from "@tiptap/html";
 import type { JSONContent } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Placeholder } from "@tiptap/extensions";
+import { Text, YStack } from "@stageholder/ui";
 import {
   JournalEditor as JournalEditorView,
+  BLOCK_GUTTER,
   type JournalProgressState,
   type SaveStatus,
 } from "@repo/features/journal";
@@ -108,22 +110,68 @@ export function JournalEditor({
   );
 
   return (
-    <JournalEditorView
-      initialContent={initialContent}
-      onChange={onChange}
-      placeholder={placeholder}
-      autoFocus={autoFocus}
-      saveStatus={saveStatus}
-      target={target}
-      otherWordsToday={otherWordsToday}
-      // allowlist: journal-editor-body scopes globals.css overrides for the
-      // TipTap/ProseMirror editor chrome (padding alignment + text cursor
-      // over the empty dead-zone) — editor-specific CSS, no token equiv.
-      editorBodyClassName="journal-editor-body"
-      onEditorBodyPress={focusEditorOnDeadZoneClick}
-      renderCelebration={(trigger) => <JournalCelebration trigger={trigger} />}
-      renderProgress={(state) => <MeridianProgress {...state} />}
-    />
+    // No horizontal padding here: the journal content's only horizontal inset
+    // is the block drag-handle gutter (BLOCK_GUTTER) — the body text gets it
+    // from the variant, the progress strip + title + metadata get the same
+    // value applied directly, so everything shares one left/right edge with no
+    // extra column padding stacked on top. `minHeight={0}` lets the inner
+    // scroll region size down.
+    <YStack flex={1} minH={0} position="relative">
+      <JournalEditorView
+        initialContent={initialContent}
+        onChange={onChange}
+        placeholder={placeholder}
+        autoFocus={autoFocus}
+        target={target}
+        otherWordsToday={otherWordsToday}
+        // allowlist: journal-editor-body scopes globals.css overrides for the
+        // TipTap/ProseMirror editor chrome (padding alignment + text cursor
+        // over the empty dead-zone) — editor-specific CSS, no token equiv.
+        editorBodyClassName="journal-editor-body"
+        onEditorBodyPress={focusEditorOnDeadZoneClick}
+        renderCelebration={(trigger) => (
+          <JournalCelebration trigger={trigger} />
+        )}
+        // Inset the progress bar by the block drag-handle gutter on BOTH sides
+        // so it lines up with the symmetrically-inset body text below (and with
+        // the title/metadata, which get the same left inset in the route
+        // headers).
+        renderProgress={(state) => (
+          <YStack px={BLOCK_GUTTER}>
+            <MeridianProgress {...state} />
+          </YStack>
+        )}
+      />
+
+      {/* Autosave status — a floating bottom-right chip (Google-Docs style).
+          The block editor has no toolbar to host it; this is web-only chrome,
+          so it lives in the PWA host rather than the cross-platform view
+          (native shows no inline save badge). `pointerEvents="none"` keeps
+          clicks falling through to the editor. */}
+      {saveStatus && saveStatus !== "idle" ? (
+        <YStack
+          position="absolute"
+          b="$3"
+          r="$3"
+          z={20}
+          pointerEvents="none"
+          bg="$background"
+          px="$2"
+          py="$1"
+          rounded="$10"
+          opacity={0.9}
+        >
+          <Text
+            fontSize={11}
+            color={saveStatus === "error" ? "$destructive" : "$mutedForeground"}
+          >
+            {saveStatus === "saving" && "Saving…"}
+            {saveStatus === "saved" && "✓ Saved"}
+            {saveStatus === "error" && "Save failed"}
+          </Text>
+        </YStack>
+      ) : null}
+    </YStack>
   );
 }
 
@@ -246,20 +294,11 @@ function MeridianProgress({
         marginBottom: 12,
       }}
     >
-      {/* Track */}
-      <div
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          borderRadius: 9999,
-          background: "color-mix(in srgb, var(--border) 40%, transparent)",
-          top: "50%",
-          marginTop: -trackHeight / 2,
-          height: trackHeight,
-          transition: "height 400ms ease",
-        }}
-      />
+      {/* No empty track rail: the faint full-width line (drawn in the border
+          color) read as a stray border across the writing surface, so it's
+          intentionally omitted. Only the filled trail + count pill render —
+          progress shows as the journal-accent fill growing LTR from the left
+          edge, with nothing visible at zero words. */}
 
       {/* Filled trail */}
       <div

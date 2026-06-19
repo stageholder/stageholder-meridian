@@ -22,6 +22,7 @@ export { JournalList, type JournalListProps } from "./journal-list";
 
 export {
   JournalEditor,
+  BLOCK_GUTTER,
   type JournalEditorProps,
   type JournalProgressState,
   type SaveStatus,

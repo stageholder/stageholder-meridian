@@ -18,6 +18,7 @@ import {
 } from "@stageholder/ui";
 // The title uses a raw tamagui Input (see below) — bare, no kit Frame chrome.
 import { Input as BareInput } from "tamagui";
+import { BLOCK_GUTTER } from "@repo/features/journal";
 import { useJournals } from "@/lib/api/journals";
 import { useAutosave } from "@/lib/hooks/use-autosave";
 import type { JournalContent } from "@repo/core/types";
@@ -123,13 +124,16 @@ function NewJournalPage() {
     // doesn't fit our 3-pane workspace layout. See $id.tsx for the
     // full design reasoning.
     <YStack flex={1} height="100%">
-      <YStack shrink={0} px="$4" pt="$4">
+      {/* No horizontal padding on the header: the only horizontal inset is the
+          block gutter (BLOCK_GUTTER), applied directly to the title / pills so
+          they line up with the gutter-indented body text. */}
+      <YStack shrink={0} pt="$4">
         <Hide above="md">
-          <View mb="$3">
+          <View mb="$3" pl={BLOCK_GUTTER}>
             {/* `self="flex-start"` stops the ghost button from stretching
                 full-width (which centered its label — the "strange" look);
-                `ml="$-2"` pulls the icon out to the content gutter so the
-                "←" lines up with the date title's left edge below it. */}
+                `ml="$-2"` nudges the icon back so the "←" lines up with the
+                gutter-indented title's left edge below it. */}
             <Button
               intent="ghost"
               size="sm"
@@ -145,16 +149,19 @@ function NewJournalPage() {
 
         {/* Bare title — a raw tamagui Input, not the kit Input: the kit
             wraps its field in a bordered Frame whose focus ring (the boxed
-            outline) can't be reached from call-site props. `px={0}` keeps the
-            text aligned with the pills row below; border + outline are zeroed
-            so focusing shows just the caret, no box. */}
+            outline) can't be reached from call-site props. `pl={BLOCK_GUTTER}`
+            indents the title to match the block editor's drag-handle gutter so
+            the whole top of the page lines up with the body text below;
+            `pr={0}` lets it use the full width. Border + outline are zeroed so
+            focusing shows just the caret, no box. */}
         <BareInput
           value={title}
           onChangeText={setTitle}
           placeholder={formatDefaultTitle(date)}
           width="100%"
           mb="$3"
-          px={0}
+          pl={BLOCK_GUTTER}
+          pr={BLOCK_GUTTER}
           bg="transparent"
           borderWidth={0}
           outlineWidth={0}
@@ -166,8 +173,15 @@ function NewJournalPage() {
           focusVisibleStyle={{ outlineWidth: 0 }}
         />
 
-        {/* Metadata pills row */}
-        <XStack mb="$4" flexWrap="wrap" items="center" gap="$2">
+        {/* Metadata pills row — indented by the block gutter to align with the
+            title above and the body text below. */}
+        <XStack
+          mb="$4"
+          pl={BLOCK_GUTTER}
+          flexWrap="wrap"
+          items="center"
+          gap="$2"
+        >
           {/* Date pill — kit QuickDatePicker (smart label + quick presets +
               calendar). A journal always has a date, so clearable is off. The
               previous semantic date-status colors (today=green, etc.) are not

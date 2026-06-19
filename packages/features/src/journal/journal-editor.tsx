@@ -8,7 +8,6 @@ import {
 } from "react";
 import {
   RichTextEditor,
-  Text,
   YStack,
   type RichTextEditorContent,
 } from "@stageholder/ui";
@@ -18,6 +17,16 @@ import { countWordsFromContent } from "@repo/core/utils/text";
 // — using it keeps `@tiptap/core` out of features' direct deps. Hosts that
 // still need the raw TipTap type alias it themselves.
 type JSONContent = RichTextEditorContent;
+
+// Drag-handle gutter for the block variant. MUST match the kit's own
+// `blockGutterFor(insert+handle)` = 2×22 (buttons) + 2 (gap) + 8 (text gap) +
+// 6 (edge margin) = 60. A smaller value clips the +/grip row: the kit anchors
+// the row's RIGHT edge to the text, so the ~54px-wide row spills left of the
+// content edge and `overflow` cuts it (the bug behind the "+ getting cut").
+// Pinned + exported so the hosts indent the title / metadata / progress by the
+// SAME amount AND mirror it as the right padding — the page lines up on one
+// left edge and the content column is symmetrically inset.
+export const BLOCK_GUTTER = 60;
 
 /**
  * Save status for the inline indicator in the toolbar slot. Mirrors the
@@ -67,7 +76,12 @@ export interface JournalEditorProps {
   placeholder?: string;
   /** Focus the editor on mount. Default `false`. */
   autoFocus?: boolean;
-  /** When set + non-idle, shows an inline save badge in the toolbar slot. */
+  /**
+   * Autosave status. Accepted for cross-host API symmetry; the visible badge
+   * is rendered by the web host (the block variant has no toolbar slot to host
+   * it, and native shows no inline save badge). Kept so mobile can keep
+   * passing its hook's value without a type error.
+   */
   saveStatus?: SaveStatus;
 
   /** Daily word target (host fetches via its own user-light hook). */
@@ -132,7 +146,6 @@ export function JournalEditor({
   onChange,
   placeholder,
   autoFocus,
-  saveStatus,
   target,
   otherWordsToday,
   renderProgress,
@@ -184,28 +197,25 @@ export function JournalEditor({
     [totalWords, target, showGlow],
   );
 
-  // Toolbar-right slot: compact save status. Word count rides the
-  // meridian progress visual itself (when the host renders one); no
-  // duplicate count in the toolbar.
-  const headerCluster =
-    saveStatus && saveStatus !== "idle" ? (
-      <Text
-        fontSize={11}
-        color={saveStatus === "error" ? "$destructive" : "$mutedForeground"}
-      >
-        {saveStatus === "saving" && "Saving…"}
-        {saveStatus === "saved" && "✓ Saved"}
-        {saveStatus === "error" && "Save failed"}
-      </Text>
-    ) : null;
-
   return (
-    <YStack position="relative" flex={1} overflow="hidden">
+    // `minHeight={0}` here and on the scroll wrapper lets the editor column
+    // shrink within its flex parent so long entries scroll INSIDE this pane
+    // instead of pushing the whole journal page taller than the app shell's
+    // <main> (which then grew its own scrollbar — the stray right/bottom
+    // lines around the editor).
+    <YStack position="relative" flex={1} minH={0} overflow="hidden">
       {renderCelebration?.(celebrationTrigger)}
       {renderProgress?.(progress)}
 
       <YStack
         flex={1}
+        minH={0}
+        // Tamagui's `overflow` only takes RN-compatible values, so this stays
+        // `scroll`. On web that forces BOTH scrollbar gutters to render
+        // permanently (a faint line down the right edge + along the bottom on
+        // an empty entry); the host relaxes it to `auto` via CSS (PWA:
+        // `.journal-editor-body` in globals.css) so the bars show only when an
+        // entry overflows vertically, never horizontally.
         overflow="scroll"
         className={editorBodyClassName}
         onPress={onEditorBodyPress}
@@ -216,13 +226,20 @@ export function JournalEditor({
           placeholder={placeholder ?? "Write your thoughts..."}
           autoFocus={autoFocus}
           minHeight={300}
-          toolbar="basic"
-          // Single-row toolbar that scrolls horizontally on narrow screens
-          // (mobile) instead of wrapping onto a second row. On wide screens
-          // the basic toolbar fits, so it reads as a normal row.
-          toolbarScrollable
-          variant="inline"
-          toolbarSlot={headerCluster}
+          // Notion-style block editor: no fixed toolbar. Type "/" for the
+          // slash (block insert) menu, select text for the bubble (format)
+          // menu, and hover a block's left gutter for the +/drag-grip
+          // controls (insert + reorder). (Native ignores `variant` and keeps
+          // its own keyboard-sticky editor.)
+          variant="block"
+          // Pin the left drag-handle gutter to the kit's true control-row width
+          // (BLOCK_GUTTER) so the +/grip row isn't clipped, and mirror it as
+          // the right padding so the body text is symmetrically inset. The
+          // hosts indent the title / metadata / progress by the same amount, so
+          // the whole page shares one left edge AND one right edge. Top/bottom
+          // keep the variant default (16px).
+          blockGutter={BLOCK_GUTTER}
+          bodyPadding={{ right: BLOCK_GUTTER }}
         />
       </YStack>
     </YStack>

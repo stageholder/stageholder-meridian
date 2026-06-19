@@ -13,13 +13,7 @@
 // media config, and the same row anatomy the web version composes inside the
 // kit chrome.
 
-import {
-  Check,
-  CheckSquare,
-  Heart,
-  BookOpen,
-  Target,
-} from "@tamagui/lucide-icons-2";
+import { Check, CheckSquare, BookOpen, Target } from "@tamagui/lucide-icons-2";
 import {
   Button,
   Paragraph,
@@ -37,12 +31,6 @@ const GOALS = [
     label: "Productivity",
     description: "Manage tasks and stay organized",
     icon: CheckSquare,
-  },
-  {
-    id: "health",
-    label: "Health",
-    description: "Build healthy habits and track progress",
-    icon: Heart,
   },
   {
     id: "journaling",
