@@ -70,11 +70,12 @@ function UpgradePage() {
         mx="auto"
         maxW={1152}
         px="$4"
-        py="$7"
-        $md={{ py: "$10" }}
+        pt="$4"
+        pb="$7"
+        $md={{ pt: "$5", pb: "$8" }}
       >
         {/* Back link */}
-        <View mb="$7">
+        <View mb="$5">
           <Link to="/settings/billing" style={{ textDecoration: "none" }}>
             <XStack
               items="center"
@@ -101,11 +102,11 @@ function UpgradePage() {
           render="header"
           enterStyle={{ opacity: 0, y: 14 }}
           transition="medium"
-          mb={48}
-          gap="$7"
-          $md={{ flexDirection: "row", items: "flex-end", gap: "$8" }}
+          mb="$8"
+          gap="$6"
+          $md={{ flexDirection: "row", items: "center", gap: "$8" }}
         >
-          <YStack gap="$4" $md={{ flex: 1.6 }}>
+          <YStack gap="$3" $md={{ flex: 1 }}>
             {/* Editorial mono kicker (was Tailwind font-mono/tracking utils). */}
             <Text
               fontFamily="$mono"
@@ -116,27 +117,29 @@ function UpgradePage() {
             >
               Plans
             </Text>
-            {/* Responsive display heading (was a Tailwind clamp()). */}
+            {/* Display heading — sized to sit on ONE line at every breakpoint
+                (the old 80px wrapped "Choose your / plan" and dwarfed the page). */}
             <H1
-              fontSize={40}
-              lineHeight={42}
-              letterSpacing={-1}
+              fontSize={32}
+              lineHeight={34}
+              letterSpacing={-0.8}
               color="$color"
-              $md={{ fontSize: 64, lineHeight: 62, letterSpacing: -1.6 }}
-              $lg={{ fontSize: 80, lineHeight: 76, letterSpacing: -2 }}
+              numberOfLines={1}
+              $md={{ fontSize: 44, lineHeight: 46, letterSpacing: -1.2 }}
+              $lg={{ fontSize: 52, lineHeight: 54, letterSpacing: -1.4 }}
               style={{ fontFamily: "var(--font-display)", fontWeight: 600 }}
             >
               Choose your plan
             </H1>
-            <Paragraph maxW={576} fontSize="$5" color="$mutedForeground">
+            <Paragraph maxW={520} fontSize="$4" color="$mutedForeground">
               Same Meridian, different limits. Upgrade or downgrade at any time
               — you can cancel from the billing page.
             </Paragraph>
           </YStack>
           <YStack
-            gap="$4"
+            gap="$3"
             items="flex-start"
-            $md={{ flex: 1, items: "flex-end" }}
+            $md={{ shrink: 0, items: "flex-end" }}
           >
             <CycleToggle
               value={cycle}

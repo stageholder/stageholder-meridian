@@ -2,11 +2,14 @@ import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   ExternalLink,
-  ArrowRight,
+  ChevronRight,
   KeyRound,
   User,
   Target,
   CreditCard,
+  Sparkles,
+  ShieldCheck,
+  type LucideIcon,
 } from "lucide-react";
 import {
   Button,
@@ -15,6 +18,8 @@ import {
   Paragraph,
   SizableText,
   Tabs,
+  Text,
+  View,
   XStack,
   YStack,
   useMedia,
@@ -45,6 +50,90 @@ const FLAT_CONTENT = {
   p: 0,
   mt: 0,
 } as const;
+
+/**
+ * A settings list row: leading icon tile, label + sub-label, trailing affordance
+ * (chevron for in-app routes, external-link glyph for Stageholder). Replaces the
+ * old stack of full-width buttons, which read as heavy and unclear — a row list
+ * is the standard, scannable settings pattern. `featured` flips the upgrade row
+ * to a filled icon tile + emphasized border so it draws the eye without a loud
+ * primary-colored button.
+ */
+function SettingsLinkRow({
+  icon: Icon,
+  label,
+  description,
+  onPress,
+  href,
+  featured,
+}: {
+  icon: LucideIcon;
+  label: string;
+  description?: string;
+  onPress?: () => void;
+  href?: string;
+  featured?: boolean;
+}) {
+  const row = (
+    <XStack
+      items="center"
+      gap="$3"
+      px="$3.5"
+      py="$3"
+      rounded="$4"
+      borderWidth={1}
+      borderColor={featured ? "$color" : "$borderColor"}
+      bg={featured ? "$muted" : "$card"}
+      cursor="pointer"
+      transition="quick"
+      hoverStyle={{ borderColor: "$color" }}
+      {...(onPress ? { onPress, role: "button" } : {})}
+    >
+      <View
+        width={36}
+        height={36}
+        rounded="$3"
+        shrink={0}
+        items="center"
+        justify="center"
+        bg={(featured ? "$color" : "$muted") as never}
+      >
+        <Text
+          color={featured ? "$background" : "$mutedForeground"}
+          lineHeight={0}
+        >
+          <Icon size={18} strokeWidth={2} />
+        </Text>
+      </View>
+      <YStack flex={1} minW={0} gap="$0.5">
+        <Text fontSize="$3" fontWeight="600" color="$color" numberOfLines={1}>
+          {label}
+        </Text>
+        {description ? (
+          <Text fontSize="$1" color="$mutedForeground" numberOfLines={1}>
+            {description}
+          </Text>
+        ) : null}
+      </YStack>
+      <Text color="$mutedForeground" lineHeight={0} shrink={0}>
+        {href ? <ExternalLink size={15} /> : <ChevronRight size={16} />}
+      </Text>
+    </XStack>
+  );
+
+  return href ? (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener"
+      style={{ textDecoration: "none" }}
+    >
+      {row}
+    </a>
+  ) : (
+    row
+  );
+}
 
 /**
  * Change-journal-passphrase entry — shown only once encryption is set up.
@@ -177,35 +266,28 @@ function SettingsPage() {
                   connected accounts, sessions, and account deletion are managed
                   on Stageholder.
                 </Paragraph>
-                <YStack gap="$2">
-                  <Button
-                    intent="outline"
-                    iconAfter={<ArrowRight size={14} opacity={0.7} />}
+                <YStack gap="$2.5">
+                  <SettingsLinkRow
+                    icon={CreditCard}
+                    label="Billing & subscription"
+                    description="Invoices, payment method, and your current plan"
                     onPress={() => void navigate({ to: "/settings/billing" })}
-                  >
-                    Billing &amp; subscription
-                  </Button>
-                  <Button
-                    iconAfter={<ArrowRight size={14} opacity={0.7} />}
+                  />
+                  <SettingsLinkRow
+                    icon={Sparkles}
+                    label="Upgrade plan"
+                    description="Compare plans and unlock everything"
+                    featured
                     onPress={() =>
                       void navigate({ to: "/settings/billing/upgrade" })
                     }
-                  >
-                    Upgrade plan
-                  </Button>
-                  <a
+                  />
+                  <SettingsLinkRow
+                    icon={ShieldCheck}
+                    label="Security & sign-in"
+                    description="Password, MFA, and sessions on Stageholder"
                     href={`${HUB_URL}/account`}
-                    target="_blank"
-                    rel="noopener"
-                    style={{ textDecoration: "none" }}
-                  >
-                    <Button
-                      intent="outline"
-                      iconAfter={<ExternalLink size={14} opacity={0.7} />}
-                    >
-                      Security &amp; sign-in on Stageholder
-                    </Button>
-                  </a>
+                  />
                   <ChangePassphraseBlock />
                 </YStack>
               </YStack>

@@ -1,10 +1,11 @@
-import { SegmentedControl, Text, XStack } from "@stageholder/ui";
+import { Text, View, XStack } from "@stageholder/ui";
 
 /**
- * Segmented monthly / yearly toggle. Built on the kit's SegmentedControl,
- * whose absolute-positioned indicator slides between segments (the same
- * "printer's mark" affordance the bespoke version hand-rolled). Used on the
- * upgrade page above the plan grid.
+ * Monthly / yearly billing-cycle toggle. A clean custom segmented control (the
+ * kit SegmentedControl's bright-primary fill + a badge crammed *inside* the
+ * yearly segment read as broken — the chip overflowed the pill and wrapped).
+ * Here the toggle is a quiet two-pill track and the savings callout sits
+ * OUTSIDE it, to the right, where it has room and reads as a reward.
  */
 export function CycleToggle({
   value,
@@ -13,52 +14,88 @@ export function CycleToggle({
 }: {
   value: "monthly" | "yearly";
   onChange: (next: "monthly" | "yearly") => void;
-  /**
-   * Optional micro-copy attached to the yearly segment, e.g. "save 16%".
-   * Rendered in monospaced uppercase as a vintage callout.
-   */
+  /** e.g. "Save 18%" — shown as a standalone badge beside the toggle. */
   yearlyDiscountLabel?: string;
 }) {
-  // The kit applies its `selected` color to a segment's label automatically,
-  // but only when the child is a plain string. The Yearly segment wraps its
-  // label + badge in an XStack, so the nested <Text>s keep their own color and
-  // wouldn't flip when the indicator slides under them. We already know the
-  // selection here (`value`), so colour them to match the kit's scheme.
-  const yearlySelected = value === "yearly";
+  const options = [
+    { key: "monthly", label: "Monthly" },
+    { key: "yearly", label: "Yearly" },
+  ] as const;
+
   return (
-    <SegmentedControl
-      pill
-      value={value}
-      onValueChange={(next) => onChange(next as "monthly" | "yearly")}
-      aria-label="Billing cycle"
-    >
-      <SegmentedControl.Item value="monthly">Monthly</SegmentedControl.Item>
-      <SegmentedControl.Item value="yearly">
-        <XStack items="center" gap="$2">
-          <Text
-            fontWeight={yearlySelected ? "600" : "500"}
-            color={yearlySelected ? "$primaryForeground" : "$mutedForeground"}
-          >
-            Yearly
-          </Text>
-          {yearlyDiscountLabel ? (
-            <Text
+    // Relative wrapper sized to the pill so the savings badge can float on its
+    // top-right corner (sticker style). No `self` override — it inherits the
+    // host column's alignment (right on desktop, left on mobile); forcing
+    // flex-start here is what made the toggle sit inset from the right edge
+    // while the note beside it right-aligned.
+    <View position="relative">
+      <XStack
+        items="center"
+        gap={3}
+        p={3}
+        rounded={9999}
+        bg="$muted"
+        borderWidth={1}
+        borderColor="$borderColor"
+      >
+        {options.map(({ key, label }) => {
+          const active = value === key;
+          return (
+            <View
+              key={key}
+              role="button"
+              aria-label={label}
+              onPress={() => onChange(key)}
+              cursor="pointer"
+              px="$4"
+              py="$1.5"
               rounded={9999}
-              px="$2"
-              py="$0.5"
-              fontSize="$1"
-              fontWeight="600"
-              // On the $primary indicator (selected) a $primaryMuted chip is
-              // near-invisible — flip to a $primaryForeground chip so it reads
-              // on the pill; keep the muted chip on the $accent track at rest.
-              bg={yearlySelected ? "$primaryForeground" : "$primaryMuted"}
-              color="$primary"
+              transition="quick"
+              bg={(active ? "$background" : "transparent") as never}
+              // Raised "thumb" feel only on the active pill; the inactive cell
+              // brightens its label on hover instead of shifting the track.
+              {...(active
+                ? { style: { boxShadow: "0 1px 3px rgba(0,0,0,0.18)" } }
+                : { hoverStyle: { opacity: 0.85 } as never })}
             >
-              {yearlyDiscountLabel}
-            </Text>
-          ) : null}
+              <Text
+                fontSize="$2"
+                fontWeight={active ? "600" : "500"}
+                color={active ? "$color" : "$mutedForeground"}
+              >
+                {label}
+              </Text>
+            </View>
+          );
+        })}
+      </XStack>
+
+      {yearlyDiscountLabel ? (
+        // SOLID success pill (the old $successMuted was translucent → the
+        // "Yearly" label bled through it). Lifted fully above the pill's top
+        // edge so it floats clear of the labels instead of overlapping them.
+        <XStack
+          position="absolute"
+          t={-15}
+          r={-8}
+          z={1}
+          items="center"
+          rounded={9999}
+          px="$2"
+          py="$0.5"
+          bg="$success"
+          style={{ boxShadow: "0 3px 10px rgba(0,0,0,0.28)" }}
+        >
+          <Text
+            fontSize={10}
+            fontWeight="700"
+            color={"#ffffff" as never}
+            numberOfLines={1}
+          >
+            {yearlyDiscountLabel}
+          </Text>
         </XStack>
-      </SegmentedControl.Item>
-    </SegmentedControl>
+      ) : null}
+    </View>
   );
 }

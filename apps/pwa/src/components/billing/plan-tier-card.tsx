@@ -15,7 +15,7 @@ import {
 import { BillingError } from "@stageholder/sdk/core";
 import { openURL } from "@repo/core/platform/linking";
 import { billingReturnUrl, openBillingURL } from "@/lib/billing-return";
-import { OrbitIllustration } from "./orbit-illustration";
+import { PlanVisual } from "./plan-visual";
 import {
   ArrowUpRight,
   AlertCircle,
@@ -193,11 +193,13 @@ export function PlanTierCard({
   const showActiveOrgLabel =
     state.status === "authenticated" && organizations.length > 1 && !!org;
 
+  // Meridian ships exactly two plans (Free + Unlimited), so the header visual
+  // is binary: free → "rest" (dim), any paid plan → "conduct" (all bars lit).
+  // (Not gated on isFeatured — the paid plan should glow whether or not it's
+  // flagged "most popular".)
   const tier: "rest" | "practice" | "conduct" = plan.isFreeTier
     ? "rest"
-    : plan.isFeatured
-      ? "conduct"
-      : "practice";
+    : "conduct";
 
   const price = cycle === "monthly" ? plan.priceMonthly : plan.priceYearly;
   const bullets = derivePlanBullets(plan, catalog, 4);
@@ -263,18 +265,17 @@ export function PlanTierCard({
         </XStack>
       )}
 
-      {/* Illustration — a compact brand band across the card top. Bleeds to
-          the card edges (negative margins match the px="$7"/pt="$8" padding),
-          masked by the card's overflow:hidden + rounding. Slimmer than the old
-          176px band so the card reads as a clean pricing card on a phone, a
-          touch taller at md+. */}
+      {/* Header band — a compact tier visual across the card top. Bleeds to the
+          card edges (negative margins match the px="$7"/pt="$8" padding), masked
+          by the card's overflow:hidden + rounding. The PlanVisual paints a warm
+          wash + progressive pillar bars sized to the tier. */}
       <View
         position="relative"
         mx={-39}
         mt={-46}
         mb="$6"
-        height={120}
-        $md={{ height: 152 }}
+        height={76}
+        $md={{ height: 88 }}
         overflow="hidden"
         borderBottomWidth={1}
         borderColor="$borderColor"
@@ -282,11 +283,7 @@ export function PlanTierCard({
         items="center"
         justify="center"
       >
-        {/* Fixed-size orbital, centered + sized to sit inside the band so the
-            outer ring isn't clipped. Scales up a touch at md+. */}
-        <View width={112} height={112} $md={{ width: 144, height: 144 }}>
-          <OrbitIllustration tier={tier} />
-        </View>
+        <PlanVisual tier={tier} />
       </View>
 
       {/* Plan name + description */}
