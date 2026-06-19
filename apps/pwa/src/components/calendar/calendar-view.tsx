@@ -122,8 +122,13 @@ export function CalendarView() {
       gap="$6"
       $lg={{ flexDirection: "row", items: "flex-start", justify: "center" }}
     >
-      {/* Today agenda — the primary surface (todos / habits / journal). */}
-      <View width="100%" $lg={{ width: 420 }}>
+      {/* Today agenda — the primary surface (todos / habits / journal).
+          No base `width="100%"`: in the stacked (sub-$lg) layout the parent
+          YStack's default `align-items: stretch` already fills the width, and
+          omitting it lets the `$lg` fixed width actually take effect in the row
+          layout (a base width prop competes with it). `flexShrink: 0` holds the
+          420 so the calendar — not the agenda — absorbs leftover/!enough space. */}
+      <View $lg={{ width: 420, shrink: 0 }}>
         <DayAgenda
           date={selectedDate}
           dayData={selectedDayData}
@@ -132,12 +137,16 @@ export function CalendarView() {
       </View>
 
       {/* Calendar — compact, sticky overview/navigator on the right.
-          `meridian-cal-square` forces square day cells (see globals.css). */}
+          `meridian-cal-square` forces square day cells (see globals.css).
+          `flex: 1` + `maxW: 520` + `minW: 0`: fills the remaining row width but
+          never exceeds 520 AND can shrink below its content's intrinsic size
+          (without `minW: 0` a flex item's `min-width: auto` lets the month grid
+          push past the cap and clip off the window edge). */}
       <YStack
-        width="100%"
         gap="$4"
+        minW={0}
         className="meridian-cal-square"
-        $lg={{ width: 520, position: "sticky" as never, t: "$4" }}
+        $lg={{ flex: 1, maxW: 520, position: "sticky" as never, t: "$4" }}
       >
         {isError ? (
           <XStack height={320} items="center" justify="center">
@@ -152,7 +161,11 @@ export function CalendarView() {
             </Text>
           </XStack>
         ) : (
-          <View width="100%" maxW={520}>
+          // No maxW here: the calendar fills its pane. In the row layout the
+          // OUTER pane caps it at 520 (`$lg={{ maxW: 520 }}`); in the stacked
+          // layout the pane is full-width, so the calendar fills it too (a fixed
+          // 520 cap here left dead space beside it).
+          <View width="100%" minW={0} overflow="hidden">
             <EventCalendar
               events={events}
               variant="month"
