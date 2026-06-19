@@ -34,6 +34,13 @@ COPY --from=builder --chown=bun:bun /app/node_modules ./node_modules
 COPY --from=builder --chown=bun:bun /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=builder --chown=bun:bun /app/apps/api/dist ./apps/api/dist
 COPY --from=builder --chown=bun:bun /app/apps/api/package.json ./apps/api/package.json
+# Workspace package sources. `nest build` does NOT bundle workspace deps, so
+# the compiled output keeps bare `require("@repo/core/...")` calls that resolve
+# at runtime through node_modules/@repo/core → ../../packages/core (a symlink).
+# Without copying packages/, that symlink dangles in the slim runner and Bun
+# throws "Cannot find module '@repo/core/utils/text'". Bun runs the .ts source
+# directly, so the package needs no build step — it just has to be present.
+COPY --from=builder --chown=bun:bun /app/packages ./packages
 USER bun
 WORKDIR /app/apps/api
 EXPOSE 4000
