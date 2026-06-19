@@ -5,7 +5,31 @@
     "ruflo-core@ruflo": true,
     "ruflo-swarm@ruflo": true,
     "ruflo-rag-memory@ruflo": true,
-    "ruflo-neural-trader@ruflo": true
+    "ruflo-adr@ruflo": true,
+    "ruflo-agent@ruflo": true,
+    "ruflo-agentdb@ruflo": true,
+    "ruflo-aidefence@ruflo": true,
+    "ruflo-autopilot@ruflo": true,
+    "ruflo-browser@ruflo": true,
+    "ruflo-cost-tracker@ruflo": true,
+    "ruflo-daa@ruflo": true,
+    "ruflo-ddd@ruflo": true,
+    "ruflo-docs@ruflo": true,
+    "ruflo-goals@ruflo": true,
+    "ruflo-graph-intelligence@ruflo": true,
+    "ruflo-intelligence@ruflo": true,
+    "ruflo-jujutsu@ruflo": true,
+    "ruflo-knowledge-graph@ruflo": true,
+    "ruflo-loop-workers@ruflo": true,
+    "ruflo-migrations@ruflo": true,
+    "ruflo-observability@ruflo": true,
+    "ruflo-plugin-creator@ruflo": true,
+    "ruflo-ruvector@ruflo": true,
+    "ruflo-rvf@ruflo": true,
+    "ruflo-security-audit@ruflo": true,
+    "ruflo-sparc@ruflo": true,
+    "ruflo-testgen@ruflo": true,
+    "ruflo-workflows@ruflo": true
   },
   "hooks": {
     "PreToolUse": [
@@ -164,6 +188,10 @@
         ]
       }
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/helpers/statusline.cjs\""
   },
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
