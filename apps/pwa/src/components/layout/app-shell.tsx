@@ -41,7 +41,6 @@ import {
   Header,
   Icon,
   IconButton,
-  MacTrafficLightSpacer,
   Sidebar,
   Text,
   View,
@@ -128,7 +127,10 @@ function NavRailTile({
  *
  * `collapsedWidth={80}` keeps the macOS traffic-light cluster (~76 px per
  * Apple HIG) inside the collapsed rail when the user runs the desktop Tauri
- * build — paired with `<MacTrafficLightSpacer />` in `<Sidebar.Header>`.
+ * build. The kit's `<Sidebar>` ALREADY auto-injects a `MacTrafficLightSpacer`
+ * above its children on a macOS Tauri shell (macTrafficLights="auto"), so we
+ * must NOT add a second one in a `<Sidebar.Header>` — doing so stacked 28+28px
+ * and left a too-large gap between the traffic lights and the first nav row.
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
@@ -234,13 +236,15 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
           desktop pre-hydration), so the rail never flashes in. */}
       {!isMobile && (
         <Sidebar collapsible="icon" collapsedWidth={80}>
-          <Sidebar.Header>
-            {/* macOS Tauri traffic-light clearance. Renders 28 px of draggable
-              space on Tauri-macOS, null everywhere else. */}
-            <MacTrafficLightSpacer />
-          </Sidebar.Header>
-
-          <Sidebar.Content>
+          {/* No <Sidebar.Header> + manual <MacTrafficLightSpacer /> here: the
+              kit's <Sidebar> auto-injects ONE 28px traffic-light spacer above
+              its children on a macOS Tauri shell. A manual second spacer stacked
+              to 56px — the oversized gap under the traffic lights. `pt={12}`
+              adds just a little breathing room so the first nav row doesn't sit
+              flush against the traffic lights (28px clearance alone read too
+              tight). It forwards to the kit's scroll frame, so it scrolls away
+              with the content. */}
+          <Sidebar.Content pt={12}>
             {/* Refined product-sidebar nav (Linear/Vercel density): the kit Menu
               gets horizontal padding so the active/hover pill floats inset off
               the rail edges — the old full-bleed highlight read as "no padding
