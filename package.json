@@ -10,6 +10,7 @@
     "publish:desktop:dry": "./scripts/local-publish-desktop.sh --no-upload",
     "dev": "turbo run dev",
     "dev:pwa": "turbo run dev --filter=pwa --filter=api",
+    "prod:pwa": "turbo run prod --filter=pwa --filter=api",
     "dev:desktop": "turbo run dev --filter=desktop --filter=api",
     "mobile": "turbo run dev dev:tunnel --filter=api --filter=@meridian/mobile",
     "mobile:ios": "turbo run dev dev:ios --filter=api --filter=@meridian/mobile",

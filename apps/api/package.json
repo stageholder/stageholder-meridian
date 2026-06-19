@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "nest build -b swc && concurrently -k -n compile,api \"nest build --watch -b swc\" \"bun --watch dist/main.js\"",
+    "prod": "nest build -b swc && concurrently -k -n compile,api \"nest build --watch -b swc\" \"bun --env-file=.env.prod --watch dist/main.js\"",
     "build": "nest build -b swc",
     "start": "nest build -b swc && bun dist/main.js",
     "start:prod": "bun dist/main.js",

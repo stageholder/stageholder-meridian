@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "vite",
+    "prod": "vite --mode prod",
     "build": "vite build",
     "preview": "vite preview --port 4001",
     "routes:generate": "tsr generate",
