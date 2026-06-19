@@ -758,6 +758,19 @@ label[for] {
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* Sidebar nav-icon color.
+   The secondary rails (habits / todos / …) pass plain `lucide-react` icons to
+   the kit's `Sidebar.MenuButton` via its `icon=` slot. The kit only tints its
+   built-in `glyph` icons — custom icons render untouched, so they fall back to
+   `stroke="currentColor"`, which resolved to a theme-independent light value:
+   visible on the dark sidebar, invisible on the light one. This gives every
+   sidebar icon the themed foreground as its `currentColor`. lucide renders an
+   explicit `color` prop as an inline `stroke`, so intentionally-tinted icons
+   (destructive, accent, etc.) override this and are unaffected. */
+[data-sidebar-content] svg {
+  color: var(--sidebar-foreground);
+}
+
 /* Square calendar cells.
    The kit <EventCalendar> fixes each day cell's height per density preset
    (comfortable = 110px) while the width is flex (container/7), so cells read

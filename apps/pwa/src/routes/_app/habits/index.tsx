@@ -5,7 +5,6 @@ import { LayoutGrid, List as ListIcon, Plus, Target } from "lucide-react";
 import {
   Button,
   EmptyState,
-  SegmentedControl,
   Skeleton,
   Text,
   View,
@@ -154,36 +153,54 @@ function HabitsPage() {
           )}
         </XStack>
         <XStack items="center" gap="$2">
-          <SegmentedControl
-            size="$3"
-            height="$md"
-            fitContent
-            value={viewMode}
-            onValueChange={(v) => setViewMode(v as HabitViewMode)}
+          {/* View-mode toggle. Replaces the kit SegmentedControl whose bright
+              primary-blue selected fill clashed with the page's muted/orange
+              palette. This is a minimal icon segmented control: a bordered
+              track, the active cell carrying a soft `$muted` fill with the icon
+              in the habit accent (orange), inactive icons muted-grey. Reads as
+              on-brand and quiet, matching Linear/Notion-style view switchers. */}
+          <XStack
+            items="center"
+            gap={2}
+            p={2}
+            rounded="$3"
+            borderWidth={1}
+            borderColor="$borderColor"
           >
-            <SegmentedControl.Item
-              value="card"
-              aria-label="Card view"
-              px="$2.5"
-            >
-              <LayoutGrid
-                size={16}
-                color="currentColor"
-                style={{ display: "block" }}
-              />
-            </SegmentedControl.Item>
-            <SegmentedControl.Item
-              value="list"
-              aria-label="List view"
-              px="$2.5"
-            >
-              <ListIcon
-                size={16}
-                color="currentColor"
-                style={{ display: "block" }}
-              />
-            </SegmentedControl.Item>
-          </SegmentedControl>
+            {(
+              [
+                { mode: "card", Icon: LayoutGrid, label: "Card view" },
+                { mode: "list", Icon: ListIcon, label: "List view" },
+              ] as const
+            ).map(({ mode, Icon, label }) => {
+              const active = viewMode === mode;
+              return (
+                <View
+                  key={mode}
+                  onPress={() => setViewMode(mode)}
+                  cursor="pointer"
+                  items="center"
+                  justify="center"
+                  width={32}
+                  height={26}
+                  rounded="$2"
+                  transition="quick"
+                  bg={(active ? "$muted" : "transparent") as never}
+                  hoverStyle={active ? {} : ({ bg: "$muted" } as never)}
+                  role="button"
+                  aria-label={label}
+                >
+                  <Icon
+                    size={15}
+                    color={
+                      active ? "var(--ring-habit)" : "var(--muted-foreground)"
+                    }
+                    style={{ display: "block" }}
+                  />
+                </View>
+              );
+            })}
+          </XStack>
           {/* Desktop only — on mobile the create affordance is the FAB below. */}
           <Button
             display="none"

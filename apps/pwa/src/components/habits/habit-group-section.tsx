@@ -1,4 +1,4 @@
-import { Sortable, View, XStack, YStack, useToast } from "@stageholder/ui";
+import { Sortable, View, YStack, useToast } from "@stageholder/ui";
 import { HabitCard } from "@/components/habits/habit-card";
 import { HabitListItem } from "@/components/habits/habit-list-item";
 import { useReorderHabits, useArchiveHabit } from "@/lib/api/habits";
@@ -59,30 +59,50 @@ export function HabitGroupSection({
   }
 
   if (viewMode === "card") {
-    // Responsive grid: 1 col mobile, 2 col ≥$md, 3 col ≥$lg — each card in a
-    // sized View, the card fills its column via flex. (No drag in card view —
-    // kit Sortable is vertical-only; reorder lives in list view.)
+    // CONTAINER-responsive grid via real CSS Grid. PWA is web-only, so a plain
+    // <div> (not a Tamagui View, which forces the flex display model) gives a
+    // reliable `display:grid` — the kit's "no CSS grid, use flexbox" rule is for
+    // the cross-platform packages, not here.
+    //
+    // Grid over the old `$md`/`$lg` *viewport* breakpoints (768/1024px) because
+    // those measure the WINDOW, not this column. The card area's width swings
+    // hugely with the sidebars (≈580px with both rails open, ≈1500px with the
+    // nav rail collapsed) while the viewport barely changes — so viewport media
+    // can't pick the right column count. CSS grid keys off the real container.
+    //
+    // `repeat(auto-fit, minmax(180px, 1fr))`: as many columns as fit at ≥180px,
+    // and auto-FIT collapses the leftover empty tracks so the actual cards grow
+    // (1fr) to FILL the row — 3 columns whether the area is 580px (≈190px cards)
+    // or 1500px (≈500px cards). (auto-FILL kept the empty tracks, which is why
+    // the cards previously sat at 180px with dead space to the right.)
+    //
+    // `alignItems: start` is the key compactness fix: grid's default stretches
+    // every card to the tallest in its row, which inflated the card's internal
+    // `flex={1}` spacer into a big empty gap. `start` lets each card size to its
+    // own content, so the week strip + actions sit right under the header.
+    // (No drag in card view — kit Sortable is vertical-only; reorder lives in
+    // list view.)
     return (
-      <XStack flexWrap="wrap" gap="$4">
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: 12,
+          alignItems: "start",
+        }}
+      >
         {habits.map((habit) => (
-          <View
+          <HabitCard
             key={habit.id}
-            width="100%"
-            $md={{ width: "49%" }}
-            $lg={{ width: "32%" }}
-          >
-            <HabitCard
-              habit={habit}
-              flex={1}
-              minW={0}
-              selectedDate={selectedDate}
-              isArchived={false}
-              onArchive={() => archive(habit)}
-              onMoveToGroup={() => onMoveToGroup(habit)}
-            />
-          </View>
+            habit={habit}
+            minW={0}
+            selectedDate={selectedDate}
+            isArchived={false}
+            onArchive={() => archive(habit)}
+            onMoveToGroup={() => onMoveToGroup(habit)}
+          />
         ))}
-      </XStack>
+      </div>
     );
   }
 

@@ -287,8 +287,8 @@ export function HabitCard({
         borderWidth={1}
         borderColor="$borderColor"
         bg="$card"
-        p="$4"
-        gap="$3"
+        p="$3"
+        gap="$2.5"
         transition="medium"
         // allowlist: habit-card-completing — bespoke completion keyframe (no token equivalent).
         // Web-only; ignored on native (host can plug in a Reanimated alt via renderCompletionEffect).
@@ -312,15 +312,15 @@ export function HabitCard({
           >
             {/* Icon badge tinted with the habit identity color (faint orange) */}
             <View
-              height={40}
-              width={40}
+              height={34}
+              width={34}
               shrink={0}
               items="center"
               justify="center"
               rounded="$lg"
               style={{ backgroundColor: accentTrackColor }}
             >
-              <Text fontSize="$6">
+              <Text fontSize="$5">
                 {habit.icon || habit.name.charAt(0).toUpperCase()}
               </Text>
             </View>
