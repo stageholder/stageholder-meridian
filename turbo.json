@@ -71,6 +71,14 @@
       "cache": false,
       "persistent": true
     },
+    "prod:ios": {
+      "cache": false,
+      "persistent": true
+    },
+    "prod:android": {
+      "cache": false,
+      "persistent": true
+    },
     "test": {
       "dependsOn": ["^build"],
       "cache": false

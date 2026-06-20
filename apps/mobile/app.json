@@ -13,7 +13,8 @@
       "bundleIdentifier": "com.stageholder.meridian.mobile",
       "supportsTablet": true,
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Meridian uses Face ID to keep your sign-in secure on this device."
+        "NSFaceIDUsageDescription": "Meridian uses Face ID to keep your sign-in secure on this device.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -42,6 +43,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e6a3c2c1-2b5e-436d-8be5-67232d45309f"
+      }
     }
   }
 }
