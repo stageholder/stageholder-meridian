@@ -290,8 +290,11 @@ function MeridianProgress({
         flexShrink: 0,
         width: "100%",
         overflow: "visible",
-        height: 48,
-        marginBottom: 12,
+        // Sized just above the 36px thumb (was 48) + a small bottom margin
+        // (was 12) so the word-count pill doesn't open a big gap between the
+        // metadata pills and the editor body.
+        height: 40,
+        marginBottom: 6,
       }}
     >
       {/* No empty track rail: the faint full-width line (drawn in the border

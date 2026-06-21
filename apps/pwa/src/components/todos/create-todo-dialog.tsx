@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { DialogSheetAdapt } from "@/components/shared/dialog-sheet-adapt";
-import { Dialog, useToast } from "@stageholder/ui";
+import { Dialog, YStack, useToast } from "@stageholder/ui";
 import {
   TodoForm,
   makeTodoFormDefaults,
@@ -92,6 +92,9 @@ export function CreateTodoDialog({
       <Dialog.Portal>
         <Dialog.Overlay />
         <Dialog.Content
+          // Tighter than the kit's default $4 so the header sits closer to the
+          // form (paired with the grouped Title/Description header above).
+          gap="$3"
           width="90%"
           // 560 (not the old 448) so the Priority · Due · Do row sits three
           // across with each date pill wide enough to keep "No due date" on a
@@ -118,10 +121,17 @@ export function CreateTodoDialog({
             }
           }}
         >
-          <Dialog.Title>New Todo</Dialog.Title>
-          <Dialog.Description>
-            Create a new todo with optional details, priority, and dates.
-          </Dialog.Description>
+          {/* Title + Description grouped as a tight header (gap $1) so they
+              read as one unit — the kit Dialog.Content's uniform `gap:$4`
+              otherwise left a header-sized gap BETWEEN the description and the
+              first form field. The Content gap (overridden to $3 below) now
+              only applies between this header group and the form. */}
+          <YStack gap="$1">
+            <Dialog.Title>New Todo</Dialog.Title>
+            <Dialog.Description>
+              Create a new todo with optional details, priority, and dates.
+            </Dialog.Description>
+          </YStack>
           <TodoForm
             // Re-seed on each open — empty defaults on re-open after submit.
             key={open ? "open" : "closed"}

@@ -6,7 +6,6 @@ import { CreateFab } from "@/components/shared/create-fab";
 import {
   Button,
   DropdownMenu,
-  Input,
   QuickDatePicker,
   Text,
   useToast,
@@ -14,8 +13,11 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
-// Form + styled aren't re-exported by the kit yet; pull from the shared tamagui dep.
-import { Form, styled } from "tamagui";
+// Form + styled aren't re-exported by the kit yet; pull from the shared tamagui
+// dep. `Input` here is the RAW tamagui input (not the kit Input): the kit Input
+// locks its height to the size token, which left dead space above the title —
+// a bare input with auto height hugs the title text instead.
+import { Form, Input as BareInput, styled } from "tamagui";
 import { format } from "date-fns";
 import { parseDateLocal } from "@/lib/date";
 import type { TodoList } from "@repo/core/types";
@@ -34,15 +36,15 @@ const PRIORITIES = [
   { value: "urgent", label: "Urgent", color: "#ef4444" },
 ] as const;
 
-// Shared metadata-row trigger pill — matches the kit QuickDatePicker's md pill
-// (same height / padding / radius / border / hover) so the priority, date, and
-// list pills read as one consistent set.
+// Shared metadata-row trigger pill — matches the kit QuickDatePicker's `sm`
+// pill (px $2.5 / py $1.5 / icon 14 / font $2) so the priority, date, and list
+// pills read as one consistent, compact set.
 const MetaPill = styled(XStack, {
   name: "MetaPill",
   items: "center",
-  gap: "$2",
-  px: "$3",
-  py: "$2",
+  gap: "$1.5",
+  px: "$2.5",
+  py: "$1.5",
   rounded: 999,
   borderWidth: 1,
   borderColor: "$borderColor",
@@ -80,14 +82,14 @@ function PriorityChip({
       <DropdownMenu.Trigger asChild>
         <MetaPill>
           {isSet ? (
-            <Flag size={16} color={current.color ?? undefined} />
+            <Flag size={14} color={current.color ?? undefined} />
           ) : (
             <Text color="$mutedForeground" lineHeight={0}>
-              <Flag size={16} />
+              <Flag size={14} />
             </Text>
           )}
           <Text
-            fontSize="$3"
+            fontSize="$2"
             fontWeight="500"
             color={isSet ? "$color" : "$mutedForeground"}
           >
@@ -146,18 +148,18 @@ function ListChip({
         <MetaPill>
           {isCustom ? (
             <View
-              width={10}
-              height={10}
+              width={8}
+              height={8}
               rounded={9999}
               style={{ backgroundColor: selected!.color || "#6b7280" }}
             />
           ) : (
             <Text color="$mutedForeground" lineHeight={0}>
-              <Inbox size={16} />
+              <Inbox size={14} />
             </Text>
           )}
           <Text
-            fontSize="$3"
+            fontSize="$2"
             fontWeight="500"
             color={isCustom ? "$color" : "$mutedForeground"}
           >
@@ -366,21 +368,36 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
         {/* Title — Form gives Enter-to-submit; the standalone "Add Todo"
             button below shares the same handleSubmit. */}
         <Form onSubmit={() => handleSubmit()} width="100%">
-          {/* Kit Input, `standard` variant = clean bottom-border focus (no box
-              / ring, per the kit docs), sized up to $5. autoFocus handles the
-              initial focus; the forwarded ref re-focuses after each submit. */}
-          <Input
+          {/* Bare tamagui Input (NOT the kit Input): the kit Input's Frame
+              locks height to the size token ($5 = 52px), which vertically
+              centered the title and left ~14px of dead space above it. This
+              bare input has auto height so it hugs the title; we re-add only
+              the `standard` underline (bottom border, primary on focus) and
+              keep the same `$5` font. autoFocus + forwarded ref re-focus after
+              each submit. `outlineWidth:0` suppresses Tamagui's focus ring. */}
+          <BareInput
             ref={inputRef}
             autoFocus
             value={title}
             onChangeText={setTitle}
             placeholder="Todo title…"
-            variant="standard"
-            size="$5"
             cursor="text"
             width="100%"
+            height={"auto" as never}
+            px={0}
+            py="$1.5"
+            rounded={0}
+            borderWidth={0}
+            borderBottomWidth={1}
+            borderColor="$borderColor"
+            bg="transparent"
+            fontSize="$5"
             fontWeight="500"
+            color="$color"
             placeholderTextColor="$mutedForeground"
+            outlineWidth={0}
+            focusStyle={{ borderColor: "$primary", outlineWidth: 0 }}
+            focusVisibleStyle={{ outlineWidth: 0 }}
           />
         </Form>
 
@@ -389,11 +406,13 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
         <XStack flexWrap="wrap" items="center" gap="$2">
           <PriorityChip value={priority} onChange={setPriority} />
           <QuickDatePicker
+            size="sm"
             value={isoToDate(doDate)}
             onChange={(d) => setDoDate(dateToIso(d))}
             placeholder="Do date"
           />
           <QuickDatePicker
+            size="sm"
             value={isoToDate(dueDate)}
             onChange={(d) => setDueDate(dateToIso(d))}
             placeholder="Due date"

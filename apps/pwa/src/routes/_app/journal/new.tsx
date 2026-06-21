@@ -159,7 +159,7 @@ function NewJournalPage() {
           onChangeText={setTitle}
           placeholder={formatDefaultTitle(date)}
           width="100%"
-          mb="$3"
+          mb="$2"
           pl={BLOCK_GUTTER}
           pr={BLOCK_GUTTER}
           bg="transparent"
@@ -176,7 +176,7 @@ function NewJournalPage() {
         {/* Metadata pills row — indented by the block gutter to align with the
             title above and the body text below. */}
         <XStack
-          mb="$4"
+          mb="$3"
           pl={BLOCK_GUTTER}
           flexWrap="wrap"
           items="center"
@@ -187,6 +187,7 @@ function NewJournalPage() {
               previous semantic date-status colors (today=green, etc.) are not
               reproduced by the kit picker — accepted tradeoff. */}
           <QuickDatePicker
+            size="sm"
             value={parseDateLocal(date)}
             onChange={(d) => {
               if (d) setDate(format(d, "yyyy-MM-dd"));
@@ -194,34 +195,30 @@ function NewJournalPage() {
             clearable={false}
           />
 
-          {/* Mood pill */}
+          {/* Mood pill — the Button IS the pill (dashed border + rounded
+              applied directly), not a ghost button wrapping a separate dashed
+              pill. The old wrapper showed the ghost button's own rectangular
+              hover-fill BEHIND the dashed pill on hover (two mismatched
+              shapes); making the Button the pill means its hover fills the
+              same rounded shape. `size="sm"` matches the date pill. */}
           <Popover placement="bottom-start">
             <Popover.Trigger asChild>
-              <Button intent="ghost" size="sm" gap="$1">
-                {currentMood ? (
-                  <XStack items="center" gap="$1">
-                    <Text fontSize="$3">{currentMood.emoji}</Text>
-                    <Text fontSize="$1" color="$mutedForeground">
-                      {currentMood.label}
-                    </Text>
-                  </XStack>
-                ) : (
-                  <XStack
-                    items="center"
-                    gap="$1"
-                    rounded={9999}
-                    borderWidth={1}
-                    borderStyle="dashed"
-                    borderColor="$borderColor"
-                    px="$2"
-                    py="$0.5"
-                  >
-                    <Text fontSize="$1">🙂</Text>
-                    <Text fontSize="$1" color="$mutedForeground">
-                      Mood
-                    </Text>
-                  </XStack>
-                )}
+              <Button
+                intent="ghost"
+                size="sm"
+                rounded={9999}
+                borderWidth={currentMood ? 0 : 1}
+                borderColor="$borderColor"
+                {...(currentMood ? {} : ({ borderStyle: "dashed" } as object))}
+              >
+                <XStack items="center" gap="$1.5">
+                  <Text fontSize="$2">
+                    {currentMood ? currentMood.emoji : "🙂"}
+                  </Text>
+                  <Text fontSize="$1" color="$mutedForeground">
+                    {currentMood ? currentMood.label : "Mood"}
+                  </Text>
+                </XStack>
               </Button>
             </Popover.Trigger>
             <Popover.Content width="auto" p="$2">

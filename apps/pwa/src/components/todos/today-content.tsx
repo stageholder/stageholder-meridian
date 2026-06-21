@@ -74,7 +74,7 @@ export function TodayContent() {
         </XStack>
         <AnimatePresence>
           {items.map((todo) => (
-            <TodoItem key={todo.id} todo={todo} listId={todo.listId} />
+            <TodoItem key={todo.id} todo={todo} listId={todo.listId} showList />
           ))}
         </AnimatePresence>
       </YStack>

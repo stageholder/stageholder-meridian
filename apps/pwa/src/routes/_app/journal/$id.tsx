@@ -244,7 +244,7 @@ function JournalEntryPage() {
         {/* Metadata pills row — indented by the block gutter to align with the
             title above and the body text below. */}
         <XStack
-          mb="$4"
+          mb="$3"
           pl={BLOCK_GUTTER}
           flexWrap="wrap"
           items="center"
@@ -260,16 +260,27 @@ function JournalEntryPage() {
             </Text>
           </XStack>
 
-          {/* Mood pill */}
+          {/* Mood pill — the Button IS the pill (rounded + dashed border when
+              unset) so its ghost hover-fill matches the pill shape instead of
+              painting a mismatched rectangle behind it. */}
           <Popover placement="bottom-start">
             <Popover.Trigger asChild>
-              <Button intent="ghost" size="sm" gap="$1">
-                <Text fontSize="$3">
-                  {currentMood ? currentMood.emoji : "\u{1F642}"}
-                </Text>
-                <Text fontSize="$1" color="$mutedForeground">
-                  {currentMood ? currentMood.label : "Mood"}
-                </Text>
+              <Button
+                intent="ghost"
+                size="sm"
+                rounded={9999}
+                borderWidth={currentMood ? 0 : 1}
+                borderColor="$borderColor"
+                {...(currentMood ? {} : ({ borderStyle: "dashed" } as object))}
+              >
+                <XStack items="center" gap="$1.5">
+                  <Text fontSize="$2">
+                    {currentMood ? currentMood.emoji : "\u{1F642}"}
+                  </Text>
+                  <Text fontSize="$1" color="$mutedForeground">
+                    {currentMood ? currentMood.label : "Mood"}
+                  </Text>
+                </XStack>
               </Button>
             </Popover.Trigger>
             <Popover.Content width="auto" p="$2">

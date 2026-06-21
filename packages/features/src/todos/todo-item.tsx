@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   Calendar,
   Check,
@@ -8,6 +8,46 @@ import {
 } from "@tamagui/lucide-icons-2";
 import { IconButton, Text, View, XStack, YStack } from "@stageholder/ui";
 import type { Todo } from "@repo/core/types";
+
+/**
+ * Compact meta badge — the consistent pill treatment shared by every item in
+ * the meta row (priority, list, due/do dates, subtask count): tinted bg +
+ * optional leading icon/dot + short label, fully rounded. `bg`/`color` take
+ * kit color tokens; `as never` rides the strict color-prop typing (it rejects
+ * a plain `string`, but every caller passes a real token).
+ */
+function MetaBadge({
+  icon,
+  label,
+  bg,
+  color,
+}: {
+  icon?: ReactNode;
+  label: string;
+  bg: string;
+  color: string;
+}) {
+  return (
+    <XStack
+      items="center"
+      gap="$1"
+      rounded={9999}
+      px="$2"
+      py="$0.5"
+      bg={bg as never}
+    >
+      {icon}
+      <Text
+        fontSize="$1"
+        fontWeight="500"
+        lineHeight={16}
+        color={color as never}
+      >
+        {label}
+      </Text>
+    </XStack>
+  );
+}
 
 // Priority badge intent tokens. The shadcn version used per-color
 // bg-{c}-100/text-{c}-700 pairs; mapped onto the kit's intent palette:
@@ -100,6 +140,25 @@ export interface TodoItemProps {
   onDelete: () => void;
   /** Called when the user taps the row (anywhere but the checkbox/trash). */
   onOpenDetail: () => void;
+  /**
+   * List name — rendered as a badge in the meta row. The host resolves it
+   * (the `Todo` only carries `listId`); omit it on single-list views where
+   * the list is implicit, pass it on cross-list views (Today / Upcoming).
+   */
+  listName?: string;
+  /** List color (hex) for the list badge's dot. */
+  listColor?: string;
+  /**
+   * Trailing actions slot — replaces the default hover delete IconButton.
+   * The PWA renders a "…" actions menu (DropdownMenu) here; hosts that omit
+   * it (mobile) keep the plain hover delete button.
+   */
+  renderActions?: () => ReactNode;
+  /**
+   * Web-only right-click handler, spread onto the row root. The PWA opens its
+   * actions menu from here; native has no context menu and ignores it.
+   */
+  onContextMenu?: (event: unknown) => void;
 }
 
 /**
@@ -120,6 +179,10 @@ export function TodoItem({
   onToggle,
   onDelete,
   onOpenDetail,
+  listName,
+  listColor,
+  renderActions,
+  onContextMenu,
 }: TodoItemProps) {
   const [burning, setBurning] = useState(false);
   const [gone, setGone] = useState(false);
@@ -218,13 +281,18 @@ export function TodoItem({
       hoverStyle={burning ? undefined : { bg: "$accent" }}
       role="button"
       aria-label="Open todo details"
+      // Web-only right-click → host's actions menu. Passed through to the DOM
+      // node (Tamagui forwards unknown props on web); no-op on native.
+      {...({ onContextMenu } as object)}
     >
       <View shrink={0} position="relative">
         <View
           onPressIn={pressedControl}
           onPress={handleToggle}
-          width={24}
-          height={24}
+          // 20px (was 24): balanced against the compact title (18px line) +
+          // date (16px line) block so the circle doesn't out-size the text.
+          width={20}
+          height={20}
           items="center"
           justify="center"
           rounded={9999}
@@ -249,7 +317,7 @@ export function TodoItem({
               enterStyle={burning ? { scale: 0, opacity: 0 } : undefined}
             >
               {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
-              <Check size={14} strokeWidth={3} color="$primaryForeground" />
+              <Check size={12} strokeWidth={3} color="$primaryForeground" />
             </View>
           ) : null}
         </View>
@@ -275,94 +343,118 @@ export function TodoItem({
 
       {burning ? <CompletionBurn /> : null}
 
-      <YStack flex={1} minW={0}>
+      {/* gap="$1" gives a single tight, uniform title→desc→meta rhythm. The
+          title carries an explicit lineHeight (the base `$3` font's default
+          leading is ~1.6× and was opening a loose gap above the date); a
+          tight 18px line + the small gap is the dense single-row treatment
+          used by Todoist / Things. */}
+      <YStack flex={1} minW={0} gap="$1">
         <Text
           fontSize="$3"
           fontWeight="500"
+          lineHeight={18}
           color={isDone ? "$mutedForeground" : "$color"}
           textDecorationLine={isDone ? "line-through" : "none"}
         >
           {todo.title}
         </Text>
         {todo.description ? (
-          <Text
-            mt="$0.5"
-            fontSize="$1"
-            color="$mutedForeground"
-            numberOfLines={1}
-          >
+          <Text fontSize="$1" color="$mutedForeground" numberOfLines={1}>
             {todo.description}
           </Text>
         ) : null}
+        {/* Every meta item is a `MetaBadge` pill so the row reads as one
+            consistent set of badges (was a mix of one priority pill + bare
+            icon+text runs). The list badge surfaces which list the todo is in
+            on cross-list views (host passes `listName`). lineHeight on the row
+            + each badge text keeps the small ($1) labels from inheriting the
+            ~23px body line-height (the old dead-space-above bug). */}
         {priority.label ||
+        listName ||
         formattedDueDate ||
         formattedDoDate ||
         (todo.subtasks && todo.subtasks.length > 0) ? (
-          <XStack mt="$1.5" flexWrap="wrap" items="center" gap="$2">
+          <XStack flexWrap="wrap" items="center" gap="$1.5" lineHeight={16}>
             {priority.label ? (
-              <Text
+              <MetaBadge
                 bg={priority.bg}
                 color={priority.color}
-                rounded={9999}
-                px="$2"
-                py="$0.5"
-                fontSize="$1"
-                fontWeight="500"
-              >
-                {priority.label}
-              </Text>
+                label={priority.label}
+              />
+            ) : null}
+            {listName ? (
+              <MetaBadge
+                bg="$muted"
+                color="$mutedForeground"
+                label={listName}
+                icon={
+                  <View
+                    width={7}
+                    height={7}
+                    rounded={9999}
+                    style={{ backgroundColor: listColor || "#6b7280" }}
+                  />
+                }
+              />
             ) : null}
             {formattedDueDate ? (
-              <XStack items="center" gap="$1">
-                {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
-                <Calendar
-                  size={12}
-                  color={isOverdue ? "$destructive" : "$mutedForeground"}
-                />
-                <Text
-                  fontSize="$1"
-                  color={isOverdue ? "$destructive" : "$mutedForeground"}
-                >
-                  {formattedDueDate}
-                </Text>
-              </XStack>
+              <MetaBadge
+                bg={isOverdue ? "$destructiveMuted" : "$muted"}
+                color={isOverdue ? "$destructive" : "$mutedForeground"}
+                label={formattedDueDate}
+                icon={
+                  <Calendar
+                    size={11}
+                    color={isOverdue ? "$destructive" : "$mutedForeground"}
+                  />
+                }
+              />
             ) : null}
             {formattedDoDate ? (
-              <XStack items="center" gap="$1">
-                {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
-                <Clock size={12} color="$mutedForeground" />
-                <Text fontSize="$1" color="$mutedForeground">
-                  {formattedDoDate}
-                </Text>
-              </XStack>
+              <MetaBadge
+                bg="$muted"
+                color="$mutedForeground"
+                label={formattedDoDate}
+                icon={<Clock size={11} color="$mutedForeground" />}
+              />
             ) : null}
             {todo.subtasks && todo.subtasks.length > 0 ? (
-              <XStack items="center" gap="$1">
-                {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
-                <ListChecks size={12} color="$mutedForeground" />
-                <Text fontSize="$1" color="$mutedForeground">
-                  {todo.subtasks.filter((s) => s.status === "done").length}/
-                  {todo.subtasks.length}
-                </Text>
-              </XStack>
+              <MetaBadge
+                bg="$muted"
+                color="$mutedForeground"
+                label={`${
+                  todo.subtasks.filter((s) => s.status === "done").length
+                }/${todo.subtasks.length}`}
+                icon={<ListChecks size={11} color="$mutedForeground" />}
+              />
             ) : null}
           </XStack>
         ) : null}
       </YStack>
 
-      <IconButton
-        variant="ghost"
-        size="sm"
-        intent="danger"
-        onPressIn={pressedControl}
-        onPress={handleDelete}
-        aria-label="Delete todo"
-        opacity={0}
-        transition="quick"
-        $group-hover={{ opacity: 1 }}
-      >
-        <Trash2 size={14} />
-      </IconButton>
+      {/* Trailing actions: the host's "…" menu when `renderActions` is given
+          (PWA), else the default hover delete button (mobile / other hosts).
+          The wrapping View records the control-press timestamp so a tap on the
+          menu/delete doesn't ALSO fire the row's open-detail onPress. */}
+      {renderActions ? (
+        <View shrink={0} onPressIn={pressedControl}>
+          {renderActions()}
+        </View>
+      ) : (
+        <IconButton
+          variant="ghost"
+          size="sm"
+          intent="danger"
+          onPressIn={pressedControl}
+          onPress={handleDelete}
+          aria-label="Delete todo"
+          opacity={0}
+          transition="quick"
+          $group-hover={{ opacity: 1 }}
+        >
+          <Trash2 size={14} />
+        </IconButton>
+      )}
     </XStack>
   );
 }

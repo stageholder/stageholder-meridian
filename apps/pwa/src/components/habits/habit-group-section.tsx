@@ -1,4 +1,4 @@
-import { Sortable, View, XStack, YStack, useToast } from "@stageholder/ui";
+import { Sortable, View, YStack, useToast } from "@stageholder/ui";
 import { HabitCard } from "@/components/habits/habit-card";
 import { HabitListItem } from "@/components/habits/habit-list-item";
 import { useReorderHabits, useArchiveHabit } from "@/lib/api/habits";
@@ -59,49 +59,52 @@ export function HabitGroupSection({
   }
 
   if (viewMode === "card") {
-    // CONTAINER-responsive wrapping row, Tamagui-standard primitives only:
-    // an `XStack` (flexbox) with `flexWrap` — NOT CSS grid (the kit forbids
-    // `display:grid`) and NOT `$md`/`$lg` media props.
+    // CONTAINER-responsive grid via real CSS Grid in a plain <div>. The PWA is
+    // web-only, so the kit's "no CSS grid, use flexbox" rule (which exists for
+    // the cross-platform packages) doesn't apply here — and grid is the ONLY
+    // tool that does all four of these at once:
+    //   1. cap at a HARD MAX of 3 columns,
+    //   2. FILL the row width at every size (cards grow, no dead space),
+    //   3. step down to 2 then 1 column as the container narrows,
+    //   4. keep every card the SAME width (incl. a partial last row).
+    // Flexbox can't: a fixed `flexBasis` can't fill a 2-card row to halves
+    // while still capping 3-card rows at thirds (flexGrow=0 leaves dead space;
+    // flexGrow=1 stretches a lone last-row card to full width, inconsistent).
+    // Media props are out too — they're VIEWPORT-based (use-media.md), but the
+    // card area's width swings with the sidebars while the viewport barely
+    // moves, so a window breakpoint can't pick the column count.
     //
-    // Why not media props / useMedia: Tamagui media rules are VIEWPORT-based
-    // (`min/maxWidth` on the window — see use-media.md). The card area's width
-    // swings hugely with the sidebars (≈580px with both rails open, ≈1500px
-    // with the nav rail collapsed) while the viewport barely changes, so a
-    // viewport breakpoint can't pick the right column count. Flexbox sizes its
-    // children relative to the PARENT, so a percentage `flexBasis` is naturally
-    // container-relative — the right tool here.
-    //
-    // Max-3 cap with responsive fall-off: each card wrapper gets
-    //   flexBasis = (100% − 24px) / 3   (one-third minus the two 12px gaps)
-    // so exactly 3 fill a row and a 4th wraps — never more than 3 columns.
-    // `minW={180}` is the floor: as the container narrows, the one-third basis
-    // would drop below 180px, so the floor forces it wider and the row steps
-    // DOWN to 2, then 1 column. `flexGrow={0}` keeps a partial last row's cards
-    // at their one-third width (left-aligned) instead of stretching them.
-    // `items="flex-start"` lets each card size to its own content (no
-    // equal-height stretch inflating the card's internal `flex={1}` spacer).
-    // (No drag in card view — kit Sortable is vertical-only; reorder lives in
-    // list view.)
+    // `minmax(max(180px, (100% - 24px) / 3), 1fr)`:
+    //   • track floor = max(180px, one-third-minus-gaps) → caps at 3 columns
+    //     (a 4th can't meet the one-third floor) and, once one-third drops
+    //     below 180px, forces the grid down to 2 then 1 column;
+    //   • `1fr` max → the resolved columns GROW to fill the row (3 → thirds,
+    //     2 → halves, 1 → full), and a partial last row's cards stay at that
+    //     same column width (left-aligned), so all cards match.
+    // `alignItems: start` stops grid's default equal-height stretch from
+    // inflating each card's internal `flex={1}` spacer into a big empty gap.
     return (
-      <XStack flexWrap="wrap" gap={12} items="flex-start">
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(auto-fit, minmax(max(180px, (100% - 24px) / 3), 1fr))",
+          gap: 12,
+          alignItems: "start",
+        }}
+      >
         {habits.map((habit) => (
-          <View
+          <HabitCard
             key={habit.id}
-            flexBasis={"calc((100% - 24px) / 3)" as never}
-            flexGrow={0}
-            minW={180}
-          >
-            <HabitCard
-              habit={habit}
-              minW={0}
-              selectedDate={selectedDate}
-              isArchived={false}
-              onArchive={() => archive(habit)}
-              onMoveToGroup={() => onMoveToGroup(habit)}
-            />
-          </View>
+            habit={habit}
+            minW={0}
+            selectedDate={selectedDate}
+            isArchived={false}
+            onArchive={() => archive(habit)}
+            onMoveToGroup={() => onMoveToGroup(habit)}
+          />
         ))}
-      </XStack>
+      </div>
     );
   }
 
