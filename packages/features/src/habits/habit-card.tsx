@@ -331,7 +331,11 @@ export function HabitCard({
                 fontSize="$3"
                 fontWeight="600"
                 color="$color"
-                numberOfLines={1}
+                // Wrap onto a 2nd line, then ellipsis-truncate (web maps
+                // numberOfLines → -webkit-line-clamp). Long names like
+                // "I am a Productive Person" now read across two lines
+                // instead of being cut after a handful of characters.
+                numberOfLines={2}
                 lineHeight={20}
               >
                 {habit.name}

@@ -137,6 +137,13 @@ export function TodoForm({
   const [dueDate, setDueDate] = useState(initial.dueDate ?? "");
   const [doDate, setDoDate] = useState(initial.doDate ?? "");
 
+  // List chip is only offered when the host gives >1 list (single-list users
+  // and list-scoped pages pass a filtered single-list array). `selectedList`
+  // drives the chip face (Inbox icon for the default list, color dot else).
+  const showListChip = !!lists && lists.length > 1;
+  const activeListId = selectedListId || defaultListId;
+  const selectedList = lists?.find((l) => l.id === activeListId);
+
   function handleSubmit() {
     if (!title.trim()) return;
     void onSubmit({
@@ -152,58 +159,6 @@ export function TodoForm({
   return (
     <Form onSubmit={handleSubmit} width="100%">
       <YStack gap="$4">
-        {lists && lists.length > 1 && (
-          <YStack gap="$1">
-            <Text fontSize="$3" fontWeight="500" color="$color">
-              List
-            </Text>
-            <Select
-              value={selectedListId || defaultListId}
-              onValueChange={setSelectedListId}
-              // Native: this form renders DIRECTLY inside a Sheet (the
-              // mobile FormSheet pattern — no Adapt teleport), so the kit's
-              // ancestor-Adapt auto-detection misses and the Select's own
-              // Adapt path crashes on RN (frozen-ref, kit <= alpha.25).
-              // Force the driven-sheet listbox; web keeps auto-detection.
-              inSheet={isWeb ? undefined : true}
-            >
-              <Select.Trigger placeholder="Select list" width="100%" />
-              <Select.Content>
-                {lists.map((list) => (
-                  <Select.Item key={list.id} value={list.id}>
-                    <XStack items="center" gap="$2">
-                      <XStack
-                        width={12}
-                        height={12}
-                        shrink={0}
-                        items="center"
-                        justify="center"
-                      >
-                        {list.isDefault ? (
-                          // lucide-icons-2 reads its own `color` (no cascade).
-                          <Inbox size={12} color="$primary" />
-                        ) : (
-                          <View
-                            width={8}
-                            height={8}
-                            rounded={9999}
-                            style={{ backgroundColor: list.color || "#6b7280" }}
-                          />
-                        )}
-                      </XStack>
-                      {/* Kit Select.Item only auto-wraps string/number children
-                          in ItemText. For JSX children, include ItemText
-                          explicitly so the trigger's value-display still shows
-                          the list name when this option is selected. */}
-                      <Select.ItemText>{list.name}</Select.ItemText>
-                    </XStack>
-                  </Select.Item>
-                ))}
-              </Select.Content>
-            </Select>
-          </YStack>
-        )}
-
         <YStack gap="$1">
           <Label htmlFor={titleId}>Title</Label>
           <Input
@@ -235,20 +190,93 @@ export function TodoForm({
             colored dot + level or "Priority" when none; the date chips show
             their calendar icon + "Do"/"Due" placeholder or the smart date
             label). `flexWrap` lets a chip drop to a second line on the
-            narrowest sheets. Order: Priority · Do · Due. */}
+            narrowest sheets. Order: List · Priority · Do · Due. */}
         <XStack gap="$2" flexWrap="wrap" items="center">
+          {/* List chip — only when the user has >1 list to choose between
+              (single-list users / list-scoped pages get `lists` filtered to
+              one by the host, so the chip is hidden and the destination is
+              implicit). Defaults to the Inbox / default list. Same pill
+              treatment as the Priority chip; the face shows the Inbox icon
+              for the default list or the list's color dot otherwise. */}
+          {showListChip && lists ? (
+            <Select
+              size="sm"
+              value={activeListId}
+              onValueChange={setSelectedListId}
+              // Native FormSheet rationale: force the driven-sheet listbox
+              // (kit ancestor-Adapt auto-detection misses inside a Sheet and
+              // the Select's own Adapt path crashes on RN).
+              inSheet={isWeb ? undefined : true}
+            >
+              <Select.Trigger pill width={"auto" as never} minW={0}>
+                <XStack items="center" gap="$1.5">
+                  {selectedList?.isDefault ? (
+                    <Inbox size={12} color="$primary" />
+                  ) : selectedList ? (
+                    <View
+                      width={8}
+                      height={8}
+                      rounded={9999}
+                      style={{
+                        backgroundColor: selectedList.color || "#6b7280",
+                      }}
+                    />
+                  ) : null}
+                  <Text fontSize="$2" color="$color" numberOfLines={1}>
+                    {selectedList?.name ?? "List"}
+                  </Text>
+                </XStack>
+              </Select.Trigger>
+              <Select.Content>
+                {lists.map((list) => (
+                  <Select.Item key={list.id} value={list.id}>
+                    <XStack items="center" gap="$2">
+                      <XStack
+                        width={12}
+                        height={12}
+                        shrink={0}
+                        items="center"
+                        justify="center"
+                      >
+                        {list.isDefault ? (
+                          // lucide-icons-2 reads its own `color`.
+                          <Inbox size={12} color="$primary" />
+                        ) : (
+                          <View
+                            width={8}
+                            height={8}
+                            rounded={9999}
+                            style={{
+                              backgroundColor: list.color || "#6b7280",
+                            }}
+                          />
+                        )}
+                      </XStack>
+                      {/* JSX child → include ItemText so the selected value
+                          still renders the list name. */}
+                      <Select.ItemText>{list.name}</Select.ItemText>
+                    </XStack>
+                  </Select.Item>
+                ))}
+              </Select.Content>
+            </Select>
+          ) : null}
+
           {/* inSheet: same FormSheet rationale as the List select above.
-              `size="sm"` matches the QDP chips; the trigger is a pill via
-              the call-site `rounded` override (forwarded to both the web
-              and native trigger). Custom children render the chip face so
-              an empty priority reads "Priority", not "None". */}
+              `size="sm"` matches the QDP date chips. `pill` = the kit's
+              fully-rounded shape; `width="auto"` is REQUIRED to cancel the
+              trigger's inherited `@tamagui/list-item` `width:100%` (the kit
+              only auto-sizes it for `iconOnly`) — without it the trigger
+              fills the row and pushes the date chips onto a second line.
+              Custom children render the chip face so an empty priority reads
+              "Priority", not "None". */}
           <Select
             size="sm"
             value={priority}
             onValueChange={setPriority}
             inSheet={isWeb ? undefined : true}
           >
-            <Select.Trigger rounded={9999} minW={0}>
+            <Select.Trigger pill width={"auto" as never} minW={0}>
               <XStack items="center" gap="$1.5">
                 {priority !== "none" ? (
                   <View
@@ -343,7 +371,9 @@ export function makeTodoFormDefaults(): TodoFormValues {
   return {
     title: "",
     description: "",
-    priority: "none",
+    // Default to "low" so a new todo always carries a concrete priority
+    // (the pill shows its colored dot from the start) rather than "none".
+    priority: "low",
     dueDate: "",
     doDate: format(new Date(), "yyyy-MM-dd"),
     listId: undefined,

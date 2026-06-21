@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { format, subDays } from "date-fns";
+import { format, subDays, startOfWeek, addDays } from "date-fns";
 import { useNavigate } from "@tanstack/react-router";
-import { Check, MoreHorizontal, Target } from "lucide-react";
+import { Check, MoreHorizontal, SkipForward, Target } from "lucide-react";
+import { resolveTargetCount } from "@repo/core/habits/entry-resolution";
 import {
   AlertDialog,
   Button,
@@ -226,6 +227,37 @@ export function HabitListItem({
         ? "$destructive"
         : null;
 
+  // Current-week dot strip (M T W T F S S) — same data + status logic as the
+  // card view's week strip (`@repo/features/habits` HabitCard), rendered as a
+  // compact inline run so the list row gives the same at-a-glance streak read.
+  const isQuota = habit.frequency === "weekly_target";
+  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(weekStart, i);
+    const dateStr = format(date, "yyyy-MM-dd");
+    const entry = entries?.find(
+      (e: HabitEntry) => e.date.split("T")[0] === dateStr,
+    );
+    const dow = date.getDay();
+    // Quota habits have no rest days — every day is schedulable/loggable.
+    const isScheduled =
+      isQuota ||
+      !habit.scheduledDays ||
+      habit.scheduledDays.length === 0 ||
+      habit.scheduledDays.includes(dow);
+    const effectiveTarget =
+      (entry ? resolveTargetCount(entry, habit) : habit.targetCount) || 1;
+    return {
+      label: format(date, "EEEEE"),
+      dateStr,
+      value: entry?.value ?? 0,
+      type: entry?.type as "completion" | "skip" | "fail" | undefined,
+      isToday: dateStr === today,
+      isScheduled,
+      effectiveTarget,
+    };
+  });
+
   return (
     <>
       <XStack
@@ -296,6 +328,83 @@ export function HabitListItem({
               </Text>
             ) : null}
           </YStack>
+        </XStack>
+
+        {/* Current-week dot strip (M T W T F S S) — parity with the card
+            view's week strip so the list row reads the streak at a glance.
+            `shrink={0}` keeps it from being squeezed by a long habit name;
+            hidden below md where the row is too narrow to fit it. */}
+        <XStack
+          shrink={0}
+          gap="$2"
+          items="flex-end"
+          display="none"
+          $md={{ display: "flex" }}
+        >
+          {weekDays.map((day) => {
+            const ratio =
+              day.effectiveTarget > 0 ? day.value / day.effectiveTarget : 0;
+            const isDaySkipped = day.type === "skip";
+            const isDayFailed = day.type === "fail";
+            const isPast = day.dateStr < today;
+            const complete = !isDaySkipped && !isDayFailed && ratio >= 1;
+            // Auto-fail only truly-missed scheduled days (no entry). Quota
+            // habits never auto-fail. Mirrors the card view's dot logic.
+            const failed =
+              !isQuota &&
+              (isDayFailed ||
+                (day.isScheduled && isPast && day.type === undefined));
+            const partial = !isDaySkipped && !failed && ratio > 0 && ratio < 1;
+            return (
+              <YStack key={day.dateStr} items="center" gap="$1">
+                <Text
+                  fontSize={9}
+                  fontWeight="500"
+                  color="$mutedForeground"
+                  opacity={day.isScheduled ? 0.8 : 0.35}
+                >
+                  {day.label}
+                </Text>
+                <View
+                  width={11}
+                  height={11}
+                  rounded={9999}
+                  transition="quick"
+                  items="center"
+                  justify="center"
+                  borderWidth={complete || isDaySkipped ? 0 : 1}
+                  borderStyle={!day.isScheduled ? "dashed" : "solid"}
+                  borderColor={failed ? "$destructive" : "$mutedForeground"}
+                  opacity={
+                    !day.isScheduled
+                      ? 0.3
+                      : isDaySkipped
+                        ? 0.75
+                        : complete || partial || failed
+                          ? 1
+                          : 0.4
+                  }
+                  outlineWidth={day.isToday ? 2 : 0}
+                  outlineColor="$primary"
+                  outlineStyle="solid"
+                  outlineOffset={1}
+                  bg={
+                    (complete
+                      ? "var(--ring-habit)"
+                      : partial
+                        ? "var(--ring-habit-track)"
+                        : "transparent") as never
+                  }
+                >
+                  {isDaySkipped ? (
+                    <Text color="$mutedForeground" lineHeight={0}>
+                      <SkipForward size={9} />
+                    </Text>
+                  ) : null}
+                </View>
+              </YStack>
+            );
+          })}
         </XStack>
 
         {/* Single status/action slot — collapses three previously
