@@ -1,25 +1,27 @@
 import { Flame } from "@tamagui/lucide-icons-2";
 import { GradientSurface, Text, View, XStack, YStack } from "@stageholder/ui";
 import type { UserLight } from "@repo/core/types/light";
-import { getNextTier, getTierProgress } from "@repo/core/types/light";
+import {
+  getNextTier,
+  getTierProgressDetail,
+  getMultiplierLabel,
+} from "@repo/core/types/light";
 import { tabularNums } from "../_internal/text-styles";
 
 interface LevelProgressProps {
   userLight: UserLight;
 }
 
-function getMultiplierDisplay(streak: number): string {
-  if (streak >= 14) return "3x";
-  if (streak >= 10) return "2.5x";
-  if (streak >= 7) return "2x";
-  if (streak >= 3) return "1.5x";
-  return "1x";
-}
-
 export function LevelProgress({ userLight }: LevelProgressProps) {
   const { totalLight, currentTier, currentTitle, perfectDayStreak } = userLight;
   const nextTier = getNextTier(currentTier);
-  const progress = getTierProgress(totalLight, currentTier);
+  // One helper drives both the bar fill and its caption so they always encode
+  // the same within-tier fraction (the caption used to show total/nextThreshold
+  // — a different denominator than the bar, e.g. bar 10% vs caption "60/150").
+  const { percent, earnedInTier, tierSize } = getTierProgressDetail(
+    totalLight,
+    currentTier,
+  );
 
   return (
     // Layout (margin/width) is owned by the caller via a wrapping View; the
@@ -54,15 +56,16 @@ export function LevelProgress({ userLight }: LevelProgressProps) {
           height="100%"
           rounded={9999}
           transition="slow"
-          width={`${progress}%`}
+          width={`${percent}%`}
         />
       </View>
 
-      {/* Bottom row: light count — streak */}
+      {/* Bottom row: within-tier progress toward the next tier — streak.
+          Caption matches the bar's fraction (earnedInTier / tierSize). */}
       <XStack items="center" justify="space-between">
         <Text fontSize="$1" color="$mutedForeground" style={tabularNums}>
           {nextTier
-            ? `${totalLight.toLocaleString()} / ${nextTier.lightRequired.toLocaleString()} Light`
+            ? `${earnedInTier.toLocaleString()} / ${tierSize.toLocaleString()} Light to ${nextTier.title}`
             : `${totalLight.toLocaleString()} Light (Max)`}
         </Text>
         {perfectDayStreak > 0 && (
@@ -71,8 +74,7 @@ export function LevelProgress({ userLight }: LevelProgressProps) {
                 hex, not a kit token. */}
             <Flame size={12} color="#f59e0b" />
             <Text fontSize="$1" color="$mutedForeground" style={tabularNums}>
-              {getMultiplierDisplay(perfectDayStreak)} streak {perfectDayStreak}
-              d
+              {getMultiplierLabel(perfectDayStreak)} streak {perfectDayStreak}d
             </Text>
           </XStack>
         )}

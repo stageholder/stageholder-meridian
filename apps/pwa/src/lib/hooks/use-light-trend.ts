@@ -6,6 +6,7 @@ interface LightTrendDay {
   date: string;
   label: string;
   light: number;
+  earned: number;
 }
 
 export function useLightTrend() {
@@ -23,11 +24,13 @@ export function useLightTrend() {
       const d = subDays(today, i);
       const dateStr = format(d, "yyyy-MM-dd");
       const day = dayMap.get(dateStr);
-      cumulative += day?.light ?? 0;
+      const earned = day?.light ?? 0;
+      cumulative += earned;
       result.push({
         date: dateStr,
         label: format(d, "MMM d"),
         light: cumulative,
+        earned,
       });
     }
 

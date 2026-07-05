@@ -1,18 +1,11 @@
 import { Sparkles, Calendar, Trophy, Zap } from "@tamagui/lucide-icons-2";
 import { Text, XStack, YStack } from "@stageholder/ui";
 import type { UserLight } from "@repo/core/types/light";
+import { getMultiplierLabel } from "@repo/core/types/light";
 import { tabularNums } from "../_internal/text-styles";
 
 interface JourneyStatsProps {
   userLight: UserLight;
-}
-
-function getMultiplier(streak: number): number {
-  if (streak >= 30) return 3;
-  if (streak >= 14) return 2.5;
-  if (streak >= 7) return 2;
-  if (streak >= 3) return 1.5;
-  return 1;
 }
 
 export function JourneyStats({ userLight }: JourneyStatsProps) {
@@ -39,7 +32,7 @@ export function JourneyStats({ userLight }: JourneyStatsProps) {
     },
     {
       label: "Multiplier",
-      value: `${getMultiplier(userLight.perfectDayStreak)}x`,
+      value: getMultiplierLabel(userLight.perfectDayStreak),
       icon: Zap,
       color: "#a855f7",
     },

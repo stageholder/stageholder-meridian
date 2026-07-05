@@ -15,8 +15,12 @@ export interface LightTrendDay {
   date: string;
   /** Short axis label (e.g. "MMM d"). */
   label: string;
-  /** Cumulative light value at that day. */
+  /** Cumulative light total at that day (what the area chart plots). */
   light: number;
+  /** Light EARNED on that specific day. Use this — not the cumulative
+   *  `light` — for window totals ("+N in the last 14 days") and the
+   *  has-any-activity empty-state check. */
+  earned: number;
 }
 
 export interface LightEarnedChartProps {
@@ -29,7 +33,9 @@ export function LightEarnedChart({ data, isLoading }: LightEarnedChartProps) {
     return <Skeleton height={200} width="100%" rounded="$3" />;
   }
 
-  const hasData = data.some((d) => d.light > 0);
+  // Base the empty-state on Light EARNED in the window, not the cumulative
+  // total (which is >0 for any returning user, so the empty-state never showed).
+  const hasData = data.some((d) => d.earned > 0);
   if (!hasData) {
     return (
       <View height={200} items="center" justify="center">

@@ -155,6 +155,19 @@ export function getNextTier(currentTier: number): LightTier | null {
   return LIGHT_TIERS[currentTier] ?? null;
 }
 
+/**
+ * The tier a given total-Light value has reached. Tiers are CUMULATIVE —
+ * `lightRequired` is the TOTAL accumulated Light needed to reach that tier
+ * (Ember = 150 total, NOT 50 + 150). This is the single source of truth the
+ * backend also computes `currentTier`/`currentTitle` from.
+ */
+export function getTierForLight(totalLight: number): LightTier {
+  for (let i = LIGHT_TIERS.length - 1; i >= 0; i--) {
+    if (totalLight >= LIGHT_TIERS[i]!.lightRequired) return LIGHT_TIERS[i]!;
+  }
+  return LIGHT_TIERS[0]!;
+}
+
 export function getTierProgress(
   totalLight: number,
   currentTier: number,
@@ -164,5 +177,81 @@ export function getTierProgress(
   if (!current || !next) return 100;
   const range = next.lightRequired - current.lightRequired;
   const progress = totalLight - current.lightRequired;
-  return Math.min(100, Math.round((progress / range) * 100));
+  // Clamp both ends: >100 guards a total past the next threshold, <0 guards a
+  // total below the current tier's floor (e.g. a Light rollback while
+  // currentTier lags) so the bar never renders a negative width.
+  return Math.max(0, Math.min(100, Math.round((progress / range) * 100)));
+}
+
+/**
+ * Within-tier progress detail — the single helper every "level progress"
+ * surface should use so the bar FILL and its numeric caption always encode the
+ * SAME fraction. `earnedInTier`/`tierSize` match the bar's numerator/
+ * denominator; `remaining` is the Light still needed to reach the next tier.
+ * At max tier: percent 100, remaining 0, next null.
+ */
+export function getTierProgressDetail(
+  totalLight: number,
+  currentTier: number,
+): {
+  percent: number;
+  earnedInTier: number;
+  tierSize: number;
+  remaining: number;
+  next: LightTier | null;
+} {
+  const current = LIGHT_TIERS[currentTier - 1];
+  const next = LIGHT_TIERS[currentTier] ?? null;
+  if (!current || !next) {
+    return {
+      percent: 100,
+      earnedInTier: 0,
+      tierSize: 0,
+      remaining: 0,
+      next: null,
+    };
+  }
+  const tierSize = next.lightRequired - current.lightRequired;
+  const earnedInTier = Math.max(
+    0,
+    Math.min(tierSize, totalLight - current.lightRequired),
+  );
+  return {
+    percent: getTierProgress(totalLight, currentTier),
+    earnedInTier,
+    tierSize,
+    remaining: Math.max(0, next.lightRequired - totalLight),
+    next,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Streak multiplier — CANONICAL. The backend applies these exact thresholds
+// when awarding Light (perfectDayStreak-based), so every display MUST read
+// from here rather than hand-rolling a ladder (which drifted: an old copy
+// showed 3x at 14 days while the server applied 2.5x). minDays DESCENDING;
+// the first entry whose threshold the streak meets wins.
+// ---------------------------------------------------------------------------
+export const STREAK_MULTIPLIERS: ReadonlyArray<{
+  minDays: number;
+  multiplier: number;
+}> = [
+  { minDays: 30, multiplier: 3.0 },
+  { minDays: 14, multiplier: 2.5 },
+  { minDays: 7, multiplier: 2.0 },
+  { minDays: 3, multiplier: 1.5 },
+  { minDays: 1, multiplier: 1.0 },
+];
+
+/** Numeric multiplier for a perfect-day streak (1.0 when no streak). */
+export function getMultiplier(perfectDayStreak: number): number {
+  for (const entry of STREAK_MULTIPLIERS) {
+    if (perfectDayStreak >= entry.minDays) return entry.multiplier;
+  }
+  return 1.0;
+}
+
+/** Display label for the multiplier, e.g. `"2.5x"`. */
+export function getMultiplierLabel(perfectDayStreak: number): string {
+  return `${getMultiplier(perfectDayStreak)}x`;
 }

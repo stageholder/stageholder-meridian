@@ -25,7 +25,9 @@ export function JourneyLightChart({ data, isLoading }: JourneyLightChartProps) {
     return <Skeleton height={180} width="100%" rounded="$3" />;
   }
 
-  const hasData = data.some((d) => d.light > 0);
+  // Empty-state + window total both use per-day EARNED, not the cumulative
+  // `light` (summing 14 running totals gave an absurd "+15,000" header).
+  const hasData = data.some((d) => d.earned > 0);
   if (!hasData) {
     return (
       <View height={180} items="center" justify="center">
@@ -36,7 +38,7 @@ export function JourneyLightChart({ data, isLoading }: JourneyLightChartProps) {
     );
   }
 
-  const totalRecent = data.reduce((s, d) => s + d.light, 0);
+  const totalRecent = data.reduce((s, d) => s + d.earned, 0);
 
   const chartData: ChartDatum[] = data.map((d) => ({
     label: d.label,

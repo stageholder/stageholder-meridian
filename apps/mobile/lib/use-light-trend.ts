@@ -14,16 +14,22 @@ interface LightTrendDay {
   date: string;
   label: string;
   light: number;
+  earned: number;
 }
 
 export function useLightTrend() {
   const { data: stats, isLoading } = useLightStats();
 
   const data = useMemo<LightTrendDay[]>(() => {
-    if (!stats) return [];
+    // Shape guard for the persisted (AsyncStorage) cache: a stale/older-shape
+    // rehydrated `stats` could lack `days`/`baseline` and throw on `.map`
+    // before the refetch lands. Normalize defensively (mirrors the feed's
+    // Array.isArray guard).
+    const days = Array.isArray(stats?.days) ? stats.days : [];
+    if (!stats || days.length === 0) return [];
 
-    const dayMap = new Map(stats.days.map((d) => [d.date, d]));
-    let cumulative = stats.baseline.totalLight;
+    const dayMap = new Map(days.map((d) => [d.date, d]));
+    let cumulative = stats.baseline?.totalLight ?? 0;
     const today = new Date();
     const result: LightTrendDay[] = [];
 
@@ -31,11 +37,13 @@ export function useLightTrend() {
       const d = subDays(today, i);
       const dateStr = format(d, "yyyy-MM-dd");
       const day = dayMap.get(dateStr);
-      cumulative += day?.light ?? 0;
+      const earned = day?.light ?? 0;
+      cumulative += earned;
       result.push({
         date: dateStr,
         label: format(d, "MMM d"),
         light: cumulative,
+        earned,
       });
     }
 

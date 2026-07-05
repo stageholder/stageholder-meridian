@@ -11,11 +11,7 @@ import {
 } from "@stageholder/ui";
 import { StarVisual } from "@repo/features/light";
 import { useAppTheme } from "@/lib/platform/theme";
-import {
-  getTierProgress,
-  getNextTier,
-  LIGHT_TIERS,
-} from "@repo/core/types/light";
+import { getTierProgressDetail, LIGHT_TIERS } from "@repo/core/types/light";
 import type { UserLight } from "@repo/core/types";
 
 // Per-tier COLOR VALUES. `ring` is the brightest mid-stop — applied as a SOLID
@@ -64,8 +60,12 @@ export function JourneyTierBadge({ userLight }: { userLight: UserLight }) {
   const { resolvedTheme } = useAppTheme();
   const isLight = resolvedTheme !== "dark";
 
-  const progress = getTierProgress(userLight.totalLight, userLight.currentTier);
-  const nextTier = getNextTier(userLight.currentTier);
+  const {
+    percent: progress,
+    earnedInTier,
+    tierSize,
+    next: nextTier,
+  } = getTierProgressDetail(userLight.totalLight, userLight.currentTier);
   const colorSet = tierColors[userLight.currentTier] ?? tierColors[1]!;
   // Brand identity color for this tier, contrast-corrected per theme. Used for
   // the title text AND the progress-ring fill so both stay legible on light.
@@ -177,12 +177,13 @@ export function JourneyTierBadge({ userLight }: { userLight: UserLight }) {
                   >
                     <Progress.Indicator bg="$warning" transition="quick" />
                   </Progress>
+                  {/* Within-tier fraction — matches the bar's denominator. */}
                   <Text text="center" fontSize={11} color="$mutedForeground">
                     <Text fontWeight="500" color="$color">
-                      {userLight.totalLight}
+                      {earnedInTier.toLocaleString()}
                     </Text>
                     {" / "}
-                    {nextTier.lightRequired} Light
+                    {tierSize.toLocaleString()} Light to {nextTier.title}
                   </Text>
                 </YStack>
               ) : (

@@ -17,4 +17,13 @@ export type {
   LightStatDay,
   LightStats,
 } from "./light";
-export { LIGHT_TIERS, getNextTier, getTierProgress } from "./light";
+export {
+  LIGHT_TIERS,
+  getNextTier,
+  getTierProgress,
+  getTierProgressDetail,
+  getTierForLight,
+  STREAK_MULTIPLIERS,
+  getMultiplier,
+  getMultiplierLabel,
+} from "./light";

@@ -36,11 +36,7 @@
 import { Check } from "@tamagui/lucide-icons-2";
 import { GradientSurface, Text, View, XStack, YStack } from "@stageholder/ui";
 import { StarVisual } from "./star-visual";
-import {
-  LIGHT_TIERS,
-  getNextTier,
-  getTierProgress,
-} from "@repo/core/types/light";
+import { LIGHT_TIERS, getTierProgressDetail } from "@repo/core/types/light";
 import { tabularNums } from "../_internal/text-styles";
 
 interface JourneyTierMapProps {
@@ -238,15 +234,17 @@ function CurrentTierProgress({
   totalLight?: number;
 }) {
   if (totalLight === undefined) return null;
-  const nextTier = getNextTier(currentTier);
-  if (!nextTier) {
+  const { percent, earnedInTier, tierSize, next } = getTierProgressDetail(
+    totalLight,
+    currentTier,
+  );
+  if (!next) {
     return (
       <Text fontSize={11} color="$mutedForeground">
         The summit — every Light from here is legacy.
       </Text>
     );
   }
-  const progress = getTierProgress(totalLight, currentTier);
 
   return (
     <YStack gap="$1" mt="$1">
@@ -263,16 +261,16 @@ function CurrentTierProgress({
           height="100%"
           rounded={9999}
           transition="slow"
-          width={`${progress}%`}
+          width={`${percent}%`}
         />
       </View>
       <XStack items="center" justify="space-between">
+        {/* Within-tier fraction — same numerator/denominator as the bar. */}
         <Text fontSize={11} color="$mutedForeground" style={tabularNums}>
-          {totalLight.toLocaleString()} /{" "}
-          {nextTier.lightRequired.toLocaleString()} Light
+          {earnedInTier.toLocaleString()} / {tierSize.toLocaleString()} Light
         </Text>
         <Text fontSize={11} color="$mutedForeground">
-          Next: {nextTier.title}
+          Next: {next.title}
         </Text>
       </XStack>
     </YStack>

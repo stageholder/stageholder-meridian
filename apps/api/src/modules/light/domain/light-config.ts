@@ -1,17 +1,22 @@
-export const LIGHT_TIERS = [
-  { tier: 1, title: "Stargazer", lightRequired: 0 },
-  { tier: 2, title: "Spark", lightRequired: 50 },
-  { tier: 3, title: "Ember", lightRequired: 150 },
-  { tier: 4, title: "Flame", lightRequired: 400 },
-  { tier: 5, title: "Radiant", lightRequired: 800 },
-  { tier: 6, title: "Flare", lightRequired: 1500 },
-  { tier: 7, title: "Nova", lightRequired: 2800 },
-  { tier: 8, title: "Pulsar", lightRequired: 5000 },
-  { tier: 9, title: "Supernova", lightRequired: 8500 },
-  { tier: 10, title: "Meridian", lightRequired: 13000 },
-] as const;
-
-export type LightTier = (typeof LIGHT_TIERS)[number];
+// Light economy — the SINGLE SOURCE OF TRUTH for the tier thresholds and the
+// streak multiplier lives in `@repo/core/types/light`, so the backend (which
+// awards Light and computes currentTier) and every client (which renders the
+// progress bar / multiplier badge) read the SAME numbers and can never drift.
+// (An earlier duplicated copy is exactly how the multiplier display diverged
+// from what the server applied.)
+//
+// This module re-exports that shared economy and keeps only the SERVER-ONLY
+// award constants — action point-values, ring bonuses, and daily targets — that
+// no client renders.
+export {
+  LIGHT_TIERS,
+  STREAK_MULTIPLIERS,
+  getTierForLight,
+  getNextTier,
+  getTierProgress,
+  getMultiplier,
+} from "@repo/core/types/light";
+export type { LightTier } from "@repo/core/types/light";
 
 export const DEFAULT_TARGETS = {
   todoDaily: 3,
@@ -28,14 +33,6 @@ export const LIGHT_ACTIONS = {
   PERFECT_DAY: 10,
 } as const;
 
-export const STREAK_MULTIPLIERS = [
-  { minDays: 30, multiplier: 3.0 },
-  { minDays: 14, multiplier: 2.5 },
-  { minDays: 7, multiplier: 2.0 },
-  { minDays: 3, multiplier: 1.5 },
-  { minDays: 1, multiplier: 1.0 },
-] as const;
-
 export const RING_STREAK_MILESTONES = [
   { days: 100, bonus: 50 },
   { days: 60, bonus: 30 },
@@ -47,20 +44,6 @@ export const RING_COMPLETION_BONUS = {
   SINGLE_RING: 3,
   ALL_RINGS: 5,
 } as const;
-
-export function getTierForLight(totalLight: number): LightTier {
-  for (let i = LIGHT_TIERS.length - 1; i >= 0; i--) {
-    if (totalLight >= LIGHT_TIERS[i].lightRequired) return LIGHT_TIERS[i];
-  }
-  return LIGHT_TIERS[0];
-}
-
-export function getMultiplier(perfectDayStreak: number): number {
-  for (const entry of STREAK_MULTIPLIERS) {
-    if (perfectDayStreak >= entry.minDays) return entry.multiplier;
-  }
-  return 1.0;
-}
 
 export function getTodoLight(priority: string): number {
   if (priority === "high" || priority === "urgent")
