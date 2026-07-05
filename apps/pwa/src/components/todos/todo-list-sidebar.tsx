@@ -125,9 +125,13 @@ function ListMenu({
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const deleteList = useDeleteTodoList();
+  const { data: allTodos } = useAllTodos();
   const toast = useToast();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  // Deleting a list also deletes its todos (server cascade) — surface the count
+  // so the confirmation is honest about what's lost.
+  const todoCount = (allTodos ?? []).filter((t) => t.listId === list.id).length;
 
   function confirmDelete() {
     const viewing = pathname === `/todos/${list.id}`;
@@ -214,7 +218,11 @@ function ListMenu({
                 Delete &ldquo;{list.name}&rdquo;?
               </AlertDialog.Title>
               <AlertDialog.Description>
-                This permanently deletes the list and can&apos;t be undone.
+                This permanently deletes the list
+                {todoCount > 0
+                  ? ` and its ${todoCount} todo${todoCount === 1 ? "" : "s"}`
+                  : ""}
+                . This can&apos;t be undone.
               </AlertDialog.Description>
               {/* Close via the kit Button's own onPress + the controlled open
                 state (the proven update-checker.tsx pattern). Wrapping a kit
@@ -467,7 +475,9 @@ export function TodoListSidebar({ onNavigate }: TodoListSidebarProps = {}) {
     const target = from < to ? to - 1 : to;
     next.splice(target, 0, moved);
     reorderLists.mutate({
-      items: next.map((l, i) => ({ id: l.id, order: i })),
+      // Offset by 1: the default Inbox occupies order 0, so custom lists start
+      // at 1 to avoid colliding with it.
+      items: next.map((l, i) => ({ id: l.id, order: i + 1 })),
     });
   }
 

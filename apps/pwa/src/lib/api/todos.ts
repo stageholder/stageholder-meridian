@@ -42,10 +42,27 @@ export function useTodos(listId: string) {
   });
 }
 
+// Page size for the flat "all todos" fetch. The server clamps a single page to
+// MAX_LIMIT (500), so a user with more todos than that would silently lose rows
+// from every derived view (Today/Inbox/Upcoming/Completed) and every sidebar
+// count. Walk the pages until a short page signals the end.
+const ALL_TODOS_PAGE_SIZE = 500;
+
 export function useAllTodos() {
   return useQuery<Todo[]>({
     queryKey: ["allTodos"],
-    queryFn: () => todosApi.listAllTodos({ limit: 500 }),
+    queryFn: async () => {
+      const all: Todo[] = [];
+      for (let page = 1; ; page++) {
+        const batch = await todosApi.listAllTodos({
+          limit: ALL_TODOS_PAGE_SIZE,
+          page,
+        });
+        all.push(...batch);
+        if (batch.length < ALL_TODOS_PAGE_SIZE) break;
+      }
+      return all;
+    },
   });
 }
 
@@ -59,7 +76,6 @@ export function useCreateTodoList() {
       name: string;
       color?: string;
       icon?: string;
-      isShared?: boolean;
     }
   >({
     mutationFn: (data) => todosApi.createList(data),
@@ -81,13 +97,17 @@ export function useUpdateTodoList() {
         name?: string;
         color?: string;
         icon?: string;
-        isShared?: boolean;
       };
     }
   >({
     mutationFn: ({ listId, data }) => todosApi.updateList(listId, data),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["todoLists"] });
+      // The list detail page header reads a separate ["todoList", id] query;
+      // without this it keeps the stale name/color until navigation.
+      void queryClient.invalidateQueries({
+        queryKey: ["todoList", variables.listId],
+      });
     },
   });
 }
@@ -99,6 +119,13 @@ export function useDeleteTodoList() {
     mutationFn: (listId) => todosApi.deleteList(listId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["todoLists"] });
+      // Deleting a list cascades a soft-delete to its todos server-side, so
+      // every todo cache that could still hold them must refetch — otherwise
+      // they linger as "Unknown List" ghost rows in Today/Inbox/Upcoming and
+      // keep the sidebar counts inflated.
+      void queryClient.invalidateQueries({ queryKey: ["allTodos"] });
+      void queryClient.invalidateQueries({ queryKey: ["todos"] });
+      void queryClient.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
 }
@@ -106,9 +133,38 @@ export function useDeleteTodoList() {
 export function useReorderTodoLists() {
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, { items: { id: string; order: number }[] }>({
+  return useMutation<
+    void,
+    Error,
+    { items: { id: string; order: number }[] },
+    { previous: TodoList[] | undefined }
+  >({
     mutationFn: (data) => todosApi.reorderLists(data),
-    onSuccess: () => {
+    // Optimistically apply the new ordering so the sidebar doesn't snap back to
+    // the pre-drag order between drop and refetch.
+    onMutate: async ({ items }) => {
+      await queryClient.cancelQueries({ queryKey: ["todoLists"] });
+      const previous = queryClient.getQueryData<TodoList[]>(["todoLists"]);
+      if (Array.isArray(previous)) {
+        const orderById = new Map(items.map((i) => [i.id, i.order]));
+        const next = previous
+          .map((l) =>
+            orderById.has(l.id) ? { ...l, order: orderById.get(l.id)! } : l,
+          )
+          // Mirror the server sort: default Inbox first, then by order.
+          .sort(
+            (a, b) =>
+              Number(b.isDefault) - Number(a.isDefault) || a.order - b.order,
+          );
+        queryClient.setQueryData<TodoList[]>(["todoLists"], next);
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous)
+        queryClient.setQueryData(["todoLists"], context.previous);
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["todoLists"] });
     },
   });
@@ -246,17 +302,53 @@ export function useDeleteTodo() {
 export function useReorderTodos() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (args: {
-      listId: string;
-      items: { id: string; order: number }[];
-    }) => {
+  return useMutation<
+    void,
+    Error,
+    { listId: string; items: { id: string; order: number }[] },
+    { previousList: Todo[] | undefined; previousAll: Todo[] | undefined }
+  >({
+    mutationFn: async (args) => {
       await todosApi.reorderTodos(args.listId, { items: args.items });
     },
-    onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({
-        queryKey: ["todos", variables.listId],
-      });
+    // Optimistically re-slot so the list holds the dropped order instead of
+    // flickering back until the refetch lands.
+    onMutate: async ({ listId, items }) => {
+      await queryClient.cancelQueries({ queryKey: ["todos", listId] });
+      await queryClient.cancelQueries({ queryKey: ["allTodos"] });
+      const orderById = new Map(items.map((i) => [i.id, i.order]));
+      const previousList = queryClient.getQueryData<Todo[]>(["todos", listId]);
+      const previousAll = queryClient.getQueryData<Todo[]>(["allTodos"]);
+      if (Array.isArray(previousList)) {
+        queryClient.setQueryData<Todo[]>(
+          ["todos", listId],
+          previousList
+            .map((t) =>
+              orderById.has(t.id) ? { ...t, order: orderById.get(t.id)! } : t,
+            )
+            .sort((a, b) => a.order - b.order),
+        );
+      }
+      if (Array.isArray(previousAll)) {
+        // Patch order fields only — allTodos spans every list, so a global
+        // re-sort would interleave them; the derived views bucket it themselves.
+        queryClient.setQueryData<Todo[]>(
+          ["allTodos"],
+          previousAll.map((t) =>
+            orderById.has(t.id) ? { ...t, order: orderById.get(t.id)! } : t,
+          ),
+        );
+      }
+      return { previousList, previousAll };
+    },
+    onError: (_err, { listId }, context) => {
+      if (context?.previousList)
+        queryClient.setQueryData(["todos", listId], context.previousList);
+      if (context?.previousAll)
+        queryClient.setQueryData(["allTodos"], context.previousAll);
+    },
+    onSettled: (_data, _err, { listId }) => {
+      void queryClient.invalidateQueries({ queryKey: ["todos", listId] });
       void queryClient.invalidateQueries({ queryKey: ["allTodos"] });
     },
   });

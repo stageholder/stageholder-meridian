@@ -89,9 +89,13 @@ export default function TodosScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
-  // The row tapped for editing. Held even while the sheet animates closed so
-  // the form keeps its values through the exit (cleared on full close below).
+  // The row tapped for editing, and a separate open flag. Splitting them lets
+  // `editing` stay populated while the sheet animates closed (so the form keeps
+  // its values through the exit) — it's replaced, not cleared, the next time a
+  // row is opened. A single `editing !== null` gate would unmount instantly and
+  // skip the exit animation.
   const [editing, setEditing] = useState<Todo | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
   // List filter — null = All. Filtering is client-side over the one
   // all-todos cache (cheap at mobile scale; no per-list refetch churn).
   const [activeListId, setActiveListId] = useState<string | null>(null);
@@ -145,8 +149,16 @@ export default function TodosScreen() {
     ? (lists.find((l) => l.id === activeListId) ?? null)
     : null;
 
+  // Open a row for editing — seed the content and flip the sheet open.
+  function handleOpenEdit(todo: Todo) {
+    setEditing(todo);
+    setEditOpen(true);
+  }
+
+  // On close, only flip the open flag — `editing` stays so the sheet keeps its
+  // content through the exit animation (replaced on the next open).
   function handleEditOpenChange(next: boolean) {
-    if (!next) setEditing(null);
+    setEditOpen(next);
   }
 
   const isEmpty =
@@ -362,7 +374,7 @@ export default function TodosScreen() {
                           })
                         }
                         onDelete={() => deleteTodo.mutate(todo.id)}
-                        onOpenDetail={() => setEditing(todo)}
+                        onOpenDetail={() => handleOpenEdit(todo)}
                       />
                     ))}
                   </YStack>
@@ -394,7 +406,7 @@ export default function TodosScreen() {
                       toggleTodo.mutate({ id: todo.id, status: todo.status })
                     }
                     onDelete={() => deleteTodo.mutate(todo.id)}
-                    onOpenDetail={() => setEditing(todo)}
+                    onOpenDetail={() => handleOpenEdit(todo)}
                   />
                 ))}
               </YStack>
@@ -432,10 +444,10 @@ export default function TodosScreen() {
       />
 
       {/* Edit — tapping a row seeds this with the todo; same shared TodoForm
-          as create, in a bottom Sheet. `editing` gates open so the sheet
-          mounts only with a real todo to edit. */}
+          as create, in a bottom Sheet. `editOpen` drives visibility while
+          `editing` holds the content through the close animation. */}
       <EditTodoDialog
-        open={editing !== null}
+        open={editOpen}
         onOpenChange={handleEditOpenChange}
         todo={editing}
       />

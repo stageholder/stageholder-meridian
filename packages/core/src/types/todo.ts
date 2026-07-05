@@ -5,7 +5,6 @@ export interface TodoList {
   color?: string;
   icon?: string;
   order: number;
-  isShared: boolean;
   isDefault: boolean;
   creatorId: string;
   createdAt: string;
@@ -35,6 +34,9 @@ export interface Todo {
   creatorId: string;
   order: number;
   subtasks?: Subtask[];
+  // ISO timestamp of when the todo was last completed (set on →done, cleared
+  // on →todo). Prefer this over updatedAt for "completed on"/recency grouping.
+  completedAt?: string;
   createdAt: string;
   updatedAt: string;
 }

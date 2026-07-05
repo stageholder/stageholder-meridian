@@ -48,7 +48,15 @@ export function CreateTodoDialog({
       lists?.find((l) => l.isDefault)?.id ??
       lists?.[0]?.id ??
       "";
-    if (!destListId) return;
+    // No destination yet means the lists query hasn't resolved. Tell the user
+    // instead of failing silently — a retry usually lands once lists load.
+    if (!destListId) {
+      toast.show({
+        title: "Lists still loading, try again",
+        intent: "warning",
+      });
+      return;
+    }
 
     createTodo.mutate(
       {

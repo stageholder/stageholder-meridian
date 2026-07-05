@@ -84,11 +84,41 @@ export class TodoListRepository implements OnApplicationBootstrap {
   }
 
   /**
-   * Counts non-soft-deleted todo lists for a user.
-   * Used by entitlement enforcement against the `max_todo_lists` feature limit.
+   * Counts non-soft-deleted todo lists for a user (including the default
+   * Inbox). Used to slot a new list at the end of the ordering.
    */
   async countForUser(userSub: string): Promise<number> {
     return this.model.countDocuments({ userSub, deleted_at: null });
+  }
+
+  /**
+   * Counts the user's non-default (user-created) lists. Used for entitlement
+   * enforcement so the system-provisioned Inbox never consumes a slot of the
+   * `max_todo_lists` cap.
+   */
+  async countNonDefaultForUser(userSub: string): Promise<number> {
+    return this.model.countDocuments({
+      userSub,
+      deleted_at: null,
+      is_default: { $ne: true },
+    });
+  }
+
+  // Batch order updates in one round-trip; each filter is userSub-scoped so
+  // foreign ids are no-ops. Replaces the per-item findById+save N+1.
+  async reorder(
+    userSub: string,
+    items: { id: string; order: number }[],
+  ): Promise<void> {
+    if (!items.length) return;
+    await this.model.bulkWrite(
+      items.map((item) => ({
+        updateOne: {
+          filter: { _id: item.id, userSub, deleted_at: null },
+          update: { $set: { order: item.order } },
+        },
+      })),
+    );
   }
 
   async findByUserPaginated(

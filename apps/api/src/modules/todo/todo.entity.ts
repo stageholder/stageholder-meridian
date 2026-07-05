@@ -24,6 +24,11 @@ export interface TodoProps extends EntityProps {
   userSub: string;
   order: number;
   subtasks: SubtaskData[];
+  // ISO timestamp of the moment the todo last transitioned to "done". Set on
+  // the todo→done edge, cleared on done→todo. Distinct from updatedAt so the
+  // "Completed" views can group/sort by genuine completion time even after a
+  // later edit bumps updatedAt.
+  completedAt?: string;
 }
 
 export class Todo extends Entity<TodoProps> {
@@ -61,6 +66,9 @@ export class Todo extends Entity<TodoProps> {
   get subtasks(): SubtaskData[] {
     return this.get("subtasks");
   }
+  get completedAt(): string | undefined {
+    return this.get("completedAt");
+  }
 
   updateTitle(title: string): void {
     this.set("title", title);
@@ -68,8 +76,21 @@ export class Todo extends Entity<TodoProps> {
   updateDescription(description: string | undefined): void {
     this.set("description", description);
   }
+  updateListId(listId: string): void {
+    this.set("listId", listId);
+  }
+  // Owns the completedAt lifecycle so every caller (edit, toggle) stays
+  // consistent: stamp completedAt only on a genuine todo→done edge (never
+  // re-stamp an already-done todo), clear it whenever the todo re-opens.
   updateStatus(status: TodoStatus): void {
+    const previous = this.get("status");
     this.set("status", status);
+    if (status === "done") {
+      if (previous !== "done")
+        this.set("completedAt", new Date().toISOString());
+    } else {
+      this.set("completedAt", undefined);
+    }
   }
   updatePriority(priority: TodoPriority): void {
     this.set("priority", priority);
@@ -92,12 +113,18 @@ export class Todo extends Entity<TodoProps> {
     if (subtasks.length >= 50)
       return Err(new Error("Maximum 50 subtasks per todo"));
     const now = new Date().toISOString();
+    // Append after the current highest order — using `subtasks.length` would
+    // collide after any removal (e.g. [0,1,2] → remove 1 → [0,2] → next would
+    // reuse 2), producing unstable ordering.
+    const nextOrder = subtasks.length
+      ? Math.max(...subtasks.map((s) => s.order)) + 1
+      : 0;
     const subtask: SubtaskData = {
       id: generateId(),
       title,
       status: "todo",
       priority,
-      order: subtasks.length,
+      order: nextOrder,
       createdAt: now,
       updatedAt: now,
     };

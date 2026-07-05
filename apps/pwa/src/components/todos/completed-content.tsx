@@ -2,6 +2,7 @@ import { CheckCircle2 } from "lucide-react";
 import { AnimatePresence, Text, View, XStack, YStack } from "@stageholder/ui";
 import { TodoItem } from "./todo-item";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
+import { todoCompletedAt } from "@/lib/date";
 import { TodoListSkeleton } from "./todo-list-skeleton";
 import type { Todo, TodoList } from "@repo/core/types";
 
@@ -21,20 +22,27 @@ export function CompletedContent() {
   sevenDaysAgo.setHours(0, 0, 0, 0);
 
   const completedTodos = (todos || [])
-    .filter((t) => t.status === "done" && new Date(t.updatedAt) >= sevenDaysAgo)
+    .filter(
+      (t) =>
+        t.status === "done" && new Date(todoCompletedAt(t)) >= sevenDaysAgo,
+    )
     .sort(
       (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+        new Date(todoCompletedAt(b)).getTime() -
+        new Date(todoCompletedAt(a)).getTime(),
     );
 
   // Group by date completed
   const groupedByDate = new Map<string, Todo[]>();
   for (const todo of completedTodos) {
-    const dateKey = new Date(todo.updatedAt).toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
+    const dateKey = new Date(todoCompletedAt(todo)).toLocaleDateString(
+      "en-US",
+      {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      },
+    );
     const group = groupedByDate.get(dateKey) || [];
     group.push(todo);
     groupedByDate.set(dateKey, group);

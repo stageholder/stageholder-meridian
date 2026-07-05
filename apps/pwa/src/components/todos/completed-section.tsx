@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { AnimatePresence, Text, XStack, YStack } from "@stageholder/ui";
 import { TodoItem } from "./todo-item";
+import { todoCompletedAt } from "@/lib/date";
 import type { Todo } from "@repo/core/types";
 
 interface CompletedSectionProps {
@@ -19,7 +20,9 @@ export function CompletedSection({ todos }: CompletedSectionProps) {
   if (todos.length === 0) return null;
 
   const sorted = [...todos].sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    (a, b) =>
+      new Date(todoCompletedAt(b)).getTime() -
+      new Date(todoCompletedAt(a)).getTime(),
   );
 
   return (

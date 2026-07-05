@@ -2,10 +2,13 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Inject,
+  forwardRef,
   Logger,
 } from "@nestjs/common";
 import type { StageholderUser } from "@stageholder/sdk/core";
 import { TodoRepository } from "./todo.repository";
+import { TodoListRepository } from "../todo-list/todo-list.repository";
 import { Todo, TodoStatus } from "./todo.entity";
 import {
   CreateTodoDto,
@@ -30,8 +33,23 @@ export class TodoService {
   private readonly logger = new Logger(TodoService.name);
   constructor(
     private readonly repository: TodoRepository,
+    // Circular by design: todo-list needs TodoRepository for its delete
+    // cascade, and todo needs TodoListRepository to validate a todo's target
+    // list. forwardRef breaks the resolution cycle.
+    @Inject(forwardRef(() => TodoListRepository))
+    private readonly listRepository: TodoListRepository,
     private readonly lightService: LightService,
   ) {}
+
+  /**
+   * Assert the given list exists and belongs to the user. Guards create and
+   * move-between-lists so a todo can never point at a foreign or non-existent
+   * list id.
+   */
+  private async assertOwnsList(userSub: string, listId: string): Promise<void> {
+    const list = await this.listRepository.findById(userSub, listId);
+    if (!list) throw new NotFoundException("Todo list not found");
+  }
 
   async create(
     userSub: string,
@@ -41,11 +59,12 @@ export class TodoService {
     await enforceLimit(user, "max_active_todos", () =>
       this.repository.countActiveForUser(userSub),
     );
+    await this.assertOwnsList(userSub, dto.listId);
     const order = await this.repository.countByList(userSub, dto.listId);
     const result = Todo.create({
       title: dto.title,
       description: dto.description,
-      status: dto.status || "todo",
+      status: "todo",
       priority: dto.priority || "none",
       dueDate: dto.dueDate,
       doDate: dto.doDate,
@@ -94,33 +113,50 @@ export class TodoService {
     };
   }
 
-  async update(userSub: string, id: string, dto: UpdateTodoDto): Promise<Todo> {
+  async update(
+    userSub: string,
+    id: string,
+    dto: UpdateTodoDto,
+    user: StageholderUser,
+  ): Promise<Todo> {
     const todo = await this.findById(userSub, id);
+    const wasDone = todo.status === "done";
+
     if (dto.title !== undefined) todo.updateTitle(dto.title);
     if (dto.description !== undefined)
       todo.updateDescription(dto.description || undefined);
-    if (dto.status !== undefined) todo.updateStatus(dto.status as TodoStatus);
     if (dto.priority !== undefined) todo.updatePriority(dto.priority);
     if (dto.dueDate !== undefined) todo.updateDueDate(dto.dueDate || undefined);
     if (dto.doDate !== undefined) todo.updateDoDate(dto.doDate || undefined);
-    await this.repository.save(todo);
-    if (dto.status === "done") {
-      this.lightService
-        .awardTodoComplete(userSub, id, todo.priority)
-        .catch((err) => this.logger.warn("Failed to award light", err.message));
-    }
-    return todo;
-  }
 
-  async updateStatus(
-    userSub: string,
-    id: string,
-    status: TodoStatus,
-  ): Promise<Todo> {
-    const todo = await this.findById(userSub, id);
-    todo.updateStatus(status);
+    // Move between lists: validate the destination is one the user owns, then
+    // re-slot the todo at the end of the target list's ordering.
+    if (dto.listId !== undefined && dto.listId !== todo.listId) {
+      await this.assertOwnsList(userSub, dto.listId);
+      const order = await this.repository.countByList(userSub, dto.listId);
+      todo.updateListId(dto.listId);
+      todo.updateOrder(order);
+    }
+
+    // Status transition. Re-opening a done todo grows the active count, so it
+    // must respect the same cap as create — otherwise the limit is trivially
+    // bypassed by completing then re-opening. The entity owns the completedAt
+    // lifecycle inside updateStatus.
+    if (dto.status !== undefined && dto.status !== todo.status) {
+      if (dto.status === "todo" && wasDone) {
+        await enforceLimit(user, "max_active_todos", () =>
+          this.repository.countActiveForUser(userSub),
+        );
+      }
+      todo.updateStatus(dto.status as TodoStatus);
+    }
+
     await this.repository.save(todo);
-    if (status === "done") {
+
+    // Award completion Light only on a genuine todo→done edge — not on every
+    // edit that happens to carry status:"done", and not when re-completing an
+    // already-done todo (the light service also dedups per day as a backstop).
+    if (dto.status === "done" && !wasDone) {
       this.lightService
         .awardTodoComplete(userSub, id, todo.priority)
         .catch((err) => this.logger.warn("Failed to award light", err.message));
@@ -129,13 +165,7 @@ export class TodoService {
   }
 
   async reorder(userSub: string, dto: ReorderTodosDto): Promise<void> {
-    for (const item of dto.items) {
-      const todo = await this.repository.findById(userSub, item.id);
-      if (todo) {
-        todo.updateOrder(item.order);
-        await this.repository.save(todo);
-      }
-    }
+    await this.repository.reorder(userSub, dto.items);
   }
 
   async findUpdatedSince(

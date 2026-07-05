@@ -7,6 +7,7 @@ import { QuickAddTodo } from "./quick-add-todo";
 import { CompletedSection } from "./completed-section";
 import { TodoListSkeleton } from "./todo-list-skeleton";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
+import { todoCompletedAt } from "@/lib/date";
 import type { Todo } from "@repo/core/types";
 
 export function TodayContent() {
@@ -46,7 +47,7 @@ export function TodayContent() {
   const completedToday = (todos || []).filter(
     (t: Todo) =>
       t.status === "done" &&
-      format(new Date(t.updatedAt), "yyyy-MM-dd") === today,
+      format(new Date(todoCompletedAt(t)), "yyyy-MM-dd") === today,
   );
 
   const defaultList = lists?.find((l) => l.isDefault) || lists?.[0];

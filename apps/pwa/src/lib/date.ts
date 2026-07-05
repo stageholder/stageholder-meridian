@@ -28,3 +28,17 @@ export function parseDateLocal(value: string): Date {
 export function todayLocal(): string {
   return format(new Date(), "yyyy-MM-dd");
 }
+
+/**
+ * The moment a todo was completed. Prefers the server's `completedAt` (set on
+ * the todo→done edge, stable across later edits) and falls back to `updatedAt`
+ * for legacy rows created before the field existed. Use this for "completed
+ * on" grouping/sorting so editing an old done todo doesn't make it look freshly
+ * completed.
+ */
+export function todoCompletedAt(todo: {
+  completedAt?: string;
+  updatedAt: string;
+}): string {
+  return todo.completedAt ?? todo.updatedAt;
+}

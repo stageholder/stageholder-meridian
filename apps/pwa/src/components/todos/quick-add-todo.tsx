@@ -215,10 +215,17 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
   const createTodo = useCreateTodo();
   const { data: lists } = useTodoLists();
   const toast = useToast();
+  // Synchronous double-submit latch. `createTodo.isPending` only flips on a
+  // later render, so two Enter presses in the same tick both pass that guard
+  // and create two todos — this ref closes the window immediately.
+  const submittingRef = useRef(false);
 
+  // Re-sync the destination when the route's list changes (navigating between
+  // list pages reuses this instance). Within a page `listId` is stable, so a
+  // manual ListChip pick — which doesn't change `listId` — is never clobbered.
   useEffect(() => {
-    if (listId && !selectedListId) setSelectedListId(listId);
-  }, [listId, selectedListId]);
+    setSelectedListId(listId);
+  }, [listId]);
 
   const resetForm = useCallback(() => {
     setTitle("");
@@ -234,7 +241,8 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
   }
 
   const handleSubmit = useCallback(() => {
-    if (!title.trim() || createTodo.isPending) return;
+    if (!title.trim() || createTodo.isPending || submittingRef.current) return;
+    submittingRef.current = true;
     createTodo.mutate(
       {
         listId: selectedListId,
@@ -254,6 +262,9 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
         },
         onError: () =>
           toast.show({ title: "Failed to create todo", intent: "danger" }),
+        onSettled: () => {
+          submittingRef.current = false;
+        },
       },
     );
   }, [

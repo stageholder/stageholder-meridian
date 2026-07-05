@@ -1,11 +1,19 @@
 import { useState, useRef, useEffect } from "react";
-import { Check, CheckCircle2, ChevronDown, Trash2, X } from "lucide-react";
+import {
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  Inbox,
+  Trash2,
+  X,
+} from "lucide-react";
 import {
   useUpdateTodo,
   useDeleteTodo,
   useAddSubtask,
   useUpdateSubtask,
   useRemoveSubtask,
+  useTodoLists,
 } from "@/lib/api/todos";
 import {
   Button,
@@ -63,7 +71,9 @@ export function TodoDetailDialog({
   const addSubtask = useAddSubtask();
   const updateSubtask = useUpdateSubtask();
   const removeSubtask = useRemoveSubtask();
+  const { data: lists } = useTodoLists();
   const toast = useToast();
+  const currentList = lists?.find((l) => l.id === todo.listId);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(todo.title);
@@ -598,7 +608,7 @@ export function TodoDetailDialog({
                   mt={7}
                   onSubmit={() => {
                     const title = newSubtaskTitle.trim();
-                    if (!title) return;
+                    if (!title || addSubtask.isPending) return;
                     addSubtask.mutate(
                       { listId, todoId: todo.id, data: { title } },
                       {
@@ -714,6 +724,99 @@ export function TodoDetailDialog({
                   </DropdownMenu.Content>
                 </DropdownMenu>
               </View>
+
+              {/* List — move the todo between the user's lists. Only shown
+                  when there's more than one list to move between. */}
+              {lists && lists.length > 1 && (
+                <View>
+                  <Text
+                    px="$2"
+                    fontSize={10}
+                    fontWeight="500"
+                    letterSpacing={0.5}
+                    color="$mutedForeground"
+                    textTransform="uppercase"
+                  >
+                    List
+                  </Text>
+                  <DropdownMenu>
+                    <DropdownMenu.Trigger asChild>
+                      <XStack
+                        cursor="pointer"
+                        mt="$0.5"
+                        width="100%"
+                        items="center"
+                        gap="$2"
+                        rounded="$md"
+                        px="$2"
+                        py="$1.5"
+                        transition="quick"
+                        hoverStyle={{ bg: "$accent" }}
+                        aria-label="Move to list"
+                      >
+                        {currentList?.isDefault ? (
+                          <Text color="$mutedForeground" lineHeight={0}>
+                            <Inbox size={12} />
+                          </Text>
+                        ) : (
+                          <View
+                            width={10}
+                            height={10}
+                            rounded={9999}
+                            style={{
+                              backgroundColor: currentList?.color || "#6b7280",
+                            }}
+                          />
+                        )}
+                        <Text fontSize="$3" color="$color">
+                          {currentList?.name || "Unknown"}
+                        </Text>
+                        <Text ml="auto" color="$mutedForeground" lineHeight={0}>
+                          <ChevronDown size={12} />
+                        </Text>
+                      </XStack>
+                    </DropdownMenu.Trigger>
+                    <DropdownMenu.Content minW={200}>
+                      {lists.map((list) => (
+                        <DropdownMenu.Item
+                          key={list.id}
+                          items="center"
+                          gap="$2"
+                          bg={
+                            todo.listId === list.id ? "$accent" : "transparent"
+                          }
+                          onPress={() => {
+                            if (list.id !== todo.listId)
+                              handleUpdateField({ listId: list.id });
+                          }}
+                        >
+                          {list.isDefault ? (
+                            <Text color="$mutedForeground" lineHeight={0}>
+                              <Inbox size={12} />
+                            </Text>
+                          ) : (
+                            <View
+                              width={10}
+                              height={10}
+                              rounded={9999}
+                              shrink={0}
+                              style={{
+                                backgroundColor: list.color || "#6b7280",
+                              }}
+                            />
+                          )}
+                          <DropdownMenu.Label>{list.name}</DropdownMenu.Label>
+                          {todo.listId === list.id && (
+                            <Text color="$primary" lineHeight={0}>
+                              <Check size={12} strokeWidth={2.5} />
+                            </Text>
+                          )}
+                        </DropdownMenu.Item>
+                      ))}
+                    </DropdownMenu.Content>
+                  </DropdownMenu>
+                </View>
+              )}
 
               <Separator mt="$3" />
 

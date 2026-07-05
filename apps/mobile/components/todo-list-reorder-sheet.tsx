@@ -12,14 +12,16 @@
 //   - NO Adapt (parks frame off-screen → overlay-only symptom)
 //   - GripVertical handle from @tamagui/lucide-icons-2
 //
-// On drag-end: recomputes { id, order: i }[] over the new array and fires
-// useReorderTodoLists.mutate immediately — no separate Save needed.
+// On drag-end: recomputes { id, order: i + 1 }[] over the new array (the
+// excluded default Inbox list owns order 0) and fires useReorderTodoLists.mutate
+// immediately — no separate Save needed. A failed save surfaces a danger toast.
 
 import {
   Button,
   Sheet,
   Sortable,
   Text,
+  useToast,
   View,
   XStack,
   YStack,
@@ -44,6 +46,7 @@ export function TodoListReorderSheet({
   lists,
 }: TodoListReorderSheetProps) {
   const reorderMutation = useReorderTodoLists();
+  const toast = useToast();
 
   // Custom (non-default) lists sorted by their current order field.
   const customLists = lists
@@ -69,9 +72,18 @@ export function TodoListReorderSheet({
   function handleReorder(from: number, to: number) {
     const next = reorderItems(ordered, from, to);
     setOrdered(next);
-    reorderMutation.mutate({
-      items: next.map((l, i) => ({ id: l.id, order: i })),
-    });
+    reorderMutation.mutate(
+      {
+        // Offset by 1 — the default Inbox list holds order 0 and is excluded
+        // from this sheet, so custom lists start at 1 to avoid colliding.
+        items: next.map((l, i) => ({ id: l.id, order: i + 1 })),
+      },
+      {
+        onError: () => {
+          toast.show({ title: "Couldn't save order", intent: "danger" });
+        },
+      },
+    );
   }
 
   return (

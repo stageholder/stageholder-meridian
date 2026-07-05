@@ -12,7 +12,6 @@ export function createTodosApi(client: ApiClientLike) {
       name: string;
       color?: string;
       icon?: string;
-      isShared?: boolean;
     }): Promise<TodoList> => {
       const res = await client.post(`/todo-lists`, data);
       return res.data;
@@ -31,7 +30,6 @@ export function createTodosApi(client: ApiClientLike) {
         name?: string;
         color?: string;
         icon?: string;
-        isShared?: boolean;
       },
     ): Promise<TodoList> => {
       const res = await client.patch(`/todo-lists/${listId}`, data);
@@ -51,10 +49,11 @@ export function createTodosApi(client: ApiClientLike) {
     // Todos
     createTodo: async (
       listId: string,
+      // Todos always start open — the API rejects `status` on create; complete
+      // via `updateTodo`.
       data: {
         title: string;
         description?: string;
-        status?: string;
         priority?: string;
         dueDate?: string;
         doDate?: string;
@@ -82,6 +81,8 @@ export function createTodosApi(client: ApiClientLike) {
         priority?: string;
         dueDate?: string | null;
         doDate?: string | null;
+        /** Move the todo to another of the user's lists. */
+        listId?: string;
       },
     ): Promise<Todo> => {
       const res = await client.patch(`/todos/${todoId}`, data);

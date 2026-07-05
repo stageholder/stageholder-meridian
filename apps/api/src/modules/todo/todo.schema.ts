@@ -41,6 +41,7 @@ export class TodoModel {
   @Prop({ type: String, required: true, index: true }) userSub: string;
   @Prop({ type: Number, default: 0 }) order: number;
   @Prop({ type: [SubtaskSchema], default: [] }) subtasks: any[];
+  @Prop({ type: String, default: null }) completed_at: string;
   @Prop({ type: Date, default: null }) deleted_at: Date;
 }
 

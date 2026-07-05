@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Calendar,
   Check,
@@ -82,6 +82,12 @@ const SPARKS: { left: string; delay: number }[] = [
 function parseDateLocal(input: string): Date {
   const ymd = input.length >= 10 ? input.slice(0, 10) : input;
   return new Date(ymd + "T00:00:00");
+}
+
+/** Local midnight of the current day — the boundary for date-only compares. */
+function localTodayStart(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
 /**
@@ -187,6 +193,18 @@ export function TodoItem({
   const [burning, setBurning] = useState(false);
   const [gone, setGone] = useState(false);
 
+  // The row hides itself optimistically after the burn (setGone below) so
+  // completion feels instant. If the host's mutation fails, its cache rollback
+  // flips this todo back to "todo" — reappear rather than stay silently hidden.
+  // (On success the todo becomes "done" and the parent unmounts/relocates this
+  // row, so this only ever fires on the rollback path.)
+  useEffect(() => {
+    if (todo.status !== "done") {
+      setGone(false);
+      setBurning(false);
+    }
+  }, [todo.status]);
+
   // Cross-platform "don't open the detail sheet when the checkbox/delete was
   // tapped". Web relies on stopPropagation (onPress → bubbling onClick), but
   // native has no propagation: tapping the checkbox would ALSO fire the row's
@@ -248,8 +266,11 @@ export function TodoItem({
       })
     : null;
 
+  // Date-only comparison: a todo due TODAY is not overdue. Comparing against
+  // `new Date()` (now) would flag every same-day-due todo as overdue all day,
+  // contradicting the Today bucket which correctly includes it.
   const isOverdue =
-    todo.dueDate && !isDone && parseDateLocal(todo.dueDate) < new Date();
+    todo.dueDate && !isDone && parseDateLocal(todo.dueDate) < localTodayStart();
 
   // Burn already played → remove the row the instant it ends, so the list
   // closes immediately (no lingering while the mutation/exit settles).

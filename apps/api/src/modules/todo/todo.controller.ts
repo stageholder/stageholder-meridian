@@ -83,7 +83,9 @@ export class TodoController {
     @Param("id") id: string,
     @Body(new ZodValidationPipe(UpdateSchema)) dto: UpdateTodoDto,
   ) {
-    return (await this.service.update(req.user.sub, id, dto)).toObject();
+    return (
+      await this.service.update(req.user.sub, id, dto, req.user)
+    ).toObject();
   }
 
   @Post("reorder")

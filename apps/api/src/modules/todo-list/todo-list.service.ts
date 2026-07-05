@@ -52,14 +52,21 @@ export class TodoListService {
     dto: CreateTodoListDto,
     user: StageholderUser,
   ): Promise<TodoList> {
-    const currentCount = await this.repository.countForUser(userSub);
-    await enforceLimit(user, "max_todo_lists", async () => currentCount);
+    // Provision the Inbox first so the order count below is stable (otherwise
+    // a first-ever create — before any list read — and the lazily-created
+    // Inbox both land at order 0).
+    await this.ensureDefaultList(userSub);
+    // The cap counts only user-created lists — the system Inbox never eats a
+    // slot of the plan's `max_todo_lists`.
+    await enforceLimit(user, "max_todo_lists", () =>
+      this.repository.countNonDefaultForUser(userSub),
+    );
     const result = TodoList.create({
       name: dto.name,
       color: dto.color,
       icon: dto.icon,
-      // New lists land at the end of the user's ordering (Inbox is 0).
-      order: currentCount,
+      // Land at the end of the full ordering (Inbox occupies 0).
+      order: await this.repository.countForUser(userSub),
       userSub,
     });
     if (!result.ok) throw result.error;
@@ -68,13 +75,7 @@ export class TodoListService {
   }
 
   async reorder(userSub: string, dto: ReorderTodoListsDto): Promise<void> {
-    for (const item of dto.items) {
-      const list = await this.repository.findById(userSub, item.id);
-      if (list) {
-        list.updateOrder(item.order);
-        await this.repository.save(list);
-      }
-    }
+    await this.repository.reorder(userSub, dto.items);
   }
 
   async findByUser(

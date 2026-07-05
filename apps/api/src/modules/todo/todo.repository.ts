@@ -27,8 +27,12 @@ export class TodoRepository {
       },
       ENCRYPTED_FIELDS,
     );
+    // Scope the upsert filter by userSub too (not _id alone): every caller
+    // already loads via a userSub-scoped findById, so this never changes
+    // behavior for legitimate writes — it just guarantees a raw/foreign id can
+    // never overwrite another user's row on some future code path.
     await this.model.updateOne(
-      { _id: data.id },
+      { _id: data.id, userSub: data.userSub },
       {
         $set: {
           title: enc.title,
@@ -40,6 +44,7 @@ export class TodoRepository {
           list_id: data.listId,
           userSub: data.userSub,
           order: data.order,
+          completed_at: data.completedAt ?? null,
           subtasks: (enc.subtasks || []).map((s: any) => ({
             _id: s.id,
             title: s.title,
@@ -136,6 +141,25 @@ export class TodoRepository {
     });
   }
 
+  // Apply a batch of order updates in one round-trip. Each filter is
+  // userSub-scoped so foreign/unknown ids are silently no-ops, and the single
+  // bulkWrite avoids the per-item findById+save N+1 (and its partial-failure
+  // window) the service loop had.
+  async reorder(
+    userSub: string,
+    items: { id: string; order: number }[],
+  ): Promise<void> {
+    if (!items.length) return;
+    await this.model.bulkWrite(
+      items.map((item) => ({
+        updateOne: {
+          filter: { _id: item.id, userSub, deleted_at: null },
+          update: { $set: { order: item.order } },
+        },
+      })),
+    );
+  }
+
   async delete(userSub: string, id: string): Promise<void> {
     await this.model.updateOne(
       { _id: id, userSub },
@@ -191,6 +215,7 @@ export class TodoRepository {
         listId: doc.list_id,
         userSub: doc.userSub,
         order: doc.order,
+        completedAt: doc.completed_at ?? undefined,
         subtasks: (dec.subtasks || []).map((s: any) => ({
           id: s._id,
           title: s.title,

@@ -63,14 +63,16 @@ export function EditTodoDialog({
         id: todo!.id,
         patch: {
           title: values.title,
-          // Empty description clears it; the API treats an empty string as
-          // "no description" (mirrors the PWA's null-on-empty behavior).
-          description: values.description ?? "",
+          // Empty clears it — send `null` so the PATCH persists the clear
+          // (the API maps null/empty description to "no description").
+          description: values.description || null,
           // The form types priority as a bare string; narrow to the API's
           // union ("none" is a valid value here — the API persists it).
           priority: values.priority as TodoPriority,
-          dueDate: values.dueDate || undefined,
-          doDate: values.doDate || undefined,
+          // `null` clears a date; `undefined` would leave it untouched, so an
+          // emptied date field must send null to actually remove it.
+          dueDate: values.dueDate || null,
+          doDate: values.doDate || null,
           listId: values.listId,
         },
       },

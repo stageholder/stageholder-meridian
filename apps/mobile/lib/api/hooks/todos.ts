@@ -81,7 +81,7 @@ export function useUpdateTodoList() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: TodoListInput }) => {
-      const { data } = await apiClient.put<TodoList>(
+      const { data } = await apiClient.patch<TodoList>(
         `/todo-lists/${id}`,
         patch,
       );
@@ -119,10 +119,12 @@ export function useReorderTodoLists() {
 
 export type CreateTodoInput = {
   title: string;
-  description?: string;
+  description?: string | null;
   priority?: TodoPriority;
-  dueDate?: string;
-  doDate?: string;
+  // `null` clears the date (PATCH); `undefined` leaves it untouched. Widened
+  // from `string` so the edit sheet can persist a cleared date.
+  dueDate?: string | null;
+  doDate?: string | null;
   listId?: string;
 };
 
@@ -159,13 +161,21 @@ export function useUpdateTodo() {
       const snapshots = qc.getQueriesData<Todo[]>({
         queryKey: todoKeys.lists(),
       });
+      // `patch` allows `null` (clear a date/description); a Todo stores the
+      // cleared shape as `undefined`. Normalize null→undefined so the
+      // optimistic record matches what the server will return (mirrors the
+      // PWA's useUpdateTodo), rather than casting null into the Todo type.
+      const normalized: Partial<Todo> = {};
+      for (const [k, v] of Object.entries(patch)) {
+        (normalized as Record<string, unknown>)[k] = v === null ? undefined : v;
+      }
       for (const [key, prev] of snapshots) {
         if (!prev) continue;
         qc.setQueryData<Todo[]>(
           key,
           prev.map((t) =>
             t.id === id
-              ? { ...t, ...patch, updatedAt: new Date().toISOString() }
+              ? { ...t, ...normalized, updatedAt: new Date().toISOString() }
               : t,
           ),
         );
@@ -289,7 +299,7 @@ export function useAddSubtask() {
             id: `optimistic-${Date.now()}`,
             title: input.title,
             status: "todo",
-            order: (t.subtasks?.length ?? 0) + 1,
+            order: t.subtasks?.length ?? 0,
           } as Subtask,
         ],
       }));
