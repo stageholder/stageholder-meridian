@@ -32,6 +32,7 @@ import {
   MOOD_DEFAULT_OPTIONS,
   QuickDatePicker,
   Sheet,
+  Spinner,
   TagInput,
   Text,
   View,
@@ -57,7 +58,7 @@ import {
 } from "@/components/journal-progress";
 import { useJournals, useUserLight } from "@/lib/api";
 import { useAutosave } from "@/lib/use-autosave";
-import { useJournalCrypto } from "@/lib/journal-crypto";
+import { checkJournalStatus, useJournalCrypto } from "@/lib/journal-crypto";
 
 /** Empty TipTap doc — the editor seeds from this for a fresh entry. */
 // Typed as the kit's RichTextEditorContent (TipTap JSONContent) — this screen
@@ -87,7 +88,16 @@ function formatDefaultTitle(yyyymmdd: string): string {
 
 export default function NewJournalScreen() {
   const router = useRouter();
-  const { isSetup, isUnlocked } = useJournalCrypto();
+  const { isSetup, isUnlocked, isLoading } = useJournalCrypto();
+
+  // SECURITY: a cold start / deep link into /journal/new must NOT let autosave
+  // POST plaintext before we know whether this account requires encryption.
+  // Fetch the encryption status on mount (populates isSetup + the wrapped key
+  // material the unlock flow needs) and gate the editor behind !isLoading
+  // below — mirrors how journal/[id] waits for its fetch before mounting.
+  useEffect(() => {
+    void checkJournalStatus();
+  }, []);
 
   const [title, setTitle] = useState("");
   // New entries are always TipTap JSON — there's no legacy HTML for a fresh
@@ -169,6 +179,26 @@ export default function NewJournalScreen() {
     lastSavedRef.current = { title: effectiveTitle, content, mood, tags, date };
     scheduleSave({ title: effectiveTitle, content, mood, tags, date });
   }, [effectiveTitle, content, mood, tags, date, scheduleSave, title]);
+
+  // ---- Loading: wait for the encryption status before mounting the editor.
+  // Until this resolves we can't know if a DEK is required, so we must not let
+  // the autosave effect POST a plaintext draft for an encryption-enabled
+  // account (C5). ----
+  if (isLoading) {
+    return (
+      <YStack flex={1} bg="$background">
+        <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
+          <BackBar
+            onBack={() => router.navigate("/journal")}
+            title="New Entry"
+          />
+          <YStack flex={1} items="center" justify="center">
+            <Spinner size="large" />
+          </YStack>
+        </SafeAreaView>
+      </YStack>
+    );
+  }
 
   // ---- Locked: can't encrypt without the DEK — bounce to the list ----
   if (locked) {

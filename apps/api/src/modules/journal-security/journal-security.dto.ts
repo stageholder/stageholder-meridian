@@ -24,5 +24,7 @@ export const FinalizeRecoveryDto = z.object({
   passphraseSalt: z.string().min(1),
   recoveryWrappedDek: z.string().min(1),
   recoveryCodes: z.array(z.string().min(1)).length(8),
+  // Single-use proof token returned by the preceding POST /recover.
+  recoverySession: z.string().min(1),
 });
 export type FinalizeRecoveryDto = z.infer<typeof FinalizeRecoveryDto>;

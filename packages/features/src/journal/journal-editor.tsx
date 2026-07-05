@@ -160,11 +160,27 @@ export function JournalEditor({
   const totalWords = wordCount + otherWordsToday;
 
   // Fire the celebration exactly once per crossing (not on every keystroke
-  // once the target is met). The ref tracks the previous met-state so we
-  // see the transition rather than the steady state.
-  const prevMetRef = useRef(false);
+  // once the target is met). The ref tracks the previous met-state so we see
+  // the transition rather than the steady state. Seed it from the INITIAL
+  // met-state so opening an entry that already meets today's target doesn't
+  // replay the full-screen fire + haptic on load.
+  const prevMetRef = useRef(
+    countWordsFromContent(initialContent) + otherWordsToday >= target &&
+      target > 0,
+  );
   const [celebrationTrigger, setCelebrationTrigger] = useState(0);
   const [showGlow, setShowGlow] = useState(false);
+
+  // Re-baseline when otherWordsToday changes (it can load in asynchronously
+  // after mount). Without this, a late-arriving total that crosses the target
+  // would fire the celebration even though the USER didn't just write — only a
+  // wordCount change (real typing) should trigger it.
+  useEffect(() => {
+    prevMetRef.current = totalWords >= target && target > 0;
+    // Intentionally excludes wordCount/totalWords: only otherWordsToday drives
+    // the re-baseline; typing flows through the transition effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otherWordsToday, target]);
 
   useEffect(() => {
     const nowMet = totalWords >= target && target > 0;

@@ -44,6 +44,7 @@ export function PassphrasePrompt({
   const [error, setError] = useState("");
 
   async function handleUnlock() {
+    if (loading) return; // Enter bypasses the disabled button — guard re-entry.
     setError("");
     setLoading(true);
     try {

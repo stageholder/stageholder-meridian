@@ -86,6 +86,10 @@ export function PassphraseSetupForm({
   }
 
   async function handleSetup() {
+    // Enter fires Form.onSubmit past the disabled button — guard re-entry.
+    // Critical here: a second setup generates a NEW DEK, orphaning any entry
+    // encrypted with the first.
+    if (loading) return;
     setError("");
     if (passphrase.length < 8) {
       setError("Passphrase must be at least 8 characters");

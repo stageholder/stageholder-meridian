@@ -13,8 +13,12 @@ export class JournalRepository {
   async save(journal: Journal): Promise<void> {
     const data = journal.toObject();
     const now = new Date();
+    // Scope the upsert by userSub too (not _id alone): create() generates the
+    // id server-side and update() loads via a userSub-scoped findById first, so
+    // this never changes behavior for legitimate writes — it just guarantees a
+    // raw/foreign id can never overwrite or flip ownership of another user's row.
     await this.model.updateOne(
-      { _id: data.id },
+      { _id: data.id, userSub: data.userSub },
       {
         $set: {
           title: data.title,
@@ -77,6 +81,9 @@ export class JournalRepository {
     const docs = await this.model
       .find(filter)
       .sort({ date: -1, created_at: -1 })
+      // Bound the date-range load so a huge span can't pull the whole
+      // collection into memory (per-doc size is already capped in the DTO).
+      .limit(1000)
       .lean();
     return docs.map((doc) => this.toDomain(doc));
   }

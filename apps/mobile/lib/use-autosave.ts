@@ -45,7 +45,14 @@ export function useAutosave({
   const createJournal = useCreateJournal();
   const updateJournal = useUpdateJournal();
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The newest data ever scheduled (what an unmount flush should persist).
   const latestDataRef = useRef<AutosaveData | null>(null);
+  // Data that arrived WHILE a save was in flight — flushed as soon as that
+  // save finishes so a trailing edit is never dropped (C3).
+  const pendingDataRef = useRef<AutosaveData | null>(null);
+  // The data of the last SUCCESSFULLY persisted save — lets the unmount flush
+  // skip a redundant write when nothing changed since.
+  const savedDataRef = useRef<AutosaveData | null>(null);
   const isSavingRef = useRef(false);
   const journalIdRef = useRef(journalId);
   const onCreatedRef = useRef(onCreated);
@@ -68,44 +75,66 @@ export function useAutosave({
     }
   }, [initialId]);
 
-  // doSave has NO reactive dependencies — uses refs only
+  // doSave has NO reactive dependencies — uses refs only.
+  //
+  // Coalescing (C3): if a save is already in flight, we DON'T drop this call —
+  // we stash the newest data as `pending` and let the running save re-run with
+  // it when it finishes. The running save drains `pending` in a loop, so a
+  // burst of edits during one network round-trip collapses to a single trailing
+  // save with the latest data instead of being lost.
   const doSave = useCallback(async (data: AutosaveData) => {
-    if (isSavingRef.current) return;
+    if (isSavingRef.current) {
+      pendingDataRef.current = data;
+      return;
+    }
     isSavingRef.current = true;
-    setStatus("saving");
 
+    let current: AutosaveData | null = data;
     try {
-      const id = journalIdRef.current;
-      if (id) {
-        // Unlike the PWA (whose edit route pins the date), mobile's edit
-        // screen has a date chip — include it so date changes persist.
-        await updateRef.current.mutateAsync({
-          id,
-          patch: {
-            title: data.title,
-            content: data.content,
-            mood: data.mood,
-            tags: data.tags,
-            date: data.date,
-          },
-        });
-      } else {
-        // useCreateJournal defaults title (date label) and date (today)
-        // itself, but pass what we have so the entry matches the screen.
-        const created = await createRef.current.mutateAsync({
-          title: data.title,
-          content: data.content,
-          mood: data.mood,
-          tags: data.tags,
-          date: data.date,
-        });
-        setJournalId(created.id);
-        journalIdRef.current = created.id;
-        onCreatedRef.current?.(created.id);
+      while (current) {
+        // Anything queued during the previous iteration's await is now being
+        // handled; clear it before the await so a fresh edit re-queues.
+        pendingDataRef.current = null;
+        setStatus("saving");
+        try {
+          const id = journalIdRef.current;
+          if (id) {
+            // Unlike the PWA (whose edit route pins the date), mobile's edit
+            // screen has a date chip — include it so date changes persist.
+            await updateRef.current.mutateAsync({
+              id,
+              patch: {
+                title: current.title,
+                content: current.content,
+                mood: current.mood,
+                tags: current.tags,
+                date: current.date,
+              },
+            });
+          } else {
+            // useCreateJournal defaults title (date label) and date (today)
+            // itself, but pass what we have so the entry matches the screen.
+            const created = await createRef.current.mutateAsync({
+              title: current.title,
+              content: current.content,
+              mood: current.mood,
+              tags: current.tags,
+              date: current.date,
+            });
+            setJournalId(created.id);
+            journalIdRef.current = created.id;
+            onCreatedRef.current?.(created.id);
+          }
+          savedDataRef.current = current;
+          setStatus("saved");
+        } catch {
+          setStatus("error");
+        }
+        // Drain a trailing edit that arrived during the await. On error we stop
+        // (nothing new queued) and leave savedDataRef behind the latest, so the
+        // unmount flush / next schedule retries.
+        current = pendingDataRef.current;
       }
-      setStatus("saved");
-    } catch {
-      setStatus("error");
     } finally {
       isSavingRef.current = false;
     }
@@ -126,14 +155,20 @@ export function useAutosave({
     [doSave, debounceMs],
   );
 
-  // Flush on unmount
+  // Flush on unmount — UNCONDITIONALLY (C3). The old guard skipped the flush
+  // while a save was in flight, dropping any edit typed after the debounce
+  // fired. Now we always flush the newest un-persisted data: if a save is
+  // running, doSave queues it as `pending` and the running save drains it.
+  // Skip only when the newest data was already persisted (savedDataRef), to
+  // avoid a no-op write.
   useEffect(() => {
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        if (latestDataRef.current && !isSavingRef.current) {
-          void doSave(latestDataRef.current);
-        }
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (
+        latestDataRef.current &&
+        latestDataRef.current !== savedDataRef.current
+      ) {
+        void doSave(latestDataRef.current);
       }
     };
   }, [doSave]);

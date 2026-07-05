@@ -31,6 +31,11 @@ import {
  * verifying the Hub-side client registration grants introspection privilege
  * and that `IDENTITY_CLIENT_ID` / `IDENTITY_CLIENT_SECRET` are set on the
  * Cloud Run service to match.
+ *
+ * The most dangerous op — `recover/finalize`, which irreversibly overwrites the
+ * wrapped DEKs — no longer relies on introspection for safety: it now requires
+ * a single-use, short-TTL recovery-session token minted by `recover()`, so a
+ * bare (even revoked) JWT can't destroy a user's encrypted journal on its own.
  */
 @ApiTags("Journal Security")
 @Controller("journal-security")

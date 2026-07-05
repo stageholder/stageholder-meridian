@@ -32,6 +32,9 @@ export function useAutosave({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestDataRef = useRef<AutosaveData | null>(null);
   const isSavingRef = useRef(false);
+  // Set when a save is requested while another is in flight — the in-flight
+  // save re-runs on completion so the newest edit is never dropped.
+  const pendingRef = useRef(false);
   const journalIdRef = useRef(journalId);
   const onCreatedRef = useRef(onCreated);
   const createRef = useRef(createJournal);
@@ -55,8 +58,14 @@ export function useAutosave({
 
   // doSave has NO reactive dependencies — uses refs only
   const doSave = useCallback(async (data: AutosaveData) => {
-    if (isSavingRef.current) return;
+    // A save is already in flight — don't drop this edit. The newest data is
+    // in latestDataRef; flag it so the in-flight save re-runs on completion.
+    if (isSavingRef.current) {
+      pendingRef.current = true;
+      return;
+    }
     isSavingRef.current = true;
+    pendingRef.current = false;
     setStatus("saving");
 
     try {
@@ -94,6 +103,12 @@ export function useAutosave({
       setStatus("error");
     } finally {
       isSavingRef.current = false;
+      // Edits arrived during the save (or were coalesced away) — persist the
+      // newest so nothing typed mid-save is lost.
+      if (pendingRef.current && latestDataRef.current) {
+        pendingRef.current = false;
+        void doSave(latestDataRef.current);
+      }
     }
   }, []); // stable — no deps
 
@@ -112,14 +127,15 @@ export function useAutosave({
     [doSave, debounceMs],
   );
 
-  // Flush on unmount
+  // Flush on unmount — unconditionally. If a save is in flight, doSave flags
+  // pendingRef and the in-flight save re-runs with the newest data; if not, it
+  // saves immediately. Gating on !isSavingRef (the old behavior) dropped the
+  // newest edit whenever the user navigated away mid-save.
   useEffect(() => {
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        if (latestDataRef.current && !isSavingRef.current) {
-          doSave(latestDataRef.current);
-        }
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (latestDataRef.current) {
+        void doSave(latestDataRef.current);
       }
     };
   }, [doSave]);

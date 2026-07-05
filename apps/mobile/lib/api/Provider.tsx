@@ -16,12 +16,14 @@
 // `useAccessToken()` is in scope — see app/_layout.tsx.
 
 import { useAccessToken } from "@stageholder/sdk/react-native";
+import { defaultShouldDehydrateQuery } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { useEffect, type ReactNode } from "react";
 import { DeviceEventEmitter } from "react-native";
 
 import { setAccessTokenAccessor } from "./auth";
 import { ClientEvents } from "./client";
+import { journalKeys } from "./keys";
 import { queryClient, queryPersister } from "./query-client";
 
 export type QueryProviderProps = {
@@ -77,6 +79,18 @@ export function QueryProvider({
         // grouped/sectioned screen would render a stale (ungrouped, order-0)
         // layout until the refetch landed.
         buster: "v3",
+        // SECURITY: journal caches hold DECRYPTED plaintext (the list/detail
+        // entries after decrypt, and the autosave optimistic update writes the
+        // plaintext patch into the list cache every ~1s). NEVER flush that to
+        // AsyncStorage — keep journal queries IN MEMORY ONLY (PWA parity). The
+        // predicate matches both the list and detail keys (queryKey[0] ===
+        // "journals").
+        dehydrateOptions: {
+          shouldDehydrateQuery: (query) =>
+            query.queryKey[0] === journalKeys.all[0]
+              ? false
+              : defaultShouldDehydrateQuery(query),
+        },
       }}
     >
       <AuthTokenBridge />

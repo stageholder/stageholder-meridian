@@ -12,7 +12,18 @@ import type { Journal, JournalContent, JournalStats } from "@repo/core/types";
 
 import { apiClient } from "../client";
 import { journalKeys } from "../keys";
-import { encryptJournalPayload, getJournalDek } from "@/lib/journal-crypto";
+import {
+  encryptJournalPayload,
+  getJournalDek,
+  isJournalEncryptionSetup,
+  type EncryptedJournalPayload,
+} from "@/lib/journal-crypto";
+
+// Thrown (and surfaced by the autosave hook's error status) instead of ever
+// sending cleartext when encryption is configured but the journal is locked —
+// the "never write plaintext when encryption is set up" invariant.
+const LOCKED_WRITE_MESSAGE =
+  "Journal is locked — unlock it before saving so entries aren't stored unencrypted.";
 
 /* ------------------------------ Reads -------------------------------- */
 
@@ -89,6 +100,12 @@ export function useCreateJournal() {
       // wordCount) BEFORE the POST so plaintext never hits the wire. When the
       // account has no encryption (no DEK), send the draft as-is.
       const dek = getJournalDek();
+      // SECURITY: if encryption IS set up but no DEK is in memory (locked / a
+      // status race on a cold start before checkJournalStatus resolves), refuse
+      // rather than POST cleartext for an encryption-enabled account.
+      if (!dek && isJournalEncryptionSetup()) {
+        throw new Error(LOCKED_WRITE_MESSAGE);
+      }
       const body = dek
         ? await encryptJournalPayload(
             {
@@ -143,19 +160,32 @@ export function useUpdateJournal() {
       // before the PATCH so plaintext never hits the wire. A metadata-only
       // patch (no content) PATCHes as-is.
       const dek = getJournalDek();
-      const body =
-        dek && patch.content !== undefined
-          ? await encryptJournalPayload(
-              {
-                title: patch.title ?? "",
-                content: patch.content,
-                tags: patch.tags,
-                mood: patch.mood,
-                date: patch.date,
-              },
-              dek,
-            )
-          : patch;
+      // SECURITY: refuse to PATCH cleartext when encryption is set up but the
+      // journal is locked (no DEK) — same invariant as create.
+      if (!dek && isJournalEncryptionSetup()) {
+        throw new Error(LOCKED_WRITE_MESSAGE);
+      }
+      let body: UpdateJournalInput | Partial<EncryptedJournalPayload> = patch;
+      if (dek && patch.content !== undefined) {
+        const encrypted = await encryptJournalPayload(
+          {
+            title: patch.title ?? "",
+            content: patch.content,
+            tags: patch.tags,
+            mood: patch.mood,
+            date: patch.date,
+          },
+          dek,
+        );
+        // M2 (+ symmetric tags): a content-only PATCH must NOT overwrite the
+        // stored title/tags — encryptJournalPayload coerces an absent title to
+        // `""` and absent tags to `[]`, which would blank them. Drop any
+        // encrypted field the patch didn't actually carry.
+        const stripped: Partial<EncryptedJournalPayload> = { ...encrypted };
+        if (patch.title === undefined) delete stripped.title;
+        if (patch.tags === undefined) delete stripped.tags;
+        body = stripped;
+      }
       const { data } = await apiClient.patch<Journal>(`/journals/${id}`, body);
       return data;
     },

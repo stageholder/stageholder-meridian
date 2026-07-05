@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, Logger } from "@nestjs/common";
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from "@nestjs/common";
 import { JournalRepository } from "./journal.repository";
 import { Journal } from "./journal.entity";
 import { CreateJournalDto, UpdateJournalDto } from "./journal.dto";
@@ -83,6 +88,11 @@ export class JournalService {
     since: string,
     includeSoftDeleted: boolean,
   ) {
+    // Guard the raw string before it becomes `new Date(since)` in the repo — a
+    // bad value yields an Invalid Date and a silently-empty result.
+    if (Number.isNaN(Date.parse(since))) {
+      throw new BadRequestException("updatedSince must be a valid ISO date");
+    }
     const journals = await this.repository.findUpdatedSince(
       userSub,
       since,
@@ -108,7 +118,13 @@ export class JournalService {
     if (dto.mood !== undefined) journal.updateMood(dto.mood ?? undefined);
     if (dto.tags !== undefined) journal.updateTags(dto.tags);
     if (dto.date) journal.updateDate(dto.date);
-    if (dto.wordCount !== undefined) journal.updateWordCount(dto.wordCount);
+    // Trust a client-supplied word count ONLY for encrypted journals (the
+    // server can't count opaque ciphertext). For plaintext, updateContent
+    // already computed the authoritative count above — don't let the client
+    // override/inflate it.
+    if (dto.wordCount !== undefined && journal.encrypted) {
+      journal.updateWordCount(dto.wordCount);
+    }
     await this.repository.save(journal);
     return journal;
   }

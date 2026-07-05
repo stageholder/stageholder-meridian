@@ -41,6 +41,9 @@ import {
 } from "@tamagui/lucide-icons-2";
 import { useRouter } from "expo-router";
 
+import { queryClient } from "@/lib/api";
+import { queryPersister } from "@/lib/api/query-client";
+import { lockJournal } from "@/lib/journal-crypto";
 import { useAppTheme } from "@/lib/platform/theme";
 import { logOutPurchases } from "@/lib/purchases";
 
@@ -111,6 +114,16 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
       // Reset RevenueCat identity FIRST so a shared device doesn't attribute
       // the next signed-in user's purchases/restores to this user's appUserID.
       await logOutPurchases();
+      // SECURITY (cross-account DEK bleed): drop the in-memory DEK + all journal
+      // key material so the NEXT account on this device can't inherit this
+      // user's key, and purge every cached/DECRYPTED journal entry from memory
+      // AND the AsyncStorage-persisted cache so no plaintext survives to the
+      // next sign-in. (The root layout's onSignedOut does the same on every
+      // sign-out path; doing it here too guarantees the scrub lands BEFORE the
+      // signOut round-trip.)
+      lockJournal();
+      queryClient.clear();
+      await queryPersister.removeClient();
       // Root layout's onSignedOut redirects to /sign-in once the session is
       // cleared — no manual navigation. The sheet unmounts with the tree.
       await signOut();

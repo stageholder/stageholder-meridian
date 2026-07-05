@@ -38,6 +38,7 @@ export function PassphraseChangeForm({
   const [error, setError] = useState("");
 
   async function handleSubmit() {
+    if (loading) return; // Enter bypasses the disabled button — guard re-entry.
     setError("");
     if (!current) {
       setError("Enter your current passphrase");

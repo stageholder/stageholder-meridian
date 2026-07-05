@@ -1,4 +1,4 @@
-import { encryptJournal, decryptJournal } from "@repo/crypto";
+import { encryptJournal, decryptJournal, encryptField } from "@repo/crypto";
 import { countWordsFromContent, isJsonContent } from "@repo/core/utils/text";
 import { logger } from "@repo/core/platform/logger";
 import type { Journal, JournalContent } from "@repo/core/types";
@@ -62,6 +62,41 @@ export async function encryptJournalPayload(
     encrypted: true,
     wordCount,
   };
+}
+
+/**
+ * Encrypt ONLY the fields present in a partial update. Each field has its own
+ * IV, so a partial re-encrypt is valid, and the server leaves absent fields
+ * untouched. This avoids the wipe bug of coercing an omitted `content`/`title`
+ * to `""` and encrypting that over real data. mood/date are cleartext (the
+ * server needs them for filtering/stats); wordCount is recomputed from content.
+ */
+export async function encryptJournalFields(
+  data: {
+    title?: string;
+    content?: JournalContent;
+    tags?: string[];
+    mood?: number;
+    date?: string;
+  },
+  dek: CryptoKey,
+): Promise<Record<string, unknown>> {
+  const out: Record<string, unknown> = { encrypted: true };
+  if (data.title !== undefined) out.title = await encryptField(data.title, dek);
+  if (data.content !== undefined) {
+    const serialized =
+      typeof data.content === "string"
+        ? data.content
+        : JSON.stringify(data.content);
+    out.content = await encryptField(serialized, dek);
+    out.wordCount = countWordsFromContent(data.content);
+  }
+  if (data.tags !== undefined) {
+    out.tags = await encryptField(JSON.stringify(data.tags), dek);
+  }
+  if (data.mood !== undefined) out.mood = data.mood;
+  if (data.date !== undefined) out.date = data.date;
+  return out;
 }
 
 /**

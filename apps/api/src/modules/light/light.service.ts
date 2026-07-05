@@ -178,13 +178,19 @@ export class LightService {
     }
   }
 
-  async awardJournalEntry(userSub: string, journalId: string): Promise<void> {
+  // Awarded once per user per DAY, not per journal id — otherwise creating N
+  // journals/day mints 6·N Light, and a create→delete loop farms it forever
+  // (delete doesn't reverse the event). Keying the idempotency entity on the
+  // date caps it at one journaling award per day (which is what the journal
+  // ring already reflects). journalId is kept in metadata for reference only.
+  async awardJournalEntry(userSub: string, journalId?: string): Promise<void> {
     const date = await this.getTodayForUser(userSub);
+    const entityId = `journal_${date}`;
     const exists = await this.lightEventRepo.existsForEntityOnDate(
       userSub,
       "journal_entry",
       date,
-      journalId,
+      entityId,
     );
     if (exists) return;
 
@@ -194,7 +200,8 @@ export class LightService {
       LIGHT_ACTIONS.JOURNAL_ENTRY,
       date,
       {
-        entityId: journalId,
+        entityId,
+        journalId,
       },
     );
   }

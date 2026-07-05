@@ -115,6 +115,7 @@ export function PassphraseRecoveryForm({
   }
 
   async function handleRecover() {
+    if (loading) return; // Enter bypasses the disabled button — guard re-entry.
     setError("");
     const codes = parseCodes(codesRaw);
     // The server validates length(8) and verifies positionally — catch the

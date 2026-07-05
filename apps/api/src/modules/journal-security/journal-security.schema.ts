@@ -25,6 +25,18 @@ export class JournalSecurity {
 
   @Prop({ required: true, default: 8 })
   recoveryCodesRemaining: number;
+
+  // Single-use, short-TTL proof that a successful `recover()` just happened.
+  // `finalizeRecovery` (which irreversibly overwrites the wrapped DEKs) will
+  // only run when a matching, unexpired token is presented, then burns it —
+  // so a bare JWT can no longer destroy a user's encrypted journal. sha256 of
+  // the token is stored (the token itself is high-entropy, so a fast hash is
+  // sufficient); the plaintext token is returned by `recover()` once.
+  @Prop({ type: String, default: null })
+  recoverySessionHash: string | null;
+
+  @Prop({ type: Date, default: null })
+  recoverySessionExpiresAt: Date | null;
 }
 
 export const JournalSecuritySchema =

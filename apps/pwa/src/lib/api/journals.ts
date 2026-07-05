@@ -35,9 +35,16 @@ import { todayLocal } from "@/lib/date";
 import { useEncryptionStore } from "@/lib/crypto/encryption-store";
 import {
   encryptJournalPayload,
+  encryptJournalFields,
   decryptJournalResponse,
   decryptJournalList,
 } from "@/lib/crypto/journal-crypto";
+
+// Thrown when a write is attempted on an encryption-enabled account whose DEK
+// isn't loaded (locked). Refusing the write is the invariant "never persist
+// plaintext when encryption is set up" — better a surfaced error than a silent
+// cleartext leak over an encrypted entry.
+const LOCKED_ERROR = "Journal is locked — unlock before saving.";
 import { journalsApi } from "./clients";
 
 export const journalKeys = {
@@ -126,6 +133,7 @@ export function useJournal(id: string) {
 export function useCreateJournal() {
   const queryClient = useQueryClient();
   const dek = useEncryptionStore((s) => s.dek);
+  const isSetup = useEncryptionStore((s) => s.isSetup);
 
   return useMutation<
     Journal,
@@ -141,6 +149,9 @@ export function useCreateJournal() {
     any
   >({
     mutationFn: async (data) => {
+      // Never write plaintext when encryption is set up but locked — gate on
+      // isSetup, not dek presence, so a locked account can't leak cleartext.
+      if (isSetup && !dek) throw new Error(LOCKED_ERROR);
       // Encrypt INLINE before the POST, then decrypt the server's response
       // before it enters the cache.
       const payload = dek ? await encryptJournalPayload(data, dek) : data;
@@ -201,6 +212,7 @@ export function useCreateJournal() {
 export function useUpdateJournal() {
   const queryClient = useQueryClient();
   const dek = useEncryptionStore((s) => s.dek);
+  const isSetup = useEncryptionStore((s) => s.isSetup);
 
   return useMutation<
     Journal,
@@ -218,18 +230,11 @@ export function useUpdateJournal() {
     any
   >({
     mutationFn: async ({ id, data }) => {
-      // Encrypt INLINE before the PATCH, then decrypt the server's response.
-      const payload = dek
-        ? await encryptJournalPayload(
-            {
-              title: data.title || "",
-              content: data.content || "",
-              tags: data.tags,
-              mood: data.mood,
-            },
-            dek,
-          )
-        : data;
+      if (isSetup && !dek) throw new Error(LOCKED_ERROR);
+      // Encrypt INLINE before the PATCH — only the fields actually present, so
+      // a metadata-only or content-only patch can't wipe the omitted title/
+      // content by coercing it to "". Decrypt the server's response after.
+      const payload = dek ? await encryptJournalFields(data, dek) : data;
       const journal = await journalsApi.update(id, payload);
       if (dek) return decryptJournalResponse(journal, dek);
       return journal;

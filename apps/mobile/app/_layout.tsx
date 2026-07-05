@@ -42,10 +42,12 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { QueryProvider } from "@/lib/api";
+import { QueryProvider, queryClient } from "@/lib/api";
+import { queryPersister } from "@/lib/api/query-client";
 import { PaywallHost } from "@/components/paywall-sheet";
 import { useAppFonts } from "@/lib/fonts";
 import { expoHapticImpl } from "@/lib/haptic-impl";
+import { lockJournal } from "@/lib/journal-crypto";
 import { initTheme, useAppTheme } from "@/lib/platform/theme";
 import { config as tamaguiConfig } from "../tamagui.config";
 
@@ -70,6 +72,21 @@ const ISSUER_URL =
 const CLIENT_ID =
   process.env.EXPO_PUBLIC_STAGEHOLDER_CLIENT_ID ??
   (Constants.expoConfig?.extra?.["stageholderClientId"] as string | undefined);
+
+/**
+ * SECURITY (cross-account DEK bleed): on ANY end-of-session event — an explicit
+ * sign-out or a 401/onUnauthorized — scrub the journal key material (in-memory
+ * DEK + wrapped-DEK + salt) and purge the React Query cache both in memory
+ * (`clear()`) and on disk (`removeClient()` on the AsyncStorage persister), so
+ * the next account signing in on this device inherits neither the previous
+ * user's DEK nor any of their decrypted/cached journal data. Idempotent — safe
+ * to run from more than one path (profile-sheet also calls this pre-signOut).
+ */
+function purgeSessionState(): void {
+  lockJournal();
+  queryClient.clear();
+  void queryPersister.removeClient();
+}
 
 export default function RootLayout() {
   const router = useRouter();
@@ -157,9 +174,17 @@ export default function RootLayout() {
               audience: "meridian-api",
               biometric: "off",
             }}
-            onSignedOut={() => router.replace("/sign-in")}
+            onSignedOut={() => {
+              purgeSessionState();
+              router.replace("/sign-in");
+            }}
           >
-            <QueryProvider onUnauthorized={() => router.replace("/sign-in")}>
+            <QueryProvider
+              onUnauthorized={() => {
+                purgeSessionState();
+                router.replace("/sign-in");
+              }}
+            >
               <TamaguiProvider
                 config={tamaguiConfig}
                 defaultTheme={resolvedTheme}

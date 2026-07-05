@@ -6,12 +6,21 @@ import {
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
+import { randomBytes, createHash } from "crypto";
 import {
   JournalSecurity,
   JournalSecurityDocument,
 } from "./journal-security.schema";
 
 const EXPECTED_RECOVERY_CODE_COUNT = 8;
+
+// The recovery-session token proves `recover()` just succeeded; `finalize`
+// must run within this window or the user recovers again.
+const RECOVERY_SESSION_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("base64");
+}
 
 // Argon2id via Bun's native password API. Parameters match Bun's default
 // argon2id profile which is comparable to OWASP's recommended memory cost.
@@ -35,6 +44,8 @@ export interface FinalizeRecoveryPayload {
   passphraseSalt: string;
   recoveryWrappedDek: string;
   recoveryCodes: string[];
+  // Single-use proof returned by a prior `recover()` in this flow.
+  recoverySession: string;
 }
 
 @Injectable()
@@ -109,7 +120,7 @@ export class JournalSecurityService {
   async recover(
     userSub: string,
     submittedCodes: string[],
-  ): Promise<{ recoveryWrappedDek: string }> {
+  ): Promise<{ recoveryWrappedDek: string; recoverySession: string }> {
     if (submittedCodes.length !== EXPECTED_RECOVERY_CODE_COUNT) {
       throw new BadRequestException(
         `Must provide ${EXPECTED_RECOVERY_CODE_COUNT} codes`,
@@ -134,10 +145,17 @@ export class JournalSecurityService {
       throw new UnauthorizedException("Invalid recovery codes");
     }
 
+    // Mint a single-use, short-TTL session token gating the destructive
+    // finalize step. Only its hash is stored; the plaintext is returned once.
+    const recoverySession = randomBytes(32).toString("base64url");
     doc.recoveryCodesRemaining = Math.max(0, doc.recoveryCodesRemaining - 1);
+    doc.recoverySessionHash = hashToken(recoverySession);
+    doc.recoverySessionExpiresAt = new Date(
+      Date.now() + RECOVERY_SESSION_TTL_MS,
+    );
     await doc.save();
 
-    return { recoveryWrappedDek: doc.recoveryWrappedDek };
+    return { recoveryWrappedDek: doc.recoveryWrappedDek, recoverySession };
   }
 
   // Delete the single journal-security doc for the user. One doc per user
@@ -161,6 +179,21 @@ export class JournalSecurityService {
       throw new BadRequestException("Encryption is not set up");
     }
 
+    // Require a valid, unexpired recovery-session token from a prior recover().
+    // Without this, any bearer JWT could overwrite (and thus destroy) the
+    // wrapped DEKs — the server can't decrypt to validate, so proof-of-recovery
+    // is the only guard. Burn the token after use (single-use).
+    if (
+      !doc.recoverySessionHash ||
+      !doc.recoverySessionExpiresAt ||
+      doc.recoverySessionExpiresAt.getTime() < Date.now() ||
+      doc.recoverySessionHash !== hashToken(dto.recoverySession)
+    ) {
+      throw new UnauthorizedException(
+        "Recovery session is missing, expired, or invalid — recover again",
+      );
+    }
+
     const hashes = await Promise.all(
       dto.recoveryCodes.map((code) =>
         Bun.password.hash(code, PASSWORD_HASH_OPTIONS),
@@ -172,6 +205,9 @@ export class JournalSecurityService {
     doc.recoveryWrappedDek = dto.recoveryWrappedDek;
     doc.recoveryCodeHashes = hashes;
     doc.recoveryCodesRemaining = EXPECTED_RECOVERY_CODE_COUNT;
+    // Burn the session so it can't be replayed.
+    doc.recoverySessionHash = null;
+    doc.recoverySessionExpiresAt = null;
     await doc.save();
   }
 }

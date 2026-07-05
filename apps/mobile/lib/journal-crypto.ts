@@ -109,8 +109,19 @@ export async function checkJournalStatus(): Promise<void> {
       salt?: string | null;
       encryptionEnabled?: boolean;
     }>("/journal-security/keys");
-    wrappedDek = data.wrappedDek ?? null;
-    salt = data.salt ?? null;
+    const nextWrappedDek = data.wrappedDek ?? null;
+    const nextSalt = data.salt ?? null;
+    // SECURITY (cross-account DEK bleed): if the server's key material differs
+    // from what we hold while a DEK is still in memory, a DIFFERENT account has
+    // signed in on this device — the held DEK belongs to the previous user.
+    // Re-lock so a stale DEK can't be treated as unlocked (which would encrypt
+    // the new account's entries with the previous account's key = data loss).
+    if (dek !== null && (nextWrappedDek !== wrappedDek || nextSalt !== salt)) {
+      dek = null;
+      commit({ isUnlocked: false });
+    }
+    wrappedDek = nextWrappedDek;
+    salt = nextSalt;
     commit({ isSetup: !!data.encryptionEnabled });
   } catch {
     // Offline / 5xx: we can't know the encryption state, so treat it as
@@ -250,10 +261,13 @@ export async function recoverJournalWithCodes(
 ): Promise<string[]> {
   if (!userSub) throw new Error("Not authenticated");
 
-  const { data } = await apiClient.post<{ recoveryWrappedDek: string }>(
-    "/journal-security/recover",
-    { codes },
-  );
+  const { data } = await apiClient.post<{
+    recoveryWrappedDek: string;
+    // Single-use token minted by /recover — the server now REQUIRES it back on
+    // /recover/finalize (401 without it) so the two-step recovery can't be
+    // replayed or finalized out of band.
+    recoverySession: string;
+  }>("/journal-security/recover", { codes });
 
   const recoveryKey = await deriveRecoveryMasterKey(codes, userSub);
   const recoveredDek = await unwrapDEK(data.recoveryWrappedDek, recoveryKey);
@@ -272,6 +286,9 @@ export async function recoverJournalWithCodes(
     passphraseSalt: newSaltStr,
     recoveryWrappedDek: newRecoveryWrappedDek,
     recoveryCodes: newCodes,
+    // Prove this finalize belongs to the /recover call above (server 401s
+    // without the matching single-use token).
+    recoverySession: data.recoverySession,
   });
 
   dek = recoveredDek;
@@ -282,15 +299,38 @@ export async function recoverJournalWithCodes(
   return newCodes;
 }
 
-/** Drop the DEK from memory — re-locks the journal until the next unlock. */
+/**
+ * Drop ALL journal key material from memory and reset the lock state — the
+ * hard reset used on sign-out (and the 401 path). Clears not just the DEK but
+ * the wrapped-DEK + salt + isSetup flag too, so the NEXT account signing in on
+ * this device starts from a blank slate (no inherited DEK, no stale "is this
+ * account encrypted?" answer). The plain re-lock during a session (e.g. an
+ * app-lock timeout) would only need `dek = null`, but sign-out must scrub
+ * everything, and this is the single call both use.
+ *
+ * GOAL invariant: after this runs, dek is null, isUnlocked is false, and no
+ * previous-account key material survives in module state.
+ */
 export function lockJournal(): void {
   dek = null;
-  commit({ isUnlocked: false });
+  wrappedDek = null;
+  salt = null;
+  commit({ isSetup: false, isUnlocked: false });
 }
 
 /** Current in-memory DEK, or null when locked. */
 export function getJournalDek(): PortableKey | null {
   return dek;
+}
+
+/**
+ * Whether journal encryption is configured for the signed-in account. Read by
+ * the write hooks (useCreateJournal / useUpdateJournal) to REFUSE sending
+ * plaintext when encryption is set up but the DEK isn't in memory (locked) —
+ * the "never write plaintext when encryption is set up" invariant.
+ */
+export function isJournalEncryptionSetup(): boolean {
+  return snapshot.isSetup;
 }
 
 /* ----------------------------- Decryption ---------------------------------- */

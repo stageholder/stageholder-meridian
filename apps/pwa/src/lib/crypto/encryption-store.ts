@@ -179,7 +179,13 @@ export const useEncryptionStore = create<EncryptionState>()((set, get) => ({
     if (!userSub) throw new Error("Not authenticated");
 
     const res = await apiClient.post("/journal-security/recover", { codes });
-    const { recoveryWrappedDek } = res.data as { recoveryWrappedDek: string };
+    // recoverySession is a single-use, short-TTL proof the server requires on
+    // finalize (which irreversibly overwrites the wrapped DEKs) — without it
+    // finalize now 401s.
+    const { recoveryWrappedDek, recoverySession } = res.data as {
+      recoveryWrappedDek: string;
+      recoverySession: string;
+    };
 
     const recoveryKey = await deriveRecoveryMasterKey(codes, userSub);
     const dek = await unwrapDEK(recoveryWrappedDek, recoveryKey);
@@ -197,6 +203,7 @@ export const useEncryptionStore = create<EncryptionState>()((set, get) => ({
       passphraseSalt: saltToBase64(newSalt),
       recoveryWrappedDek: newRecoveryWrappedDek,
       recoveryCodes: newCodes,
+      recoverySession,
     });
 
     set({
