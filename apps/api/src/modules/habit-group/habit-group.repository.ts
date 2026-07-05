@@ -56,6 +56,36 @@ export class HabitGroupRepository {
   }
 
   /**
+   * Highest `order` among the user's live groups (-1 if none). A new group
+   * lands at `max + 1`, which stays stable even after a seed is soft-deleted
+   * (where a bare count could fall below the max and collide).
+   */
+  async maxOrderForUser(userSub: string): Promise<number> {
+    const top = await this.model
+      .findOne({ userSub, deleted_at: null })
+      .sort({ order: -1 })
+      .select("order")
+      .lean();
+    return top?.order ?? -1;
+  }
+
+  // Batch order updates in one round-trip; each filter userSub-scoped.
+  async reorder(
+    userSub: string,
+    items: { id: string; order: number }[],
+  ): Promise<void> {
+    if (!items.length) return;
+    await this.model.bulkWrite(
+      items.map((item) => ({
+        updateOne: {
+          filter: { _id: item.id, userSub, deleted_at: null },
+          update: { $set: { order: item.order } },
+        },
+      })),
+    );
+  }
+
+  /**
    * Counts ALL groups for the user INCLUDING soft-deleted. The time-of-day
    * seed runs only when this is zero, so deleting every group does not
    * re-spawn the four defaults on the next fetch.

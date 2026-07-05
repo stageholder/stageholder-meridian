@@ -39,6 +39,8 @@ import {
   type HabitStatusFilter,
   type HabitDayEntry,
 } from "@repo/core/habits/status-filter";
+import { weeklyCompletions } from "@repo/core/habits/entry-resolution";
+import { addDays, format, startOfWeek } from "date-fns";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import {
@@ -114,8 +116,9 @@ export default function HabitsScreen() {
   const [reorderGroupsOpen, setReorderGroupsOpen] = useState(false);
 
   const isArchivedView = activeChip === ARCHIVED_CHIP;
-  // Archived view fetches its own cache lazily (only when that chip is active).
-  const archivedQuery = useArchivedHabits();
+  // Archived view fetches its own cache lazily — the query is gated so it only
+  // hits the network when that chip is actually active.
+  const archivedQuery = useArchivedHabits(isArchivedView);
 
   // Status filter data — today's date + the calendar month (only fetched when
   // a status filter is active; disabled by passing an empty string).
@@ -127,7 +130,10 @@ export default function HabitsScreen() {
   // Map habitId → today's entry for the status-filter predicate.
   const entryByHabit = useMemo<Map<string, HabitDayEntry>>(() => {
     const m = new Map<string, HabitDayEntry>();
-    for (const e of calendarData?.[today]?.habitEntries ?? []) {
+    // Array.isArray guard — a rehydrated persisted-cache day could carry a
+    // non-array habitEntries and throw on this first render (before refetch).
+    const todayEntries = calendarData?.[today]?.habitEntries;
+    for (const e of Array.isArray(todayEntries) ? todayEntries : []) {
       m.set(e.habitId, {
         value: e.value,
         type: e.type,
@@ -136,6 +142,45 @@ export default function HabitsScreen() {
     }
     return m;
   }, [calendarData, today]);
+
+  // For weekly_target (quota) habits, whether THIS week's quota is already met.
+  // Quota habits track weekly, not per-day, so once the week's quota is reached
+  // they read as "done" (and never "todo") regardless of a per-day entry. Built
+  // from the month calendar data across the 7 days of the current (Mon-start)
+  // week — only computed while a status filter is active.
+  const weeklyMetByHabit = useMemo<Map<string, boolean>>(() => {
+    const m = new Map<string, boolean>();
+    if (statusFilter === "all") return m;
+    const weekStart = startOfWeek(new Date(today + "T00:00:00"), {
+      weekStartsOn: 1,
+    });
+    for (const h of habitsQuery.data ?? []) {
+      if (h.frequency !== "weekly_target") continue;
+      // This habit's entries across the current week, keyed yyyy-MM-dd.
+      const weekEntries = new Map<
+        string,
+        { value: number; type?: string; targetCountSnapshot?: number }
+      >();
+      for (let i = 0; i <= 6; i++) {
+        const dayKey = format(addDays(weekStart, i), "yyyy-MM-dd");
+        const dayEntries = calendarData?.[dayKey]?.habitEntries;
+        if (!Array.isArray(dayEntries)) continue;
+        const e = dayEntries.find((x) => x.habitId === h.id);
+        if (e) {
+          weekEntries.set(dayKey, {
+            value: e.value,
+            type: e.type,
+            targetCountSnapshot: e.targetCountSnapshot,
+          });
+        }
+      }
+      m.set(
+        h.id,
+        weeklyCompletions(weekEntries, weekStart, h) >= (h.weeklyTarget ?? 1),
+      );
+    }
+    return m;
+  }, [habitsQuery.data, calendarData, today, statusFilter]);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -165,7 +210,16 @@ export default function HabitsScreen() {
   const sections = useMemo<Section[]>(() => {
     const activeStatus = statusFilter !== "all" ? statusFilter : undefined;
     const filtered = habits.filter((h) =>
-      matchesHabitStatus(h, activeStatus, entryByHabit.get(h.id), today),
+      matchesHabitStatus(
+        h,
+        activeStatus,
+        entryByHabit.get(h.id),
+        today,
+        // Quota habits evaluate by weekly progress; per-day for everything else.
+        h.frequency === "weekly_target"
+          ? weeklyMetByHabit.get(h.id)
+          : undefined,
+      ),
     );
     const byOrder = (a: Habit, b: Habit) => (a.order ?? 0) - (b.order ?? 0);
 
@@ -189,7 +243,7 @@ export default function HabitsScreen() {
       });
     }
     return result;
-  }, [habits, groups, statusFilter, entryByHabit, today]);
+  }, [habits, groups, statusFilter, entryByHabit, weeklyMetByHabit, today]);
 
   // When a real group is the active filter, render only that section.
   const visibleSections = useMemo(() => {
@@ -245,6 +299,17 @@ export default function HabitsScreen() {
     !archivedQuery.isLoading &&
     !archivedQuery.error &&
     archivedHabits.length === 0;
+  // Active real group selected, no status filter, but that group has no habits
+  // — without this the screen would render blank (no empty state) (L4).
+  const groupEmpty =
+    !habitsQuery.isLoading &&
+    !habitsQuery.error &&
+    !isArchivedView &&
+    hasHabits &&
+    statusFilter === "all" &&
+    !!activeChip &&
+    activeChip !== ARCHIVED_CHIP &&
+    visibleSections.length === 0;
 
   return (
     <YStack flex={1} bg="$background">
@@ -392,6 +457,21 @@ export default function HabitsScreen() {
                   </EmptyState>
                 ) : null}
 
+                {/* Active group with no habits (no status filter) — mirror the
+                    generic empty state so the screen never renders blank. */}
+                {groupEmpty ? (
+                  <EmptyState>
+                    <EmptyState.IconSlot>
+                      <Text fontSize={28}>◎</Text>
+                    </EmptyState.IconSlot>
+                    <EmptyState.Title>No habits in this group</EmptyState.Title>
+                    <EmptyState.Description>
+                      Tap the + button to add a habit here, or move an existing
+                      one into this group.
+                    </EmptyState.Description>
+                  </EmptyState>
+                ) : null}
+
                 {/* Group-sectioned list. When a single group is the active
                     filter, its header is hidden (the chip already names it). */}
                 {visibleSections.map((section) => (
@@ -407,6 +487,10 @@ export default function HabitsScreen() {
                       activeChip !== ARCHIVED_CHIP &&
                       visibleSections.length === 1
                     }
+                    // Reordering re-indexes only the VISIBLE habits, which
+                    // would collide with filtered-out habits' orders — so drag
+                    // is disabled whenever a status filter is active (M5).
+                    reorderDisabled={statusFilter !== "all"}
                     onEdit={setEditingHabit}
                     onOpenDetail={openDetail}
                     onArchive={archive}

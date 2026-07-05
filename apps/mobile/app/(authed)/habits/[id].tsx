@@ -125,10 +125,13 @@ export default function HabitDetailScreen() {
   // Month window for the day being edited — backs the action panel's
   // PATCH/undo entry lookups (tracks the calendar's selected day).
   const editAnchor = selectedDate ? parseDateLocal(selectedDate) : new Date();
-  const { data: monthEntries } = useHabitEntries(id, {
-    startDate: format(startOfMonth(editAnchor), "yyyy-MM-dd"),
-    endDate: format(endOfMonth(editAnchor), "yyyy-MM-dd"),
-  });
+  const { data: monthEntries, isFetching: monthFetching } = useHabitEntries(
+    id,
+    {
+      startDate: format(startOfMonth(editAnchor), "yyyy-MM-dd"),
+      endDate: format(endOfMonth(editAnchor), "yyyy-MM-dd"),
+    },
+  );
 
   /* ---- Entry maps + stats — ported VERBATIM from the PWA page ---- */
 
@@ -357,7 +360,11 @@ export default function HabitDetailScreen() {
     checkIn.isPending ||
     updateEntry.isPending ||
     skipEntry.isPending ||
-    failEntry.isPending;
+    failEntry.isPending ||
+    // Cross-month select-then-record can 409 if a tap lands before the newly
+    // anchored month's entries load — gate the day actions on that fetch so a
+    // duplicate POST can't slip through (L10c).
+    monthFetching;
 
   /* ---- Day actions — same create-or-PATCH decisions as the PWA ---- */
 
@@ -366,9 +373,10 @@ export default function HabitDetailScreen() {
     const existing = monthEntryObjMap.get(dateStr);
     const currentEntry = monthEntryMap.get(dateStr);
     const currentVal = currentEntry?.value ?? 0;
-    const checkTarget = existing
-      ? resolveTargetCount(existing, habit)
-      : habit.targetCount;
+    // Floor the target to 1 — a targetCount of 0 would make `0 >= 0` wrongly
+    // report the day already complete and block the check-in (L7).
+    const checkTarget =
+      (existing ? resolveTargetCount(existing, habit) : habit.targetCount) || 1;
     if (
       currentEntry?.type !== "skip" &&
       currentEntry?.type !== "fail" &&

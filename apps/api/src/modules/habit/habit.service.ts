@@ -1,6 +1,12 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  Injectable,
+  NotFoundException,
+  Inject,
+  forwardRef,
+} from "@nestjs/common";
 import type { StageholderUser } from "@stageholder/sdk/core";
 import { HabitRepository } from "./habit.repository";
+import { HabitGroupRepository } from "../habit-group/habit-group.repository";
 import { Habit, HabitFrequency } from "./habit.entity";
 import { CreateHabitDto, UpdateHabitDto, ReorderHabitsDto } from "./habit.dto";
 import { enforceLimit } from "../../common/helpers/entitlement";
@@ -13,7 +19,27 @@ import {
 
 @Injectable()
 export class HabitService {
-  constructor(private readonly repository: HabitRepository) {}
+  constructor(
+    private readonly repository: HabitRepository,
+    // Circular by design (see module forwardRef): validate a habit's target
+    // group belongs to the user.
+    @Inject(forwardRef(() => HabitGroupRepository))
+    private readonly groupRepository: HabitGroupRepository,
+  ) {}
+
+  /**
+   * Assert the target group exists and belongs to the user. `null` (Ungrouped)
+   * always passes. Guards create / update / reorder so a habit can never point
+   * at a foreign or non-existent group (which would hide it from every view).
+   */
+  private async assertOwnsGroup(
+    userSub: string,
+    groupId: string | null | undefined,
+  ): Promise<void> {
+    if (!groupId) return;
+    const group = await this.groupRepository.findById(userSub, groupId);
+    if (!group) throw new NotFoundException("Habit group not found");
+  }
 
   async create(
     userSub: string,
@@ -24,6 +50,7 @@ export class HabitService {
       this.repository.countActiveForUser(userSub),
     );
     const groupId = dto.groupId ?? null;
+    await this.assertOwnsGroup(userSub, groupId);
     const order = await this.repository.countByGroup(userSub, groupId);
     const result = Habit.create({
       name: dto.name,
@@ -98,7 +125,17 @@ export class HabitService {
     if (dto.unit !== undefined) habit.updateUnit(dto.unit);
     if (dto.color !== undefined) habit.updateColor(dto.color);
     if (dto.icon !== undefined) habit.updateIcon(dto.icon);
-    if (dto.groupId !== undefined) habit.updateGroupId(dto.groupId ?? null);
+    // Move between groups: validate ownership and re-slot at the end of the
+    // target group (otherwise the habit keeps its old order and collides).
+    if (dto.groupId !== undefined) {
+      const newGroupId = dto.groupId ?? null;
+      if (newGroupId !== habit.groupId) {
+        await this.assertOwnsGroup(userSub, newGroupId);
+        const order = await this.repository.countByGroup(userSub, newGroupId);
+        habit.updateGroupId(newGroupId);
+        habit.updateOrder(order);
+      }
+    }
     await this.repository.save(habit);
     return habit;
   }
@@ -118,13 +155,20 @@ export class HabitService {
   }
 
   async reorder(userSub: string, dto: ReorderHabitsDto): Promise<void> {
-    for (const item of dto.items) {
-      const habit = await this.repository.findById(userSub, item.id);
-      if (!habit || habit.archivedAt) continue;
-      habit.updateOrder(item.order);
-      if (item.groupId !== undefined) habit.updateGroupId(item.groupId ?? null);
-      await this.repository.save(habit);
+    // Validate every distinct target group up-front so a drag can't strand a
+    // habit in a group the user doesn't own; then apply the whole batch in one
+    // bulkWrite (userSub-scoped filters skip archived/foreign ids).
+    const groupIds = [
+      ...new Set(
+        dto.items
+          .map((i) => i.groupId)
+          .filter((g): g is string => typeof g === "string"),
+      ),
+    ];
+    for (const groupId of groupIds) {
+      await this.assertOwnsGroup(userSub, groupId);
     }
+    await this.repository.reorder(userSub, dto.items);
   }
 
   async listArchived(userSub: string) {

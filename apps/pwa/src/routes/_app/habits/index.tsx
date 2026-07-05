@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { format } from "date-fns";
+import { format, startOfWeek, addDays } from "date-fns";
 import { LayoutGrid, List as ListIcon, Plus, Target } from "lucide-react";
 import {
   Button,
@@ -19,6 +19,7 @@ import {
   type HabitStatusFilter,
   type HabitDayEntry,
 } from "@repo/core/habits/status-filter";
+import { weeklyCompletions } from "@repo/core/habits/entry-resolution";
 import { HabitDateNav } from "@/components/habits/habit-date-nav";
 import { CreateHabitDialog } from "@/components/habits/create-habit-dialog";
 import { MoveToGroupDialog } from "@/components/habits/move-to-group-dialog";
@@ -91,12 +92,61 @@ function HabitsPage() {
     return m;
   }, [calendar, selectedDate]);
 
+  // For quota (`weekly_target`) habits, "done"/"todo" is decided by the WEEK's
+  // progress, not the selected day. Build per-habit weekly completion counts
+  // from the (monthly) calendar data over the Monday-start week containing the
+  // selected date, so a quota habit whose week is already satisfied stops
+  // showing under "To do".
+  const weeklyMetByHabit = useMemo(() => {
+    const met = new Map<string, boolean>();
+    if (!status || !calendar) return met;
+    const quotaHabits = ((habits ?? []) as Habit[]).filter(
+      (h) => h.frequency === "weekly_target",
+    );
+    if (quotaHabits.length === 0) return met;
+    const weekStart = startOfWeek(parseDateLocal(selectedDate), {
+      weekStartsOn: 1,
+    });
+    // One entry-map per quota habit across the 7 days of the week.
+    const maps = new Map<
+      string,
+      Map<
+        string,
+        { value: number; type?: string; targetCountSnapshot?: number }
+      >
+    >();
+    for (const h of quotaHabits) maps.set(h.id, new Map());
+    for (let i = 0; i < 7; i++) {
+      const dayKey = format(addDays(weekStart, i), "yyyy-MM-dd");
+      for (const e of calendar[dayKey]?.habitEntries ?? []) {
+        const map = maps.get(e.habitId);
+        if (!map) continue;
+        map.set(dayKey, {
+          value: e.value,
+          type: e.type,
+          targetCountSnapshot: e.targetCountSnapshot,
+        });
+      }
+    }
+    for (const h of quotaHabits) {
+      const done = weeklyCompletions(maps.get(h.id)!, weekStart, h);
+      met.set(h.id, done >= (h.weeklyTarget ?? 1));
+    }
+    return met;
+  }, [status, calendar, habits, selectedDate]);
+
   // Section habits by group: ordered groups first, then "Ungrouped" LAST and
   // only when it has members. Within each section, sort by the habit `order`.
   // A status filter (if any) is applied to the full set first.
   const sections = useMemo<Section[]>(() => {
     const all = ((habits ?? []) as Habit[]).filter((h) =>
-      matchesHabitStatus(h, status, entryByHabit.get(h.id), selectedDate),
+      matchesHabitStatus(
+        h,
+        status,
+        entryByHabit.get(h.id),
+        selectedDate,
+        weeklyMetByHabit.get(h.id),
+      ),
     );
     const byOrder = (a: Habit, b: Habit) => (a.order ?? 0) - (b.order ?? 0);
     const orderedGroups = groups
@@ -104,6 +154,7 @@ function HabitsPage() {
           (a: HabitGroup, b: HabitGroup) => (a.order ?? 0) - (b.order ?? 0),
         )
       : [];
+    const knownGroupIds = new Set(orderedGroups.map((g) => g.id));
 
     const result: Section[] = orderedGroups.map((g) => ({
       id: g.id,
@@ -114,7 +165,12 @@ function HabitsPage() {
       habits: all.filter((h) => h.groupId === g.id).sort(byOrder),
     }));
 
-    const ungrouped = all.filter((h) => !h.groupId).sort(byOrder);
+    // Ungrouped = no group OR a dangling groupId that matches no loaded group
+    // (e.g. the brief window during a group delete) — otherwise such a habit
+    // would satisfy neither a group section nor `!h.groupId` and vanish.
+    const ungrouped = all
+      .filter((h) => !h.groupId || !knownGroupIds.has(h.groupId))
+      .sort(byOrder);
     if (ungrouped.length > 0) {
       result.push({
         id: "__ungrouped__",
@@ -125,7 +181,7 @@ function HabitsPage() {
       });
     }
     return result;
-  }, [habits, groups, status, entryByHabit, selectedDate]);
+  }, [habits, groups, status, entryByHabit, selectedDate, weeklyMetByHabit]);
 
   const hasHabits = (habits?.length ?? 0) > 0;
   const filteredCount = sections.reduce((n, s) => n + s.habits.length, 0);

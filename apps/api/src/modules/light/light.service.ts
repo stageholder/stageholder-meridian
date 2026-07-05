@@ -132,30 +132,50 @@ export class LightService {
     });
   }
 
+  /**
+   * Award check-in Light for a habit entry.
+   *
+   * Idempotency is keyed on `(habitId, entryDate)` — NOT the entry's UUID — so
+   * deleting + recreating an entry for the same day never re-awards, and Light
+   * is credited to the day the habit was actually done (`entryDate`), not the
+   * server's "today". A same-day check-in flows through the full `awardLight`
+   * path (drives today's ring/streak recompute); a back-dated entry is credited
+   * flat, because the ring/streak state machine is forward-only and replaying a
+   * past date through it would corrupt the streak baseline.
+   */
   async awardHabitCheckin(
     userSub: string,
     habitId: string,
-    entryId: string,
+    entryDate: string,
   ): Promise<void> {
-    const date = await this.getTodayForUser(userSub);
+    const entityId = `habit_${habitId}_${entryDate}`;
     const exists = await this.lightEventRepo.existsForEntityOnDate(
       userSub,
       "habit_checkin",
-      date,
-      entryId,
+      entryDate,
+      entityId,
     );
     if (exists) return;
 
-    await this.awardLight(
-      userSub,
-      "habit_checkin",
-      LIGHT_ACTIONS.HABIT_CHECKIN,
-      date,
-      {
-        entityId: entryId,
-        habitId,
-      },
-    );
+    const today = await this.getTodayForUser(userSub);
+    const metadata = { entityId, habitId };
+    if (entryDate === today) {
+      await this.awardLight(
+        userSub,
+        "habit_checkin",
+        LIGHT_ACTIONS.HABIT_CHECKIN,
+        entryDate,
+        metadata,
+      );
+    } else {
+      await this.awardLightFlat(
+        userSub,
+        "habit_checkin",
+        LIGHT_ACTIONS.HABIT_CHECKIN,
+        entryDate,
+        metadata,
+      );
+    }
   }
 
   async awardJournalEntry(userSub: string, journalId: string): Promise<void> {
@@ -213,7 +233,12 @@ export class LightService {
   private async evaluateDayForEntity(
     userLight: UserLight,
     userSub: string,
-    rings: { todo: boolean; habit: boolean; journal: boolean },
+    rings: {
+      todo: boolean;
+      habit: boolean;
+      habitEarned?: boolean;
+      journal: boolean;
+    },
     date: string,
     mode: "finalize" | "recompute" = "finalize",
   ): Promise<void> {
@@ -259,7 +284,10 @@ export class LightService {
     const habitRingStreak = computeStreak(rings.habit, base.habit);
     const journalRingStreak = computeStreak(rings.journal, base.journal);
 
-    const isPerfectDay = rings.todo && rings.habit && rings.journal;
+    // Perfect Day requires the habit ring to be EARNED (>=1 real check-in),
+    // not merely shown complete via all-skips.
+    const habitEarned = rings.habitEarned ?? rings.habit;
+    const isPerfectDay = rings.todo && habitEarned && rings.journal;
     const perfectDayStreak: number | null = isPerfectDay
       ? isConsecutive
         ? base.perfect + 1
@@ -474,15 +502,64 @@ export class LightService {
     );
   }
 
+  /**
+   * Credit Light for a PAST date without touching the forward-only ring/streak
+   * state machine. Records the event (base light, multiplier 1 — no perfect-day
+   * multiplier for back-fill), adds it to the user's total with tier-up
+   * detection, and persists — but does NOT run the previous-day finalize or the
+   * real-time ring recompute (both assume `date` is "today"; replaying a past
+   * day would rewind `lastActiveDate` and scramble streaks).
+   */
+  private async awardLightFlat(
+    userSub: string,
+    action: LightAction,
+    baseLight: number,
+    date: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    const userLight = await this.getOrCreateUserLight(userSub);
+    const eventResult = LightEvent.create({
+      userSub,
+      action,
+      baseLight,
+      multiplier: 1,
+      totalLight: baseLight,
+      date,
+      metadata,
+    });
+    if (!eventResult.ok) return;
+    await this.lightEventRepo.save(eventResult.value);
+    const { tieredUp, newTitle } = this.addLightAndDetectTierUp(
+      userLight,
+      baseLight,
+    );
+    await this.userLightRepo.save(userLight);
+    if (tieredUp) {
+      this.notifyAchievement(
+        userSub,
+        "Tier Up!",
+        `You've reached ${newTitle}!`,
+      );
+    }
+  }
+
   private async checkRingCompletionBonus(
     userLight: UserLight,
     userSub: string,
     date: string,
-    currentRings: { todo: boolean; habit: boolean; journal: boolean },
+    currentRings: {
+      todo: boolean;
+      habit: boolean;
+      habitEarned?: boolean;
+      journal: boolean;
+    },
   ): Promise<void> {
+    // The habit bonus is gated on `habitEarned` (>=1 real check-in), not the
+    // display `habit` flag — an all-skip ring shows complete but earns no bonus.
+    const habitBonusEligible = currentRings.habitEarned ?? currentRings.habit;
     const ringChecks: { ring: string; complete: boolean }[] = [
       { ring: "todo", complete: currentRings.todo },
-      { ring: "habit", complete: currentRings.habit },
+      { ring: "habit", complete: habitBonusEligible },
       { ring: "journal", complete: currentRings.journal },
     ];
 
@@ -523,8 +600,8 @@ export class LightService {
       }
     }
 
-    // All rings bonus
-    if (currentRings.todo && currentRings.habit && currentRings.journal) {
+    // All rings bonus — habit component must be earned (>=1 real check-in).
+    if (currentRings.todo && habitBonusEligible && currentRings.journal) {
       const allRingsEntityId = `ring_all_${date}`;
       const allRingsExists = await this.lightEventRepo.existsForEntityOnDate(
         userSub,
@@ -582,7 +659,12 @@ export class LightService {
     userSub: string,
     date: string,
     todoTarget?: number,
-  ): Promise<{ todo: boolean; habit: boolean; journal: boolean }> {
+  ): Promise<{
+    todo: boolean;
+    habit: boolean;
+    habitEarned: boolean;
+    journal: boolean;
+  }> {
     const [todoEvents, habitEvents, journalEvents, userHabitIds] =
       await Promise.all([
         this.lightEventRepo.countByUserActionDate(
@@ -619,10 +701,21 @@ export class LightService {
 
     const effectiveTodoTarget = todoTarget ?? DEFAULT_TARGETS.todoDaily;
 
+    // Habit ring shows "complete" when every habit is checked in OR skipped (a
+    // skip is a legitimate rest, it doesn't break the ring). But the ring is
+    // only "earned" — eligible for the completion bonus + Perfect Day — when
+    // there was at least one real check-in (or the user has no habits at all,
+    // in which case the ring is vacuously satisfied). This stops an all-skip
+    // day from farming the ring bonus for zero effort.
+    const habitComplete =
+      totalHabits === 0 || habitEvents + skipCount >= totalHabits;
+    const habitEarned =
+      totalHabits === 0 || (habitComplete && habitEvents >= 1);
+
     return {
       todo: todoEvents >= effectiveTodoTarget,
-      // Habit ring complete if all habits checked in or skipped, or no habits exist
-      habit: totalHabits === 0 || habitEvents + skipCount >= totalHabits,
+      habit: habitComplete,
+      habitEarned,
       journal: journalEvents > 0,
     };
   }

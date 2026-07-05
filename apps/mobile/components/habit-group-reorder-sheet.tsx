@@ -48,11 +48,14 @@ export function HabitGroupReorderSheet({
   // the server round-trip + invalidation.
   const [ordered, setOrdered] = useState<HabitGroup[]>(groups);
 
-  // Re-sync when the sheet opens or the upstream list changes (e.g. a new
-  // group was added just before opening).
+  // Re-sync only when the sheet opens (reads the latest upstream order at that
+  // moment). Depending on `groups` too would let an upstream invalidation
+  // snap a mid-drag reorder back to the server order while the sheet is open.
   useEffect(() => {
+    if (!open) return;
     setOrdered([...groups].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
-  }, [groups, open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   function handleReorder(from: number, to: number) {
     const next = reorderItems(ordered, from, to);

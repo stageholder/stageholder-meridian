@@ -58,7 +58,19 @@ export const EMPTY_DAY: CalendarDayData = {
 
 async function fetchCalendarMonth(month: string): Promise<CalendarData> {
   const res = await apiClient.get(`/calendar`, { params: { month } });
-  return res.data?.data ?? res.data;
+  const data: CalendarData = res.data?.data ?? res.data;
+  // Persisted-cache trap: a rehydrated day could carry a non-array
+  // `habitEntries` (or the day object could be malformed). Normalize the
+  // per-day arrays so consumers can iterate without an Array.isArray guard.
+  if (data && typeof data === "object") {
+    for (const day of Object.values(data)) {
+      if (!day) continue;
+      if (!Array.isArray(day.habitEntries)) day.habitEntries = [];
+      if (!Array.isArray(day.todos)) day.todos = [];
+      if (!Array.isArray(day.journals)) day.journals = [];
+    }
+  }
+  return data;
 }
 
 export function useCalendarData(month: string) {

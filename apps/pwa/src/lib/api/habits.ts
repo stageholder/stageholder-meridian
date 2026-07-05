@@ -96,8 +96,11 @@ export function useUpdateHabit() {
     }
   >({
     mutationFn: ({ id, data }) => habitsApi.update(id, data),
-    onSuccess: () => {
+    onSuccess: (_data, { id }) => {
       void queryClient.invalidateQueries({ queryKey: ["habits"] });
+      // The detail page reads ["habit", id] — a separate query nothing else
+      // refreshes, so the header/stats would show stale values after an edit.
+      void queryClient.invalidateQueries({ queryKey: ["habit", id] });
     },
   });
 }
@@ -216,7 +219,7 @@ export function useCreateHabitEntry() {
         type?: "completion" | "skip" | "fail";
       };
     },
-    { previous: HabitEntriesSnapshot }
+    { previous: HabitEntriesSnapshot; tempId: string }
   >({
     mutationFn: ({ habitId, data }) => habitsApi.createEntry(habitId, data),
     onMutate: async ({ habitId, data }) => {
@@ -229,10 +232,12 @@ export function useCreateHabitEntry() {
         exact: false,
       });
 
-      // A temp-id optimistic entry so the card flips to "completed" instantly;
-      // onSettled refetch replaces it with the server's real entry.
+      // A temp-id optimistic entry so the card flips to "completed" instantly.
+      // onSuccess swaps in the real server entry so a fast follow-up action
+      // (e.g. an immediate Undo) PATCHes a real id, not this temp one → 404.
+      const tempId = `temp-${Date.now()}`;
       const optimistic = {
-        id: `temp-${Date.now()}`,
+        id: tempId,
         habitId,
         date: data.date,
         value: data.value,
@@ -247,7 +252,11 @@ export function useCreateHabitEntry() {
         queryClient.setQueryData<HabitEntry[]>(key, [...list, optimistic]);
       }
 
-      return { previous };
+      return { previous, tempId };
+    },
+    onSuccess: (serverEntry, _vars, context) => {
+      if (!context?.tempId) return;
+      replaceTempEntry(queryClient, context.tempId, serverEntry);
     },
     onError: (_err, _vars, context) => {
       if (!context?.previous) return;
@@ -263,6 +272,28 @@ export function useCreateHabitEntry() {
   });
 }
 
+// Swap an optimistic `temp-…` entry for the real server entry across every
+// cached habit-entry list, so its real id is present before the mutating
+// button re-enables (a follow-up PATCH/undo on a temp id would 404).
+function replaceTempEntry(
+  queryClient: ReturnType<typeof useQueryClient>,
+  tempId: string,
+  serverEntry: HabitEntry,
+) {
+  const caches = queryClient.getQueriesData<HabitEntry[]>({
+    queryKey: ["habitEntries"],
+    exact: false,
+  });
+  for (const [key, list] of caches) {
+    if (!Array.isArray(list)) continue;
+    if (!list.some((e) => e.id === tempId)) continue;
+    queryClient.setQueryData<HabitEntry[]>(
+      key,
+      list.map((e) => (e.id === tempId ? serverEntry : e)),
+    );
+  }
+}
+
 export function useSkipHabitEntry() {
   const queryClient = useQueryClient();
 
@@ -273,7 +304,7 @@ export function useSkipHabitEntry() {
       habitId: string;
       data: { date: string; skipReason?: string };
     },
-    { previous: HabitEntriesSnapshot }
+    { previous: HabitEntriesSnapshot; tempId: string }
   >({
     mutationFn: ({ habitId, data }) => {
       // Build via a variable so the {type, skipReason} extras flow through
@@ -298,8 +329,9 @@ export function useSkipHabitEntry() {
         exact: false,
       });
 
+      const tempId = `temp-${Date.now()}`;
       const optimistic = {
-        id: `temp-${Date.now()}`,
+        id: tempId,
         habitId,
         date: data.date,
         value: 0,
@@ -314,7 +346,11 @@ export function useSkipHabitEntry() {
         queryClient.setQueryData<HabitEntry[]>(key, [...list, optimistic]);
       }
 
-      return { previous };
+      return { previous, tempId };
+    },
+    onSuccess: (serverEntry, _vars, context) => {
+      if (!context?.tempId) return;
+      replaceTempEntry(queryClient, context.tempId, serverEntry);
     },
     onError: (_err, _vars, context) => {
       if (!context?.previous) return;
@@ -343,7 +379,7 @@ export function useFailHabitEntry() {
       habitId: string;
       data: { date: string };
     },
-    { previous: HabitEntriesSnapshot }
+    { previous: HabitEntriesSnapshot; tempId: string }
   >({
     mutationFn: ({ habitId, data }) => {
       const payload = {
@@ -363,8 +399,9 @@ export function useFailHabitEntry() {
         exact: false,
       });
 
+      const tempId = `temp-${Date.now()}`;
       const optimistic = {
-        id: `temp-${Date.now()}`,
+        id: tempId,
         habitId,
         date: data.date,
         value: 0,
@@ -378,7 +415,11 @@ export function useFailHabitEntry() {
         queryClient.setQueryData<HabitEntry[]>(key, [...list, optimistic]);
       }
 
-      return { previous };
+      return { previous, tempId };
+    },
+    onSuccess: (serverEntry, _vars, context) => {
+      if (!context?.tempId) return;
+      replaceTempEntry(queryClient, context.tempId, serverEntry);
     },
     onError: (_err, _vars, context) => {
       if (!context?.previous) return;
@@ -399,10 +440,37 @@ export function useReorderHabits() {
   return useMutation<
     void,
     Error,
-    { items: { id: string; order: number; groupId?: string | null }[] }
+    { items: { id: string; order: number; groupId?: string | null }[] },
+    { previous: Habit[] | undefined }
   >({
     mutationFn: (data) => habitsApi.reorder(data),
-    onSuccess: () => {
+    // Optimistically apply the new order/group so the grouped list holds the
+    // dropped position instead of snapping back until the refetch lands.
+    onMutate: async ({ items }) => {
+      await queryClient.cancelQueries({ queryKey: ["habits"] });
+      const previous = queryClient.getQueryData<Habit[]>(["habits"]);
+      if (Array.isArray(previous)) {
+        const patchById = new Map(items.map((i) => [i.id, i]));
+        queryClient.setQueryData<Habit[]>(
+          ["habits"],
+          previous.map((h) => {
+            const p = patchById.get(h.id);
+            if (!p) return h;
+            return {
+              ...h,
+              order: p.order,
+              ...(p.groupId !== undefined ? { groupId: p.groupId } : {}),
+            };
+          }),
+        );
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous)
+        queryClient.setQueryData(["habits"], context.previous);
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["habits"] });
     },
   });
@@ -412,10 +480,13 @@ export function useArchiveHabit() {
   const queryClient = useQueryClient();
   return useMutation<Habit, Error, string>({
     mutationFn: (id) => habitsApi.archive(id),
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       void queryClient.invalidateQueries({ queryKey: ["habits"] });
       void queryClient.invalidateQueries({ queryKey: ["habitsArchived"] });
       void queryClient.invalidateQueries({ queryKey: ["calendar"] });
+      // Refresh the detail page (its menu label + archived banner read
+      // ["habit", id]).
+      void queryClient.invalidateQueries({ queryKey: ["habit", id] });
     },
   });
 }
@@ -424,10 +495,11 @@ export function useUnarchiveHabit() {
   const queryClient = useQueryClient();
   return useMutation<Habit, Error, string>({
     mutationFn: (id) => habitsApi.unarchive(id),
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       void queryClient.invalidateQueries({ queryKey: ["habits"] });
       void queryClient.invalidateQueries({ queryKey: ["habitsArchived"] });
       void queryClient.invalidateQueries({ queryKey: ["calendar"] });
+      void queryClient.invalidateQueries({ queryKey: ["habit", id] });
     },
   });
 }

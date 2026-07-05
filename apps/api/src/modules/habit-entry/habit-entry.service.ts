@@ -30,6 +30,10 @@ export class HabitEntryService {
     habitId: string,
     dto: CreateHabitEntryDto,
   ): Promise<HabitEntry> {
+    // Verify habit ownership BEFORE any mutation (the ghost sweep below writes),
+    // so a request that will 404 doesn't touch data.
+    const habit = await this.habitRepository.findById(userSub, habitId);
+    if (!habit) throw new NotFoundException("Habit not found");
     const existing = await this.repository.findByHabitAndDate(
       userSub,
       habitId,
@@ -45,8 +49,6 @@ export class HabitEntryService {
     // Sweep it before inserting — safe because the ghost was already
     // trashed by an earlier delete().
     await this.repository.hardDeleteGhost(userSub, habitId, dto.date);
-    const habit = await this.habitRepository.findById(userSub, habitId);
-    if (!habit) throw new NotFoundException("Habit not found");
     const isNonCompletion = dto.type === "skip" || dto.type === "fail";
     const result = HabitEntry.create({
       habitId,
@@ -60,10 +62,26 @@ export class HabitEntryService {
       userSub,
     });
     if (!result.ok) throw result.error;
-    await this.repository.save(result.value);
-    if (!isNonCompletion) {
+    // The find-then-insert guard above is not race-safe: two concurrent
+    // creates for the same (habit, date) both pass it, and the unique index
+    // rejects the loser with E11000. Convert that to the same 409 clients
+    // already handle (retry as PATCH) instead of leaking a 500.
+    try {
+      await this.repository.save(result.value);
+    } catch (err: any) {
+      if (err?.code === 11000) {
+        throw new ConflictException(
+          "Entry already exists for this habit on this date",
+        );
+      }
+      throw err;
+    }
+    // Award only for a real completion (value >= 1) — a value:0 "completion"
+    // represents no progress and must not mint Light. Credited to the entry's
+    // own date (idempotent per habit+date) so backfill isn't farmable.
+    if (!isNonCompletion && result.value.value >= 1) {
       await this.lightService
-        .awardHabitCheckin(userSub, habitId, result.value.id)
+        .awardHabitCheckin(userSub, habitId, result.value.date)
         .catch((err) => this.logger.warn("Failed to award light", err.message));
     }
     return result.value;
@@ -140,9 +158,9 @@ export class HabitEntryService {
     // place — award the light here. awardHabitCheckin is idempotent per
     // (userSub, "habit_checkin", date, entryId).
     const becameCompletion: boolean = entry.type === "completion";
-    if (wasNonCompletion && becameCompletion) {
+    if (wasNonCompletion && becameCompletion && entry.value >= 1) {
       await this.lightService
-        .awardHabitCheckin(userSub, entry.habitId, entry.id)
+        .awardHabitCheckin(userSub, entry.habitId, entry.date)
         .catch((err) => this.logger.warn("Failed to award light", err.message));
     }
     return entry;

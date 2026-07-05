@@ -61,9 +61,15 @@ export function HabitCard({
   const isViewingToday = !selectedDate || selectedDate === today;
   const ninetyDaysAgo = format(subDays(new Date(), 90), "yyyy-MM-dd");
 
+  // Always include the active date in the fetched window: the date-nav can jump
+  // past 90 days back, and if the selected day's entry isn't fetched the card
+  // reads it as un-acted and a check-in POSTs a duplicate → 409.
+  const startDate = activeDate < ninetyDaysAgo ? activeDate : ninetyDaysAgo;
+  const endDate = activeDate > today ? activeDate : today;
+
   const { data: entries } = useHabitEntries(habit.id, {
-    startDate: ninetyDaysAgo,
-    endDate: today,
+    startDate,
+    endDate,
   });
 
   const createEntry = useCreateHabitEntry();
@@ -154,7 +160,9 @@ export function HabitCard({
   }
 
   async function handleUndo() {
-    if (!activeDateEntry) return;
+    // Nothing to undo at 0 — and value-1 would be -1, which the API rejects
+    // (value must be >= 0).
+    if (!activeDateEntry || activeDateValue <= 0) return;
     try {
       await updateEntry.mutateAsync({
         habitId: habit.id,

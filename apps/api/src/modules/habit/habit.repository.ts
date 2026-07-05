@@ -109,12 +109,17 @@ export class HabitRepository {
   }
 
   /**
-   * Counts active (non-soft-deleted) habits for a user.
-   * Used by entitlement enforcement against the `max_habits` feature limit.
-   * The habit schema has no `archived` field, so "active" == not soft-deleted.
+   * Counts active habits for a user — excludes soft-deleted AND archived, to
+   * match every list/ring query and the meaning of "active". Used by
+   * entitlement enforcement against the `max_habits` limit, so archiving a
+   * habit frees a slot (the whole point of archive vs delete).
    */
   async countActiveForUser(userSub: string): Promise<number> {
-    return this.model.countDocuments({ userSub, deleted_at: null });
+    return this.model.countDocuments({
+      userSub,
+      deleted_at: null,
+      archived_at: null,
+    });
   }
 
   async findIdsByUser(userSub: string): Promise<string[]> {
@@ -145,6 +150,38 @@ export class HabitRepository {
       .select("_id")
       .lean();
     return docs.map((d) => d._id as string);
+  }
+
+  /**
+   * Apply a batch of order (and optional group) updates in one round-trip.
+   * Each filter is userSub-scoped and skips archived rows, so foreign/archived
+   * ids are no-ops. Replaces the per-item findById+save N+1 (and re-encrypt).
+   */
+  async reorder(
+    userSub: string,
+    items: { id: string; order: number; groupId?: string | null }[],
+  ): Promise<void> {
+    if (!items.length) return;
+    await this.model.bulkWrite(
+      items.map((item) => ({
+        updateOne: {
+          filter: {
+            _id: item.id,
+            userSub,
+            deleted_at: null,
+            archived_at: null,
+          },
+          update: {
+            $set: {
+              order: item.order,
+              ...(item.groupId !== undefined
+                ? { group_id: item.groupId ?? null }
+                : {}),
+            },
+          },
+        },
+      })),
+    );
   }
 
   async delete(userSub: string, id: string): Promise<void> {

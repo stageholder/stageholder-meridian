@@ -214,7 +214,10 @@ export function HabitForm({
   );
 
   function handleSubmit() {
-    if (!name.trim()) return;
+    // Guard isSubmitting too: the submit Button is disabled while pending, but
+    // pressing Enter in an Input fires Form.onSubmit directly past it — without
+    // this, a rapid Enter double-submits (duplicate habit / duplicate PATCH).
+    if (!name.trim() || isSubmitting) return;
     void onSubmit({
       name: name.trim(),
       description: description.trim() || undefined,

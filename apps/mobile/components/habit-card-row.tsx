@@ -174,8 +174,14 @@ export function HabitCardRow({
       }}
       onEdit={onEdit}
       onOpenDetail={onOpenDetail}
-      // Delete IS wired — the card's own AlertDialog confirms first.
-      onDelete={() => deleteHabit.mutate(habit.id)}
+      // Delete IS wired — the card's own AlertDialog confirms first. On failure
+      // the optimistic removal rolls back, so surface a toast (L10a).
+      onDelete={() =>
+        deleteHabit.mutate(habit.id, {
+          onError: () =>
+            toast.show({ title: "Couldn't delete habit", intent: "danger" }),
+        })
+      }
       // Group + archive affordances — present only when the host wires them.
       isArchived={isArchived}
       onArchive={onArchive}

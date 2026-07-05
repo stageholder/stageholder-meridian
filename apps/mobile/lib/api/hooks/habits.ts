@@ -226,7 +226,7 @@ export function useUnarchiveHabit() {
   });
 }
 
-export function useArchivedHabits() {
+export function useArchivedHabits(enabled = true) {
   return useQuery({
     queryKey: habitKeys.archived(),
     queryFn: async () => {
@@ -236,6 +236,9 @@ export function useArchivedHabits() {
       );
       return Array.isArray(data) ? data : data.data;
     },
+    // Lazy: only hit the network when the Archived view is actually active
+    // (the caller passes whether that chip is selected).
+    enabled,
   });
 }
 
@@ -304,6 +307,10 @@ export function useCheckInHabit() {
     onSettled: (_data, _error, vars) => {
       qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
       qc.invalidateQueries({ queryKey: habitKeys.lists() });
+      // The habits screen's To-do/Done sectioning is derived from the calendar
+      // month query (useCalendarData), so refresh it too — otherwise a
+      // check-in flips the card but its section stays stale (H3).
+      qc.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
 }
@@ -381,6 +388,10 @@ export function useSkipHabit() {
     onSettled: (_data, _error, vars) => {
       qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
       qc.invalidateQueries({ queryKey: habitKeys.lists() });
+      // The habits screen's To-do/Done sectioning is derived from the calendar
+      // month query (useCalendarData), so refresh it too — otherwise a
+      // check-in flips the card but its section stays stale (H3).
+      qc.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
 }
@@ -420,6 +431,10 @@ export function useFailHabit() {
     onSettled: (_data, _error, vars) => {
       qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
       qc.invalidateQueries({ queryKey: habitKeys.lists() });
+      // The habits screen's To-do/Done sectioning is derived from the calendar
+      // month query (useCalendarData), so refresh it too — otherwise a
+      // check-in flips the card but its section stays stale (H3).
+      qc.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
 }
@@ -471,6 +486,10 @@ export function useUpdateHabitEntry() {
     onSettled: (_data, _error, vars) => {
       qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
       qc.invalidateQueries({ queryKey: habitKeys.lists() });
+      // The habits screen's To-do/Done sectioning is derived from the calendar
+      // month query (useCalendarData), so refresh it too — otherwise a
+      // check-in flips the card but its section stays stale (H3).
+      qc.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
 }
@@ -500,6 +519,10 @@ export function useDeleteHabitEntry() {
     onSettled: (_data, _error, vars) => {
       qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
       qc.invalidateQueries({ queryKey: habitKeys.lists() });
+      // The habits screen's To-do/Done sectioning is derived from the calendar
+      // month query (useCalendarData), so refresh it too — otherwise a
+      // check-in flips the card but its section stays stale (H3).
+      qc.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
 }

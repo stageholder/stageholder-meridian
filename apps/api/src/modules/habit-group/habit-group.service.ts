@@ -49,9 +49,15 @@ export class HabitGroupService {
     dto: CreateHabitGroupDto,
     user: StageholderUser,
   ): Promise<HabitGroup> {
-    const currentCount = await this.repository.countForUser(userSub);
-    await enforceLimit(user, "max_habit_groups", async () => currentCount);
-    const order = currentCount;
+    // Provision the time-of-day seeds first so a first-ever create (before any
+    // group fetch) doesn't suppress the seed and doesn't collide at order 0.
+    await this.ensureSeed(userSub);
+    await enforceLimit(user, "max_habit_groups", () =>
+      this.repository.countForUser(userSub),
+    );
+    // Land at the end of the ordering; max+1 stays stable even if a seed was
+    // soft-deleted (a bare count could dip below the max and collide).
+    const order = (await this.repository.maxOrderForUser(userSub)) + 1;
     const result = HabitGroup.create({
       name: dto.name,
       color: dto.color,
@@ -105,13 +111,7 @@ export class HabitGroupService {
   }
 
   async reorder(userSub: string, dto: ReorderHabitGroupsDto): Promise<void> {
-    for (const item of dto.items) {
-      const group = await this.repository.findById(userSub, item.id);
-      if (group) {
-        group.updateOrder(item.order);
-        await this.repository.save(group);
-      }
-    }
+    await this.repository.reorder(userSub, dto.items);
   }
 
   /** Soft-delete the group and ORPHAN its habits (group_id → null). */

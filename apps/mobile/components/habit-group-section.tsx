@@ -28,6 +28,10 @@ interface HabitGroupSectionProps {
   groupId: string | null;
   /** Hide the section header (used when a single group is the active filter). */
   hideHeader?: boolean;
+  /** Disable drag-reorder — set while a status filter is active, since the
+   *  section only holds the VISIBLE (filtered) habits and re-indexing them
+   *  would collide with the filtered-out habits' orders. */
+  reorderDisabled?: boolean;
   onEdit: (habit: Habit) => void;
   onOpenDetail: (habit: Habit) => void;
   onArchive: (habit: Habit) => void;
@@ -41,6 +45,7 @@ export function HabitGroupSection({
   habits,
   groupId,
   hideHeader,
+  reorderDisabled,
   onEdit,
   onOpenDetail,
   onArchive,
@@ -88,6 +93,7 @@ export function HabitGroupSection({
         items={habits}
         keyExtractor={(h) => h.id}
         onReorder={handleReorder}
+        disabled={reorderDisabled}
         renderItem={(habit) => (
           <View width="100%" pb="$2">
             <HabitCardRow

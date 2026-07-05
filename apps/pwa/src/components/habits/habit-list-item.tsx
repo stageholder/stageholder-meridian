@@ -67,9 +67,14 @@ export function HabitListItem({
   const isViewingToday = !selectedDate || selectedDate === today;
   const ninetyDaysAgo = format(subDays(new Date(), 90), "yyyy-MM-dd");
 
+  // Include the active date in the window (the date-nav can jump past 90 days
+  // back) so an existing entry there isn't misread as un-acted → duplicate 409.
+  const startDate = activeDate < ninetyDaysAgo ? activeDate : ninetyDaysAgo;
+  const endDate = activeDate > today ? activeDate : today;
+
   const { data: entries } = useHabitEntries(habit.id, {
-    startDate: ninetyDaysAgo,
-    endDate: today,
+    startDate,
+    endDate,
   });
 
   const createEntry = useCreateHabitEntry();
@@ -86,7 +91,10 @@ export function HabitListItem({
     (e: HabitEntry) => e.date.split("T")[0] === activeDate,
   );
   const activeDateValue = activeDateEntry?.value ?? 0;
-  const targetCount = habit.targetCount ?? 1;
+  // Use the entry's snapshotted target (via resolveTargetCount) so "Done" agrees
+  // with the card view + week strip after the habit's target is later changed.
+  // (skip/fail entries carry value 0, so they read as not-complete for target>=1.)
+  const targetCount = resolveTargetCount(activeDateEntry ?? {}, habit) || 1;
   const isComplete = activeDateValue >= targetCount;
   const isSkipped = activeDateEntry?.type === "skip";
   const isFailed = activeDateEntry?.type === "fail";
