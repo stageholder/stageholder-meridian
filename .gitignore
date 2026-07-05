@@ -18,6 +18,13 @@ coverage
 # Turbo
 .turbo
 
+# Tamagui / Vite build caches (generated, regenerable)
+.tamagui/
+.vite/
+
+# graphify knowledge-graph output (regenerate with `/graphify .`)
+graphify-out/
+
 # Vercel
 .vercel
 
