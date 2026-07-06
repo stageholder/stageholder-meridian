@@ -4,6 +4,8 @@
 
 export { TodoItem, type TodoItemProps } from "./todo-item";
 
+export { TodoListSkeleton } from "./todo-list-skeleton";
+
 export {
   TodoListForm,
   TODO_LIST_FORM_DEFAULTS,

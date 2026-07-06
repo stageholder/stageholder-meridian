@@ -22,12 +22,20 @@ interface CreateTodoDialogProps {
   onOpenChange: (open: boolean) => void;
   /** Force this list as the destination (hides the List select). */
   listId?: string;
+  /**
+   * Pre-fill the due date (`yyyy-MM-dd`). Used by the calendar's "Add Todo" so a
+   * todo created from a tapped day is actually DUE that day (PWA parity —
+   * `create-todo-dialog.tsx`'s `defaultDueDate`); without it the new todo lands
+   * on the form default and never shows up on the day the user tapped.
+   */
+  defaultDueDate?: string;
 }
 
 export function CreateTodoDialog({
   open,
   onOpenChange,
   listId,
+  defaultDueDate,
 }: CreateTodoDialogProps) {
   const createTodo = useCreateTodo();
   const { data: lists } = useTodoLists();
@@ -39,6 +47,7 @@ export function CreateTodoDialog({
 
   const initial: TodoFormValues = {
     ...makeTodoFormDefaults(),
+    ...(defaultDueDate ? { dueDate: defaultDueDate } : {}),
     listId: listId ?? lists?.find((l) => l.isDefault)?.id ?? lists?.[0]?.id,
   };
 
@@ -96,7 +105,9 @@ export function CreateTodoDialog({
       description="Create a new todo with optional details, priority, and dates."
     >
       <TodoForm
-        key={open ? "open" : "closed"}
+        // Include the seed date in the key so re-opening from a DIFFERENT
+        // calendar day re-seeds the form (not just open↔closed).
+        key={`${open ? "open" : "closed"}-${defaultDueDate ?? ""}`}
         initial={initial}
         lists={lookupLists}
         submitLabel="Create"

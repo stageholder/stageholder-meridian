@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { HabitSummary as HabitSummaryView } from "@repo/features/dashboard";
 import type { HabitProgressValue } from "@repo/features/dashboard";
@@ -7,18 +6,12 @@ import { useHabits } from "@/lib/api/habits";
 import { useCalendarData } from "@/lib/api/calendar";
 
 /**
- * PWA wrapper: hooks `useHabits` + `useCalendarData`, computes the
- * per-habit progress map from today's calendar entries, and renders the
- * shared cross-platform view.
+ * PWA data wrapper: hooks `useHabits` + `useCalendarData`, computes the
+ * per-habit progress map from today's calendar entries, and renders the shared
+ * CONTENT-ONLY view. Card chrome + "View all" nav are owned by the host route's
+ * kit `Dashboard.Widget`.
  */
-export function HabitSummary({
-  index = 0,
-  fill,
-}: {
-  index?: number;
-  fill?: boolean;
-}) {
-  const navigate = useNavigate();
+export function HabitSummary() {
   const { data: habits, isLoading: habitsLoading } = useHabits();
   const currentMonth = format(new Date(), "yyyy-MM");
   const { data: calendarData, isLoading: calendarLoading } =
@@ -46,9 +39,6 @@ export function HabitSummary({
       habits={habits}
       habitProgress={habitProgress}
       isLoading={habitsLoading || calendarLoading}
-      onViewAll={() => void navigate({ to: "/habits" })}
-      index={index}
-      fill={fill}
     />
   );
 }

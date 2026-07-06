@@ -22,6 +22,12 @@ export interface WeeklyActivityDay {
 export interface WeeklyActivityChartProps {
   data: WeeklyActivityDay[];
   isLoading?: boolean;
+  /**
+   * Bar color. The default is the PWA's CSS chart variable, which does NOT
+   * resolve on React Native — native callers must pass a `$token` (the kit
+   * chart resolves theme tokens cross-platform) or a raw hex.
+   */
+  color?: string;
 }
 
 /**
@@ -33,6 +39,7 @@ export interface WeeklyActivityChartProps {
 export function WeeklyActivityChart({
   data,
   isLoading,
+  color = "var(--color-chart-1)",
 }: WeeklyActivityChartProps) {
   if (isLoading) {
     return <Skeleton height={200} width="100%" rounded="$3" />;
@@ -59,7 +66,7 @@ export function WeeklyActivityChart({
       data={chartData}
       height={200}
       showGrid
-      color="var(--color-chart-1)"
+      color={color}
       formatValue={(n) => String(n)}
     />
   );

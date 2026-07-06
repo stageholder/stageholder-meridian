@@ -57,7 +57,10 @@ export function LightEarnedChart({ data, isLoading }: LightEarnedChartProps) {
       height={200}
       showGrid
       continuous
-      color="oklch(0.75 0.18 55)"
+      // Gold/amber "light" accent as HEX (≈ oklch(0.75 0.18 55)) — RN's SVG
+      // color parser can't read oklch(), so a CSS-space value silently breaks
+      // the native render. Hex resolves identically on both platforms.
+      color="#fb923c"
     />
   );
 }

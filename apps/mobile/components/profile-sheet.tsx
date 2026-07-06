@@ -144,6 +144,9 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
       onOpenChange={onOpenChange}
       dismissOnSnapToBottom
       snapPointsMode="fit"
+      // Driven (controlled) sheet — the current kit requires transition on the
+      // ROOT or the frame never slides on-screen (overlay-only symptom).
+      transition="medium"
     >
       <Sheet.Overlay />
       {/* pt 0 — the kit grabber renders as the frame's FIRST CHILD with its

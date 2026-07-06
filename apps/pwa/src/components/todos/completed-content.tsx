@@ -3,7 +3,7 @@ import { AnimatePresence, Text, View, XStack, YStack } from "@stageholder/ui";
 import { TodoItem } from "./todo-item";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
 import { todoCompletedAt } from "@/lib/date";
-import { TodoListSkeleton } from "./todo-list-skeleton";
+import { TodoListSkeleton } from "@repo/features/todos";
 import type { Todo, TodoList } from "@repo/core/types";
 
 export function CompletedContent() {

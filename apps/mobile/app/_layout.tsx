@@ -38,11 +38,12 @@ import { SplashScreen, Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
+import { Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { QueryProvider, queryClient } from "@/lib/api";
+import { QueryProvider, queryClient, getAccessToken } from "@/lib/api";
 import { queryPersister } from "@/lib/api/query-client";
 import { PaywallHost } from "@/components/paywall-sheet";
 import { useAppFonts } from "@/lib/fonts";
@@ -74,9 +75,10 @@ const CLIENT_ID =
   (Constants.expoConfig?.extra?.["stageholderClientId"] as string | undefined);
 
 /**
- * SECURITY (cross-account DEK bleed): on ANY end-of-session event — an explicit
- * sign-out or a 401/onUnauthorized — scrub the journal key material (in-memory
- * DEK + wrapped-DEK + salt) and purge the React Query cache both in memory
+ * SECURITY (cross-account DEK bleed): on a confirmed end-of-session — an
+ * explicit sign-out, or a 401 the SDK confirms is a DEAD session (see
+ * `handleUnauthorized`) — scrub the journal key material (in-memory DEK +
+ * wrapped-DEK + salt) and purge the React Query cache both in memory
  * (`clear()`) and on disk (`removeClient()` on the AsyncStorage persister), so
  * the next account signing in on this device inherits neither the previous
  * user's DEK nor any of their decrypted/cached journal data. Idempotent — safe
@@ -86,6 +88,39 @@ function purgeSessionState(): void {
   lockJournal();
   queryClient.clear();
   void queryPersister.removeClient();
+}
+
+// Re-entrancy guard: a burst of 401s (several in-flight requests failing at
+// once) must resolve to a SINGLE purge + redirect, not one per response.
+let handlingUnauthorized = false;
+
+/**
+ * 401 policy. A wholesale purge (DEK wipe + cache clear + forced re-login +
+ * passphrase re-entry) is expensive and user-hostile to trigger on a SPURIOUS
+ * or transient 401 (a mid-refresh race, or one endpoint 401ing while the
+ * session is still valid). The SDK's `getAccessToken()` auto-refreshes and
+ * returns null ONLY when the session is genuinely dead — so confirm that before
+ * tearing everything down. If a valid token comes back, the 401 was transient:
+ * leave the session (and the decrypted journal DEK) intact and let the failed
+ * query retry on its own.
+ */
+async function handleUnauthorized(onDead: () => void): Promise<void> {
+  if (handlingUnauthorized) return;
+  handlingUnauthorized = true;
+  try {
+    let stillValid = false;
+    try {
+      stillValid = !!(await getAccessToken());
+    } catch {
+      // Refresh threw → treat the session as dead.
+      stillValid = false;
+    }
+    if (stillValid) return; // transient 401 — keep the session.
+    purgeSessionState();
+    onDead();
+  } finally {
+    handlingUnauthorized = false;
+  }
 }
 
 export default function RootLayout() {
@@ -137,10 +172,47 @@ export default function RootLayout() {
   }
 
   if (!ISSUER_URL || !CLIENT_ID) {
-    // The effect above logged a descriptive error; render nothing rather than
-    // mounting StageholderProvider with an invalid config (it would throw
-    // ConfigError at mount).
-    return null;
+    // The effect above logged a descriptive error. Mounting StageholderProvider
+    // with an invalid config throws ConfigError, so we can't render the app —
+    // but returning null once the splash is hidden leaves a silent blank screen
+    // that reads as a crash. Render a plain RN fallback (no provider tree is up
+    // yet, so no Tamagui/theme dependency) telling the operator exactly what to
+    // fix. Only reachable on a misconfigured build, never in normal use.
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 32,
+          backgroundColor: "#0b0b0f",
+        }}
+      >
+        <Text
+          style={{
+            color: "#fafafa",
+            fontSize: 18,
+            fontWeight: "600",
+            marginBottom: 12,
+            textAlign: "center",
+          }}
+        >
+          Configuration required
+        </Text>
+        <Text
+          style={{
+            color: "#a1a1aa",
+            fontSize: 14,
+            lineHeight: 20,
+            textAlign: "center",
+          }}
+        >
+          EXPO_PUBLIC_STAGEHOLDER_ISSUER_URL and
+          EXPO_PUBLIC_STAGEHOLDER_CLIENT_ID are not set. Copy .env.example to
+          .env.local, fill in the values, then restart the dev server.
+        </Text>
+      </View>
+    );
   }
 
   return (
@@ -181,8 +253,7 @@ export default function RootLayout() {
           >
             <QueryProvider
               onUnauthorized={() => {
-                purgeSessionState();
-                router.replace("/sign-in");
+                void handleUnauthorized(() => router.replace("/sign-in"));
               }}
             >
               <TamaguiProvider

@@ -27,8 +27,22 @@ export function redirectSystemPath({
   path: string;
   initial: boolean;
 }): string {
-  if (path.includes("auth/callback")) {
+  if (isAuthCallback(path)) {
     return "/";
   }
   return path;
+}
+
+// Match ONLY the OIDC callback, anchored to the path segment — a loose
+// `includes("auth/callback")` would also swallow any legitimate deep link that
+// merely contains that substring (e.g. a query param, or a journal deep link
+// whose slug happens to contain it). Expo hands `path` as either the full
+// `meridian://auth/callback?...` URL or a router-relative `/auth/callback?...`,
+// so we can't rely on `new URL().pathname` (a custom scheme treats `auth` as
+// the host → pathname `/callback`). Instead strip scheme + query/hash and
+// compare the bare route segment exactly.
+function isAuthCallback(path: string): boolean {
+  const withoutScheme = path.replace(/^meridian:\/\//, "");
+  const routeOnly = withoutScheme.split(/[?#]/, 1)[0].replace(/^\/+/, "");
+  return routeOnly === "auth/callback";
 }

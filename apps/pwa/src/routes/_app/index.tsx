@@ -1,14 +1,16 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { View, YStack } from "@stageholder/ui";
+import { Dashboard, Text, View, YStack } from "@stageholder/ui";
 import { useUserLight } from "@/lib/api/light";
 import { LevelUpCelebration } from "@repo/features/light";
+import { DashboardStats } from "@repo/features/dashboard";
 import { useLevelUp } from "@/lib/hooks/use-level-up";
+import { useDashboardStats } from "@/lib/hooks/use-dashboard-stats";
 import { GreetingBar } from "@/components/dashboard/greeting-bar";
 import { DashboardHero } from "@/components/dashboard/dashboard-hero";
-import { BentoCard } from "@repo/features/dashboard";
 import { TodayTodos } from "@/components/dashboard/today-todos";
 import { HabitSummary } from "@/components/dashboard/habit-summary";
+import { RecentJournals } from "@/components/dashboard/recent-journals";
 import { WeeklyActivityChart } from "@/components/dashboard/charts/weekly-activity-chart";
 import { JournalGrowthChart } from "@/components/dashboard/charts/journal-growth-chart";
 import { LightEarnedChart } from "@/components/dashboard/charts/light-earned-chart";
@@ -17,54 +19,91 @@ export const Route = createFileRoute("/_app/")({
   component: DashboardPage,
 });
 
+/** The kit-styled "View all" widget action — a TanStack Link. */
+function ViewAll({ to }: { to: string }) {
+  return (
+    <Link to={to} style={{ textDecoration: "none" }}>
+      <Text
+        fontSize="$1"
+        color="$primary"
+        hoverStyle={{ textDecorationLine: "underline" }}
+      >
+        View all
+      </Text>
+    </Link>
+  );
+}
+
+/**
+ * Motivation-first dashboard on the kit `Dashboard` grid: a full-width hero
+ * (rings + level) leads, then an at-a-glance `Stat` KPI row, the action pair
+ * (todos + habits), and the trend charts. Every cell is a kit `Dashboard.Widget`
+ * (responsive 12-col grid on web, stacks on narrow); the widgets own the card
+ * chrome + titles, and the shared feature views render only their content.
+ */
 function DashboardPage() {
   const today = format(new Date(), "yyyy-MM-dd");
   const { data: userLight } = useUserLight();
   const { levelUpTier, dismiss } = useLevelUp(userLight);
+  const stats = useDashboardStats(userLight);
 
   return (
-    // Motivation-first dashboard: a full-width hero (rings + level + breakdown)
-    // leads, then everything else is laid out as same-height PAIRS so no card
-    // is ever stretched against a taller neighbor (the old empty-space bug).
-    // Tamagui is flexbox-only — plain XStack/YStack, no CSS grid.
     <YStack gap="$4" p="$4" $lg={{ p: "$5" }}>
-      {/* Greeting — full width. Tamagui native staggered mount fade. */}
+      {/* Greeting — full width, above the grid. */}
       <View enterStyle={{ opacity: 0, y: 12 }} transition="medium">
         <GreetingBar />
       </View>
 
-      {/* Hero — full width: combined rings + Light/level + category breakdown. */}
-      <DashboardHero date={today} userLight={userLight} />
+      <Dashboard columns={12} gap="$4">
+        {/* Hero — motivation centerpiece: activity rings + level progress. */}
+        <Dashboard.Widget colSpan={12} hideHeader>
+          <DashboardHero date={today} userLight={userLight} />
+        </Dashboard.Widget>
 
-      {/* Action pair — equal 1:1 columns; `fill` stretches both to one height
-          so the shorter list doesn't leave a gap under its partner. */}
-      <YStack gap="$4" $md={{ flexDirection: "row" }}>
-        <View $md={{ flex: 1 }}>
-          <TodayTodos index={2} fill />
-        </View>
-        <View $md={{ flex: 1 }}>
-          <HabitSummary index={3} fill />
-        </View>
-      </YStack>
+        {/* KPI row — chromeless full-width cell; the Stat tiles carry their own
+            card borders. */}
+        <Dashboard.Widget colSpan={12} hideHeader bordered={false} flush>
+          <DashboardStats stats={stats} />
+        </Dashboard.Widget>
 
-      {/* Weekly Activity — full width (a 7-day timeline reads best wide). */}
-      <BentoCard title="Weekly Activity" index={4}>
-        <WeeklyActivityChart />
-      </BentoCard>
+        {/* Action pair — todos + habits, equal halves (stack on narrow). */}
+        <Dashboard.Widget
+          colSpan={6}
+          title="Today's Todos"
+          actions={<ViewAll to="/todos" />}
+        >
+          <TodayTodos />
+        </Dashboard.Widget>
+        <Dashboard.Widget
+          colSpan={6}
+          title="Habits Today"
+          actions={<ViewAll to="/habits" />}
+        >
+          <HabitSummary />
+        </Dashboard.Widget>
 
-      {/* Growth charts — equal 1:1 pair (both are 200px, so naturally level). */}
-      <YStack gap="$4" $md={{ flexDirection: "row" }}>
-        <View $md={{ flex: 1 }}>
-          <BentoCard title="Journal Growth" index={5} fill>
-            <JournalGrowthChart />
-          </BentoCard>
-        </View>
-        <View $md={{ flex: 1 }}>
-          <BentoCard title="Light Growth" index={6} fill>
-            <LightEarnedChart />
-          </BentoCard>
-        </View>
-      </YStack>
+        {/* Weekly activity — full width (a 7-day timeline reads best wide). */}
+        <Dashboard.Widget colSpan={12} title="Weekly Activity">
+          <WeeklyActivityChart />
+        </Dashboard.Widget>
+
+        {/* Growth charts — equal pair. */}
+        <Dashboard.Widget colSpan={6} title="Journal Growth">
+          <JournalGrowthChart />
+        </Dashboard.Widget>
+        <Dashboard.Widget colSpan={6} title="Light Growth">
+          <LightEarnedChart />
+        </Dashboard.Widget>
+
+        {/* Recent journals — full-width horizontal strip. */}
+        <Dashboard.Widget
+          colSpan={12}
+          title="Recent Journal Entries"
+          actions={<ViewAll to="/journal" />}
+        >
+          <RecentJournals />
+        </Dashboard.Widget>
+      </Dashboard>
 
       {levelUpTier ? (
         <LevelUpCelebration tier={levelUpTier} onDismiss={dismiss} />

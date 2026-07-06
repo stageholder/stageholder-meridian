@@ -48,7 +48,7 @@ import { ChevronLeft, SmilePlus } from "@tamagui/lucide-icons-2";
 // zeroed from call-site props).
 import { Input as BareInput } from "tamagui";
 import { KeyboardController } from "react-native-keyboard-controller";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -107,7 +107,15 @@ export default function NewJournalScreen() {
   const [mood, setMood] = useState<number | undefined>(undefined);
   const [moodOpen, setMoodOpen] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
-  const [date, setDate] = useState(localDateKey());
+  // Optional `date` route param (from the calendar's "New Journal" on a tapped
+  // day) seeds the entry's date so a backfilled past day lands correctly;
+  // absent/malformed → today. Validated to `yyyy-MM-dd` so a junk param can't
+  // poison the date field.
+  const { date: dateParam } = useLocalSearchParams<{ date?: string }>();
+  const [date, setDate] = useState(() => {
+    const raw = Array.isArray(dateParam) ? dateParam[0] : dateParam;
+    return raw && /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : localDateKey();
+  });
 
   // Locked = encryption configured but no DEK in memory. We can't encrypt a
   // new entry without the DEK, so send the writer to the list to unlock.

@@ -58,16 +58,25 @@ import {
 
 import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
 import { useUpdateTargets, useUserLight } from "@/lib/api";
-import { useHubProfile } from "@/lib/api/hub";
+import { hubOrigin, useHubProfile } from "@/lib/api/hub";
 import {
   changeJournalPassphrase,
   checkJournalStatus,
   useJournalCrypto,
 } from "@/lib/journal-crypto";
 
-const HUB_URL =
-  process.env.EXPO_PUBLIC_STAGEHOLDER_ISSUER_URL ??
-  "https://id.stageholder.com";
+// The Hub ORIGIN for web account links (account page lives at
+// `<origin>/account`, NOT under the issuer's `/oidc` mount). Reuse the REST
+// client's `hubOrigin()` so the /oidc-stripping logic has ONE source of truth —
+// but fall back to the public host if env is unset (hubOrigin() throws, which
+// must never crash the Settings screen over a broken account link).
+const HUB_URL = (() => {
+  try {
+    return hubOrigin();
+  } catch {
+    return "https://id.stageholder.com";
+  }
+})();
 
 const TABS = [
   { id: "profile", label: "Profile", icon: User },
@@ -455,11 +464,17 @@ export default function SettingsScreen() {
                   {TABS.map((tab) => {
                     const Icon = tab.icon;
                     return (
-                      <Tabs.Tab key={tab.id} value={tab.id} justify="center">
-                        <XStack items="center" gap="$2">
-                          <Icon size={16} />
-                          <SizableText>{tab.label}</SizableText>
-                        </XStack>
+                      // icon PROP + STRING child: a non-string Tabs.Tab child
+                      // gets wrapped lineHeight:0 (label invisible) and width/
+                      // flex land on the inner frame (see reference_kit_tabs_
+                      // icon_prop). The kit renders the icon + label itself.
+                      <Tabs.Tab
+                        key={tab.id}
+                        value={tab.id}
+                        icon={<Icon size={16} />}
+                        justify="center"
+                      >
+                        {tab.label}
                       </Tabs.Tab>
                     );
                   })}

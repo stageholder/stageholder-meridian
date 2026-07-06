@@ -433,7 +433,9 @@ function CornerTick({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) {
 function pillarForFeature(
   feature: string,
 ): "todos" | "habits" | "journal" | null {
-  if (feature === "max_habits") return "habits";
+  // Prefix match covers max_habits AND max_habit_groups (the group cap 402'd
+  // to the generic "Other" pillar before this).
+  if (feature.startsWith("max_habit")) return "habits";
   if (feature === "max_todo_lists" || feature === "max_active_todos")
     return "todos";
   if (feature.startsWith("max_journal")) return "journal";

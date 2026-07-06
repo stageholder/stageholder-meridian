@@ -24,16 +24,23 @@
 // Router's <Stack> boundary + HMR in practice.
 
 import { useStageholder } from "@stageholder/sdk/react-native";
-import { CalendarPickerProvider, Spinner, View } from "@stageholder/ui";
+import {
+  Button,
+  CalendarPickerProvider,
+  Spinner,
+  Text,
+  View,
+  YStack,
+} from "@stageholder/ui";
 import { Redirect, Tabs, useRouter, useSegments } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { isOnboarded } from "@/lib/onboarding";
 import { configurePurchases } from "@/lib/purchases";
 
 export default function AuthedLayout() {
-  const { state } = useStageholder();
+  const { state, refreshSession } = useStageholder();
   const segments = useSegments();
   const router = useRouter();
 
@@ -88,6 +95,16 @@ export default function AuthedLayout() {
     if (needsOnboarding) router.replace("/(authed)/onboarding");
   }, [needsOnboarding, router]);
 
+  // Retry handler for the recoverable `error` state below (network/server blip
+  // at startup with a still-valid refresh token). `refreshSession()` re-runs
+  // the failed refresh; success transitions state → authenticated and the tabs
+  // render. Kept above the early returns so hook order stays stable.
+  const [retrying, setRetrying] = useState(false);
+  const retrySession = useCallback(() => {
+    setRetrying(true);
+    void refreshSession().finally(() => setRetrying(false));
+  }, [refreshSession]);
+
   // While the provider hydrates its session from SecureStore, hold render
   // behind a centered spinner — bg from the theme so it matches light/dark.
   if (state.status === "loading") {
@@ -97,10 +114,35 @@ export default function AuthedLayout() {
       </View>
     );
   }
-  // `error` is treated as unauthenticated for routing purposes — bounce to
-  // sign-in, where the SDK error (if any) surfaces.
-  if (state.status === "unauthenticated" || state.status === "error") {
+  // `unauthenticated` = no/invalid refresh token → genuinely signed out; bounce
+  // to sign-in. NOTE this is DISTINCT from `error`: the SDK only reaches
+  // `unauthenticated` when there's no refresh token or it was revoked
+  // (invalid_grant → clearAll), so the redirect is safe here.
+  if (state.status === "unauthenticated") {
     return <Redirect href="/sign-in" />;
+  }
+  // `error` is NOT a dead session: the SDK enters it only when a startup
+  // refresh fails for a NON-auth reason (network/server) AND there's no stale
+  // token to fall back on — the refresh token is still valid. Bouncing to
+  // sign-in would strand an offline user on a screen they can't complete while
+  // silently holding a recoverable session. Show a retry surface instead.
+  if (state.status === "error") {
+    return (
+      <View flex={1} items="center" justify="center" bg="$background" p="$6">
+        <YStack gap="$3" maxW={340} items="center">
+          <Text fontSize="$6" fontWeight="600" text="center">
+            Couldn&apos;t connect
+          </Text>
+          <Text fontSize="$3" color="$mutedForeground" text="center">
+            We couldn&apos;t reach your account. Check your connection and try
+            again — you&apos;re still signed in.
+          </Text>
+          <Button intent="primary" onPress={retrySession} disabled={retrying}>
+            {retrying ? "Retrying…" : "Try again"}
+          </Button>
+        </YStack>
+      </View>
+    );
   }
 
   // Authenticated — render the tabs frame (plus the masking overlay while the

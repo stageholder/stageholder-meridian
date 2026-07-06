@@ -18,6 +18,7 @@ import type { Habit } from "@repo/core/types";
 import type { ActivityRingsData } from "@repo/features/activity-rings";
 
 import { apiClient } from "../client";
+import { useHabits } from "./habits";
 import { IGNITION } from "@/lib/ignition-palette";
 
 export interface CalendarDayData {
@@ -152,6 +153,68 @@ export function buildCalendarEvents(data: CalendarData): CalendarEvent[] {
     }
   }
   return events;
+}
+
+/* ------------------ Per-day activity counts (PWA port) ------------------- */
+
+export interface DayActivityCounts {
+  /** Todos completed that day. */
+  todoDone: number;
+  /** Habit entries done + skipped that day (quota habits excluded). */
+  habitDone: number;
+  /** Total journal words written that day. */
+  journalWords: number;
+}
+
+const EMPTY_COUNTS: DayActivityCounts = {
+  todoDone: 0,
+  habitDone: 0,
+  journalWords: 0,
+};
+
+/**
+ * Raw per-day activity counts from the calendar month cache — the mobile
+ * counterpart of the PWA `useActivityRings(date).details` slice that feeds
+ * the dashboard KPI deltas (today vs yesterday). Reads the same
+ * `["calendar", month]` query the calendar screen and weekly-activity chart
+ * populate, so a pair of these adds no extra network cost.
+ */
+export function useDayActivityCounts(date: string): {
+  counts: DayActivityCounts;
+  isLoading: boolean;
+} {
+  const month = date.slice(0, 7); // yyyy-MM
+  const calQuery = useCalendarData(month);
+  const habitsQuery = useHabits();
+
+  const counts = useMemo<DayActivityCounts>(() => {
+    const dayData = calQuery.data?.[date];
+    if (!dayData) return EMPTY_COUNTS;
+
+    // Quota (`weekly_target`) habits aren't day-scheduled — exclude their
+    // entries from the daily count, same as computeActivityRings.
+    const quotaIds = new Set(
+      (habitsQuery.data ?? [])
+        .filter((h) => h.frequency === "weekly_target")
+        .map((h) => h.id),
+    );
+    const dayHabitEntries = dayData.habitEntries.filter(
+      (e) => !quotaIds.has(e.habitId),
+    );
+
+    return {
+      todoDone: dayData.todos.filter((t) => t.status === "done").length,
+      habitDone:
+        dayHabitEntries.filter((e) => e.value > 0).length +
+        dayHabitEntries.filter((e) => e.type === "skip").length,
+      journalWords: dayData.journals.reduce(
+        (sum, j) => sum + (j.wordCount ?? 0),
+        0,
+      ),
+    };
+  }, [calQuery.data, habitsQuery.data, date]);
+
+  return { counts, isLoading: calQuery.isLoading };
 }
 
 /* ------------------- Ring percentages (pure, PWA port) ------------------- */

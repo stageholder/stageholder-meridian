@@ -25,13 +25,12 @@ import {
   Pill,
   PullToRefresh,
   Separator,
-  Spinner,
   Text,
   View,
   XStack,
   YStack,
 } from "@stageholder/ui";
-import { TodoItem } from "@repo/features/todos";
+import { TodoItem, TodoListSkeleton } from "@repo/features/todos";
 import type { Todo, TodoList } from "@repo/core/types";
 import { ListOrdered, Pencil, Plus } from "@tamagui/lucide-icons-2";
 import { format } from "date-fns";
@@ -296,11 +295,11 @@ export default function TodosScreen() {
               </Banner>
             ) : null}
 
-            {/* Loading */}
+            {/* Loading — row-shaped shimmer (shared with the PWA) instead of
+                a centered spinner, so the first paint already has the list's
+                silhouette. */}
             {todosQuery.isLoading && todos.length === 0 ? (
-              <View py="$10" items="center" justify="center">
-                <Spinner size="large" />
-              </View>
+              <TodoListSkeleton />
             ) : null}
 
             {/* Empty */}

@@ -65,7 +65,9 @@ export function JourneyLightChart({ data, isLoading }: JourneyLightChartProps) {
         height={180}
         showGrid
         continuous
-        color="oklch(0.75 0.18 55)"
+        // Hex (≈ oklch(0.75 0.18 55)): RN's SVG color parser can't read
+        // oklch(), and this view already renders on the native Journey screen.
+        color="#fb923c"
       />
     </View>
   );

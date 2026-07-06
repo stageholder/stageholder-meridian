@@ -12,12 +12,19 @@
 // below the form commits each toggle/add/delete immediately via its own
 // mutation — independent of the form's single Save PATCH.
 
-import { FormSheet, Separator, useToast } from "@stageholder/ui";
+import { Alert } from "react-native";
+import { Button, FormSheet, Separator, useToast } from "@stageholder/ui";
+import { Trash2 } from "@tamagui/lucide-icons-2";
 import { TodoForm, type TodoFormValues } from "@repo/features/todos";
 import type { Todo } from "@repo/core/types";
 
 import { SubtaskSection } from "@/components/subtask-section";
-import { useUpdateTodo, useTodoLists, type TodoPriority } from "@/lib/api";
+import {
+  useDeleteTodo,
+  useUpdateTodo,
+  useTodoLists,
+  type TodoPriority,
+} from "@/lib/api";
 import { IGNITION } from "@/lib/ignition-palette";
 
 interface EditTodoDialogProps {
@@ -42,11 +49,42 @@ export function EditTodoDialog({
   todo,
 }: EditTodoDialogProps) {
   const updateTodo = useUpdateTodo();
+  const deleteTodo = useDeleteTodo();
   const { data: lists } = useTodoLists();
   const toast = useToast();
 
   // Nothing to edit until a row is tapped — keeps the form's `initial` honest.
   if (!todo) return null;
+
+  // Delete lives HERE because the shared TodoItem's default row-level trash is a
+  // hover-reveal (`$group-hover`) that no-ops on a touchscreen — so this sheet
+  // is the only reachable delete affordance on native. Confirm first (matches
+  // todo-list-sheet's own destructive pattern) — deletion can't be undone.
+  function confirmDelete() {
+    Alert.alert(
+      `Delete "${todo!.title}"?`,
+      "This todo and its subtasks will be removed. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () =>
+            deleteTodo.mutate(todo!.id, {
+              onSuccess: () => {
+                toast.show({ title: "Todo deleted", intent: "success" });
+                onOpenChange(false);
+              },
+              onError: () =>
+                toast.show({
+                  title: "Couldn't delete todo",
+                  intent: "danger",
+                }),
+            }),
+        },
+      ],
+    );
+  }
 
   const initial: TodoFormValues = {
     title: todo.title,
@@ -119,6 +157,19 @@ export function EditTodoDialog({
           Save/Cancel lifecycle. Keyed per todo so state re-seeds. */}
       <Separator />
       <SubtaskSection key={`sub-${todo.id}`} todo={todo} />
+
+      {/* Delete — the reachable native delete affordance (row trash is
+          hover-only). Destructive, confirmed via Alert. */}
+      <Separator />
+      <Button
+        intent="destructive"
+        icon={<Trash2 size={14} />}
+        loading={deleteTodo.isPending}
+        loadingText="Deleting…"
+        onPress={confirmDelete}
+      >
+        Delete todo
+      </Button>
     </FormSheet>
   );
 }

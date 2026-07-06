@@ -1,7 +1,6 @@
 import { format } from "date-fns";
 import { Text, View, XStack, YStack } from "@stageholder/ui";
 import type { Todo } from "@repo/core/types";
-import { BentoCard } from "./bento-card";
 import { tabularNums } from "../_internal/text-styles";
 
 // Priority dot tokens. shadcn used per-color bg-{red/orange/yellow/blue};
@@ -31,19 +30,14 @@ export interface TodayTodosProps {
   percentage: number;
   /** Toggle a todo to "done". The host wires the mutation. */
   onToggleTodo: (todo: Todo) => void;
-  /** Open the full todos view. Renders the "View all" link in the header. */
-  onViewAll?: () => void;
-  /** Mount animation index — passed through to BentoCard. */
-  index?: number;
-  /** Stretch to fill its column so it matches a paired card's height. */
-  fill?: boolean;
 }
 
 /**
- * Dashboard cell summarizing today's todos — a small progress bar plus the
- * first 5 due-today items as a checklist. The view owns the "due today"
- * filter (presentation concern). The host supplies `todos` (raw), the
- * derived `total`/`percentage` from its stats hook, and callbacks.
+ * CONTENT-ONLY dashboard cell body — the progress bar + the first 5 due-today
+ * todos as a checklist. Card chrome (title, "View all", grid position) is owned
+ * by the host's kit `Dashboard.Widget`, so this renders no outer card. The view
+ * owns the "due today" filter; the host supplies `todos` + derived
+ * `total`/`percentage` + the toggle callback.
  */
 export function TodayTodos({
   todos,
@@ -51,9 +45,6 @@ export function TodayTodos({
   total,
   percentage,
   onToggleTodo,
-  onViewAll,
-  index = 0,
-  fill,
 }: TodayTodosProps) {
   const today = format(new Date(), "yyyy-MM-dd");
 
@@ -67,40 +58,7 @@ export function TodayTodos({
   });
 
   return (
-    <BentoCard
-      title="Today's Todos"
-      onTitlePress={onViewAll}
-      index={index}
-      fill={fill}
-      action={
-        <XStack items="center" gap="$2">
-          {total > 0 ? (
-            <Text
-              rounded={9999}
-              bg="$muted"
-              px="$2"
-              py="$0.5"
-              fontSize="$1"
-              fontWeight="500"
-              color="$mutedForeground"
-            >
-              {todayTodos.length} due
-            </Text>
-          ) : null}
-          {onViewAll ? (
-            <Text
-              fontSize="$1"
-              color="$primary"
-              cursor="pointer"
-              hoverStyle={{ textDecorationLine: "underline" }}
-              onPress={onViewAll}
-            >
-              View all
-            </Text>
-          ) : null}
-        </XStack>
-      }
-    >
+    <YStack>
       {total > 0 ? (
         <XStack mb="$3" items="center" gap="$2">
           <View height={6} flex={1} rounded={9999} bg="$muted">
@@ -175,6 +133,6 @@ export function TodayTodos({
           </Text>
         )}
       </YStack>
-    </BentoCard>
+    </YStack>
   );
 }

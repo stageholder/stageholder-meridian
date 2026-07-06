@@ -10,6 +10,11 @@
 //      with each entry decrypted client-side for its title + preview.
 //   3. LOADING / ERROR / EMPTY → spinner / banner / empty copy.
 //
+// List sourcing mirrors the PWA journal-sidebar: the default view is the
+// PAGINATED infinite query (20/page + "Load more"); applying a date-range
+// filter switches to the filtered flat query; the mood filter is applied
+// client-side after decryption. Filters live in JournalFilterSheet.
+//
 // Tapping an entry pushes to the `journal/[id]` detail route (decrypted title +
 // a plain-text excerpt). Creation IS native — the FAB pushes the full-screen
 // rich-text editor (journal/new.tsx), which renders the kit RichTextEditor
@@ -29,6 +34,7 @@ import {
   Spinner,
   Text,
   View,
+  XStack,
   YStack,
   useToast,
 } from "@stageholder/ui";
@@ -44,6 +50,7 @@ import {
 } from "@repo/features/encryption";
 import type { Journal } from "@repo/core/types";
 import { useUser } from "@stageholder/sdk/react-native";
+import { SlidersHorizontal } from "@tamagui/lucide-icons-2";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -52,9 +59,10 @@ import {
 } from "react-native-safe-area-context";
 
 import { CreateFab } from "@/components/create-fab";
+import { JournalFilterSheet } from "@/components/journal-filter-sheet";
 import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
 import { IGNITION } from "@/lib/ignition-palette";
-import { useJournals } from "@/lib/api";
+import { useJournals, useJournalsPaginated } from "@/lib/api";
 import {
   checkJournalStatus,
   decryptJournalList,
@@ -70,8 +78,39 @@ export default function JournalScreen() {
   const insets = useSafeAreaInsets();
   const toast = useToast();
   const { user } = useUser();
-  const journalsQuery = useJournals();
   const { isSetup, isUnlocked, isLoading: statusLoading } = useJournalCrypto();
+
+  // ---- Filters (PWA journal-sidebar parity) ----
+  // Date range switches the data source to the filtered flat query; mood is
+  // applied client-side after decryption (mood is plaintext metadata, but the
+  // list rows need decrypting either way).
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [moodFilter, setMoodFilter] = useState(0);
+
+  const hasDateFilter = !!(startDate || endDate);
+  const activeFilterCount =
+    (hasDateFilter ? 1 : 0) + (moodFilter !== 0 ? 1 : 0);
+
+  // Two independent From/To chips can produce an inverted range (From after
+  // To) — normalize instead of sending the server a range that matches nothing.
+  const dateParams = useMemo(() => {
+    const [s, e] =
+      startDate && endDate && startDate > endDate
+        ? [endDate, startDate]
+        : [startDate, endDate];
+    const params: { startDate?: string; endDate?: string } = {};
+    if (s) params.startDate = s;
+    if (e) params.endDate = e;
+    return params;
+  }, [startDate, endDate]);
+
+  // Default view = the paginated infinite list (20/page, "Load more");
+  // date-filtered view = the flat filtered query. Only one is active at a
+  // time — the flat query is disabled until a date filter is set.
+  const dateRangeQuery = useJournals(dateParams, { enabled: hasDateFilter });
+  const paginatedQuery = useJournalsPaginated();
   // First-time encryption setup wizard — the shared two-step form hosted in
   // a kit FormSheet (same host as the todo/habit create flows). `setupStep`
   // mirrors the form's internal step so the sheet's title/description swap
@@ -95,7 +134,10 @@ export default function JournalScreen() {
   async function handleRefresh() {
     setRefreshing(true);
     try {
-      await Promise.all([checkJournalStatus(), journalsQuery.refetch()]);
+      await Promise.all([
+        checkJournalStatus(),
+        hasDateFilter ? dateRangeQuery.refetch() : paginatedQuery.refetch(),
+      ]);
     } finally {
       setRefreshing(false);
     }
@@ -107,10 +149,14 @@ export default function JournalScreen() {
   // `decrypted` holds the post-decrypt journals; while a decrypt is in flight
   // we keep `decrypting` true so the list shows a spinner instead of flashing
   // ciphertext titles. When not encrypted, the raw list passes straight through.
-  const rawJournals = useMemo(
-    () => journalsQuery.data ?? [],
-    [journalsQuery.data],
-  );
+  const rawJournals = useMemo<Journal[]>(() => {
+    if (hasDateFilter) return dateRangeQuery.data ?? [];
+    const pages = paginatedQuery.data?.pages;
+    if (!pages) return [];
+    // Shape-guard each page (persisted-cache habit; journal queries aren't
+    // persisted, but a malformed page must never crash the flatten).
+    return pages.flatMap((p) => (Array.isArray(p?.data) ? p.data : []));
+  }, [hasDateFilter, dateRangeQuery.data, paginatedQuery.data]);
   const [decrypted, setDecrypted] = useState<Journal[]>([]);
   const [decrypting, setDecrypting] = useState(false);
 
@@ -141,16 +187,18 @@ export default function JournalScreen() {
     };
   }, [rawJournals, locked, isUnlocked]);
 
-  // Newest first (date desc, then most-recently-updated).
-  const sorted = useMemo(
-    () =>
-      [...decrypted].sort(
-        (a, b) =>
-          b.date.localeCompare(a.date) ||
-          b.updatedAt.localeCompare(a.updatedAt),
-      ),
-    [decrypted],
-  );
+  // Mood filter (client-side, PWA parity), then newest first (date desc,
+  // then most-recently-updated).
+  const sorted = useMemo(() => {
+    const moodFiltered =
+      moodFilter === 0
+        ? decrypted
+        : decrypted.filter((j) => j.mood === moodFilter);
+    return [...moodFiltered].sort(
+      (a, b) =>
+        b.date.localeCompare(a.date) || b.updatedAt.localeCompare(a.updatedAt),
+    );
+  }, [decrypted, moodFilter]);
 
   async function handleUnlock(passphrase: string) {
     // Throws on wrong passphrase — PassphrasePrompt catches it and shows the
@@ -209,7 +257,16 @@ export default function JournalScreen() {
     );
   }
 
-  const listLoading = journalsQuery.isLoading || statusLoading || decrypting;
+  const activeQuery = hasDateFilter ? dateRangeQuery : paginatedQuery;
+  const listLoading = activeQuery.isLoading || statusLoading || decrypting;
+  const listError = activeQuery.error;
+
+  // Header count: the server total when unfiltered (the loaded pages may be a
+  // subset), the visible count when any filter narrows the list.
+  const entryCount =
+    activeFilterCount > 0
+      ? sorted.length
+      : (paginatedQuery.data?.pages[0]?.meta?.total ?? sorted.length);
 
   return (
     <YStack flex={1} bg="$background">
@@ -229,16 +286,31 @@ export default function JournalScreen() {
           } as object)}
         >
           <YStack gap="$4" px="$4" pt="$4" pb="$10">
-            <YStack gap="$0.5">
-              <Text fontSize="$8" fontWeight="700" color="$color">
-                Journal
-              </Text>
-              {!listLoading && sorted.length > 0 ? (
-                <Text fontSize="$2" color="$mutedForeground">
-                  {sorted.length} {sorted.length === 1 ? "entry" : "entries"}
+            <XStack items="flex-start" justify="space-between" gap="$3">
+              <YStack gap="$0.5" flex={1} minW={0}>
+                <Text fontSize="$8" fontWeight="700" color="$color">
+                  Journal
                 </Text>
-              ) : null}
-            </YStack>
+                {!listLoading && sorted.length > 0 ? (
+                  <Text fontSize="$2" color="$mutedForeground">
+                    {entryCount} {entryCount === 1 ? "entry" : "entries"}
+                  </Text>
+                ) : null}
+              </YStack>
+              {/* Filter — trigger label carries the active count so the
+                  collapsed control still signals filters are applied
+                  (PWA parity). */}
+              <Button
+                intent="outline"
+                size="sm"
+                icon={<SlidersHorizontal size={14} />}
+                onPress={() => setFiltersOpen(true)}
+              >
+                {activeFilterCount > 0
+                  ? `Filter (${activeFilterCount})`
+                  : "Filter"}
+              </Button>
+            </XStack>
 
             {/* Encryption not set up yet → offer to set a passphrase. Mirrors
                 the PWA's SetupBanner. Hidden once isSetup flips true. */}
@@ -267,12 +339,12 @@ export default function JournalScreen() {
             ) : null}
 
             {/* Error */}
-            {journalsQuery.error ? (
+            {listError ? (
               <Banner intent="danger">
                 <Banner.Body>
                   <Banner.Title>Couldn&apos;t load entries</Banner.Title>
                   <Banner.Description>
-                    {(journalsQuery.error as Error).message ?? "Network error."}
+                    {(listError as Error).message ?? "Network error."}
                   </Banner.Description>
                   <Banner.Action self="flex-end" mt="$2">
                     <Button
@@ -292,24 +364,69 @@ export default function JournalScreen() {
               <View py="$10" items="center" justify="center">
                 <Spinner size="large" />
               </View>
-            ) : !journalsQuery.error && sorted.length === 0 ? (
-              /* Empty */
-              <EmptyState>
-                <EmptyState.IconSlot>
-                  <Text fontSize={28}>✎</Text>
-                </EmptyState.IconSlot>
-                <EmptyState.Title>No entries yet</EmptyState.Title>
-                <EmptyState.Description>
-                  Your reflections will appear here. Write your first entry on
-                  the web app to get started.
-                </EmptyState.Description>
-              </EmptyState>
+            ) : !listError && sorted.length === 0 ? (
+              /* Empty — distinguish "no entries at all" from "filters matched
+                 nothing" so an active filter never reads like data loss. */
+              activeFilterCount > 0 ? (
+                <EmptyState>
+                  <EmptyState.IconSlot>
+                    <Text fontSize={28}>✎</Text>
+                  </EmptyState.IconSlot>
+                  <EmptyState.Title>No matching entries</EmptyState.Title>
+                  <EmptyState.Description>
+                    Nothing matches the current filters. Adjust or clear them to
+                    see your entries.
+                  </EmptyState.Description>
+                  <EmptyState.Actions>
+                    <Button
+                      intent="secondary"
+                      size="sm"
+                      onPress={() => {
+                        setStartDate("");
+                        setEndDate("");
+                        setMoodFilter(0);
+                      }}
+                    >
+                      Clear filters
+                    </Button>
+                  </EmptyState.Actions>
+                </EmptyState>
+              ) : (
+                <EmptyState>
+                  <EmptyState.IconSlot>
+                    <Text fontSize={28}>✎</Text>
+                  </EmptyState.IconSlot>
+                  <EmptyState.Title>No entries yet</EmptyState.Title>
+                  <EmptyState.Description>
+                    Your reflections will appear here. Write your first entry on
+                    the web app to get started.
+                  </EmptyState.Description>
+                </EmptyState>
+              )
             ) : (
               /* List — date-grouped, tap to read */
-              <JournalList
-                journals={sorted}
-                onJournalPress={(id) => router.push(`/journal/${id}`)}
-              />
+              <>
+                <JournalList
+                  journals={sorted}
+                  onJournalPress={(id) => router.push(`/journal/${id}`)}
+                />
+                {/* Load more — paginated view only; a date-filtered list is
+                    already the complete match set. */}
+                {!hasDateFilter && paginatedQuery.hasNextPage ? (
+                  <XStack justify="center" mt="$2">
+                    <Button
+                      intent="ghost"
+                      size="sm"
+                      onPress={() => void paginatedQuery.fetchNextPage()}
+                      disabled={paginatedQuery.isFetchingNextPage}
+                      loading={paginatedQuery.isFetchingNextPage}
+                      loadingText="Loading…"
+                    >
+                      Load more
+                    </Button>
+                  </XStack>
+                ) : null}
+              </>
             )}
           </YStack>
         </PullToRefresh>
@@ -322,6 +439,19 @@ export default function JournalScreen() {
         label="New journal entry"
         tint={IGNITION.journal.base}
         onPress={handleCreate}
+      />
+
+      {/* Filters — date range + mood, applied live (PWA sidebar's Filter
+          popover, rebuilt as a native sheet). */}
+      <JournalFilterSheet
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        startDate={startDate}
+        endDate={endDate}
+        mood={moodFilter}
+        onStartDateChange={setStartDate}
+        onEndDateChange={setEndDate}
+        onMoodChange={setMoodFilter}
       />
 
       {/* First-time encryption setup — collects a passphrase, then shows the

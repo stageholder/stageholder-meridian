@@ -17,12 +17,22 @@ export const queryClient = new QueryClient({
     queries: {
       staleTime: 30 * 1000, // 30s — same as PWA
       gcTime: 24 * 60 * 60 * 1000, // 24h kept in cache for offline-friendly relaunches
-      retry: 1, // mobile networks flap; one retry is the right pragmatic default
+      // One retry for flaky mobile networks — but NEVER retry auth/paywall/
+      // client errors: a 401 retry just double-fires the sign-out and delays
+      // the redirect; a 402 re-triggers the paywall; other 4xx are deterministic.
+      retry: (failureCount, error) => {
+        const status = (error as { response?: { status?: number } } | undefined)
+          ?.response?.status;
+        if (status && status >= 400 && status < 500) return false;
+        return failureCount < 1;
+      },
       retryDelay: 500,
       refetchOnReconnect: true,
-      // Don't refetch on mount if data is still fresh — avoids spinner
-      // flashes during fast tab switches.
-      refetchOnMount: "always",
+      // Refetch on mount only when the data is STALE (past staleTime) — a fresh
+      // cache paints instantly on a fast tab switch with no spinner flash, which
+      // is the whole point of the persisted cache. (`"always"` refetched on
+      // every mount regardless of freshness, amplifying the per-habit fan-out.)
+      refetchOnMount: true,
       refetchOnWindowFocus: false, // RN doesn't have window focus; AppState foreground triggers this elsewhere if you want it
     },
     mutations: {

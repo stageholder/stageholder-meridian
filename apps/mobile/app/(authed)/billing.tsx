@@ -33,6 +33,7 @@ import {
   Paragraph,
   ScrollView,
   Separator,
+  Skeleton,
   Spinner,
   Text,
   View,
@@ -327,9 +328,7 @@ export default function BillingScreen() {
                   Invoices are visible to organization owners and admins.
                 </Paragraph>
               ) : invoicesQuery.isLoading ? (
-                <View py="$6" items="center">
-                  <Spinner size="large" />
-                </View>
+                <InvoiceListSkeleton />
               ) : invoicesQuery.isError ? (
                 <Banner intent="danger">
                   <Banner.Body>
@@ -395,6 +394,31 @@ export default function BillingScreen() {
         </ScrollView>
       </SafeAreaView>
     </YStack>
+  );
+}
+
+/* -------------------------- Invoice list skeleton ------------------------- */
+
+/** Loading placeholder mirroring the invoice-row silhouette (date/status
+ *  column + amount) so the ledger doesn't pop in from a bare spinner. */
+function InvoiceListSkeleton({ rows = 3 }: { rows?: number }) {
+  return (
+    <Card>
+      <Card.Body gap="$0" p="$0">
+        {Array.from({ length: rows }).map((_, i) => (
+          <YStack key={i}>
+            {i > 0 ? <Separator /> : null}
+            <XStack items="center" gap="$3" px="$4" py="$3">
+              <YStack flex={1} minW={0} gap="$1.5">
+                <Skeleton height={13} width="42%" rounded="$sm" />
+                <Skeleton height={11} width="28%" rounded="$sm" />
+              </YStack>
+              <Skeleton height={13} width={56} rounded="$sm" />
+            </XStack>
+          </YStack>
+        ))}
+      </Card.Body>
+    </Card>
   );
 }
 

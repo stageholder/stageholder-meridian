@@ -2,7 +2,8 @@
 //
 // Today — the dashboard. Single-column mobile counterpart of the PWA's bento
 // grid (apps/pwa/src/routes/_app/index.tsx): greeting + date → level progress
-// → activity rings → habit summary → today's todos → recent journals. Same
+// → activity rings → KPI row → habit summary → today's todos → trend charts
+// (weekly activity · journal growth · light growth) → recent journals. Same
 // data, same priorities; the layout is a vertical stack instead of a grid.
 //
 // All presentational cards come from @repo/features (cross-platform, kit-based)
@@ -19,6 +20,7 @@ import {
   Banner,
   Button,
   Card,
+  Dashboard,
   H2,
   IconButton,
   Paragraph,
@@ -33,16 +35,24 @@ import {
   usePressScale,
 } from "@stageholder/ui";
 import {
+  DashboardStats,
   HabitSummary,
   RecentJournals,
   TodayTodos,
+  type DashboardStatItem,
   type HabitProgressValue,
 } from "@repo/features/dashboard";
-import { LevelProgress } from "@repo/features/light";
+import {
+  JournalGrowthChart,
+  LightEarnedChart,
+  WeeklyActivityChart,
+} from "@repo/features/charts";
+import { LevelProgress, LevelUpCelebration } from "@repo/features/light";
 import type { HabitEntry, Todo } from "@repo/core/types";
 import type { UserLight } from "@repo/core/types/light";
 import { CalendarDays } from "@tamagui/lucide-icons-2";
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { format, subDays } from "date-fns";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import {
@@ -51,10 +61,12 @@ import {
 } from "react-native-safe-area-context";
 
 import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
+import { TrialPill } from "@/components/trial-pill";
 
 import {
   apiClient,
   habitKeys,
+  journalKeys,
   useHabits,
   useJournals,
   useTodayHabitProgress,
@@ -62,9 +74,20 @@ import {
   useTodos,
   useUserLight,
 } from "@/lib/api";
+import { useDayActivityCounts } from "@/lib/api/hooks/calendar";
 import { IGNITION } from "@/lib/ignition-palette";
+import { useLevelUp } from "@/lib/use-level-up";
 import { localDateKey } from "@/lib/streak";
 import { useJournalCrypto } from "@/lib/journal-crypto";
+import { useJournalGrowth } from "@/lib/use-journal-growth";
+import { useLightTrend } from "@/lib/use-light-trend";
+import { useWeeklyActivity } from "@/lib/use-weekly-activity";
+
+// Chart accent for the activity/growth charts. The shared views default to
+// the PWA's `var(--color-chart-1)` CSS variable, which can't resolve on RN —
+// a `$token` does (the kit chart resolves theme tokens on both platforms) and
+// stays theme-aware in light/dark, like the CSS var does on web.
+const CHART_COLOR = "$info";
 
 // Fallback targets used until userLight resolves on first load. The real values
 // live on /light/me and are tuned on the web app (PATCH /light/targets).
@@ -89,6 +112,18 @@ function todayLabel(): string {
     .toUpperCase();
 }
 
+/** Day-over-day trend for a KPI — up/down/flat with a signed count (PWA
+ *  `useDashboardStats.delta` parity). */
+function dayDelta(
+  todayValue: number,
+  yesterdayValue: number,
+): DashboardStatItem["delta"] {
+  const diff = todayValue - yesterdayValue;
+  if (diff > 0) return { direction: "up", label: `↑ ${diff}` };
+  if (diff < 0) return { direction: "down", label: `↓ ${Math.abs(diff)}` };
+  return { direction: "flat", label: "—" };
+}
+
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useUser();
@@ -102,8 +137,33 @@ export default function TodayScreen() {
   const journalsQuery = useJournals({ startDate: today, endDate: today });
   const habitProgress = useTodayHabitProgress();
   const lightQuery = useUserLight();
+  // 14-day cumulative Light trend — the last two days feed the KPI row's
+  // "Light today" delta, and the full series feeds the Light Growth chart.
+  // Shares the cached useLightStats query with /journey — no extra network.
+  const { data: lightTrend, isLoading: lightTrendLoading } = useLightTrend();
+  // Trend charts (PWA dashboard parity) — weekly activity reads the same
+  // ["calendar", month] caches the calendar screen uses; journal growth reads
+  // the 30-day /journals/stats window.
+  const weeklyActivity = useWeeklyActivity();
+  const journalGrowth = useJournalGrowth();
+  // Today-vs-yesterday counts for the KPI deltas — BOTH days come from the
+  // calendar month cache so the comparison pair is internally consistent
+  // (PWA useDashboardStats parity). Display values stay on the fresher live
+  // queries; the delta is a trend hint, not the headline number.
+  const todayCounts = useDayActivityCounts(today);
+  const yesterdayCounts = useDayActivityCounts(
+    format(subDays(new Date(), 1), "yyyy-MM-dd"),
+  );
+
+  // Level-up celebration — fires when the user crosses a tier WHILE on Today
+  // (e.g. completing the habit that tips them over). Previously only wired on
+  // /journey, so a level-up earned from the dashboard was silently dropped
+  // unless the user happened to be on Journey. Shares the ref-compare hook with
+  // Journey (both mount it; whichever is visible when the tier flips shows it).
+  const { levelUpTier, dismiss: dismissLevelUp } = useLevelUp(lightQuery.data);
 
   const toggleTodo = useToggleTodo();
+  const qc = useQueryClient();
 
   // Journal entries are encryption-aware: if the account has journal encryption
   // set up and isn't unlocked, the recent-journals card shows a "unlock" hint
@@ -125,6 +185,10 @@ export default function TodayScreen() {
         habitsQuery.refetch(),
         journalsQuery.refetch(),
         lightQuery.refetch(),
+        // Trend-chart sources — invalidate (refetches active queries) rather
+        // than holding refs to the per-month calendar queries.
+        qc.invalidateQueries({ queryKey: ["calendar"] }),
+        qc.invalidateQueries({ queryKey: journalKeys.stats() }),
       ]);
     } finally {
       setRefreshing(false);
@@ -198,6 +262,58 @@ export default function TodayScreen() {
       label: IGNITION.todo.label,
     },
   ];
+
+  // KPI tiles for the shared `DashboardStats` row (kit `Stat`). Light gets an
+  // animated single-number value; every tile carries a day-over-day delta
+  // (PWA parity) — Light's from the trend hook, the rest from the calendar
+  // month cache's today/yesterday counts.
+  const stats = useMemo<DashboardStatItem[]>(() => {
+    const lightToday = lightTrend.at(-1)?.earned ?? 0;
+    const lightYesterday = lightTrend.at(-2)?.earned ?? 0;
+    const t = todayCounts.counts;
+    const y = yesterdayCounts.counts;
+
+    return [
+      {
+        key: "light",
+        label: "Light today",
+        value: lightToday,
+        delta: dayDelta(lightToday, lightYesterday),
+      },
+      {
+        key: "streak",
+        label: "Day streak",
+        value: lightQuery.data?.perfectDayStreak ?? 0,
+      },
+      {
+        key: "todos",
+        label: "Todos",
+        display: `${todoStats.done} / ${todoStats.total}`,
+        delta: dayDelta(t.todoDone, y.todoDone),
+      },
+      {
+        key: "habits",
+        label: "Habits",
+        display: `${habitStats.doneToday} / ${habitStats.totalScheduledToday}`,
+        delta: dayDelta(t.habitDone, y.habitDone),
+      },
+      {
+        key: "journal",
+        label: "Journal words",
+        display: `${journalWords} / ${journalTarget}`,
+        delta: dayDelta(t.journalWords, y.journalWords),
+      },
+    ];
+  }, [
+    lightTrend,
+    lightQuery.data,
+    todoStats,
+    habitStats,
+    journalWords,
+    journalTarget,
+    todayCounts.counts,
+    yesterdayCounts.counts,
+  ]);
 
   // HabitSummary wants a Map<habitId, {value,type,targetCountSnapshot}> for
   // TODAY, so a completed habit reads as done (not 0/target). We fetch each
@@ -285,16 +401,22 @@ export default function TodayScreen() {
                   {user?.name ? `, ${user.name.split(" ")[0]}` : ""}.
                 </H2>
               </YStack>
-              {/* Month calendar (rings-per-day + day agenda) — the PWA's
-                  /calendar, hidden-route on mobile. */}
-              <IconButton
-                variant="ghost"
-                size="sm"
-                aria-label="Open calendar"
-                onPress={() => router.push("/calendar")}
-              >
-                <CalendarDays size={20} />
-              </IconButton>
+              <XStack items="center" gap="$2">
+                {/* Trial countdown — renders only while `trialing` (the PWA
+                    keeps this in the app-shell header; Today's header is the
+                    mobile equivalent chrome). Taps to /upgrade. */}
+                <TrialPill />
+                {/* Month calendar (rings-per-day + day agenda) — the PWA's
+                    /calendar, hidden-route on mobile. */}
+                <IconButton
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Open calendar"
+                  onPress={() => router.push("/calendar")}
+                >
+                  <CalendarDays size={20} />
+                </IconButton>
+              </XStack>
             </XStack>
 
             {/* ---- Error banner ---- */}
@@ -318,104 +440,206 @@ export default function TodayScreen() {
               </Banner>
             ) : null}
 
-            {/* ---- Level progress (gamification) — taps through to the
-                 Journey screen (tier path, streaks, Light feed). ---- */}
-            {lightQuery.data ? (
-              <LevelProgressCard
-                userLight={lightQuery.data}
-                onPress={() => router.push("/journey")}
-              />
-            ) : null}
+            {/* ---- Dashboard grid: motivation-first stack. Kit `Dashboard`
+                 renders a 12-col grid on wide screens but STACKS to a single
+                 column on native, so on mobile every widget is a full-width
+                 card. The hero widgets (level + rings) stay chromeless
+                 (`bordered={false} flush`) so their existing pressable
+                 `Card`/rings visual shows through unchanged; the section
+                 widgets (habits/todos/journals) take the widget's own card
+                 chrome + title + "View all" action. ---- */}
+            <Dashboard columns={12} gap="$4">
+              {/* ---- Level progress (gamification) — taps through to the
+                   Journey screen (tier path, streaks, Light feed). Hosted in a
+                   flush chromeless widget so the pressable `LevelProgressCard`
+                   keeps its own card + press-scale. ---- */}
+              {lightQuery.data ? (
+                <Dashboard.Widget
+                  colSpan={12}
+                  hideHeader
+                  bordered={false}
+                  flush
+                >
+                  <LevelProgressCard
+                    userLight={lightQuery.data}
+                    onPress={() => router.push("/journey")}
+                  />
+                </Dashboard.Widget>
+              ) : null}
 
-            {/* ---- Activity rings + legend ---- */}
-            <Card>
-              <Card.Body items="center" gap="$4" py="$5">
-                {isLoading && !habitsQuery.data ? (
-                  <View height={196} items="center" justify="center">
-                    <Spinner size="large" />
-                  </View>
-                ) : (
-                  <>
-                    <ActivityRings size={196} rings={rings}>
-                      {/* The flame at the heart of the ignition rings — the
-                          legend below carries the numbers, so the center
-                          stays a pure identity mark. */}
-                      <Text fontSize={40} lineHeight={48}>
-                        🔥
-                      </Text>
-                    </ActivityRings>
-                    <XStack gap="$5" flexWrap="wrap" justify="center">
-                      {rings.map((r) => (
-                        <YStack key={r.label} items="center" gap="$1" minW={72}>
-                          <XStack items="center" gap="$1.5">
-                            <View
-                              width={8}
-                              height={8}
-                              rounded={9999}
-                              style={{ backgroundColor: r.color }}
-                            />
-                            <Text fontSize="$1" color="$mutedForeground">
-                              {r.label}
-                            </Text>
-                          </XStack>
-                          <Text fontSize="$2" fontWeight="600" color="$color">
-                            {r.value}/{r.max}
-                          </Text>
-                        </YStack>
-                      ))}
-                    </XStack>
-                    {habitStats.bestStreak > 0 ? (
+              {/* ---- Activity rings + legend ---- */}
+              <Dashboard.Widget colSpan={12} hideHeader bordered={false} flush>
+                <Card>
+                  <Card.Body items="center" gap="$4" py="$5">
+                    {isLoading && !habitsQuery.data ? (
+                      <View height={196} items="center" justify="center">
+                        <Spinner size="large" />
+                      </View>
+                    ) : (
                       <>
-                        <Separator />
-                        <XStack items="center" gap="$2">
-                          <Text fontSize="$1" color="$mutedForeground">
-                            Best habit streak
+                        <ActivityRings size={196} rings={rings}>
+                          {/* The flame at the heart of the ignition rings —
+                              the legend below carries the numbers, so the
+                              center stays a pure identity mark. */}
+                          <Text fontSize={40} lineHeight={48}>
+                            🔥
                           </Text>
-                          <StreakBadge count={habitStats.bestStreak} />
+                        </ActivityRings>
+                        <XStack gap="$5" flexWrap="wrap" justify="center">
+                          {rings.map((r) => (
+                            <YStack
+                              key={r.label}
+                              items="center"
+                              gap="$1"
+                              minW={72}
+                            >
+                              <XStack items="center" gap="$1.5">
+                                <View
+                                  width={8}
+                                  height={8}
+                                  rounded={9999}
+                                  style={{ backgroundColor: r.color }}
+                                />
+                                <Text fontSize="$1" color="$mutedForeground">
+                                  {r.label}
+                                </Text>
+                              </XStack>
+                              <Text
+                                fontSize="$2"
+                                fontWeight="600"
+                                color="$color"
+                              >
+                                {r.value}/{r.max}
+                              </Text>
+                            </YStack>
+                          ))}
                         </XStack>
+                        {habitStats.bestStreak > 0 ? (
+                          <>
+                            <Separator />
+                            <XStack items="center" gap="$2">
+                              <Text fontSize="$1" color="$mutedForeground">
+                                Best habit streak
+                              </Text>
+                              <StreakBadge count={habitStats.bestStreak} />
+                            </XStack>
+                          </>
+                        ) : null}
                       </>
-                    ) : null}
-                  </>
-                )}
-              </Card.Body>
-            </Card>
+                    )}
+                  </Card.Body>
+                </Card>
+              </Dashboard.Widget>
 
-            {/* ---- Habit summary (features) ---- */}
-            <HabitSummary
-              habits={habitsQuery.data}
-              habitProgress={habitProgressMap}
-              isLoading={habitsQuery.isLoading}
-              onViewAll={() => router.push("/habits")}
-            />
+              {/* ---- KPI row (shared DashboardStats) — chromeless flush cell;
+                   the `Stat` tiles carry their own hairline card borders. ---- */}
+              <Dashboard.Widget colSpan={12} hideHeader bordered={false} flush>
+                <DashboardStats stats={stats} />
+              </Dashboard.Widget>
 
-            {/* ---- Today's todos (features) ---- */}
-            <TodayTodos
-              todos={todosQuery.data ?? []}
-              isLoading={todosQuery.isLoading}
-              total={todoStats.total}
-              percentage={
-                todoStats.total > 0
-                  ? Math.round((todoStats.done / todoStats.total) * 100)
-                  : 0
-              }
-              onToggleTodo={handleToggleTodo}
-              onViewAll={() => router.push("/todos")}
-            />
+              {/* ---- Habit summary (features) ---- */}
+              <Dashboard.Widget
+                colSpan={12}
+                title="Habits Today"
+                actions={<ViewAll onPress={() => router.push("/habits")} />}
+              >
+                <HabitSummary
+                  habits={habitsQuery.data}
+                  habitProgress={habitProgressMap}
+                  isLoading={habitsQuery.isLoading}
+                />
+              </Dashboard.Widget>
 
-            {/* ---- Recent journals (features) ---- */}
-            <RecentJournals
-              journals={journalsQuery.data ?? []}
-              isLoading={journalsQuery.isLoading}
-              isLocked={journalLocked}
-              onViewAll={() => router.push("/journal")}
-              // Detail later — for now both press + view-all land on the
-              // journal tab where the unlock + entry detail live.
-              onJournalPress={() => router.push("/journal")}
-            />
+              {/* ---- Today's todos (features) ---- */}
+              <Dashboard.Widget
+                colSpan={12}
+                title="Today's Todos"
+                actions={<ViewAll onPress={() => router.push("/todos")} />}
+              >
+                <TodayTodos
+                  todos={todosQuery.data ?? []}
+                  isLoading={todosQuery.isLoading}
+                  total={todoStats.total}
+                  percentage={
+                    todoStats.total > 0
+                      ? Math.round((todoStats.done / todoStats.total) * 100)
+                      : 0
+                  }
+                  onToggleTodo={handleToggleTodo}
+                />
+              </Dashboard.Widget>
+
+              {/* ---- Trend charts (PWA dashboard parity: weekly activity,
+                   then journal growth + light growth). Shared views over the
+                   kit's cross-platform Bar/AreaChart; color is a theme token
+                   because the views' CSS-var default can't resolve on RN. ---- */}
+              <Dashboard.Widget colSpan={12} title="Weekly Activity">
+                <WeeklyActivityChart
+                  data={weeklyActivity.data}
+                  isLoading={weeklyActivity.isLoading}
+                  color={CHART_COLOR}
+                />
+              </Dashboard.Widget>
+              <Dashboard.Widget colSpan={12} title="Journal Growth">
+                <JournalGrowthChart
+                  data={journalGrowth.data}
+                  isLoading={journalGrowth.isLoading}
+                  color={CHART_COLOR}
+                />
+              </Dashboard.Widget>
+              <Dashboard.Widget colSpan={12} title="Light Growth">
+                <LightEarnedChart
+                  data={lightTrend}
+                  isLoading={lightTrendLoading}
+                />
+              </Dashboard.Widget>
+
+              {/* ---- Recent journals (features) ---- */}
+              <Dashboard.Widget
+                colSpan={12}
+                title="Recent Journal Entries"
+                actions={<ViewAll onPress={() => router.push("/journal")} />}
+              >
+                <RecentJournals
+                  journals={journalsQuery.data ?? []}
+                  isLoading={journalsQuery.isLoading}
+                  isLocked={journalLocked}
+                  // Detail later — for now every entry press lands on the
+                  // journal tab where the unlock + entry detail live.
+                  onJournalPress={() => router.push("/journal")}
+                />
+              </Dashboard.Widget>
+            </Dashboard>
           </YStack>
         </PullToRefresh>
       </SafeAreaView>
+
+      {/* Level-up overlay — rendered above the scroll frame so it covers the
+          whole screen when a tier is crossed from Today. */}
+      {levelUpTier ? (
+        <LevelUpCelebration tier={levelUpTier} onDismiss={dismissLevelUp} />
+      ) : null}
     </YStack>
+  );
+}
+
+/* ------------------------------ Widget actions ----------------------------- */
+
+/**
+ * The "View all" affordance in a `Dashboard.Widget`'s right-aligned `actions`
+ * slot — a small primary-tinted pressable label. RN `Text` handles `onPress`
+ * directly, so no wrapping Pressable is needed.
+ */
+function ViewAll({ onPress }: { onPress: () => void }) {
+  return (
+    <Text
+      fontSize="$1"
+      color="$primary"
+      onPress={onPress}
+      pressStyle={{ opacity: 0.6 }}
+    >
+      View all
+    </Text>
   );
 }
 

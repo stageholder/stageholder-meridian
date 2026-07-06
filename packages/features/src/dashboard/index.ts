@@ -1,9 +1,14 @@
-// Barrel for the `dashboard` domain — bento card chrome + the dashboard's
-// summary cards. Each view takes its data + navigation callbacks; the host
-// (PWA today, mobile later) hooks the data layer and supplies the
-// callbacks wired to its router.
+// Barrel for the `dashboard` domain — the dashboard's CONTENT-ONLY summary
+// cells + the KPI stat row. Card chrome + grid position are owned by the host's
+// kit `Dashboard`/`Dashboard.Widget`; each view here renders only its body and
+// takes its data + navigation callbacks. The host (PWA route / mobile Today)
+// hooks the data layer and supplies callbacks wired to its router.
 
-export { BentoCard, type BentoCardProps } from "./bento-card";
+export {
+  DashboardStats,
+  type DashboardStatsProps,
+  type DashboardStatItem,
+} from "./dashboard-stats";
 export { TodayTodos, type TodayTodosProps } from "./today-todos";
 export {
   HabitSummary,

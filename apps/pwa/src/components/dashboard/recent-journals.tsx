@@ -4,11 +4,12 @@ import { useJournals } from "@/lib/api/journals";
 import { useEncryptionStore } from "@/lib/crypto/encryption-store";
 
 /**
- * PWA wrapper: hooks `useJournals` + `useEncryptionStore` (skip fetch
- * while locked), wires TanStack `useNavigate` to `onViewAll` and
- * `onJournalPress`, and renders the shared cross-platform view.
+ * PWA data wrapper: hooks `useJournals` + `useEncryptionStore` (skip fetch
+ * while locked) and renders the shared CONTENT-ONLY view. Card chrome + "View
+ * all" nav are owned by the host route's kit `Dashboard.Widget`; per-entry
+ * navigation stays here (a content behavior).
  */
-export function RecentJournals({ index = 0 }: { index?: number }) {
+export function RecentJournals() {
   const navigate = useNavigate();
   const { isSetup, isUnlocked } = useEncryptionStore();
   const isLocked = isSetup && !isUnlocked;
@@ -21,11 +22,9 @@ export function RecentJournals({ index = 0 }: { index?: number }) {
       journals={journals ?? []}
       isLoading={isLoading}
       isLocked={isLocked}
-      onViewAll={() => void navigate({ to: "/journal" })}
       onJournalPress={(id) =>
         void navigate({ to: "/journal/$id", params: { id } })
       }
-      index={index}
     />
   );
 }

@@ -44,6 +44,8 @@ import {
 
 import { openURL } from "@repo/core/platform/linking";
 import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
+import { PlanComparison } from "@/components/plan-comparison";
+import { useHubPricing } from "@/lib/api/hub";
 import {
   configurePurchases,
   getCurrentOfferingPackages,
@@ -86,16 +88,35 @@ export default function UpgradeScreen() {
   // The auto-provisioned free tier is also an `active` "polar" claim, so it
   // MUST be excluded (`!isFreeTier`) — a free user is exactly who we want to
   // sell to. Default provider to "polar" when absent (older Hub tokens).
+  //
+  // Gate on ENTITLEMENT-LIVE, not an `active|trialing` allowlist: `past_due` is
+  // the dunning/grace window where the web sub is STILL entitled — a user there
+  // buying IAP would double-bill across two billers, the exact §4 hazard. The
+  // ended states (`canceled`/`expired`) are correctly excluded so a lapsed user
+  // CAN re-subscribe in-app (Polar marks "cancel at period end" as `active`, so
+  // a still-in-period cancel is caught by `active`, not `canceled`).
   const sub = useSubscription();
+  const ENTITLEMENT_LIVE: ReadonlyArray<NonNullable<typeof sub>["status"]> = [
+    "active",
+    "trialing",
+    "past_due",
+  ];
   const polarManaged =
     !!sub &&
     !sub.isFreeTier &&
     (sub.provider ?? "polar") === "polar" &&
-    (sub.status === "active" || sub.status === "trialing");
+    ENTITLEMENT_LIVE.includes(sub.status);
   const [packages, setPackages] = useState<IapPackage[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
+
+  // Hub pricing catalog — feeds the feature-comparison section only (plan
+  // LIMITS are Hub truth regardless of biller). Purchasable prices above it
+  // stay the store's. Rendered whenever the catalog loads, including the
+  // pre-store (`!enabled`) and web-billed states — it's informational either
+  // way and quietly absent on fetch failure.
+  const pricingQuery = useHubPricing();
 
   const load = useCallback(async () => {
     if (!enabled || !user?.sub) return;
@@ -321,6 +342,16 @@ export default function UpgradeScreen() {
                 </XStack>
               </YStack>
             )}
+
+            {/* ---- Feature comparison (PWA ComparisonSheet parity) ---- */}
+            {pricingQuery.data ? (
+              <View mt="$4">
+                <PlanComparison
+                  plans={pricingQuery.data.plans}
+                  features={pricingQuery.data.features}
+                />
+              </View>
+            ) : null}
           </YStack>
         </ScrollView>
       </SafeAreaView>

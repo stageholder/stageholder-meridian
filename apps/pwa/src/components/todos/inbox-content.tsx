@@ -11,7 +11,7 @@ import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
 import { CompletedSection } from "./completed-section";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
-import { TodoListSkeleton } from "./todo-list-skeleton";
+import { TodoListSkeleton } from "@repo/features/todos";
 import type { Todo, TodoList } from "@repo/core/types";
 
 export function InboxContent() {

@@ -7,7 +7,12 @@
 // EntryEditor autosave hammers useUpdateJournal — onSettled invalidates
 // lazily so we don't thrash the network on every keystroke.
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import type { Journal, JournalContent, JournalStats } from "@repo/core/types";
 
 import { apiClient } from "../client";
@@ -27,10 +32,13 @@ const LOCKED_WRITE_MESSAGE =
 
 /* ------------------------------ Reads -------------------------------- */
 
-export function useJournals(filters?: {
-  startDate?: string;
-  endDate?: string;
-}) {
+export function useJournals(
+  filters?: {
+    startDate?: string;
+    endDate?: string;
+  },
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: journalKeys.list(filters),
     queryFn: async () => {
@@ -40,6 +48,36 @@ export function useJournals(filters?: {
       );
       return Array.isArray(data) ? data : data.data;
     },
+    enabled: options?.enabled !== false,
+  });
+}
+
+/**
+ * Full pagination envelope from `GET /journals?page=&limit=` — same endpoint
+ * as `useJournals`, but keeping the `{ data, meta }` wrapper so the journal
+ * tab can drive an infinite "Load more" list (PWA `useJournalsPaginated`
+ * parity). Raw/possibly-encrypted journals — the screen decrypts (mobile
+ * decrypts at the screen level, unlike the PWA's in-hook decrypt).
+ */
+export type PaginatedJournals = {
+  data: Journal[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+};
+
+export function useJournalsPaginated(limit = 20) {
+  return useInfiniteQuery<PaginatedJournals>({
+    queryKey: journalKeys.paginated(),
+    queryFn: async ({ pageParam }) => {
+      const { data } = await apiClient.get<PaginatedJournals>("/journals", {
+        params: { page: pageParam as number, limit },
+      });
+      return data;
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.page < lastPage.meta.totalPages
+        ? lastPage.meta.page + 1
+        : undefined,
   });
 }
 
@@ -54,12 +92,18 @@ export function useJournal(id: string | null | undefined) {
   });
 }
 
-export function useJournalStats(today?: boolean) {
+/**
+ * 30-day journaling stats (per-day count/words + all-time baseline) —
+ * feeds the dashboard's Journal Growth chart. `today` is the client's LOCAL
+ * `yyyy-MM-dd` (PWA parity: `journalsApi.stats({ today })`) so the server
+ * anchors the 30-day window on the user's local day, not UTC.
+ */
+export function useJournalStats(today?: string) {
   return useQuery({
     queryKey: [...journalKeys.stats(), { today }] as const,
     queryFn: async () => {
       const { data } = await apiClient.get<JournalStats>("/journals/stats", {
-        params: { today: today ? true : undefined },
+        params: { today },
       });
       return data;
     },
@@ -195,7 +239,10 @@ export function useUpdateJournal() {
         queryKey: journalKeys.lists(),
       });
       for (const [key, prev] of snapshots) {
-        if (!prev) continue;
+        // The paginated cache under lists() holds InfiniteData ({pages}), not
+        // Journal[] — skip it (PWA parity: Array.isArray guard) and let the
+        // onSettled invalidate reconcile it.
+        if (!Array.isArray(prev)) continue;
         qc.setQueryData<Journal[]>(
           key,
           prev.map((j) =>
@@ -231,7 +278,8 @@ export function useDeleteJournal() {
         queryKey: journalKeys.lists(),
       });
       for (const [key, prev] of snapshots) {
-        if (!prev) continue;
+        // Skip the paginated InfiniteData cache — see useUpdateJournal.
+        if (!Array.isArray(prev)) continue;
         qc.setQueryData<Journal[]>(
           key,
           prev.filter((j) => j.id !== id),

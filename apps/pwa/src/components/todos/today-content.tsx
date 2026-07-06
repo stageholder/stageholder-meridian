@@ -5,7 +5,7 @@ import { AnimatePresence, Text, XStack, YStack } from "@stageholder/ui";
 import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
 import { CompletedSection } from "./completed-section";
-import { TodoListSkeleton } from "./todo-list-skeleton";
+import { TodoListSkeleton } from "@repo/features/todos";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
 import { todoCompletedAt } from "@/lib/date";
 import type { Todo } from "@repo/core/types";

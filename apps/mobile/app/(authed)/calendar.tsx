@@ -189,12 +189,12 @@ export default function CalendarScreen() {
         </ScrollView>
       </SafeAreaView>
 
-      {/* The selected day's date isn't forced onto the new todo — the form's
-          date pickers default sensibly and stay editable (PWA agenda parity
-          would pre-fill; CreateTodoDialog doesn't take dates yet). */}
+      {/* Pre-fill the tapped day's date so a todo added from the calendar is
+          actually DUE that day (PWA agenda parity) — the field stays editable. */}
       <CreateTodoDialog
         open={createTodoOpen}
         onOpenChange={setCreateTodoOpen}
+        defaultDueDate={format(selectedDate, "yyyy-MM-dd")}
       />
     </YStack>
   );

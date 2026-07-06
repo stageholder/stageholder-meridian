@@ -16,11 +16,14 @@
 //                with live Light progress, dimmed future levels.
 //   FEED       — JourneyFeed with "Show more" pagination (same limits as the
 //                PWA wrapper).
+//   CHART      — JourneyLightChart (shared cross-platform view, fed by
+//                useLightTrend) — the 14-day cumulative Light trend.
 //   LEVEL-UP   — LevelUpCelebration overlay when currentTier increases
-//                mid-session (ported use-level-up ref-compare hook, inline).
+//                mid-session (shared `useLevelUp` ref-compare hook, also
+//                mounted on the Today dashboard).
 //
-// Deliberately NOT ported: the PWA's Light chart (a web recharts surface)
-// and the Today rings (the Today tab already renders them one tap away).
+// Deliberately NOT ported: the Today activity rings (the Today tab already
+// renders them one tap away).
 //
 // Reached from the Today dashboard's level-progress card (tap), not a tab —
 // registered with `href: null`, back chevron returns to Today.
@@ -47,7 +50,7 @@ import { JourneyLightChart } from "@repo/features/charts";
 import { LIGHT_TIERS, type UserLight } from "@repo/core/types/light";
 import { ChevronLeft } from "@tamagui/lucide-icons-2";
 import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -55,28 +58,11 @@ import {
 
 import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
 import { useLightEvents, useUserLight } from "@/lib/api";
+import { useLevelUp } from "@/lib/use-level-up";
 import { useLightTrend } from "@/lib/use-light-trend";
 
 const FEED_INITIAL = 10;
 const FEED_STEP = 20;
-
-/** Port of the PWA's use-level-up: fire the celebration only on an observed
- *  tier INCREASE within this session (ref-compare, not on first load). */
-function useLevelUp(userLight: UserLight | undefined) {
-  const prevTier = useRef<number | null>(null);
-  const [levelUpTier, setLevelUpTier] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!userLight) return;
-    if (prevTier.current !== null && userLight.currentTier > prevTier.current) {
-      setLevelUpTier(userLight.currentTier);
-    }
-    prevTier.current = userLight.currentTier;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLight?.currentTier]);
-
-  return { levelUpTier, dismiss: () => setLevelUpTier(null) };
-}
 
 export default function JourneyScreen() {
   const insets = useSafeAreaInsets();

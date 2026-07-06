@@ -19,7 +19,17 @@ function keyFor(sub: string): string {
   return `meridian_onboarded_${sub}`;
 }
 
+// In-memory mirror of the completion flag for the CURRENT session. It exists so
+// a SecureStore write failure (keychain locked, device full, OS quirk) can't
+// TRAP the user on the final onboarding step: `markOnboarded` always records
+// here even when the persistent write throws, and `isOnboarded` consults it, so
+// the (authed) gate lets the user through this session. Worst case on a failed
+// write is a one-time replay of the welcome flow on the next cold start — never
+// a dead-end. Cleared naturally when the process restarts.
+const onboardedThisSession = new Set<string>();
+
 export async function isOnboarded(sub: string): Promise<boolean> {
+  if (onboardedThisSession.has(sub)) return true;
   try {
     const v = await SecureStore.getItemAsync(keyFor(sub));
     return v === "1";
@@ -32,9 +42,18 @@ export async function isOnboarded(sub: string): Promise<boolean> {
 }
 
 export async function markOnboarded(sub: string): Promise<void> {
-  await SecureStore.setItemAsync(keyFor(sub), "1");
+  // Record in-memory FIRST so the flag holds for this session even if the
+  // persistent write below fails — the caller must never be blocked from
+  // leaving the wizard on a storage hiccup.
+  onboardedThisSession.add(sub);
+  try {
+    await SecureStore.setItemAsync(keyFor(sub), "1");
+  } catch {
+    // Persistent write failed; the in-memory flag above carries the session.
+  }
 }
 
 export async function resetOnboarded(sub: string): Promise<void> {
+  onboardedThisSession.delete(sub);
   await SecureStore.deleteItemAsync(keyFor(sub));
 }

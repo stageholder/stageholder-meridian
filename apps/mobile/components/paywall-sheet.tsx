@@ -44,7 +44,9 @@ type Pillar = "todos" | "habits" | "journal" | null;
  * `pillarForFeature`; source slugs live in the API's entitlement helper.
  */
 function pillarForFeature(feature: string): Pillar {
-  if (feature === "max_habits") return "habits";
+  // Prefix match covers max_habits AND max_habit_groups (the group cap 402'd
+  // to the generic "Other" pillar before this).
+  if (feature.startsWith("max_habit")) return "habits";
   if (feature === "max_todo_lists" || feature === "max_active_todos")
     return "todos";
   if (feature.startsWith("max_journal")) return "journal";
@@ -69,6 +71,8 @@ function featureLabel(feature: string): string {
   switch (feature) {
     case "max_habits":
       return "habits";
+    case "max_habit_groups":
+      return "habit groups";
     case "max_todo_lists":
       return "to-do lists";
     case "max_active_todos":

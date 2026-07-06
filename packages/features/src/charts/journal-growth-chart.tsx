@@ -19,11 +19,18 @@ export interface JournalGrowthDay {
 export interface JournalGrowthChartProps {
   data: JournalGrowthDay[];
   isLoading?: boolean;
+  /**
+   * Area color. The default is the PWA's CSS chart variable, which does NOT
+   * resolve on React Native — native callers must pass a `$token` (the kit
+   * chart resolves theme tokens cross-platform) or a raw hex.
+   */
+  color?: string;
 }
 
 export function JournalGrowthChart({
   data,
   isLoading,
+  color = "var(--color-chart-1)",
 }: JournalGrowthChartProps) {
   if (isLoading) {
     return <Skeleton height={200} width="100%" rounded="$3" />;
@@ -51,7 +58,7 @@ export function JournalGrowthChart({
       height={200}
       showGrid
       continuous
-      color="var(--color-chart-1)"
+      color={color}
     />
   );
 }

@@ -117,7 +117,15 @@ export function CalendarDayAgenda({
           size="sm"
           flex={1}
           icon={<Plus size={14} color={IGNITION.journal.base as never} />}
-          onPress={() => router.push("/journal/new")}
+          // Seed the tapped day so a journal added from the calendar is dated
+          // that day (PWA agenda parity), not silently dated today — critical
+          // for backfilling a missed past day. journal/new reads `date`.
+          onPress={() =>
+            router.push({
+              pathname: "/journal/new",
+              params: { date: format(date, "yyyy-MM-dd") },
+            })
+          }
         >
           New journal
         </Button>

@@ -2,7 +2,6 @@ import { isWeb } from "tamagui";
 import { ScrollView, Text, XStack, YStack } from "@stageholder/ui";
 import type { Journal } from "@repo/core/types";
 import { MoodDisplay } from "../journal/mood-display";
-import { BentoCard } from "./bento-card";
 
 // CSS scroll-snap for the horizontal card strip (was Tailwind `snap-x` /
 // `snap-start`). Web-only CSS keys — guarded with `isWeb` so they never
@@ -26,52 +25,26 @@ export interface RecentJournalsProps {
    * shows a "unlock to see" hint instead of the list.
    */
   isLocked?: boolean;
-  onViewAll?: () => void;
   /** Open a single journal entry. */
   onJournalPress?: (id: string) => void;
-  /** Mount animation index — passed through to BentoCard. */
-  index?: number;
 }
 
 /**
- * Dashboard cell showing the 5 most recent journal entries as a
- * horizontal snap-scroll of compact cards. Each card shows mood + date
- * + title + word count. The view filters/slices via the `journals` prop
- * (the host fetches; the view picks the first 5).
- *
- * The previous `<Link to="/journal/$id">` per card and `<Link to="/journal">`
- * "View all" are replaced with `onJournalPress(id)` and `onViewAll`
- * callbacks for cross-platform.
+ * CONTENT-ONLY dashboard cell body: the 5 most recent journal entries as a
+ * horizontal snap-scroll of compact cards (mood + date + title + word count).
+ * Card chrome (title, "View all", grid position) is owned by the host's kit
+ * `Dashboard.Widget`. The host fetches; the view picks the first 5.
  */
 export function RecentJournals({
   journals,
   isLoading,
   isLocked,
-  onViewAll,
   onJournalPress,
-  index = 0,
 }: RecentJournalsProps) {
   const recentJournals = journals.slice(0, 5);
 
   return (
-    <BentoCard
-      title="Recent Journal Entries"
-      onTitlePress={onViewAll}
-      index={index}
-      action={
-        onViewAll ? (
-          <Text
-            fontSize="$1"
-            color="$primary"
-            cursor="pointer"
-            hoverStyle={{ textDecorationLine: "underline" }}
-            onPress={onViewAll}
-          >
-            View all
-          </Text>
-        ) : null
-      }
-    >
+    <YStack>
       {isLocked ? (
         <Text fontSize="$1" color="$mutedForeground">
           Unlock your journal to see recent entries.
@@ -148,6 +121,6 @@ export function RecentJournals({
           No journal entries yet.
         </Text>
       )}
-    </BentoCard>
+    </YStack>
   );
 }

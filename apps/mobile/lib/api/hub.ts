@@ -11,23 +11,33 @@
 //   GET  /api/billing/invoices/:orgId              → Invoice[]
 //   GET  /api/billing/invoices/:orgId/:orderId/url → { url }   (hosted invoice)
 //   POST /api/billing/portal/:orgId                → { url }   (Polar portal)
+//   GET  /api/billing/pricing/:product             → { plans, features }
 //
 // Profile WRITES stay on the SDK's native useUpdateProfile (it refreshes the
 // session afterwards so useUser's name/picture update — don't bypass it).
 
 import { useMutation, useQuery } from "@tanstack/react-query";
+// Type-only import from the SPA entry — erased at compile time, so Metro
+// never loads the web bundle. Keeps the pricing shapes in lockstep with the
+// SDK instead of hand-copying the (large) PricingPlan interface.
+import type { PricingPlan, ProductFeature } from "@stageholder/sdk/spa";
 import axios from "axios";
+import { DeviceEventEmitter } from "react-native";
 
 import { getAccessToken } from "./auth";
+import { ClientEvents } from "./client";
 
-/** Hub base URL — same env the StageholderProvider boots from. */
-function resolveHubUrl(): string {
+/**
+ * The Hub ORIGIN (no `/oidc` mount). The issuer URL carries the `/oidc` mount
+ * path (oidc-provider lives there), but the Hub's REST API AND its web account
+ * pages are served at the origin root — so both `<origin>/api/...` and
+ * `<origin>/account` need the bare origin, not `<origin>/oidc/...` (which 404s).
+ * Exported so screens that link to Hub web pages (Settings → Security) resolve
+ * the same origin the REST client uses, instead of hand-rolling it.
+ */
+export function hubOrigin(): string {
   const fromEnv = process.env.EXPO_PUBLIC_STAGEHOLDER_ISSUER_URL;
   if (fromEnv) {
-    // The issuer URL carries the `/oidc` mount path (oidc-provider lives
-    // there), but the Hub's REST API is served at the ORIGIN root (`/api/*`).
-    // Strip a trailing `/oidc` (and any trailing slash) so REST calls hit
-    // `<origin>/api/...` rather than 404ing under `<origin>/oidc/api/...`.
     return fromEnv.replace(/\/$/, "").replace(/\/oidc$/, "");
   }
   throw new Error(
@@ -43,11 +53,23 @@ const hubClient = axios.create({
 hubClient.interceptors.request.use(async (config) => {
   // Resolved per request (not at module load) so a missing env fails the
   // screen that needs it, not the whole app at import time.
-  config.baseURL = resolveHubUrl();
+  config.baseURL = hubOrigin();
   const token = await getAccessToken();
   if (token) config.headers.set("Authorization", `Bearer ${token}`);
   return config;
 });
+// A 401 on a Hub call (billing/profile) is the same dead-session signal the
+// main API client emits — surface it the same way so the app redirects to
+// sign-in instead of silently erroring on a billing screen.
+hubClient.interceptors.response.use(
+  (response) => response,
+  (error: unknown) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      DeviceEventEmitter.emit(ClientEvents.unauthorized);
+    }
+    return Promise.reject(error);
+  },
+);
 
 /* ------------------------------- Types ------------------------------- */
 
@@ -82,7 +104,35 @@ export function canManageBilling(role: string | null | undefined): boolean {
 export const hubKeys = {
   profile: ["hub", "profile"] as const,
   invoices: (orgId: string | undefined) => ["hub", "invoices", orgId] as const,
+  pricing: (product: string) => ["hub", "pricing", product] as const,
 };
+
+/** Response of `GET /api/billing/pricing/:product` (SDK `PricingResponse`). */
+export interface HubPricing {
+  plans: PricingPlan[];
+  features: ProductFeature[];
+}
+
+/**
+ * The Hub's pricing catalog (plans + feature definitions) — what the SPA
+ * SDK's `usePricing("meridian")` reads. Mobile uses it for the feature
+ * COMPARISON only; the purchasable prices on /upgrade stay the store's
+ * (RevenueCat) localized prices — App Store / Play are the merchant of
+ * record there, not Polar.
+ */
+export function useHubPricing(product = "meridian") {
+  return useQuery({
+    queryKey: hubKeys.pricing(product),
+    queryFn: async () => {
+      const { data } = await hubClient.get<HubPricing>(
+        `/api/billing/pricing/${encodeURIComponent(product)}`,
+      );
+      return data;
+    },
+    // The catalog changes on deploys, not sessions — cache generously.
+    staleTime: 5 * 60 * 1000,
+  });
+}
 
 export function useHubProfile() {
   return useQuery({

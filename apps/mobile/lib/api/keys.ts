@@ -51,6 +51,12 @@ export const journalKeys = {
   lists: () => [...journalKeys.all, "list"] as const,
   list: (filters?: { startDate?: string; endDate?: string }) =>
     [...journalKeys.lists(), filters ?? {}] as const,
+  // Infinite-query cache for the journal tab's paged list. Lives UNDER
+  // `lists()` so the mutations' existing `invalidateQueries(lists())` calls
+  // reconcile it — but its data is InfiniteData ({pages, pageParams}), NOT
+  // Journal[], so optimistic-update loops must Array.isArray-guard before
+  // mapping (see hooks/journal.ts).
+  paginated: () => [...journalKeys.lists(), "paginated"] as const,
   details: () => [...journalKeys.all, "detail"] as const,
   detail: (id: string) => [...journalKeys.details(), id] as const,
   stats: () => [...journalKeys.all, "stats"] as const,

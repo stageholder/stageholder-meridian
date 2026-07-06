@@ -1,9 +1,11 @@
 // apps/mobile/lib/api/Provider.tsx
 //
 // QueryProvider — wraps the app with React Query's PersistQueryClientProvider
-// so the cache survives app relaunches via AsyncStorage. The cache is
-// keyed off `meridian.query-cache.v1` (see ./query-client.ts); bump that
-// v1 when changing query shapes in a breaking way.
+// so the cache survives app relaunches via AsyncStorage. Storage identity is
+// the persister `key` (`meridian.query-cache.v1`, see ./query-client.ts); to
+// INVALIDATE the persisted cache after a breaking query-shape change, bump the
+// `buster` string in persistOptions below (NOT the key) — the buster is what
+// PersistQueryClientProvider compares on rehydrate to discard a stale cache.
 //
 // Three responsibilities:
 //   1. Provide the QueryClient + cache persistence

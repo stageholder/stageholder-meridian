@@ -2,7 +2,11 @@ import { Skeleton, XStack, YStack } from "@stageholder/ui";
 
 const WIDTHS = ["68%", "52%", "74%", "44%", "61%", "57%"] as const;
 
-/** Loading placeholder that mirrors the todo-row layout (checkbox + title). */
+/**
+ * Loading placeholder that mirrors the todo-row layout (checkbox + title).
+ * Promoted from the PWA (components/todos/todo-list-skeleton.tsx) so the
+ * mobile todo list shows the same shimmer instead of a full-screen spinner.
+ */
 export function TodoListSkeleton({ rows = 6 }: { rows?: number }) {
   return (
     <YStack mt="$3" gap="$2">

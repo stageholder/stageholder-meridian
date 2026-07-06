@@ -13,7 +13,7 @@ import {
   type CalendarRangeValue,
 } from "@stageholder/ui";
 import { format, addDays } from "date-fns";
-import { TodoListSkeleton } from "./todo-list-skeleton";
+import { TodoListSkeleton } from "@repo/features/todos";
 import type { Todo, TodoList } from "@repo/core/types";
 
 const PRESETS = [
