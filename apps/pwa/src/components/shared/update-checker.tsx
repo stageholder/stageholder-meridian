@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { isDesktop } from "@repo/core/platform";
 import { useUpdateStore } from "@/lib/update-store";
-import { AlertDialog, Button, useToast, XStack, YStack } from "@stageholder/ui";
+import { AlertDialog, Button, toast, XStack, YStack } from "@stageholder/ui";
 
 interface PendingUpdate {
   version: string;
@@ -18,7 +18,7 @@ interface PendingUpdate {
  * into one `toast(…, { action })` with `{ id: "update" }` updates-in-place,
  * which doesn't map to the kit's hook-based toast (and isn't great UX).
  *
- *   - **kit Toast** (`useToast().show(…)`) — ephemeral status: "Up to
+ *   - **kit Toast** (`toast().show(…)`) — ephemeral status: "Up to
  *     date" / "Couldn't check" / "Update installed" / install errors.
  *   - **kit AlertDialog** — the actionable "Version X is available, install
  *     now?" decision. AlertDialog is the proper Tamagui surface for a
@@ -36,7 +36,6 @@ interface PendingUpdate {
  * plugin-process.
  */
 export function UpdateChecker() {
-  const toast = useToast();
   const checkRequest = useUpdateStore((s) => s.checkRequest);
   const consumeRequest = useUpdateStore((s) => s.consumeRequest);
   const [pendingUpdate, setPendingUpdate] = useState<PendingUpdate | null>(
@@ -52,10 +51,7 @@ export function UpdateChecker() {
         const update = await check();
         if (!update) {
           if (showWhenUpToDate) {
-            toast.show({
-              title: "You're on the latest version",
-              intent: "info",
-            });
+            toast.info("You're on the latest version");
           }
           return;
         }
@@ -72,12 +68,7 @@ export function UpdateChecker() {
         console.error("[meridian:updater] check failed:", e);
         if (showWhenUpToDate) {
           const msg = e instanceof Error ? e.message : String(e);
-          toast.show({
-            title: "Couldn't check for updates",
-            message: msg,
-            intent: "danger",
-            duration: 8000,
-          });
+          toast.error("Couldn't check for updates", { description: msg });
         }
         // else silent — background poll shouldn't nag on transient errors
       }
@@ -108,19 +99,13 @@ export function UpdateChecker() {
     setIsDownloading(true);
     try {
       await pendingUpdate.install();
-      toast.show({
-        title: "Update installed",
-        message: "Restarting…",
-        intent: "success",
-      });
+      toast.success("Update installed", { description: "Restarting…" });
       const { relaunch } = await import("@tauri-apps/plugin-process");
       await relaunch();
     } catch (e) {
       console.error("[meridian:updater] install failed:", e);
-      toast.show({
-        title: "Failed to install update",
-        message: e instanceof Error ? e.message : undefined,
-        intent: "danger",
+      toast.error("Failed to install update", {
+        description: e instanceof Error ? e.message : undefined,
       });
       setIsDownloading(false);
       setPendingUpdate(null);
@@ -138,34 +123,31 @@ export function UpdateChecker() {
         if (!open && !isDownloading) setPendingUpdate(null);
       }}
     >
-      <AlertDialog.Portal>
-        <AlertDialog.Overlay />
-        <AlertDialog.Content maxW={420}>
-          <YStack gap="$3">
-            <AlertDialog.Title>Update available</AlertDialog.Title>
-            <AlertDialog.Description>
-              Version {pendingUpdate.version} is ready to install. Meridian will
-              restart after installing.
-            </AlertDialog.Description>
-            <XStack justify="flex-end" gap="$2" mt="$2">
-              <Button
-                intent="ghost"
-                disabled={isDownloading}
-                onPress={() => setPendingUpdate(null)}
-              >
-                Later
-              </Button>
-              <Button
-                onPress={() => void handleInstall()}
-                loading={isDownloading}
-                loadingText="Installing…"
-              >
-                Install now
-              </Button>
-            </XStack>
-          </YStack>
-        </AlertDialog.Content>
-      </AlertDialog.Portal>
+      <AlertDialog.Content maxW={420}>
+        <YStack gap="$3">
+          <AlertDialog.Title>Update available</AlertDialog.Title>
+          <AlertDialog.Description>
+            Version {pendingUpdate.version} is ready to install. Meridian will
+            restart after installing.
+          </AlertDialog.Description>
+          <XStack justify="flex-end" gap="$2" mt="$2">
+            <Button
+              intent="ghost"
+              disabled={isDownloading}
+              onPress={() => setPendingUpdate(null)}
+            >
+              Later
+            </Button>
+            <Button
+              onPress={() => void handleInstall()}
+              loading={isDownloading}
+              loadingText="Installing…"
+            >
+              Install now
+            </Button>
+          </XStack>
+        </YStack>
+      </AlertDialog.Content>
     </AlertDialog>
   );
 }

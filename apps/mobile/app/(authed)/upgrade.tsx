@@ -28,7 +28,7 @@ import {
   View,
   XStack,
   YStack,
-  useToast,
+  toast,
 } from "@stageholder/ui";
 import {
   useStageholder,
@@ -77,7 +77,6 @@ function periodLabel(pkg: IapPackage): string {
 export default function UpgradeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const toast = useToast();
   const { user } = useUser();
   const { refreshSession } = useStageholder();
 
@@ -142,14 +141,12 @@ export default function UpgradeScreen() {
       // Poll the session a few times (detached) so the new plan lands as the
       // webhook arrives without the user refreshing; the toast covers the lag.
       void reconcileEntitlement(refreshSession);
-      toast.show({
-        title: "Purchase complete",
-        message: "Your plan is activating — this can take a moment.",
-        intent: "success",
+      toast.success("Purchase complete", {
+        description: "Your plan is activating — this can take a moment.",
       });
       router.navigate("/billing");
     } catch {
-      toast.show({ title: "Purchase failed", intent: "danger" });
+      toast.error("Purchase failed");
     } finally {
       setBusyId(null);
     }
@@ -160,9 +157,9 @@ export default function UpgradeScreen() {
     try {
       await restorePurchases();
       void reconcileEntitlement(refreshSession);
-      toast.show({ title: "Purchases restored", intent: "success" });
+      toast.success("Purchases restored");
     } catch {
-      toast.show({ title: "Nothing to restore", intent: "info" });
+      toast.info("Nothing to restore");
     } finally {
       setRestoring(false);
     }

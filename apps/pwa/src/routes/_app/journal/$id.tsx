@@ -13,7 +13,7 @@ import {
   Popover,
   TagInput,
   Text,
-  useToast,
+  toast,
   View,
   XStack,
   YStack,
@@ -55,7 +55,6 @@ function JournalEntryPage() {
   const navigate = useNavigate();
   const { data: journal, isLoading } = useJournal(id);
   const deleteJournal = useDeleteJournal();
-  const toast = useToast();
 
   const [title, setTitle] = useState("");
   // Dual-format content during Phase 2: legacy entries arrive as HTML
@@ -130,14 +129,11 @@ function JournalEntryPage() {
   function confirmDelete() {
     deleteJournal.mutate(id, {
       onSuccess: () => {
-        toast.show({ title: "Journal entry deleted", intent: "success" });
+        toast.success("Journal entry deleted");
         navigate({ to: "/journal" });
       },
       onError: () => {
-        toast.show({
-          title: "Failed to delete journal entry",
-          intent: "danger",
-        });
+        toast.error("Failed to delete journal entry");
       },
     });
     setDeleteOpen(false);
@@ -317,26 +313,23 @@ function JournalEntryPage() {
           triggers, clears it reliably. */}
       {deleteOpen && (
         <AlertDialog open onOpenChange={setDeleteOpen} disableRemoveScroll>
-          <AlertDialog.Portal>
-            <AlertDialog.Overlay />
-            <AlertDialog.Content>
-              <AlertDialog.Title>Delete this entry?</AlertDialog.Title>
-              <AlertDialog.Description>
-                This journal entry will be permanently removed. This cannot be
-                undone.
-              </AlertDialog.Description>
-              <XStack gap="$2" justify="flex-end" mt="$4">
-                <AlertDialog.Cancel asChild>
-                  <Button intent="outline">Cancel</Button>
-                </AlertDialog.Cancel>
-                <AlertDialog.Action asChild>
-                  <Button intent="destructive" onPress={confirmDelete}>
-                    Delete
-                  </Button>
-                </AlertDialog.Action>
-              </XStack>
-            </AlertDialog.Content>
-          </AlertDialog.Portal>
+          <AlertDialog.Content>
+            <AlertDialog.Title>Delete this entry?</AlertDialog.Title>
+            <AlertDialog.Description>
+              This journal entry will be permanently removed. This cannot be
+              undone.
+            </AlertDialog.Description>
+            <XStack gap="$2" justify="flex-end" mt="$4">
+              <AlertDialog.Cancel asChild>
+                <Button intent="outline">Cancel</Button>
+              </AlertDialog.Cancel>
+              <AlertDialog.Action asChild>
+                <Button intent="destructive" onPress={confirmDelete}>
+                  Delete
+                </Button>
+              </AlertDialog.Action>
+            </XStack>
+          </AlertDialog.Content>
         </AlertDialog>
       )}
     </YStack>

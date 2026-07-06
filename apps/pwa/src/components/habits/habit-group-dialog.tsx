@@ -1,4 +1,4 @@
-import { Dialog, useToast } from "@stageholder/ui";
+import { Dialog, toast } from "@stageholder/ui";
 import { DialogSheetAdapt } from "@/components/shared/dialog-sheet-adapt";
 import {
   HabitGroupForm,
@@ -33,7 +33,6 @@ export function HabitGroupDialog({
   const isEdit = !!group;
   const createGroup = useCreateHabitGroup();
   const updateGroup = useUpdateHabitGroup();
-  const toast = useToast();
   const pending = createGroup.isPending || updateGroup.isPending;
 
   const initial: HabitGroupFormValues = group
@@ -53,11 +52,10 @@ export function HabitGroupDialog({
         },
         {
           onSuccess: () => {
-            toast.show({ title: "Group updated", intent: "success" });
+            toast.success("Group updated");
             onOpenChange(false);
           },
-          onError: () =>
-            toast.show({ title: "Failed to update group", intent: "danger" }),
+          onError: () => toast.error("Failed to update group"),
         },
       );
       return;
@@ -67,11 +65,10 @@ export function HabitGroupDialog({
       { name: values.name, color: values.color, icon: values.icon },
       {
         onSuccess: () => {
-          toast.show({ title: "Group created", intent: "success" });
+          toast.success("Group created");
           onOpenChange(false);
         },
-        onError: () =>
-          toast.show({ title: "Failed to create group", intent: "danger" }),
+        onError: () => toast.error("Failed to create group"),
       },
     );
   }

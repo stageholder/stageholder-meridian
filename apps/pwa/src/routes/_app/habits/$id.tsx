@@ -23,7 +23,7 @@ import {
   Stat,
   StreakBadge,
   Text,
-  useToast,
+  toast,
   View,
   XStack,
   YStack,
@@ -67,7 +67,6 @@ function HabitDetailPage() {
   const updateEntry = useUpdateHabitEntry();
   const skipEntryMutation = useSkipHabitEntry();
   const failEntry = useFailHabitEntry();
-  const toast = useToast();
   const [editOpen, setEditOpen] = useState(false);
   const [moveToGroupOpen, setMoveToGroupOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -352,17 +351,12 @@ function HabitDetailPage() {
       currentEntry?.type !== "fail" &&
       currentVal >= checkTarget
     ) {
-      toast.show({
-        title: "Already completed for this date",
-        intent: "info",
-      });
+      toast.info("Already completed for this date");
       return;
     }
 
-    const onSuccess = () =>
-      toast.show({ title: `Recorded for ${dateStr}`, intent: "success" });
-    const onError = () =>
-      toast.show({ title: "Failed to record", intent: "danger" });
+    const onSuccess = () => toast.success(`Recorded for ${dateStr}`);
+    const onError = () => toast.error("Failed to record");
 
     if (!existing) {
       createEntry.mutate(
@@ -408,10 +402,8 @@ function HabitDetailPage() {
         data: { value: currentVal - 1 },
       },
       {
-        onSuccess: () =>
-          toast.show({ title: `Undid for ${dateStr}`, intent: "success" }),
-        onError: () =>
-          toast.show({ title: "Failed to undo", intent: "danger" }),
+        onSuccess: () => toast.success(`Undid for ${dateStr}`),
+        onError: () => toast.error("Failed to undo"),
       },
     );
   }
@@ -421,10 +413,8 @@ function HabitDetailPage() {
   function handleDateFail(dateStr: string) {
     if (!habit) return;
     const existing = monthEntryObjMap.get(dateStr);
-    const onSuccess = () =>
-      toast.show({ title: `Marked failed for ${dateStr}`, intent: "success" });
-    const onError = () =>
-      toast.show({ title: "Failed to update", intent: "danger" });
+    const onSuccess = () => toast.success(`Marked failed for ${dateStr}`);
+    const onError = () => toast.error("Failed to update");
     if (!existing) {
       failEntry.mutate(
         { habitId: habit.id, data: { date: dateStr } },
@@ -447,10 +437,8 @@ function HabitDetailPage() {
   function handleDateSkip(dateStr: string) {
     if (!habit) return;
     const existing = monthEntryObjMap.get(dateStr);
-    const onSuccess = () =>
-      toast.show({ title: `Skipped ${dateStr}`, intent: "success" });
-    const onError = () =>
-      toast.show({ title: "Failed to skip", intent: "danger" });
+    const onSuccess = () => toast.success(`Skipped ${dateStr}`);
+    const onError = () => toast.error("Failed to skip");
     if (!existing) {
       skipEntryMutation.mutate(
         { habitId: habit.id, data: { date: dateStr } },
@@ -492,12 +480,8 @@ function HabitDetailPage() {
       },
       {
         onSuccess: () =>
-          toast.show({
-            title: wasFail ? "Cleared fail" : "Cleared skip",
-            intent: "success",
-          }),
-        onError: () =>
-          toast.show({ title: "Failed to undo", intent: "danger" }),
+          toast.success(wasFail ? "Cleared fail" : "Cleared skip"),
+        onError: () => toast.error("Failed to undo"),
       },
     );
   }
@@ -508,35 +492,28 @@ function HabitDetailPage() {
     if (!habit) return;
     archiveHabit.mutate(habit.id, {
       onSuccess: () => {
-        toast.show({ title: `"${habit.name}" archived`, intent: "success" });
+        toast.success(`"${habit.name}" archived`);
         navigate({ to: "/habits" });
       },
-      onError: () =>
-        toast.show({ title: "Couldn't archive habit", intent: "danger" }),
+      onError: () => toast.error("Couldn't archive habit"),
     });
   }
 
   function handleUnarchive() {
     if (!habit) return;
     unarchiveHabit.mutate(habit.id, {
-      onSuccess: () =>
-        toast.show({
-          title: `"${habit.name}" restored`,
-          intent: "success",
-        }),
-      onError: () =>
-        toast.show({ title: "Couldn't unarchive habit", intent: "danger" }),
+      onSuccess: () => toast.success(`"${habit.name}" restored`),
+      onError: () => toast.error("Couldn't unarchive habit"),
     });
   }
 
   function confirmDelete() {
     deleteHabit.mutate(id, {
       onSuccess: () => {
-        toast.show({ title: "Habit deleted", intent: "success" });
+        toast.success("Habit deleted");
         navigate({ to: "/habits" });
       },
-      onError: () =>
-        toast.show({ title: "Failed to delete habit", intent: "danger" }),
+      onError: () => toast.error("Failed to delete habit"),
     });
     setDeleteOpen(false);
   }
@@ -1103,28 +1080,25 @@ function HabitDetailPage() {
           triggers, clears it reliably. */}
       {deleteOpen && (
         <AlertDialog open onOpenChange={setDeleteOpen} disableRemoveScroll>
-          <AlertDialog.Portal>
-            <AlertDialog.Overlay />
-            <AlertDialog.Content>
-              <AlertDialog.Title>
-                Delete &ldquo;{habit.name}&rdquo;?
-              </AlertDialog.Title>
-              <AlertDialog.Description>
-                This cannot be undone. All check-ins for this habit will be
-                permanently removed.
-              </AlertDialog.Description>
-              <XStack gap="$2" justify="flex-end" mt="$4">
-                <AlertDialog.Cancel asChild>
-                  <Button intent="outline">Cancel</Button>
-                </AlertDialog.Cancel>
-                <AlertDialog.Action asChild>
-                  <Button intent="destructive" onPress={confirmDelete}>
-                    Delete
-                  </Button>
-                </AlertDialog.Action>
-              </XStack>
-            </AlertDialog.Content>
-          </AlertDialog.Portal>
+          <AlertDialog.Content>
+            <AlertDialog.Title>
+              Delete &ldquo;{habit.name}&rdquo;?
+            </AlertDialog.Title>
+            <AlertDialog.Description>
+              This cannot be undone. All check-ins for this habit will be
+              permanently removed.
+            </AlertDialog.Description>
+            <XStack gap="$2" justify="flex-end" mt="$4">
+              <AlertDialog.Cancel asChild>
+                <Button intent="outline">Cancel</Button>
+              </AlertDialog.Cancel>
+              <AlertDialog.Action asChild>
+                <Button intent="destructive" onPress={confirmDelete}>
+                  Delete
+                </Button>
+              </AlertDialog.Action>
+            </XStack>
+          </AlertDialog.Content>
         </AlertDialog>
       )}
     </YStack>

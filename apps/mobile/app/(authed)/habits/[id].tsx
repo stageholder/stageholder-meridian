@@ -36,7 +36,7 @@ import {
   View,
   XStack,
   YStack,
-  useToast,
+  toast,
 } from "@stageholder/ui";
 import type { Habit, HabitEntry } from "@repo/core/types";
 import {
@@ -100,7 +100,6 @@ export default function HabitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const toast = useToast();
 
   const { data: habit, isLoading } = useHabit(id);
   const deleteHabit = useDeleteHabit();
@@ -382,13 +381,11 @@ export default function HabitDetailScreen() {
       currentEntry?.type !== "fail" &&
       currentVal >= checkTarget
     ) {
-      toast.show({ title: "Already completed for this date", intent: "info" });
+      toast.info("Already completed for this date");
       return;
     }
-    const onSuccess = () =>
-      toast.show({ title: `Recorded for ${dateStr}`, intent: "success" });
-    const onError = () =>
-      toast.show({ title: "Failed to record", intent: "danger" });
+    const onSuccess = () => toast.success(`Recorded for ${dateStr}`);
+    const onError = () => toast.error("Failed to record");
 
     if (!existing) {
       checkIn.mutate(
@@ -430,10 +427,8 @@ export default function HabitDetailScreen() {
         patch: { value: currentEntry.value - 1 },
       },
       {
-        onSuccess: () =>
-          toast.show({ title: `Undid for ${dateStr}`, intent: "success" }),
-        onError: () =>
-          toast.show({ title: "Failed to undo", intent: "danger" }),
+        onSuccess: () => toast.success(`Undid for ${dateStr}`),
+        onError: () => toast.error("Failed to undo"),
       },
     );
   }
@@ -441,10 +436,8 @@ export default function HabitDetailScreen() {
   function handleDateFail(dateStr: string) {
     if (!habit) return;
     const existing = monthEntryObjMap.get(dateStr);
-    const onSuccess = () =>
-      toast.show({ title: `Marked failed for ${dateStr}`, intent: "success" });
-    const onError = () =>
-      toast.show({ title: "Failed to update", intent: "danger" });
+    const onSuccess = () => toast.success(`Marked failed for ${dateStr}`);
+    const onError = () => toast.error("Failed to update");
     if (!existing) {
       failEntry.mutate(
         { habitId: habit.id, date: dateStr },
@@ -465,10 +458,8 @@ export default function HabitDetailScreen() {
   function handleDateSkip(dateStr: string) {
     if (!habit) return;
     const existing = monthEntryObjMap.get(dateStr);
-    const onSuccess = () =>
-      toast.show({ title: `Skipped ${dateStr}`, intent: "success" });
-    const onError = () =>
-      toast.show({ title: "Failed to skip", intent: "danger" });
+    const onSuccess = () => toast.success(`Skipped ${dateStr}`);
+    const onError = () => toast.error("Failed to skip");
     if (!existing) {
       skipEntry.mutate(
         { habitId: habit.id, date: dateStr },
@@ -507,12 +498,8 @@ export default function HabitDetailScreen() {
       },
       {
         onSuccess: () =>
-          toast.show({
-            title: wasFail ? "Cleared fail" : "Cleared skip",
-            intent: "success",
-          }),
-        onError: () =>
-          toast.show({ title: "Failed to undo", intent: "danger" }),
+          toast.success(wasFail ? "Cleared fail" : "Cleared skip"),
+        onError: () => toast.error("Failed to undo"),
       },
     );
   }
@@ -521,21 +508,18 @@ export default function HabitDetailScreen() {
     if (!habit) return;
     archiveHabit.mutate(habit.id, {
       onSuccess: () => {
-        toast.show({ title: `"${habit.name}" archived`, intent: "success" });
+        toast.success(`"${habit.name}" archived`);
         router.back();
       },
-      onError: () =>
-        toast.show({ title: "Couldn't archive habit", intent: "danger" }),
+      onError: () => toast.error("Couldn't archive habit"),
     });
   }
 
   function handleUnarchive() {
     if (!habit) return;
     unarchiveHabit.mutate(habit.id, {
-      onSuccess: () =>
-        toast.show({ title: `"${habit.name}" restored`, intent: "success" }),
-      onError: () =>
-        toast.show({ title: "Couldn't unarchive habit", intent: "danger" }),
+      onSuccess: () => toast.success(`"${habit.name}" restored`),
+      onError: () => toast.error("Couldn't unarchive habit"),
     });
   }
 
@@ -554,14 +538,10 @@ export default function HabitDetailScreen() {
           onPress: () =>
             deleteHabit.mutate(habit.id, {
               onSuccess: () => {
-                toast.show({ title: "Habit deleted", intent: "success" });
+                toast.success("Habit deleted");
                 router.navigate("/habits");
               },
-              onError: () =>
-                toast.show({
-                  title: "Failed to delete habit",
-                  intent: "danger",
-                }),
+              onError: () => toast.error("Failed to delete habit"),
             }),
         },
       ],

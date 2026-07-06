@@ -30,7 +30,7 @@ import {
   CelebrationProvider,
   HapticProvider,
   Theme,
-  ToastProvider,
+  Toaster,
 } from "@stageholder/ui";
 import { TamaguiProvider } from "tamagui";
 import Constants from "expo-constants";
@@ -267,19 +267,21 @@ export default function RootLayout() {
                         Drives the habit completion burst — see habits.tsx
                         renderCompletionEffect. */}
                     <CelebrationProvider>
-                      <ToastProvider>
-                        <StatusBar
-                          style={resolvedTheme === "dark" ? "light" : "dark"}
-                        />
-                        <Stack screenOptions={{ headerShown: false }}>
-                          <Stack.Screen name="sign-in" />
-                          <Stack.Screen name="(authed)" />
-                        </Stack>
-                        {/* Server-driven paywall — listens for the API's 402
-                            limit_reached event and slides up the upgrade sheet
-                            over whatever screen the user is on. */}
-                        <PaywallHost />
-                      </ToastProvider>
+                      <StatusBar
+                        style={resolvedTheme === "dark" ? "light" : "dark"}
+                      />
+                      <Stack screenOptions={{ headerShown: false }}>
+                        <Stack.Screen name="sign-in" />
+                        <Stack.Screen name="(authed)" />
+                      </Stack>
+                      {/* Server-driven paywall — listens for the API's 402
+                          limit_reached event and slides up the upgrade sheet
+                          over whatever screen the user is on. */}
+                      <PaywallHost />
+                      {/* Kit toast renderer — the v2 API is provider-less; this
+                          single host near the root receives every `toast.*`
+                          call. Sits inside Theme/Tamagui so toasts are themed. */}
+                      <Toaster />
                     </CelebrationProvider>
                   </HapticProvider>
                 </Theme>

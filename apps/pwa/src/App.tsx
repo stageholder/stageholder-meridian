@@ -3,12 +3,7 @@ import { useAppTheme } from "@/lib/platform/theme";
 import { RouterProvider } from "@tanstack/react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { StageholderSpaProvider, useOrg, useUser } from "@stageholder/sdk/spa";
-import {
-  TamaguiProvider,
-  Theme,
-  Toaster,
-  ToastProvider,
-} from "@stageholder/ui";
+import { TamaguiProvider, Theme, Toaster } from "@stageholder/ui";
 import { router } from "./router";
 import { spaConfig } from "./lib/spa-config";
 import { useMeridianUserMeta } from "./lib/me-query";
@@ -153,16 +148,17 @@ export function App() {
            *
            * LogProvider: installs the platform logger's global error capture.
            */}
-          <ToastProvider>
-            <PaywallListener>
-              <EncryptionStoreInitializer>
-                <LogProvider>
-                  <InnerApp />
-                </LogProvider>
-              </EncryptionStoreInitializer>
-            </PaywallListener>
-            <Toaster />
-          </ToastProvider>
+          {/* Toaster is the new kit toast renderer — a single self-mounted
+              host (no ToastProvider ancestor in the v2 API), placed near the
+              root so `toast.*` calls anywhere render into it. */}
+          <PaywallListener>
+            <EncryptionStoreInitializer>
+              <LogProvider>
+                <InnerApp />
+              </LogProvider>
+            </EncryptionStoreInitializer>
+          </PaywallListener>
+          <Toaster />
         </StageholderSpaProvider>
       </QueryClientProvider>
     </TamaguiBridge>

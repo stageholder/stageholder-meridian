@@ -6,14 +6,7 @@
 // Ungrouped) and closes. Hosted in a kit FormSheet (the same chrome every other
 // mobile picker uses) instead of the PWA's Dialog + DialogSheetAdapt.
 
-import {
-  FormSheet,
-  Text,
-  View,
-  XStack,
-  YStack,
-  useToast,
-} from "@stageholder/ui";
+import { FormSheet, Text, View, XStack, YStack, toast } from "@stageholder/ui";
 import type { Habit } from "@repo/core/types";
 import { Check } from "@tamagui/lucide-icons-2";
 
@@ -32,7 +25,6 @@ export function HabitMoveToGroupSheet({
 }: HabitMoveToGroupSheetProps) {
   const groupsQuery = useHabitGroups();
   const updateHabit = useUpdateHabit();
-  const toast = useToast();
 
   const groups = groupsQuery.data ?? [];
   const currentGroupId = habit?.groupId ?? null;
@@ -43,11 +35,10 @@ export function HabitMoveToGroupSheet({
       { id: habit.id, patch: { groupId } },
       {
         onSuccess: () => {
-          toast.show({ title: `Moved to ${name}`, intent: "success" });
+          toast.success(`Moved to ${name}`);
           onOpenChange(false);
         },
-        onError: () =>
-          toast.show({ title: "Failed to move habit", intent: "danger" }),
+        onError: () => toast.error("Failed to move habit"),
       },
     );
   }

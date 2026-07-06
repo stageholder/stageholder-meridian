@@ -1,4 +1,4 @@
-import { Sortable, View, YStack, useToast } from "@stageholder/ui";
+import { Sortable, View, YStack, toast } from "@stageholder/ui";
 import { HabitCard } from "@/components/habits/habit-card";
 import { HabitListItem } from "@/components/habits/habit-list-item";
 import { useReorderHabits, useArchiveHabit } from "@/lib/api/habits";
@@ -37,14 +37,11 @@ export function HabitGroupSection({
 }: HabitGroupSectionProps) {
   const reorderHabits = useReorderHabits();
   const archiveHabit = useArchiveHabit();
-  const toast = useToast();
 
   function archive(habit: Habit) {
     archiveHabit.mutate(habit.id, {
-      onSuccess: () =>
-        toast.show({ title: `"${habit.name}" archived`, intent: "success" }),
-      onError: () =>
-        toast.show({ title: "Couldn't archive habit", intent: "danger" }),
+      onSuccess: () => toast.success(`"${habit.name}" archived`),
+      onError: () => toast.error("Couldn't archive habit"),
     });
   }
 

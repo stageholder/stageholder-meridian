@@ -10,7 +10,7 @@
 // accentColor: the PWA passes the `--ring-habit` CSS var; on native CSS vars
 // don't resolve in style objects, so the resolved IGNITION hex is passed.
 
-import { FormSheet, useToast } from "@stageholder/ui";
+import { FormSheet, toast } from "@stageholder/ui";
 import { HabitForm, type HabitFormValues } from "@repo/features/habits";
 import type { Habit } from "@repo/core/types";
 
@@ -30,7 +30,6 @@ export function EditHabitDialog({
 }: EditHabitDialogProps) {
   const updateHabit = useUpdateHabit();
   const groupsQuery = useHabitGroups();
-  const toast = useToast();
 
   const groupOptions = (groupsQuery.data ?? []).map((g) => ({
     id: g.id,
@@ -71,11 +70,11 @@ export function EditHabitDialog({
       },
       {
         onSuccess: () => {
-          toast.show({ title: "Habit updated", intent: "success" });
+          toast.success("Habit updated");
           onOpenChange(false);
         },
         onError: () => {
-          toast.show({ title: "Failed to update habit", intent: "danger" });
+          toast.error("Failed to update habit");
         },
       },
     );

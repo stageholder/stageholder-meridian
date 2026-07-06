@@ -21,7 +21,7 @@ import {
   Sheet,
   Sortable,
   Text,
-  useToast,
+  toast,
   View,
   XStack,
   YStack,
@@ -46,7 +46,6 @@ export function TodoListReorderSheet({
   lists,
 }: TodoListReorderSheetProps) {
   const reorderMutation = useReorderTodoLists();
-  const toast = useToast();
 
   // Custom (non-default) lists sorted by their current order field.
   const customLists = lists
@@ -80,7 +79,7 @@ export function TodoListReorderSheet({
       },
       {
         onError: () => {
-          toast.show({ title: "Couldn't save order", intent: "danger" });
+          toast.error("Couldn't save order");
         },
       },
     );

@@ -7,7 +7,7 @@
 // (the inner Select's Adapt can't survive a double teleport on native). The
 // form re-mounts on each open (`key={open}`) so it resets by remount.
 
-import { FormSheet, useToast } from "@stageholder/ui";
+import { FormSheet, toast } from "@stageholder/ui";
 import {
   TodoForm,
   makeTodoFormDefaults,
@@ -39,7 +39,6 @@ export function CreateTodoDialog({
 }: CreateTodoDialogProps) {
   const createTodo = useCreateTodo();
   const { data: lists } = useTodoLists();
-  const toast = useToast();
 
   // When `listId` is passed, hide the List select by feeding a single-list
   // shape (the form shows the select only when lists.length > 1).
@@ -60,10 +59,7 @@ export function CreateTodoDialog({
     // No destination yet means the lists query hasn't resolved. Tell the user
     // instead of failing silently — a retry usually lands once lists load.
     if (!destListId) {
-      toast.show({
-        title: "Lists still loading, try again",
-        intent: "warning",
-      });
+      toast.warning("Lists still loading, try again");
       return;
     }
 
@@ -83,11 +79,11 @@ export function CreateTodoDialog({
       },
       {
         onSuccess: () => {
-          toast.show({ title: "Todo created", intent: "success" });
+          toast.success("Todo created");
           onOpenChange(false);
         },
         onError: () => {
-          toast.show({ title: "Failed to create todo", intent: "danger" });
+          toast.error("Failed to create todo");
         },
       },
     );

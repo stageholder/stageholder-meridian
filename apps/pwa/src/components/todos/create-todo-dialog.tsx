@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { DialogSheetAdapt } from "@/components/shared/dialog-sheet-adapt";
-import { Dialog, YStack, useToast } from "@stageholder/ui";
+import { Dialog, YStack, toast } from "@stageholder/ui";
 import {
   TodoForm,
   makeTodoFormDefaults,
@@ -35,7 +35,6 @@ export function CreateTodoDialog({
   const queryClient = useQueryClient();
   const createTodo = useCreateTodo();
   const { data: lists } = useTodoLists();
-  const toast = useToast();
 
   // When `listId` is passed in (page already scoped to a list), hide the
   // List select by feeding a single-list shape to the view — the view
@@ -69,12 +68,12 @@ export function CreateTodoDialog({
       },
       {
         onSuccess: () => {
-          toast.show({ title: "Todo created", intent: "success" });
+          toast.success("Todo created");
           onOpenChange(false);
           void queryClient.invalidateQueries({ queryKey: ["calendar"] });
         },
         onError: () => {
-          toast.show({ title: "Failed to create todo", intent: "danger" });
+          toast.error("Failed to create todo");
         },
       },
     );

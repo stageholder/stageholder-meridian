@@ -31,7 +31,7 @@ import {
   Text,
   View,
   YStack,
-  useToast,
+  toast,
 } from "@stageholder/ui";
 import type { Habit, HabitGroup } from "@repo/core/types";
 import {
@@ -91,7 +91,6 @@ export default function HabitsScreen() {
   const groupsQuery = useHabitGroups();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const toast = useToast();
   const archiveHabit = useArchiveHabit();
   const unarchiveHabit = useUnarchiveHabit();
 
@@ -260,19 +259,15 @@ export default function HabitsScreen() {
 
   function archive(habit: Habit) {
     archiveHabit.mutate(habit.id, {
-      onSuccess: () =>
-        toast.show({ title: `"${habit.name}" archived`, intent: "success" }),
-      onError: () =>
-        toast.show({ title: "Couldn't archive habit", intent: "danger" }),
+      onSuccess: () => toast.success(`"${habit.name}" archived`),
+      onError: () => toast.error("Couldn't archive habit"),
     });
   }
 
   function restore(habit: Habit) {
     unarchiveHabit.mutate(habit.id, {
-      onSuccess: () =>
-        toast.show({ title: `"${habit.name}" restored`, intent: "success" }),
-      onError: () =>
-        toast.show({ title: "Couldn't restore habit", intent: "danger" }),
+      onSuccess: () => toast.success(`"${habit.name}" restored`),
+      onError: () => toast.error("Couldn't restore habit"),
     });
   }
 

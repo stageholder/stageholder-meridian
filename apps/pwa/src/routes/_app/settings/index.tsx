@@ -23,7 +23,7 @@ import {
   XStack,
   YStack,
   useMedia,
-  useToast,
+  toast,
 } from "@stageholder/ui";
 import { PassphraseChangeForm } from "@repo/features/encryption";
 import { ProfileForm } from "@/components/settings/profile-form";
@@ -144,7 +144,6 @@ function SettingsLinkRow({
  */
 function ChangePassphraseBlock() {
   const { isSetup, checkStatus, changePassphrase } = useEncryptionStore();
-  const toast = useToast();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -183,10 +182,7 @@ function ChangePassphraseBlock() {
                 onChangePassphrase={changePassphrase}
                 onComplete={() => {
                   setOpen(false);
-                  toast.show({
-                    title: "Passphrase changed",
-                    intent: "success",
-                  });
+                  toast.success("Passphrase changed");
                 }}
                 onCancel={() => setOpen(false)}
               />

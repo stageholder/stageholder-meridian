@@ -20,7 +20,7 @@ import {
   RippleButton,
   Sidebar,
   Text,
-  useToast,
+  toast,
   View,
   XStack,
 } from "@stageholder/ui";
@@ -126,7 +126,6 @@ function ListMenu({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const deleteList = useDeleteTodoList();
   const { data: allTodos } = useAllTodos();
-  const toast = useToast();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   // Deleting a list also deletes its todos (server cascade) — surface the count
@@ -137,11 +136,10 @@ function ListMenu({
     const viewing = pathname === `/todos/${list.id}`;
     deleteList.mutate(list.id, {
       onSuccess: () => {
-        toast.show({ title: `"${list.name}" deleted`, intent: "success" });
+        toast.success(`"${list.name}" deleted`);
         if (viewing) void navigate({ to: "/todos" });
       },
-      onError: () =>
-        toast.show({ title: "Failed to delete list", intent: "danger" }),
+      onError: () => toast.error("Failed to delete list"),
     });
   }
 
@@ -211,42 +209,39 @@ function ListMenu({
           triggers, clears it reliably. */}
       {deleteOpen && (
         <AlertDialog open onOpenChange={setDeleteOpen} disableRemoveScroll>
-          <AlertDialog.Portal>
-            <AlertDialog.Overlay />
-            <AlertDialog.Content>
-              <AlertDialog.Title>
-                Delete &ldquo;{list.name}&rdquo;?
-              </AlertDialog.Title>
-              <AlertDialog.Description>
-                This permanently deletes the list
-                {todoCount > 0
-                  ? ` and its ${todoCount} todo${todoCount === 1 ? "" : "s"}`
-                  : ""}
-                . This can&apos;t be undone.
-              </AlertDialog.Description>
-              {/* Close via the kit Button's own onPress + the controlled open
-                state (the proven update-checker.tsx pattern). Wrapping a kit
-                Button in AlertDialog.Cancel/Action asChild left the overlay
-                stuck after Cancel: DialogClose's slotted close handler didn't
-                reliably drive our controlled onOpenChange, so the dialog state
-                never flipped to closed and the scrim stayed up. Driving the
-                close from onPress makes it deterministic. */}
-              <XStack gap="$2" justify="flex-end" mt="$4">
-                <Button intent="outline" onPress={() => setDeleteOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  intent="destructive"
-                  onPress={() => {
-                    setDeleteOpen(false);
-                    confirmDelete();
-                  }}
-                >
-                  Delete
-                </Button>
-              </XStack>
-            </AlertDialog.Content>
-          </AlertDialog.Portal>
+          <AlertDialog.Content>
+            <AlertDialog.Title>
+              Delete &ldquo;{list.name}&rdquo;?
+            </AlertDialog.Title>
+            <AlertDialog.Description>
+              This permanently deletes the list
+              {todoCount > 0
+                ? ` and its ${todoCount} todo${todoCount === 1 ? "" : "s"}`
+                : ""}
+              . This can&apos;t be undone.
+            </AlertDialog.Description>
+            {/* Close via the kit Button's own onPress + the controlled open
+              state (the proven update-checker.tsx pattern). Wrapping a kit
+              Button in AlertDialog.Cancel/Action asChild left the overlay
+              stuck after Cancel: DialogClose's slotted close handler didn't
+              reliably drive our controlled onOpenChange, so the dialog state
+              never flipped to closed and the scrim stayed up. Driving the
+              close from onPress makes it deterministic. */}
+            <XStack gap="$2" justify="flex-end" mt="$4">
+              <Button intent="outline" onPress={() => setDeleteOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                intent="destructive"
+                onPress={() => {
+                  setDeleteOpen(false);
+                  confirmDelete();
+                }}
+              >
+                Delete
+              </Button>
+            </XStack>
+          </AlertDialog.Content>
         </AlertDialog>
       )}
     </>

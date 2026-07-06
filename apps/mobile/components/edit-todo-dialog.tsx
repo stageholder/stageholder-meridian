@@ -13,7 +13,7 @@
 // mutation — independent of the form's single Save PATCH.
 
 import { Alert } from "react-native";
-import { Button, FormSheet, Separator, useToast } from "@stageholder/ui";
+import { Button, FormSheet, Separator, toast } from "@stageholder/ui";
 import { Trash2 } from "@tamagui/lucide-icons-2";
 import { TodoForm, type TodoFormValues } from "@repo/features/todos";
 import type { Todo } from "@repo/core/types";
@@ -51,7 +51,6 @@ export function EditTodoDialog({
   const updateTodo = useUpdateTodo();
   const deleteTodo = useDeleteTodo();
   const { data: lists } = useTodoLists();
-  const toast = useToast();
 
   // Nothing to edit until a row is tapped — keeps the form's `initial` honest.
   if (!todo) return null;
@@ -72,14 +71,10 @@ export function EditTodoDialog({
           onPress: () =>
             deleteTodo.mutate(todo!.id, {
               onSuccess: () => {
-                toast.show({ title: "Todo deleted", intent: "success" });
+                toast.success("Todo deleted");
                 onOpenChange(false);
               },
-              onError: () =>
-                toast.show({
-                  title: "Couldn't delete todo",
-                  intent: "danger",
-                }),
+              onError: () => toast.error("Couldn't delete todo"),
             }),
         },
       ],
@@ -116,11 +111,11 @@ export function EditTodoDialog({
       },
       {
         onSuccess: () => {
-          toast.show({ title: "Todo updated", intent: "success" });
+          toast.success("Todo updated");
           onOpenChange(false);
         },
         onError: () => {
-          toast.show({ title: "Failed to update todo", intent: "danger" });
+          toast.error("Failed to update todo");
         },
       },
     );

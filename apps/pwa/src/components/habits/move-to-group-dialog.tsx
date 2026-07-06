@@ -1,4 +1,4 @@
-import { Dialog, Text, View, XStack, YStack, useToast } from "@stageholder/ui";
+import { Dialog, Text, View, XStack, YStack, toast } from "@stageholder/ui";
 import { Check } from "lucide-react";
 import { DialogSheetAdapt } from "@/components/shared/dialog-sheet-adapt";
 import { useUpdateHabit } from "@/lib/api/habits";
@@ -23,7 +23,6 @@ export function MoveToGroupDialog({
 }: MoveToGroupDialogProps) {
   const { data: groups } = useHabitGroups();
   const updateHabit = useUpdateHabit();
-  const toast = useToast();
 
   function moveTo(groupId: string | null, name: string) {
     if (!habit) return;
@@ -31,11 +30,10 @@ export function MoveToGroupDialog({
       { id: habit.id, data: { groupId } },
       {
         onSuccess: () => {
-          toast.show({ title: `Moved to ${name}`, intent: "success" });
+          toast.success(`Moved to ${name}`);
           onOpenChange(false);
         },
-        onError: () =>
-          toast.show({ title: "Failed to move habit", intent: "danger" }),
+        onError: () => toast.error("Failed to move habit"),
       },
     );
   }

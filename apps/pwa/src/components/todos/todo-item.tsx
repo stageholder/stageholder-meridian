@@ -21,7 +21,7 @@ import {
   Tooltip,
   View,
   XStack,
-  useToast,
+  toast,
 } from "@stageholder/ui";
 import { TodoItem as TodoItemView } from "@repo/features/todos";
 import type { Todo } from "@repo/core/types";
@@ -77,7 +77,6 @@ export function TodoItem({ todo, listId, showList }: TodoItemProps) {
   const deleteTodo = useDeleteTodo();
   const createTodo = useCreateTodo();
   const { data: lists } = useTodoLists();
-  const toast = useToast();
 
   const isDone = todo.status === "done";
 
@@ -130,12 +129,10 @@ export function TodoItem({ todo, listId, showList }: TodoItemProps) {
       { listId, todoId: todo.id, data: { doDate: value } },
       {
         onSuccess: () =>
-          toast.show({
-            title: value === null ? "Do date cleared" : `Scheduled · ${label}`,
-            intent: "success",
-          }),
-        onError: () =>
-          toast.show({ title: "Couldn't update do date", intent: "danger" }),
+          toast.success(
+            value === null ? "Do date cleared" : `Scheduled · ${label}`,
+          ),
+        onError: () => toast.error("Couldn't update do date"),
       },
     );
   }
@@ -157,10 +154,8 @@ export function TodoItem({ todo, listId, showList }: TodoItemProps) {
         },
       },
       {
-        onSuccess: () =>
-          toast.show({ title: "Todo duplicated", intent: "success" }),
-        onError: () =>
-          toast.show({ title: "Couldn't duplicate todo", intent: "danger" }),
+        onSuccess: () => toast.success("Todo duplicated"),
+        onError: () => toast.error("Couldn't duplicate todo"),
       },
     );
   }
@@ -169,10 +164,8 @@ export function TodoItem({ todo, listId, showList }: TodoItemProps) {
     deleteTodo.mutate(
       { listId, todoId: todo.id },
       {
-        onSuccess: () =>
-          toast.show({ title: `"${todo.title}" deleted`, intent: "success" }),
-        onError: () =>
-          toast.show({ title: "Couldn't delete todo", intent: "danger" }),
+        onSuccess: () => toast.success(`"${todo.title}" deleted`),
+        onError: () => toast.error("Couldn't delete todo"),
       },
     );
     setDeleteOpen(false);
@@ -386,26 +379,23 @@ export function TodoItem({ todo, listId, showList }: TodoItemProps) {
           leave the scrim stuck. Mirrors the habit-list-item pattern. */}
       {deleteOpen && (
         <AlertDialog open onOpenChange={setDeleteOpen} disableRemoveScroll>
-          <AlertDialog.Portal>
-            <AlertDialog.Overlay />
-            <AlertDialog.Content>
-              <AlertDialog.Title>Delete todo?</AlertDialog.Title>
-              <AlertDialog.Description>
-                This will permanently delete &quot;{todo.title}&quot;. This
-                action cannot be undone.
-              </AlertDialog.Description>
-              <XStack gap="$3" justify="flex-end" mt="$4">
-                <AlertDialog.Cancel asChild>
-                  <Button intent="outline">Cancel</Button>
-                </AlertDialog.Cancel>
-                <AlertDialog.Action asChild>
-                  <Button intent="destructive" onPress={handleDelete}>
-                    Delete
-                  </Button>
-                </AlertDialog.Action>
-              </XStack>
-            </AlertDialog.Content>
-          </AlertDialog.Portal>
+          <AlertDialog.Content>
+            <AlertDialog.Title>Delete todo?</AlertDialog.Title>
+            <AlertDialog.Description>
+              This will permanently delete &quot;{todo.title}&quot;. This action
+              cannot be undone.
+            </AlertDialog.Description>
+            <XStack gap="$3" justify="flex-end" mt="$4">
+              <AlertDialog.Cancel asChild>
+                <Button intent="outline">Cancel</Button>
+              </AlertDialog.Cancel>
+              <AlertDialog.Action asChild>
+                <Button intent="destructive" onPress={handleDelete}>
+                  Delete
+                </Button>
+              </AlertDialog.Action>
+            </XStack>
+          </AlertDialog.Content>
         </AlertDialog>
       )}
     </>

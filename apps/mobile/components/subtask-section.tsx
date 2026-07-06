@@ -22,7 +22,7 @@ import {
   Text,
   XStack,
   YStack,
-  useToast,
+  toast,
 } from "@stageholder/ui";
 import type { Subtask, Todo } from "@repo/core/types";
 import { Check, Plus, X } from "@tamagui/lucide-icons-2";
@@ -30,7 +30,6 @@ import { Check, Plus, X } from "@tamagui/lucide-icons-2";
 import { useAddSubtask, useDeleteSubtask, useUpdateSubtask } from "@/lib/api";
 
 export function SubtaskSection({ todo }: { todo: Todo }) {
-  const toast = useToast();
   const addSubtask = useAddSubtask();
   const updateSubtask = useUpdateSubtask();
   const deleteSubtask = useDeleteSubtask();
@@ -57,7 +56,7 @@ export function SubtaskSection({ todo }: { todo: Todo }) {
         onSuccess: syncFromServer,
         onError: () => {
           setDraft(title); // give the text back for retry
-          toast.show({ title: "Couldn't add subtask", intent: "danger" });
+          toast.error("Couldn't add subtask");
         },
       },
     );
@@ -79,7 +78,7 @@ export function SubtaskSection({ todo }: { todo: Todo }) {
               s.id === subtask.id ? { ...s, status: subtask.status } : s,
             ),
           );
-          toast.show({ title: "Couldn't update subtask", intent: "danger" });
+          toast.error("Couldn't update subtask");
         },
       },
     );
@@ -93,7 +92,7 @@ export function SubtaskSection({ todo }: { todo: Todo }) {
       {
         onError: () => {
           setSubtasks(prevList);
-          toast.show({ title: "Couldn't delete subtask", intent: "danger" });
+          toast.error("Couldn't delete subtask");
         },
       },
     );

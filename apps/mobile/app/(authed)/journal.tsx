@@ -36,7 +36,7 @@ import {
   View,
   XStack,
   YStack,
-  useToast,
+  toast,
 } from "@stageholder/ui";
 import { JournalList } from "@repo/features/journal";
 import {
@@ -76,7 +76,6 @@ import {
 export default function JournalScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const toast = useToast();
   const { user } = useUser();
   const { isSetup, isUnlocked, isLoading: statusLoading } = useJournalCrypto();
 
@@ -481,12 +480,7 @@ export default function JournalScreen() {
             if (!user?.sub) throw new Error("Not signed in");
             return setupJournalPassphrase(passphrase, user.sub);
           }}
-          onSetupError={() =>
-            toast.show({
-              title: "Couldn't set up encryption",
-              intent: "danger",
-            })
-          }
+          onSetupError={() => toast.error("Couldn't set up encryption")}
           onComplete={() => {
             setSetupOpen(false);
             setSetupStep("create");

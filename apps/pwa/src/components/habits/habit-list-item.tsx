@@ -12,7 +12,7 @@ import {
   View,
   XStack,
   YStack,
-  useToast,
+  toast,
 } from "@stageholder/ui";
 import type { Habit, HabitEntry } from "@repo/core/types";
 import {
@@ -82,7 +82,6 @@ export function HabitListItem({
   const skipEntry = useSkipHabitEntry();
   const failEntry = useFailHabitEntry();
   const deleteHabit = useDeleteHabit();
-  const toast = useToast();
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -127,9 +126,9 @@ export function HabitListItem({
             : { value: activeDateValue + 1 },
         });
       }
-      toast.show({ title: `Checked in for ${dateLabel}`, intent: "success" });
+      toast.success(`Checked in for ${dateLabel}`);
     } catch {
-      toast.show({ title: "Failed to check in", intent: "danger" });
+      toast.error("Failed to check in");
     }
   }
 
@@ -148,9 +147,9 @@ export function HabitListItem({
           data: { type: "skip", value: 0 },
         });
       }
-      toast.show({ title: `Skipped ${habit.name}`, intent: "success" });
+      toast.success(`Skipped ${habit.name}`);
     } catch {
-      toast.show({ title: "Failed to skip", intent: "danger" });
+      toast.error("Failed to skip");
     }
   }
 
@@ -169,9 +168,9 @@ export function HabitListItem({
           data: { type: "fail", value: 0 },
         });
       }
-      toast.show({ title: `Marked ${habit.name} failed`, intent: "success" });
+      toast.success(`Marked ${habit.name} failed`);
     } catch {
-      toast.show({ title: "Failed to update", intent: "danger" });
+      toast.error("Failed to update");
     }
   }
 
@@ -184,12 +183,9 @@ export function HabitListItem({
         entryId: activeDateEntry.id,
         data: { value: activeDateValue - 1 },
       });
-      toast.show({
-        title: `Undid check-in for ${habit.name}`,
-        intent: "success",
-      });
+      toast.success(`Undid check-in for ${habit.name}`);
     } catch {
-      toast.show({ title: "Failed to undo", intent: "danger" });
+      toast.error("Failed to undo");
     }
   }
 
@@ -201,18 +197,16 @@ export function HabitListItem({
         entryId: activeDateEntry.id,
         data: { type: "completion", value: 0 },
       });
-      toast.show({ title: `Cleared ${habit.name}`, intent: "success" });
+      toast.success(`Cleared ${habit.name}`);
     } catch {
-      toast.show({ title: "Failed to undo", intent: "danger" });
+      toast.error("Failed to undo");
     }
   }
 
   function handleDelete() {
     deleteHabit.mutate(habit.id, {
-      onSuccess: () =>
-        toast.show({ title: `"${habit.name}" deleted`, intent: "success" }),
-      onError: () =>
-        toast.show({ title: "Failed to delete habit", intent: "danger" }),
+      onSuccess: () => toast.success(`"${habit.name}" deleted`),
+      onError: () => toast.error("Failed to delete habit"),
     });
     setDeleteOpen(false);
   }
@@ -551,26 +545,23 @@ export function HabitListItem({
           triggers, clears it reliably. */}
       {deleteOpen && (
         <AlertDialog open onOpenChange={setDeleteOpen} disableRemoveScroll>
-          <AlertDialog.Portal>
-            <AlertDialog.Overlay />
-            <AlertDialog.Content>
-              <AlertDialog.Title>Delete habit?</AlertDialog.Title>
-              <AlertDialog.Description>
-                This will permanently delete &quot;{habit.name}&quot; and all of
-                its entries. This action cannot be undone.
-              </AlertDialog.Description>
-              <XStack gap="$3" justify="flex-end" mt="$4">
-                <AlertDialog.Cancel asChild>
-                  <Button intent="outline">Cancel</Button>
-                </AlertDialog.Cancel>
-                <AlertDialog.Action asChild>
-                  <Button intent="destructive" onPress={handleDelete}>
-                    Delete
-                  </Button>
-                </AlertDialog.Action>
-              </XStack>
-            </AlertDialog.Content>
-          </AlertDialog.Portal>
+          <AlertDialog.Content>
+            <AlertDialog.Title>Delete habit?</AlertDialog.Title>
+            <AlertDialog.Description>
+              This will permanently delete &quot;{habit.name}&quot; and all of
+              its entries. This action cannot be undone.
+            </AlertDialog.Description>
+            <XStack gap="$3" justify="flex-end" mt="$4">
+              <AlertDialog.Cancel asChild>
+                <Button intent="outline">Cancel</Button>
+              </AlertDialog.Cancel>
+              <AlertDialog.Action asChild>
+                <Button intent="destructive" onPress={handleDelete}>
+                  Delete
+                </Button>
+              </AlertDialog.Action>
+            </XStack>
+          </AlertDialog.Content>
         </AlertDialog>
       )}
     </>

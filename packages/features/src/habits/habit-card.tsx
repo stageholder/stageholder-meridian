@@ -720,28 +720,25 @@ export function HabitCard({
           triggers, clears it reliably. */}
       {deleteOpen && (
         <AlertDialog open onOpenChange={setDeleteOpen} disableRemoveScroll>
-          <AlertDialog.Portal>
-            <AlertDialog.Overlay />
-            <AlertDialog.Content>
-              <AlertDialog.Title>
-                Delete &ldquo;{habit.name}&rdquo;?
-              </AlertDialog.Title>
-              <AlertDialog.Description>
-                This cannot be undone. All check-ins for this habit will be
-                permanently removed.
-              </AlertDialog.Description>
-              <XStack gap="$2" justify="flex-end" mt="$4">
-                <AlertDialog.Cancel asChild>
-                  <Button intent="outline">Cancel</Button>
-                </AlertDialog.Cancel>
-                <AlertDialog.Action asChild>
-                  <Button intent="destructive" onPress={confirmDelete}>
-                    Delete
-                  </Button>
-                </AlertDialog.Action>
-              </XStack>
-            </AlertDialog.Content>
-          </AlertDialog.Portal>
+          <AlertDialog.Content>
+            <AlertDialog.Title>
+              Delete &ldquo;{habit.name}&rdquo;?
+            </AlertDialog.Title>
+            <AlertDialog.Description>
+              This cannot be undone. All check-ins for this habit will be
+              permanently removed.
+            </AlertDialog.Description>
+            <XStack gap="$2" justify="flex-end" mt="$4">
+              <AlertDialog.Cancel asChild>
+                <Button intent="outline">Cancel</Button>
+              </AlertDialog.Cancel>
+              <AlertDialog.Action asChild>
+                <Button intent="destructive" onPress={confirmDelete}>
+                  Delete
+                </Button>
+              </AlertDialog.Action>
+            </XStack>
+          </AlertDialog.Content>
         </AlertDialog>
       )}
     </>

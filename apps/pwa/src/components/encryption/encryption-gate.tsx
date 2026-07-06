@@ -1,12 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  Button,
-  Dialog,
-  Text,
-  useToast,
-  XStack,
-  YStack,
-} from "@stageholder/ui";
+import { Button, Dialog, Text, toast, XStack, YStack } from "@stageholder/ui";
 import {
   PASSPHRASE_RECOVERY_COPY,
   PassphrasePrompt,
@@ -36,7 +29,6 @@ export function EncryptionGate({ children }: { children: React.ReactNode }) {
     setupPassphrase,
     recoverWithCodes,
   } = useEncryptionStore();
-  const toast = useToast();
   const [showSetup, setShowSetup] = useState(false);
   const [checked, setChecked] = useState(false);
   // Forgotten-passphrase recovery — opened from the lock screen's link.
@@ -119,12 +111,7 @@ export function EncryptionGate({ children }: { children: React.ReactNode }) {
           open={showSetup}
           onComplete={() => setShowSetup(false)}
           onSetup={(passphrase) => setupPassphrase(passphrase)}
-          onSetupError={() =>
-            toast.show({
-              title: "Failed to set up encryption",
-              intent: "danger",
-            })
-          }
+          onSetupError={() => toast.error("Failed to set up encryption")}
         />
       </>
     );

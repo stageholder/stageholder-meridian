@@ -39,7 +39,7 @@ import {
   View,
   XStack,
   YStack,
-  useToast,
+  toast,
 } from "@stageholder/ui";
 import { openURL } from "@repo/core/platform/linking";
 import {
@@ -96,7 +96,6 @@ function statusIntent(
 export default function BillingScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const toast = useToast();
 
   const sub = useSubscription();
   const enterprise = useEnterprise();
@@ -132,11 +131,7 @@ export default function BillingScreen() {
       { orgId: activeOrgId },
       {
         onSuccess: ({ url }) => openURL(url),
-        onError: () =>
-          toast.show({
-            title: "Couldn't open the billing portal",
-            intent: "danger",
-          }),
+        onError: () => toast.error("Couldn't open the billing portal"),
       },
     );
   }
@@ -362,10 +357,7 @@ export default function BillingScreen() {
                           invoice={inv}
                           orgId={activeOrgId!}
                           onError={() =>
-                            toast.show({
-                              title: "Couldn't open the invoice",
-                              intent: "danger",
-                            })
+                            toast.error("Couldn't open the invoice")
                           }
                         />
                       </YStack>

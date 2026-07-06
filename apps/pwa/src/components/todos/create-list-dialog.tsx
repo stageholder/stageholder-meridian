@@ -1,4 +1,4 @@
-import { Dialog, useToast } from "@stageholder/ui";
+import { Dialog, toast } from "@stageholder/ui";
 import { DialogSheetAdapt } from "@/components/shared/dialog-sheet-adapt";
 import {
   TodoListForm,
@@ -28,7 +28,6 @@ export function CreateListDialog({
   const isEdit = !!list;
   const createList = useCreateTodoList();
   const updateList = useUpdateTodoList();
-  const toast = useToast();
   const pending = createList.isPending || updateList.isPending;
 
   const initial: TodoListFormValues = list
@@ -41,11 +40,10 @@ export function CreateListDialog({
         { listId: list.id, data: { name: values.name, color: values.color } },
         {
           onSuccess: () => {
-            toast.show({ title: "List updated", intent: "success" });
+            toast.success("List updated");
             onOpenChange(false);
           },
-          onError: () =>
-            toast.show({ title: "Failed to update list", intent: "danger" }),
+          onError: () => toast.error("Failed to update list"),
         },
       );
       return;
@@ -55,11 +53,10 @@ export function CreateListDialog({
       { name: values.name, color: values.color },
       {
         onSuccess: () => {
-          toast.show({ title: "List created", intent: "success" });
+          toast.success("List created");
           onOpenChange(false);
         },
-        onError: () =>
-          toast.show({ title: "Failed to create list", intent: "danger" }),
+        onError: () => toast.error("Failed to create list"),
       },
     );
   }

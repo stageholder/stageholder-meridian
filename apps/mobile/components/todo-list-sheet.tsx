@@ -10,7 +10,7 @@
 //   list != null  → EDIT    (PUT /todo-lists/:id) + a Delete action that
 //                   confirms via the platform Alert (RN destructive idiom).
 
-import { Button, FormSheet, Separator, useToast } from "@stageholder/ui";
+import { Button, FormSheet, Separator, toast } from "@stageholder/ui";
 import {
   TODO_LIST_FORM_DEFAULTS,
   TodoListForm,
@@ -42,7 +42,6 @@ export function TodoListSheet({
   list,
   onDeleted,
 }: TodoListSheetProps) {
-  const toast = useToast();
   const createList = useCreateTodoList();
   const updateList = useUpdateTodoList();
   const deleteList = useDeleteTodoList();
@@ -51,16 +50,13 @@ export function TodoListSheet({
 
   function handleSubmit(values: TodoListFormValues) {
     const onError = () =>
-      toast.show({
-        title: isEdit ? "Couldn't update list" : "Couldn't create list",
-        intent: "danger",
-      });
+      toast.error(isEdit ? "Couldn't update list" : "Couldn't create list");
     if (isEdit) {
       updateList.mutate(
         { id: list.id, patch: values },
         {
           onSuccess: () => {
-            toast.show({ title: "List updated", intent: "success" });
+            toast.success("List updated");
             onOpenChange(false);
           },
           onError,
@@ -69,7 +65,7 @@ export function TodoListSheet({
     } else {
       createList.mutate(values, {
         onSuccess: () => {
-          toast.show({ title: "List created", intent: "success" });
+          toast.success("List created");
           onOpenChange(false);
         },
         onError,
@@ -90,15 +86,11 @@ export function TodoListSheet({
           onPress: () =>
             deleteList.mutate(list.id, {
               onSuccess: () => {
-                toast.show({ title: "List deleted", intent: "success" });
+                toast.success("List deleted");
                 onOpenChange(false);
                 onDeleted?.(list.id);
               },
-              onError: () =>
-                toast.show({
-                  title: "Couldn't delete list",
-                  intent: "danger",
-                }),
+              onError: () => toast.error("Couldn't delete list"),
             }),
         },
       ],

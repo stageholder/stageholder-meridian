@@ -8,7 +8,7 @@ import {
   DropdownMenu,
   QuickDatePicker,
   Text,
-  useToast,
+  toast,
   View,
   XStack,
   YStack,
@@ -214,7 +214,6 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const createTodo = useCreateTodo();
   const { data: lists } = useTodoLists();
-  const toast = useToast();
   // Synchronous double-submit latch. `createTodo.isPending` only flips on a
   // later render, so two Enter presses in the same tick both pass that guard
   // and create two todos — this ref closes the window immediately.
@@ -260,8 +259,7 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
           setDoDate(getToday());
           inputRef.current?.focus();
         },
-        onError: () =>
-          toast.show({ title: "Failed to create todo", intent: "danger" }),
+        onError: () => toast.error("Failed to create todo"),
         onSettled: () => {
           submittingRef.current = false;
         },

@@ -3,7 +3,7 @@ import { create } from "zustand";
 /**
  * Cross-component bridge for the desktop updater. The actual check +
  * AlertDialog + auto-poll live inside the <UpdateChecker /> component
- * (so it can use the kit `useToast`/`AlertDialog` hooks). The menu item
+ * (so it can use the kit `toast` function + `AlertDialog`). The menu item
  * in the app-shell fires a transient request through this store; the
  * component subscribes and runs the check, then clears the request.
  *

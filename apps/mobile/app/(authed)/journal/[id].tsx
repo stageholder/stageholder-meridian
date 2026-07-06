@@ -29,7 +29,7 @@ import {
   View,
   XStack,
   YStack,
-  useToast,
+  toast,
 } from "@stageholder/ui";
 import type { RichTextEditorContent } from "@stageholder/ui";
 import { JournalEditor } from "@repo/features/journal";
@@ -199,7 +199,6 @@ export default function JournalDetailScreen() {
 
 function EntryEditor({ entry }: { entry: Journal }) {
   const router = useRouter();
-  const toast = useToast();
   const deleteJournal = useDeleteJournal();
 
   // Platform-native destructive confirm (PWA parity: its $id page deletes
@@ -214,14 +213,10 @@ function EntryEditor({ entry }: { entry: Journal }) {
         onPress: () =>
           deleteJournal.mutate(entry.id, {
             onSuccess: () => {
-              toast.show({ title: "Entry deleted", intent: "success" });
+              toast.success("Entry deleted");
               router.navigate("/journal");
             },
-            onError: () =>
-              toast.show({
-                title: "Couldn't delete entry",
-                intent: "danger",
-              }),
+            onError: () => toast.error("Couldn't delete entry"),
           }),
       },
     ]);

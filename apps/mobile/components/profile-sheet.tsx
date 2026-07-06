@@ -30,7 +30,7 @@ import {
   Text,
   XStack,
   YStack,
-  useToast,
+  toast,
 } from "@stageholder/ui";
 import {
   CreditCard,
@@ -96,7 +96,6 @@ function MenuRow({
 
 export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
   const router = useRouter();
-  const toast = useToast();
   const { user } = useUser();
   const { signOut } = useStageholder();
   const { resolvedTheme, setTheme } = useAppTheme();
@@ -129,10 +128,8 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
       await signOut();
     } catch (err) {
       setSigningOut(false);
-      toast.show({
-        title: "Couldn't sign out",
-        message: (err as Error).message ?? "Try again.",
-        intent: "danger",
+      toast.error("Couldn't sign out", {
+        description: (err as Error).message ?? "Try again.",
       });
     }
   }

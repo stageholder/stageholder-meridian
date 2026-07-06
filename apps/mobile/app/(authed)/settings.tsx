@@ -34,7 +34,7 @@ import {
   Text,
   XStack,
   YStack,
-  useToast,
+  toast,
 } from "@stageholder/ui";
 import { ProfileForm, TargetsSettings } from "@repo/features/settings";
 import { PassphraseChangeForm } from "@repo/features/encryption";
@@ -357,7 +357,6 @@ function TargetsSection() {
  *  visited the journal tab this session. */
 function EncryptionSection() {
   const { isSetup } = useJournalCrypto();
-  const toast = useToast();
   const [changeOpen, setChangeOpen] = useState(false);
 
   useEffect(() => {
@@ -413,7 +412,7 @@ function EncryptionSection() {
           onChangePassphrase={changeJournalPassphrase}
           onComplete={() => {
             setChangeOpen(false);
-            toast.show({ title: "Passphrase changed", intent: "success" });
+            toast.success("Passphrase changed");
           }}
           onCancel={() => setChangeOpen(false)}
         />

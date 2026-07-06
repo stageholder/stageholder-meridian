@@ -9,7 +9,7 @@
 // accentColor: the PWA passes the `--ring-habit` CSS var; on native CSS vars
 // don't resolve in style objects, so the resolved IGNITION hex is passed.
 
-import { FormSheet, useToast } from "@stageholder/ui";
+import { FormSheet, toast } from "@stageholder/ui";
 import {
   HabitForm,
   HABIT_FORM_DEFAULTS,
@@ -33,7 +33,6 @@ export function CreateHabitDialog({
 }: CreateHabitDialogProps) {
   const createHabit = useCreateHabit();
   const groupsQuery = useHabitGroups();
-  const toast = useToast();
 
   // The shared form's group picker is HIDDEN at 0 groups; the user always has
   // the four seeded time-of-day groups, so it normally shows.
@@ -57,11 +56,11 @@ export function CreateHabitDialog({
       },
       {
         onSuccess: () => {
-          toast.show({ title: "Habit created", intent: "success" });
+          toast.success("Habit created");
           onOpenChange(false);
         },
         onError: () => {
-          toast.show({ title: "Failed to create habit", intent: "danger" });
+          toast.error("Failed to create habit");
         },
       },
     );

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { format, subDays } from "date-fns";
 import { useNavigate } from "@tanstack/react-router";
-import { useToast } from "@stageholder/ui";
+import { toast } from "@stageholder/ui";
 import { HabitCard as HabitCardView } from "@repo/features/habits";
 import type { Habit, HabitEntry } from "@repo/core/types";
 import {
@@ -37,7 +37,7 @@ interface HabitCardProps {
  *
  * Owns:
  *  - Data wiring (`useHabitEntries`, the four entry mutations, `useDeleteHabit`).
- *  - Toast feedback on success / failure (kit `useToast` is cross-platform
+ *  - Toast feedback on success / failure (kit `toast` is cross-platform
  *    but the wording is mutation-specific and lives next to the mutation).
  *  - The web-only `EditHabitSheet` (its own SDK-hook tangle, deferred to a
  *    later platform-suffix split).
@@ -77,7 +77,6 @@ export function HabitCard({
   const skipEntry = useSkipHabitEntry();
   const failEntry = useFailHabitEntry();
   const deleteHabit = useDeleteHabit();
-  const toast = useToast();
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
 
@@ -110,9 +109,9 @@ export function HabitCard({
             : { value: activeDateValue + 1 },
         });
       }
-      toast.show({ title: `Checked in for ${dateLabel}`, intent: "success" });
+      toast.success(`Checked in for ${dateLabel}`);
     } catch {
-      toast.show({ title: "Failed to check in", intent: "danger" });
+      toast.error("Failed to check in");
       // Re-throw so the view's `onCheckIn` promise rejects and the
       // post-success celebration animations are skipped.
       throw new Error("check-in failed");
@@ -133,9 +132,9 @@ export function HabitCard({
           data: { type: "skip", value: 0 },
         });
       }
-      toast.show({ title: `Skipped ${habit.name}`, intent: "success" });
+      toast.success(`Skipped ${habit.name}`);
     } catch {
-      toast.show({ title: "Failed to skip", intent: "danger" });
+      toast.error("Failed to skip");
     }
   }
 
@@ -153,9 +152,9 @@ export function HabitCard({
           data: { type: "fail", value: 0 },
         });
       }
-      toast.show({ title: `Marked ${habit.name} failed`, intent: "success" });
+      toast.success(`Marked ${habit.name} failed`);
     } catch {
-      toast.show({ title: "Failed to update", intent: "danger" });
+      toast.error("Failed to update");
     }
   }
 
@@ -169,12 +168,9 @@ export function HabitCard({
         entryId: activeDateEntry.id,
         data: { value: activeDateValue - 1 },
       });
-      toast.show({
-        title: `Undid check-in for ${habit.name}`,
-        intent: "success",
-      });
+      toast.success(`Undid check-in for ${habit.name}`);
     } catch {
-      toast.show({ title: "Failed to undo", intent: "danger" });
+      toast.error("Failed to undo");
     }
   }
 
@@ -186,18 +182,16 @@ export function HabitCard({
         entryId: activeDateEntry.id,
         data: { type: "completion", value: 0 },
       });
-      toast.show({ title: `Cleared ${habit.name}`, intent: "success" });
+      toast.success(`Cleared ${habit.name}`);
     } catch {
-      toast.show({ title: "Failed to undo", intent: "danger" });
+      toast.error("Failed to undo");
     }
   }
 
   function handleDelete() {
     deleteHabit.mutate(habit.id, {
-      onSuccess: () =>
-        toast.show({ title: `"${habit.name}" deleted`, intent: "success" }),
-      onError: () =>
-        toast.show({ title: "Failed to delete habit", intent: "danger" }),
+      onSuccess: () => toast.success(`"${habit.name}" deleted`),
+      onError: () => toast.error("Failed to delete habit"),
     });
   }
 

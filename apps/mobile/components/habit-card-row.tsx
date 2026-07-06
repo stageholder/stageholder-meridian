@@ -16,7 +16,7 @@
 // yet, else PATCHes the existing one. (See the long-standing note in
 // hooks/habits.ts.)
 
-import { Celebration, useToast } from "@stageholder/ui";
+import { Celebration, toast } from "@stageholder/ui";
 import { HabitCard } from "@repo/features/habits";
 import type { Habit } from "@repo/core/types";
 
@@ -56,7 +56,6 @@ export function HabitCardRow({
   onUnarchive,
   onMoveToGroup,
 }: HabitCardRowProps) {
-  const toast = useToast();
   const entriesQuery = useHabitEntries(habit.id);
   const checkIn = useCheckInHabit();
   const skip = useSkipHabit();
@@ -113,7 +112,7 @@ export function HabitCardRow({
             });
           }
         } catch (e) {
-          toast.show({ title: "Couldn't check in", intent: "danger" });
+          toast.error("Couldn't check in");
           // Re-throw so HabitCard's awaited handler skips the celebration.
           throw e;
         }
@@ -130,7 +129,7 @@ export function HabitCardRow({
             });
           }
         } catch {
-          toast.show({ title: "Couldn't skip", intent: "danger" });
+          toast.error("Couldn't skip");
         }
       }}
       onFail={async () => {
@@ -145,7 +144,7 @@ export function HabitCardRow({
             });
           }
         } catch {
-          toast.show({ title: "Couldn't mark failed", intent: "danger" });
+          toast.error("Couldn't mark failed");
         }
       }}
       onUndo={async () => {
@@ -157,7 +156,7 @@ export function HabitCardRow({
             patch: { value: Math.max(0, (todayEntry.value ?? 0) - 1) },
           });
         } catch {
-          toast.show({ title: "Couldn't undo", intent: "danger" });
+          toast.error("Couldn't undo");
         }
       }}
       onClearStatus={async () => {
@@ -169,7 +168,7 @@ export function HabitCardRow({
             patch: { value: 0, type: "completion" },
           });
         } catch {
-          toast.show({ title: "Couldn't clear status", intent: "danger" });
+          toast.error("Couldn't clear status");
         }
       }}
       onEdit={onEdit}
@@ -178,8 +177,7 @@ export function HabitCardRow({
       // the optimistic removal rolls back, so surface a toast (L10a).
       onDelete={() =>
         deleteHabit.mutate(habit.id, {
-          onError: () =>
-            toast.show({ title: "Couldn't delete habit", intent: "danger" }),
+          onError: () => toast.error("Couldn't delete habit"),
         })
       }
       // Group + archive affordances — present only when the host wires them.

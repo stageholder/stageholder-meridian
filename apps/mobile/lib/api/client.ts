@@ -136,9 +136,10 @@ export const apiClient: ApiClient = createMeridianClient();
  * Zod-pipe errors are wrapped the same way by our ZodValidationPipe
  * (apps/api/src/common/zod-validation.pipe.ts).
  *
- *   onError: (err) => toast.show({
- *     message: extractServerMessage(err) ?? "Tap to retry.",
- *   })
+ *   onError: (err) =>
+ *     toast.error("Couldn't save", {
+ *       description: extractServerMessage(err) ?? "Tap to retry.",
+ *     })
  */
 export function extractServerMessage(err: unknown): string | undefined {
   if (typeof err !== "object" || err === null) return undefined;

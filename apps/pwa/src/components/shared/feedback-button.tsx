@@ -16,7 +16,7 @@ import {
   XStack,
   YStack,
   useSidebar,
-  useToast,
+  toast,
 } from "@stageholder/ui";
 
 type FeedbackType = "bug" | "feature" | "general";
@@ -65,14 +65,13 @@ export function FeedbackButton() {
   // collapsed rail keeps the "Feedback" label, matching the nav rows.
   const collapsed =
     !isMobile && state === "collapsed" && collapsible === "icon";
-  const toast = useToast();
 
   async function handleSubmit() {
     if (!message.trim()) return;
     setSubmitting(true);
     try {
       await apiClient.post("/feedback", { type, message: message.trim() });
-      toast.show({ title: "Thanks for your feedback!", intent: "success" });
+      toast.success("Thanks for your feedback!");
       setMessage("");
       setType("general");
       setOpen(false);
@@ -80,10 +79,7 @@ export function FeedbackButton() {
       // lands back on whatever screen they were on. No-op on desktop.
       if (isMobile) setOpenMobile(false);
     } catch {
-      toast.show({
-        title: "Failed to send feedback. Please try again.",
-        intent: "danger",
-      });
+      toast.error("Failed to send feedback. Please try again.");
     } finally {
       setSubmitting(false);
     }

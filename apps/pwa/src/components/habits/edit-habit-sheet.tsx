@@ -1,4 +1,4 @@
-import { Dialog, useToast } from "@stageholder/ui";
+import { Dialog, toast } from "@stageholder/ui";
 import { DialogSheetAdapt } from "@/components/shared/dialog-sheet-adapt";
 import { HabitForm, type HabitFormValues } from "@repo/features/habits";
 import { useUpdateHabit } from "@/lib/api/habits";
@@ -28,7 +28,6 @@ export function EditHabitSheet({
 }: EditHabitSheetProps) {
   const updateHabit = useUpdateHabit();
   const { data: groups } = useHabitGroups();
-  const toast = useToast();
 
   const initial: HabitFormValues = {
     name: habit.name,
@@ -64,11 +63,11 @@ export function EditHabitSheet({
       },
       {
         onSuccess: () => {
-          toast.show({ title: "Habit updated", intent: "success" });
+          toast.success("Habit updated");
           onOpenChange(false);
         },
         onError: () => {
-          toast.show({ title: "Failed to update habit", intent: "danger" });
+          toast.error("Failed to update habit");
         },
       },
     );

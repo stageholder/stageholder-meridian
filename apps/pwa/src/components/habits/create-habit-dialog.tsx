@@ -1,4 +1,4 @@
-import { Dialog, useToast } from "@stageholder/ui";
+import { Dialog, toast } from "@stageholder/ui";
 import { DialogSheetAdapt } from "@/components/shared/dialog-sheet-adapt";
 import {
   HabitForm,
@@ -34,7 +34,6 @@ export function CreateHabitDialog({
 }: CreateHabitDialogProps) {
   const createHabit = useCreateHabit();
   const { data: groups } = useHabitGroups();
-  const toast = useToast();
 
   function handleSubmit(values: HabitFormValues) {
     createHabit.mutate(
@@ -52,11 +51,11 @@ export function CreateHabitDialog({
       },
       {
         onSuccess: () => {
-          toast.show({ title: "Habit created", intent: "success" });
+          toast.success("Habit created");
           onOpenChange(false);
         },
         onError: () => {
-          toast.show({ title: "Failed to create habit", intent: "danger" });
+          toast.error("Failed to create habit");
         },
       },
     );

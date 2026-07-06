@@ -25,7 +25,7 @@ import {
   Separator,
   TextArea,
   Text,
-  useToast,
+  toast,
   View,
   XStack,
   YStack,
@@ -72,7 +72,6 @@ export function TodoDetailDialog({
   const updateSubtask = useUpdateSubtask();
   const removeSubtask = useRemoveSubtask();
   const { data: lists } = useTodoLists();
-  const toast = useToast();
   const currentList = lists?.find((l) => l.id === todo.listId);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [editingTitle, setEditingTitle] = useState(false);
@@ -148,11 +147,11 @@ export function TodoDetailDialog({
       { listId, todoId: todo.id },
       {
         onSuccess: () => {
-          toast.show({ title: "Todo deleted", intent: "success" });
+          toast.success("Todo deleted");
           onOpenChange(false);
         },
         onError: () => {
-          toast.show({ title: "Failed to delete todo", intent: "danger" });
+          toast.error("Failed to delete todo");
         },
       },
     );

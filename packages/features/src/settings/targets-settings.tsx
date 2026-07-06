@@ -5,7 +5,7 @@ import {
   NumberInput,
   Select,
   Text,
-  useToast,
+  toast,
   View,
   XStack,
   YStack,
@@ -23,7 +23,7 @@ export interface TargetsSettingsProps {
   /**
    * Persist the updated targets via the host's mutation. Resolves on
    * success; throws on failure. The view surfaces both outcomes through
-   * kit `useToast` — the host doesn't need to wire success/error toasts.
+   * kit `toast` — the host doesn't need to wire success/error toasts.
    */
   onSubmit: (data: {
     todoTargetDaily: number;
@@ -49,9 +49,9 @@ const DEFAULT_JOURNAL_TARGET = 75;
  * `onSubmit` callback wired to the corresponding update mutation.
  *
  * Uses Tamagui `Form` for cross-platform Enter-to-submit. Feedback is
- * via kit `useToast` (cross-platform) — the host must mount a
- * `ToastProvider` ancestor, which the PWA + future mobile both do at
- * the app root.
+ * via the kit `toast` function (cross-platform) — the host must mount a
+ * single `<Toaster />` near the app root (the v2 kit toast API is
+ * provider-less), which the PWA + mobile both do.
  */
 export function TargetsSettings({
   initialTodoTarget,
@@ -59,7 +59,6 @@ export function TargetsSettings({
   isLoading,
   onSubmit,
 }: TargetsSettingsProps) {
-  const toast = useToast();
   const [todoTarget, setTodoTarget] = useState<number>(
     initialTodoTarget ?? DEFAULT_TODO_TARGET,
   );
@@ -91,9 +90,9 @@ export function TargetsSettings({
         todoTargetDaily: todoTarget,
         journalTargetDailyWords: journalTarget,
       });
-      toast.show({ title: "Targets updated", intent: "success" });
+      toast.success("Targets updated");
     } catch {
-      toast.show({ title: "Failed to update targets", intent: "danger" });
+      toast.error("Failed to update targets");
     } finally {
       setSaving(false);
     }

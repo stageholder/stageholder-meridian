@@ -8,7 +8,7 @@ import {
   View,
   XStack,
   YStack,
-  useToast,
+  toast,
 } from "@stageholder/ui";
 import { useArchivedHabits, useUnarchiveHabit } from "@/lib/api/habits";
 import type { Habit } from "@repo/core/types";
@@ -24,14 +24,11 @@ export const Route = createFileRoute("/_app/habits/archived")({
 function ArchivedHabitsPage() {
   const { data: habits, isLoading } = useArchivedHabits();
   const unarchive = useUnarchiveHabit();
-  const toast = useToast();
 
   function handleRestore(habit: Habit) {
     unarchive.mutate(habit.id, {
-      onSuccess: () =>
-        toast.show({ title: `"${habit.name}" restored`, intent: "success" }),
-      onError: () =>
-        toast.show({ title: "Failed to restore habit", intent: "danger" }),
+      onSuccess: () => toast.success(`"${habit.name}" restored`),
+      onError: () => toast.error("Failed to restore habit"),
     });
   }
 

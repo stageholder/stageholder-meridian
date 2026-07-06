@@ -25,7 +25,7 @@ import {
   RippleButton,
   Sidebar,
   Text,
-  useToast,
+  toast,
   View,
   XStack,
 } from "@stageholder/ui";
@@ -129,7 +129,6 @@ function GroupMenu({
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const deleteGroup = useDeleteHabitGroup();
-  const toast = useToast();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -137,11 +136,10 @@ function GroupMenu({
     const viewing = pathname === `/habits/group/${group.id}`;
     deleteGroup.mutate(group.id, {
       onSuccess: () => {
-        toast.show({ title: `"${group.name}" deleted`, intent: "success" });
+        toast.success(`"${group.name}" deleted`);
         if (viewing) void navigate({ to: "/habits" });
       },
-      onError: () =>
-        toast.show({ title: "Failed to delete group", intent: "danger" }),
+      onError: () => toast.error("Failed to delete group"),
     });
   }
 
@@ -204,31 +202,28 @@ function GroupMenu({
 
       {deleteOpen && (
         <AlertDialog open onOpenChange={setDeleteOpen} disableRemoveScroll>
-          <AlertDialog.Portal>
-            <AlertDialog.Overlay />
-            <AlertDialog.Content>
-              <AlertDialog.Title>
-                Delete &ldquo;{group.name}&rdquo;?
-              </AlertDialog.Title>
-              <AlertDialog.Description>
-                Habits in this group move to Ungrouped. Their history is kept.
-              </AlertDialog.Description>
-              <XStack gap="$2" justify="flex-end" mt="$4">
-                <Button intent="outline" onPress={() => setDeleteOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  intent="destructive"
-                  onPress={() => {
-                    setDeleteOpen(false);
-                    confirmDelete();
-                  }}
-                >
-                  Delete
-                </Button>
-              </XStack>
-            </AlertDialog.Content>
-          </AlertDialog.Portal>
+          <AlertDialog.Content>
+            <AlertDialog.Title>
+              Delete &ldquo;{group.name}&rdquo;?
+            </AlertDialog.Title>
+            <AlertDialog.Description>
+              Habits in this group move to Ungrouped. Their history is kept.
+            </AlertDialog.Description>
+            <XStack gap="$2" justify="flex-end" mt="$4">
+              <Button intent="outline" onPress={() => setDeleteOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                intent="destructive"
+                onPress={() => {
+                  setDeleteOpen(false);
+                  confirmDelete();
+                }}
+              >
+                Delete
+              </Button>
+            </XStack>
+          </AlertDialog.Content>
         </AlertDialog>
       )}
     </>

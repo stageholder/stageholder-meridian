@@ -14,7 +14,7 @@
 // cascade-deleting them — the deleteGroup hook invalidates the habit list so
 // the orphaned habits surface in the Ungrouped section.
 
-import { Button, FormSheet, Separator, useToast } from "@stageholder/ui";
+import { Button, FormSheet, Separator, toast } from "@stageholder/ui";
 import {
   HABIT_GROUP_FORM_DEFAULTS,
   HabitGroupForm,
@@ -46,7 +46,6 @@ export function HabitGroupSheet({
   group,
   onDeleted,
 }: HabitGroupSheetProps) {
-  const toast = useToast();
   const createGroup = useCreateHabitGroup();
   const updateGroup = useUpdateHabitGroup();
   const deleteGroup = useDeleteHabitGroup();
@@ -55,16 +54,13 @@ export function HabitGroupSheet({
 
   function handleSubmit(values: HabitGroupFormValues) {
     const onError = () =>
-      toast.show({
-        title: isEdit ? "Couldn't update group" : "Couldn't create group",
-        intent: "danger",
-      });
+      toast.error(isEdit ? "Couldn't update group" : "Couldn't create group");
     if (isEdit) {
       updateGroup.mutate(
         { id: group.id, patch: values },
         {
           onSuccess: () => {
-            toast.show({ title: "Group updated", intent: "success" });
+            toast.success("Group updated");
             onOpenChange(false);
           },
           onError,
@@ -73,7 +69,7 @@ export function HabitGroupSheet({
     } else {
       createGroup.mutate(values, {
         onSuccess: () => {
-          toast.show({ title: "Group created", intent: "success" });
+          toast.success("Group created");
           onOpenChange(false);
         },
         onError,
@@ -94,15 +90,11 @@ export function HabitGroupSheet({
           onPress: () =>
             deleteGroup.mutate(group.id, {
               onSuccess: () => {
-                toast.show({ title: "Group deleted", intent: "success" });
+                toast.success("Group deleted");
                 onOpenChange(false);
                 onDeleted?.(group.id);
               },
-              onError: () =>
-                toast.show({
-                  title: "Couldn't delete group",
-                  intent: "danger",
-                }),
+              onError: () => toast.error("Couldn't delete group"),
             }),
         },
       ],
