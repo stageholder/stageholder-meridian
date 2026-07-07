@@ -1,10 +1,4 @@
-import {
-  AreaChart,
-  Skeleton,
-  Text,
-  View,
-  type ChartDatum,
-} from "@stageholder/ui";
+import { AreaChart, Skeleton, Text, View } from "@stageholder/ui";
 
 /**
  * Per-day journal entry counts for the trend chart. Each app's
@@ -20,9 +14,9 @@ export interface JournalGrowthChartProps {
   data: JournalGrowthDay[];
   isLoading?: boolean;
   /**
-   * Area color. The default is the PWA's CSS chart variable, which does NOT
-   * resolve on React Native — native callers must pass a `$token` (the kit
-   * chart resolves theme tokens cross-platform) or a raw hex.
+   * Line/area color — a kit `$token` (resolves on web AND native via the kit
+   * chart's colour resolver) or a raw hex. Not a CSS `var(...)`, which won't
+   * resolve on React Native.
    */
   color?: string;
 }
@@ -30,7 +24,7 @@ export interface JournalGrowthChartProps {
 export function JournalGrowthChart({
   data,
   isLoading,
-  color = "var(--color-chart-1)",
+  color = "$info",
 }: JournalGrowthChartProps) {
   if (isLoading) {
     return <Skeleton height={200} width="100%" rounded="$3" />;
@@ -47,18 +41,19 @@ export function JournalGrowthChart({
     );
   }
 
-  const chartData: ChartDatum[] = data.map((d) => ({
-    label: d.label,
-    value: d.entries,
-  }));
-
   return (
     <AreaChart
-      data={chartData}
       height={200}
       showGrid
-      continuous
-      color={color}
+      showLegend={false}
+      series={[
+        {
+          id: "entries",
+          label: "Entries",
+          color,
+          points: data.map((d) => ({ x: d.label, y: d.entries })),
+        },
+      ]}
     />
   );
 }

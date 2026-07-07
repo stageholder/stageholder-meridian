@@ -1,10 +1,4 @@
-import {
-  AreaChart,
-  Skeleton,
-  Text,
-  View,
-  type ChartDatum,
-} from "@stageholder/ui";
+import { AreaChart, Skeleton, Text, View } from "@stageholder/ui";
 
 /**
  * Per-day cumulative light total. Each app's `useLightTrend` hook
@@ -46,21 +40,22 @@ export function LightEarnedChart({ data, isLoading }: LightEarnedChartProps) {
     );
   }
 
-  const chartData: ChartDatum[] = data.map((d) => ({
-    label: d.label,
-    value: d.light,
-  }));
-
+  // Kit v2 AreaChart is series-based; plot the CUMULATIVE `light` per day.
+  // Gold/amber hex (≈ oklch(0.75 0.18 55)) — RN's SVG parser can't read
+  // oklch(), so a raw hex resolves identically on both platforms.
   return (
     <AreaChart
-      data={chartData}
       height={200}
       showGrid
-      continuous
-      // Gold/amber "light" accent as HEX (≈ oklch(0.75 0.18 55)) — RN's SVG
-      // color parser can't read oklch(), so a CSS-space value silently breaks
-      // the native render. Hex resolves identically on both platforms.
-      color="#fb923c"
+      showLegend={false}
+      series={[
+        {
+          id: "light",
+          label: "Light",
+          color: "#fb923c",
+          points: data.map((d) => ({ x: d.label, y: d.light })),
+        },
+      ]}
     />
   );
 }

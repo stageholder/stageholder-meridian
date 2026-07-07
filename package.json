@@ -2,6 +2,7 @@
   "name": "stageholder-meridian",
   "private": true,
   "scripts": {
+    "db:seed": "bun apps/api/scripts/seed.ts",
     "build": "turbo run build",
     "build:pwa": "turbo run build --filter=pwa",
     "build:desktop": "./scripts/build-desktop.sh",
@@ -58,24 +59,31 @@
     "react-day-picker": "^9.14.0"
   },
   "resolutions": {
-    "@tamagui/core": "2.0.0",
-    "@tamagui/web": "2.0.0",
-    "@tamagui/react-native-web-lite": "2.0.0",
-    "tamagui": "2.0.0",
+    "@tamagui/core": "2.3.2",
+    "@tamagui/web": "2.3.2",
+    "@tamagui/react-native-web-lite": "2.3.2",
+    "@tamagui/react-native-svg": "2.3.2",
+    "tamagui": "2.3.2",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2"
   },
   "overrides": {
-    "tamagui": "2.0.0",
-    "@tamagui/core": "2.0.0",
-    "@tamagui/web": "2.0.0",
-    "@tamagui/config": "2.0.0",
-    "@tamagui/animations-css": "2.0.0",
-    "@tamagui/lucide-icons-2": "2.0.0",
-    "@tamagui/toast": "2.0.0",
-    "@tamagui/vite-plugin": "2.0.0",
-    "@tamagui/babel-plugin": "2.0.0",
-    "@tamagui/react-native-web-lite": "2.0.0",
+    "tamagui": "2.3.2",
+    "@tamagui/core": "2.3.2",
+    "@tamagui/web": "2.3.2",
+    "@tamagui/config": "2.3.2",
+    "@tamagui/animations-css": "2.3.2",
+    "@tamagui/lucide-icons-2": "2.3.2",
+    "@tamagui/toast": "2.3.2",
+    "@tamagui/vite-plugin": "2.3.2",
+    "@tamagui/babel-plugin": "2.3.2",
+    "@tamagui/react-native-web-lite": "2.3.2",
+    "@tamagui/react-native-svg": "2.3.2",
+    "@tamagui/native": "2.3.2",
+    "@tamagui/helpers-icon": "2.3.2",
+    "@tamagui/linear-gradient": "2.3.2",
+    "@tamagui/select": "2.3.2",
+    "@tamagui/themes": "2.3.2",
     "react-native-web": "0.21.2"
   }
 }

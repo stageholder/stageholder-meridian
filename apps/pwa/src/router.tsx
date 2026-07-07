@@ -4,7 +4,14 @@ import { routeTree } from "./routeTree.gen";
 export interface AuthSnapshot {
   isAuthenticated: boolean;
   userSub: string | null;
-  hasCompletedOnboarding: boolean;
+  /**
+   * Tri-state ON PURPOSE: `true`/`false` mean `/me` resolved and we KNOW the
+   * onboarding status; `null` means it's unresolved (still loading, or the
+   * `/me` call failed). The onboarding gate must only redirect on a positive
+   * `false` — never on `null` — so a flaky/slow `/me` can't trap an
+   * authenticated user in the onboarding flow.
+   */
+  hasCompletedOnboarding: boolean | null;
   isBootstrapping: boolean;
 }
 

@@ -1,11 +1,4 @@
-import {
-  AreaChart,
-  Skeleton,
-  Text,
-  View,
-  XStack,
-  type ChartDatum,
-} from "@stageholder/ui";
+import { AreaChart, Skeleton, Text, View, XStack } from "@stageholder/ui";
 import type { LightTrendDay } from "./light-earned-chart";
 import { tabularNums } from "../_internal/text-styles";
 
@@ -40,11 +33,6 @@ export function JourneyLightChart({ data, isLoading }: JourneyLightChartProps) {
 
   const totalRecent = data.reduce((s, d) => s + d.earned, 0);
 
-  const chartData: ChartDatum[] = data.map((d) => ({
-    label: d.label,
-    value: d.light,
-  }));
-
   return (
     <View>
       <XStack mb="$2" items="center" justify="space-between">
@@ -60,14 +48,20 @@ export function JourneyLightChart({ data, isLoading }: JourneyLightChartProps) {
           +{totalRecent} Light
         </Text>
       </XStack>
+      {/* Kit v2 AreaChart is series-based; plot cumulative `light`. Hex color
+          (≈ oklch(0.75 0.18 55)) — RN's SVG parser can't read oklch(). */}
       <AreaChart
-        data={chartData}
         height={180}
         showGrid
-        continuous
-        // Hex (≈ oklch(0.75 0.18 55)): RN's SVG color parser can't read
-        // oklch(), and this view already renders on the native Journey screen.
-        color="#fb923c"
+        showLegend={false}
+        series={[
+          {
+            id: "light",
+            label: "Light",
+            color: "#fb923c",
+            points: data.map((d) => ({ x: d.label, y: d.light })),
+          },
+        ]}
       />
     </View>
   );

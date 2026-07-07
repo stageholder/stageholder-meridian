@@ -3,7 +3,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { TanStackRouterVite } from "@tanstack/router-vite-plugin";
-import { tamaguiPlugin } from "@tamagui/vite-plugin";
+import { tamaguiPlugin, tamaguiAliases } from "@tamagui/vite-plugin";
 
 export default defineConfig({
   // Anchor `root` and `envDir` to the directory of this config file so
@@ -76,6 +76,10 @@ export default defineConfig({
     // `react` import to this app's copy.
     dedupe: ["react", "react-dom"],
     alias: [
+      // react-native-svg → @tamagui/react-native-svg (web shim). The tamagui plugin
+      // also injects this; keeping the documented helper here is harmless (same
+      // resolution). Per tamagui-v2-guide/vite.md.
+      ...tamaguiAliases({ svg: true }),
       // Redirect every import of `@tamagui/react-native-web-lite` to the
       // full `react-native-web` package. Tamagui's lite build — verified
       // still on tamagui@2.0.0 stable — imports `unmountComponentAtNode`
@@ -185,5 +189,12 @@ export default defineConfig({
         },
       },
     },
+  },
+  optimizeDeps: {
+    // Pre-bundle @react-native/normalize-colors (CJS) so react-native-web's
+    // `import normalizeColor from …` gets a real default export through esbuild's
+    // CJS→ESM interop. (Color path only — unrelated to the old chart svg crash,
+    // which was a kit default-import bug fixed in @stageholder/ui alpha.88.)
+    include: ["@react-native/normalize-colors"],
   },
 });

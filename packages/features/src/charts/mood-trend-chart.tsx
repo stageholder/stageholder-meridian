@@ -1,15 +1,9 @@
-import {
-  AreaChart,
-  Skeleton,
-  Text,
-  View,
-  type ChartDatum,
-} from "@stageholder/ui";
+import { AreaChart, Skeleton, Text, View } from "@stageholder/ui";
 
 /**
- * Per-day mood score (1–5) for the trend chart. `mood` is nullable for
- * days the user didn't journal — the kit `AreaChart` can't render gaps,
- * so the view maps nulls to 0 (which AreaChart shows as no column).
+ * Per-day mood score (1–5) for the trend chart. `mood` is `null` for days
+ * the user didn't journal; the kit v2 `AreaChart` renders `y: null` as a gap
+ * in the line (connectNulls is off), so no-entry days read as breaks.
  */
 export interface MoodTrendDay {
   /** Short axis label (e.g. "MMM d"). */
@@ -39,18 +33,21 @@ export function MoodTrendChart({ data, isLoading }: MoodTrendChartProps) {
     );
   }
 
-  const chartData: ChartDatum[] = data.map((d) => ({
-    label: d.label,
-    value: d.mood ?? 0,
-  }));
-
+  // Kit v2 AreaChart is series-based. `null` mood keeps a gap in the line
+  // (connectNulls is off by default), which reads better than a 0 dip.
   return (
     <AreaChart
-      data={chartData}
       height={200}
       showGrid
-      continuous
-      color="var(--color-chart-4)"
+      showLegend={false}
+      series={[
+        {
+          id: "mood",
+          label: "Mood",
+          color: "$warning",
+          points: data.map((d) => ({ x: d.label, y: d.mood })),
+        },
+      ]}
     />
   );
 }

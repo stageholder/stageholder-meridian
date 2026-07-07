@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button, Text, View, XStack, YStack } from "@stageholder/ui";
+import { Button, Text, View, XStack, YStack, toast } from "@stageholder/ui";
 import { useUser as useSdkUser } from "@stageholder/sdk/spa";
 import { useUser } from "@/hooks/use-user";
 import { apiClient } from "@/lib/api-client";
+import type { MeridianUserMeta } from "@/lib/me-query";
 import {
   WelcomeStep,
   GoalsStep,
@@ -46,29 +47,37 @@ function OnboardingPage() {
     }
   }, [user?.hasCompletedOnboarding, navigate]);
 
-  // Throws on failure — CompleteStep catches and surfaces the inline error.
-  const finishOnboarding = useCallback(async () => {
+  // Mark onboarding complete, then enter the app. Throws on failure so callers
+  // can surface it. The KEY fix for the "skip does nothing / bounces back" bug:
+  // optimistically write `hasCompletedOnboarding: true` into the meta cache
+  // BEFORE navigating. The `_app` gate reads onboarding status from that cache
+  // (via the router context), so the optimistic write means the gate lets us in
+  // on the very next evaluation — no race with the background refetch, no bounce
+  // back to onboarding. `invalidateQueries` then reconciles with the server.
+  const completeAndEnter = useCallback(async () => {
     await postCompletion();
-    // Invalidate the meta query so the _app `beforeLoad` gate re-evaluates
-    // and routes the user into the shell instead of bouncing back here.
-    await queryClient.invalidateQueries({
-      queryKey: ["meridian-user-meta", sdk.user?.sub],
-    });
+    const key = ["meridian-user-meta", sdk.user?.sub] as const;
+    queryClient.setQueryData<MeridianUserMeta>(key, (old) => ({
+      personalOrgId: old?.personalOrgId ?? "",
+      hasCompletedOnboarding: true,
+    }));
+    void queryClient.invalidateQueries({ queryKey: key });
     navigate({ to: "/" });
   }, [queryClient, navigate, sdk.user?.sub]);
 
+  // CompleteStep catches the throw and surfaces its own inline error.
+  const finishOnboarding = completeAndEnter;
+
+  // Skip must NOT fail silently (the old behavior looked like a dead button).
   const handleSkip = useCallback(async () => {
     try {
-      await postCompletion();
-      await queryClient.invalidateQueries({
-        queryKey: ["meridian-user-meta", sdk.user?.sub],
-      });
-      navigate({ to: "/" });
+      await completeAndEnter();
     } catch {
-      // Skip failed. Intentionally silent — CompleteStep is the primary
-      // error surface; the user can finish the flow normally or retry skip.
+      toast.error("Couldn't skip setup", {
+        description: "Something went wrong. Please try again.",
+      });
     }
-  }, [queryClient, navigate, sdk.user?.sub]);
+  }, [completeAndEnter]);
 
   // While the SDK session is still resolving, show a quiet loading state.
   if (sdk.isLoading) {

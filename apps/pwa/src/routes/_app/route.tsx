@@ -17,7 +17,12 @@ export const Route = createFileRoute("/_app")({
         search: { returnTo: location.href },
       });
     }
-    if (!context.auth.hasCompletedOnboarding) {
+    // Redirect ONLY when we positively know onboarding isn't done. `null`
+    // (unresolved — `/me` still loading or failed) must NOT force onboarding:
+    // that's the bug where a flaky API dumped authenticated users into the
+    // onboarding flow. A genuinely-new user resolves to `false` and is sent
+    // through onboarding; everyone else stays where they are.
+    if (context.auth.hasCompletedOnboarding === false) {
       throw redirect({ to: "/onboarding" });
     }
   },

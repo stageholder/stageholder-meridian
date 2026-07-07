@@ -96,7 +96,11 @@ function InnerApp() {
         auth: {
           isAuthenticated: !!user,
           userSub: user?.sub ?? null,
-          hasCompletedOnboarding: meta?.hasCompletedOnboarding ?? false,
+          // `null` when `/me` hasn't resolved (loading or errored) — do NOT
+          // coerce to `false`, or a failed `/me` would force an authenticated,
+          // possibly-already-onboarded user into the onboarding flow. The gate
+          // in `_app/route.tsx` only redirects on a positive `false`.
+          hasCompletedOnboarding: meta ? meta.hasCompletedOnboarding : null,
           isBootstrapping: false,
         },
       }}
