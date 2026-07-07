@@ -63,8 +63,9 @@ export class JournalController {
   async getStats(
     @Req() req: StageholderRequest,
     @Query("today") today?: string,
+    @Query("days") days?: string,
   ) {
-    return this.service.getStats(req.user.sub, today);
+    return this.service.getStats(req.user.sub, today, days ? +days : undefined);
   }
 
   @Get(":id")

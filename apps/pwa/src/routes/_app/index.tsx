@@ -10,10 +10,10 @@ import { GreetingBar } from "@/components/dashboard/greeting-bar";
 import { DashboardHero } from "@/components/dashboard/dashboard-hero";
 import { TodayTodos } from "@/components/dashboard/today-todos";
 import { HabitSummary } from "@/components/dashboard/habit-summary";
-import { RecentJournals } from "@/components/dashboard/recent-journals";
 import { WeeklyActivityChart } from "@/components/dashboard/charts/weekly-activity-chart";
 import { JournalGrowthChart } from "@/components/dashboard/charts/journal-growth-chart";
 import { LightEarnedChart } from "@/components/dashboard/charts/light-earned-chart";
+import { WritingHeatmap } from "@/components/dashboard/charts/writing-heatmap";
 
 export const Route = createFileRoute("/_app/")({
   component: DashboardPage,
@@ -82,26 +82,23 @@ function DashboardPage() {
           <HabitSummary />
         </Dashboard.Widget>
 
-        {/* Weekly activity — full width (a 7-day timeline reads best wide). */}
-        <Dashboard.Widget colSpan={12} title="Weekly Activity">
-          <WeeklyActivityChart />
-        </Dashboard.Widget>
-
-        {/* Growth charts — equal pair. */}
+        {/* Journal pair — growth trend beside its GitHub-style word-count
+            heatmap (both journal-yellow). The heatmap scrolls horizontally in
+            the half-width cell. */}
         <Dashboard.Widget colSpan={6} title="Journal Growth">
           <JournalGrowthChart />
         </Dashboard.Widget>
-        <Dashboard.Widget colSpan={6} title="Light Growth">
-          <LightEarnedChart />
+        <Dashboard.Widget colSpan={6} title="Writing Activity">
+          <WritingHeatmap />
         </Dashboard.Widget>
 
-        {/* Recent journals — full-width horizontal strip. */}
-        <Dashboard.Widget
-          colSpan={12}
-          title="Recent Journal Entries"
-          actions={<ViewAll to="/journal" />}
-        >
-          <RecentJournals />
+        {/* Activity pair — weekly activity beside light growth (both gapped
+            histograms). */}
+        <Dashboard.Widget colSpan={6} title="Weekly Activity">
+          <WeeklyActivityChart />
+        </Dashboard.Widget>
+        <Dashboard.Widget colSpan={6} title="Light Growth">
+          <LightEarnedChart />
         </Dashboard.Widget>
       </Dashboard>
 

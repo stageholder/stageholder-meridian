@@ -38,8 +38,11 @@ export function MoodTrendChart({ data, isLoading }: MoodTrendChartProps) {
   return (
     <AreaChart
       height={200}
-      showGrid
+      plain
+      showGrid={false}
       showLegend={false}
+      showXAxis={false}
+      showYAxis={false}
       series={[
         {
           id: "mood",

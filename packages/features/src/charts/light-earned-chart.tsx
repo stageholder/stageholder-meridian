@@ -1,19 +1,28 @@
-import { AreaChart, Skeleton, Text, View } from "@stageholder/ui";
+import {
+  BarChart,
+  Skeleton,
+  Text,
+  View,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
+
+/** Light identity colour (gold/amber). Raw hex — RN can't read oklch(). */
+const LIGHT_COLOR = "#fb923c";
 
 /**
- * Per-day cumulative light total. Each app's `useLightTrend` hook
- * computes this from its own light-stats fetch.
+ * Per-day light figures. Each app's `useLightTrend` hook computes this from
+ * its own light-stats fetch.
  */
 export interface LightTrendDay {
   /** ISO date (`yyyy-MM-dd`). */
   date: string;
   /** Short axis label (e.g. "MMM d"). */
   label: string;
-  /** Cumulative light total at that day (what the area chart plots). */
+  /** Cumulative light total at that day. */
   light: number;
-  /** Light EARNED on that specific day. Use this — not the cumulative
-   *  `light` — for window totals ("+N in the last 14 days") and the
-   *  has-any-activity empty-state check. */
+  /** Light EARNED on that specific day — what the histogram plots (and what
+   *  window totals / the has-any-activity empty-state check read). */
   earned: number;
 }
 
@@ -40,22 +49,32 @@ export function LightEarnedChart({ data, isLoading }: LightEarnedChartProps) {
     );
   }
 
-  // Kit v2 AreaChart is series-based; plot the CUMULATIVE `light` per day.
-  // Gold/amber hex (≈ oklch(0.75 0.18 55)) — RN's SVG parser can't read
-  // oklch(), so a raw hex resolves identically on both platforms.
+  // Gapped columns of light EARNED per day via the kit `BarChart`, which labels
+  // the hovered bar IN PLACE (Histogram floats the readout at top-centre). A
+  // legend row on top + day labels at the bottom mirror the Weekly Activity
+  // chart beside it, so the two cards balance in height and structure.
   return (
-    <AreaChart
-      height={200}
-      showGrid
-      showLegend={false}
-      series={[
-        {
-          id: "light",
-          label: "Light",
-          color: "#fb923c",
-          points: data.map((d) => ({ x: d.label, y: d.light })),
-        },
-      ]}
-    />
+    <YStack gap="$2">
+      {/* Legend row — matches the kit chart Legend so this card lines up with
+          Weekly Activity's stacked legend beside it. */}
+      <XStack flexWrap="wrap" gap="$3">
+        <XStack items="center" gap="$1.5">
+          <View width={10} height={10} rounded={3} bg={LIGHT_COLOR} />
+          <Text fontSize="$1" color="$mutedForeground">
+            Light earned
+          </Text>
+        </XStack>
+      </XStack>
+
+      <BarChart
+        height={200}
+        plain
+        showGrid={false}
+        showXAxis
+        color={LIGHT_COLOR}
+        data={data.map((d) => ({ label: d.label, value: d.earned }))}
+        formatValue={(n) => String(n)}
+      />
+    </YStack>
   );
 }

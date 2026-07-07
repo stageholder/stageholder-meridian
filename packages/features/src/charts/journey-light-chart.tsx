@@ -52,8 +52,11 @@ export function JourneyLightChart({ data, isLoading }: JourneyLightChartProps) {
           (≈ oklch(0.75 0.18 55)) — RN's SVG parser can't read oklch(). */}
       <AreaChart
         height={180}
-        showGrid
+        plain
+        showGrid={false}
         showLegend={false}
+        showXAxis={false}
+        showYAxis={false}
         series={[
           {
             id: "light",

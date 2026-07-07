@@ -33,7 +33,9 @@ export function useLightTrend() {
     const today = new Date();
     const result: LightTrendDay[] = [];
 
-    for (let i = 13; i >= 0; i--) {
+    // Last 7 days with day-of-week labels — mirrors useWeeklyActivity so the
+    // Light Growth bars line up with the Weekly Activity chart beside them.
+    for (let i = 6; i >= 0; i--) {
       const d = subDays(today, i);
       const dateStr = format(d, "yyyy-MM-dd");
       const day = dayMap.get(dateStr);
@@ -41,7 +43,7 @@ export function useLightTrend() {
       cumulative += earned;
       result.push({
         date: dateStr,
-        label: format(d, "MMM d"),
+        label: format(d, "EEE"),
         light: cumulative,
         earned,
       });

@@ -37,7 +37,6 @@ import {
 import {
   DashboardStats,
   HabitSummary,
-  RecentJournals,
   TodayTodos,
   type DashboardStatItem,
   type HabitProgressValue,
@@ -46,6 +45,7 @@ import {
   JournalGrowthChart,
   LightEarnedChart,
   WeeklyActivityChart,
+  WritingHeatmapChart,
 } from "@repo/features/charts";
 import { LevelProgress, LevelUpCelebration } from "@repo/features/light";
 import type { HabitEntry, Todo } from "@repo/core/types";
@@ -78,16 +78,10 @@ import { useDayActivityCounts } from "@/lib/api/hooks/calendar";
 import { IGNITION } from "@/lib/ignition-palette";
 import { useLevelUp } from "@/lib/use-level-up";
 import { localDateKey } from "@/lib/streak";
-import { useJournalCrypto } from "@/lib/journal-crypto";
 import { useJournalGrowth } from "@/lib/use-journal-growth";
+import { useWritingHeatmap } from "@/lib/use-writing-heatmap";
 import { useLightTrend } from "@/lib/use-light-trend";
 import { useWeeklyActivity } from "@/lib/use-weekly-activity";
-
-// Chart accent for the activity/growth charts. The shared views default to
-// the PWA's `var(--color-chart-1)` CSS variable, which can't resolve on RN —
-// a `$token` does (the kit chart resolves theme tokens on both platforms) and
-// stays theme-aware in light/dark, like the CSS var does on web.
-const CHART_COLOR = "$info";
 
 // Fallback targets used until userLight resolves on first load. The real values
 // live on /light/me and are tuned on the web app (PATCH /light/targets).
@@ -146,6 +140,7 @@ export default function TodayScreen() {
   // the 30-day /journals/stats window.
   const weeklyActivity = useWeeklyActivity();
   const journalGrowth = useJournalGrowth();
+  const writingHeatmap = useWritingHeatmap();
   // Today-vs-yesterday counts for the KPI deltas — BOTH days come from the
   // calendar month cache so the comparison pair is internally consistent
   // (PWA useDashboardStats parity). Display values stay on the fresher live
@@ -164,12 +159,6 @@ export default function TodayScreen() {
 
   const toggleTodo = useToggleTodo();
   const qc = useQueryClient();
-
-  // Journal entries are encryption-aware: if the account has journal encryption
-  // set up and isn't unlocked, the recent-journals card shows a "unlock" hint
-  // rather than ciphertext titles. (The journal tab owns the unlock flow.)
-  const { isSetup, isUnlocked } = useJournalCrypto();
-  const journalLocked = isSetup && !isUnlocked;
 
   const isLoading =
     todosQuery.isLoading || habitsQuery.isLoading || journalsQuery.isLoading;
@@ -569,44 +558,40 @@ export default function TodayScreen() {
                 />
               </Dashboard.Widget>
 
-              {/* ---- Trend charts (PWA dashboard parity: weekly activity,
-                   then journal growth + light growth). Shared views over the
-                   kit's cross-platform Bar/AreaChart; color is a theme token
+              {/* ---- Trend charts (PWA dashboard parity: journal pair, then
+                   the weekly-activity + light-growth pair). Shared views over
+                   the kit's cross-platform charts; color is a theme token
                    because the views' CSS-var default can't resolve on RN. ---- */}
-              <Dashboard.Widget colSpan={12} title="Weekly Activity">
-                <WeeklyActivityChart
-                  data={weeklyActivity.data}
-                  isLoading={weeklyActivity.isLoading}
-                  color={CHART_COLOR}
-                />
-              </Dashboard.Widget>
+              {/* Journal pair: growth trend then its word-count heatmap, both
+                  in the journal identity colour (#facc15). */}
               <Dashboard.Widget colSpan={12} title="Journal Growth">
                 <JournalGrowthChart
                   data={journalGrowth.data}
                   isLoading={journalGrowth.isLoading}
-                  color={CHART_COLOR}
+                  color="#facc15"
+                />
+              </Dashboard.Widget>
+              {/* Writing activity — GitHub-style word-count heatmap in the
+                  journal identity colour. Colour is baked into the view (no
+                  CSS-var resolution needed), so no `color` prop here. */}
+              <Dashboard.Widget colSpan={12} title="Writing Activity">
+                <WritingHeatmapChart
+                  data={writingHeatmap.data}
+                  isLoading={writingHeatmap.isLoading}
+                />
+              </Dashboard.Widget>
+              {/* Activity pair: weekly activity (stacked todo/habit/journal in
+                  identity colours) then light growth (gapped bars). */}
+              <Dashboard.Widget colSpan={12} title="Weekly Activity">
+                <WeeklyActivityChart
+                  data={weeklyActivity.data}
+                  isLoading={weeklyActivity.isLoading}
                 />
               </Dashboard.Widget>
               <Dashboard.Widget colSpan={12} title="Light Growth">
                 <LightEarnedChart
                   data={lightTrend}
                   isLoading={lightTrendLoading}
-                />
-              </Dashboard.Widget>
-
-              {/* ---- Recent journals (features) ---- */}
-              <Dashboard.Widget
-                colSpan={12}
-                title="Recent Journal Entries"
-                actions={<ViewAll onPress={() => router.push("/journal")} />}
-              >
-                <RecentJournals
-                  journals={journalsQuery.data ?? []}
-                  isLoading={journalsQuery.isLoading}
-                  isLocked={journalLocked}
-                  // Detail later — for now every entry press lands on the
-                  // journal tab where the unlock + entry detail live.
-                  onJournalPress={() => router.push("/journal")}
                 />
               </Dashboard.Widget>
             </Dashboard>

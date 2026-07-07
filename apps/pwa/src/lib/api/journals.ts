@@ -50,12 +50,28 @@ import { journalsApi } from "./clients";
 export const journalKeys = {
   all: ["journals"] as const,
   stats: ["journals", "stats"] as const,
+  heatmap: (days: number) => ["journals", "stats", "heatmap", days] as const,
 };
 
 export function useJournalStats() {
   return useQuery<JournalStats>({
     queryKey: journalKeys.stats,
     queryFn: () => journalsApi.stats({ today: todayLocal() }),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+/**
+ * Wide-window journal stats for the dashboard writing-activity heatmap. Kept
+ * under a SEPARATE query key from `useJournalStats` so widening the window here
+ * never bloats the 30-day cache the Journal Growth chart + ring share. Default
+ * ~190 days covers the heatmap's rolling 6-month grid (with a little buffer).
+ */
+export function useJournalHeatmapStats(days = 190) {
+  return useQuery<JournalStats>({
+    queryKey: journalKeys.heatmap(days),
+    queryFn: () => journalsApi.stats({ today: todayLocal(), days }),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });

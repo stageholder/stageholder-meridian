@@ -110,6 +110,23 @@ export function useJournalStats(today?: string) {
   });
 }
 
+/**
+ * Wide-window journaling stats for the dashboard writing-activity heatmap.
+ * Separate query key from `useJournalStats` so the wider window never bloats
+ * the 30-day cache. `days` (~190) covers the rolling 6-month grid.
+ */
+export function useJournalHeatmapStats(today?: string, days = 190) {
+  return useQuery({
+    queryKey: journalKeys.heatmap(days),
+    queryFn: async () => {
+      const { data } = await apiClient.get<JournalStats>("/journals/stats", {
+        params: { today, days },
+      });
+      return data;
+    },
+  });
+}
+
 /* ---------------------------- Mutations ------------------------------ */
 
 export type CreateJournalInput = {

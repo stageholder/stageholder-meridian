@@ -1,15 +1,16 @@
 import {
-  BarChart,
+  StackedBarChart,
   Skeleton,
   Text,
   View,
-  type ChartDatum,
+  type StackedBarDatum,
+  type StackedBarSeries,
 } from "@stageholder/ui";
 
 /**
  * Per-day breakdown of the three productivity pillars Meridian tracks.
- * Both `apps/pwa` and the future `apps/mobile` produce this shape from their
- * respective `useWeeklyActivity` hooks and feed it to `WeeklyActivityChart`.
+ * Both `apps/pwa` and `apps/mobile` produce this shape from their respective
+ * `useWeeklyActivity` hooks and feed it to `WeeklyActivityChart`.
  */
 export interface WeeklyActivityDay {
   /** Short axis label (e.g. "Thu", "Fri"). */
@@ -22,24 +23,25 @@ export interface WeeklyActivityDay {
 export interface WeeklyActivityChartProps {
   data: WeeklyActivityDay[];
   isLoading?: boolean;
-  /**
-   * Bar color. The default is the PWA's CSS chart variable, which does NOT
-   * resolve on React Native — native callers must pass a `$token` (the kit
-   * chart resolves theme tokens cross-platform) or a raw hex.
-   */
-  color?: string;
 }
 
 /**
- * Sum of todos + habits + journals per day, rendered as a single bar series.
- * recharts shipped this as a stacked series in the old PWA chart; the kit's
- * cross-platform `BarChart` is single-value so we sum into one bar — same
- * intent (overall activity that day), cleaner for native rendering.
+ * Each day's completed todos + habits + journal entries, drawn as a STACKED
+ * bar so you can see the pillar mix at a glance — each segment in its identity
+ * colour (todo = red, habit = orange, journal = yellow). The legend names the
+ * segments. Journal is entry COUNT (not words) so the three stack comparably.
+ * Identity hexes mirror the ring palette (RING_CATEGORY) — raw hex, not
+ * `var(--ring-*)`, which Tamagui v2 rejects as a colour.
  */
+const SERIES: StackedBarSeries[] = [
+  { id: "todos", label: "Todos", color: "#ef4444" },
+  { id: "habits", label: "Habits", color: "#f97316" },
+  { id: "journals", label: "Journals", color: "#facc15" },
+];
+
 export function WeeklyActivityChart({
   data,
   isLoading,
-  color = "var(--color-chart-1)",
 }: WeeklyActivityChartProps) {
   if (isLoading) {
     return <Skeleton height={200} width="100%" rounded="$3" />;
@@ -56,17 +58,19 @@ export function WeeklyActivityChart({
     );
   }
 
-  const chartData: ChartDatum[] = data.map((d) => ({
+  const chartData: StackedBarDatum[] = data.map((d) => ({
     label: d.label,
-    value: d.todos + d.habits + d.journals,
+    values: [d.todos, d.habits, d.journals],
   }));
 
   return (
-    <BarChart
+    <StackedBarChart
       data={chartData}
+      series={SERIES}
+      mode="stacked"
       height={200}
-      showGrid
-      color={color}
+      plain
+      showGrid={false}
       formatValue={(n) => String(n)}
     />
   );

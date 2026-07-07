@@ -7,5 +7,10 @@ import { useJournalGrowth } from "@/lib/hooks/use-journal-growth";
  */
 export function JournalGrowthChart() {
   const { data, isLoading } = useJournalGrowth();
-  return <JournalGrowthChartView data={data} isLoading={isLoading} />;
+  // Journal identity colour (resolved hex, not `var(--ring-journal)` — the kit
+  // chart's colour resolver doesn't take CSS vars). Ties the growth trend to
+  // its Writing Activity heatmap sitting beside it.
+  return (
+    <JournalGrowthChartView data={data} isLoading={isLoading} color="#facc15" />
+  );
 }

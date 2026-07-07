@@ -31,3 +31,9 @@ export {
   JourneyLightChart,
   type JourneyLightChartProps,
 } from "./journey-light-chart";
+
+export {
+  WritingHeatmapChart,
+  type WritingHeatmapChartProps,
+  type WritingHeatmapDay,
+} from "./writing-heatmap";

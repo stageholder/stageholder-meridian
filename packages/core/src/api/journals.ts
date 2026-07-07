@@ -88,9 +88,14 @@ export function createJournalsApi(client: ApiClientLike) {
      * Daily journaling stats (per-day count + words) plus an all-time baseline,
      * used to drive the dashboard's Journal Growth chart and the journal
      * ring's denominator. Pass `today` so the server can compute the local
-     * boundary correctly (the API is timezone-agnostic).
+     * boundary correctly (the API is timezone-agnostic). `days` widens the
+     * per-day window (default 30 server-side; the dashboard writing-activity
+     * heatmap asks for a full GitHub-style year).
      */
-    stats: async (params: { today: string }): Promise<JournalStats> => {
+    stats: async (params: {
+      today: string;
+      days?: number;
+    }): Promise<JournalStats> => {
       const res = await client.get(`/journals/stats`, { params });
       return res.data;
     },

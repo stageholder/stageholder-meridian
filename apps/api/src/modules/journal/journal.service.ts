@@ -129,14 +129,22 @@ export class JournalService {
     return journal;
   }
 
-  async getStats(userSub: string, clientToday?: string) {
+  async getStats(userSub: string, clientToday?: string, windowDays?: number) {
     const todayStr =
       clientToday && /^\d{4}-\d{2}-\d{2}$/.test(clientToday)
         ? clientToday
         : new Date().toISOString().slice(0, 10);
+    // Window length in days. Defaults to 30 (the Journal Growth chart + ring
+    // denominator). The dashboard writing-activity heatmap requests a full
+    // GitHub-style year (~371 days). Clamp to a sane range so a bad query
+    // param can't ask for an unbounded aggregation.
+    const win = Math.min(
+      Math.max(Number.isFinite(windowDays) ? Number(windowDays) : 30, 1),
+      400,
+    );
     const today = new Date(todayStr + "T00:00:00Z");
     const windowStartDate = new Date(today);
-    windowStartDate.setUTCDate(windowStartDate.getUTCDate() - 29);
+    windowStartDate.setUTCDate(windowStartDate.getUTCDate() - (win - 1));
     const windowStart = windowStartDate.toISOString().slice(0, 10);
 
     const { window, baseline } = await this.repository.getGrowthStats(
@@ -146,7 +154,7 @@ export class JournalService {
 
     const dayMap = new Map(window.map((d) => [d.date, d]));
     const days: Array<{ date: string; count: number; words: number }> = [];
-    for (let i = 29; i >= 0; i--) {
+    for (let i = win - 1; i >= 0; i--) {
       const d = new Date(today);
       d.setUTCDate(d.getUTCDate() - i);
       const dateStr = d.toISOString().slice(0, 10);

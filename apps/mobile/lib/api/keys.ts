@@ -60,4 +60,8 @@ export const journalKeys = {
   details: () => [...journalKeys.all, "detail"] as const,
   detail: (id: string) => [...journalKeys.details(), id] as const,
   stats: () => [...journalKeys.all, "stats"] as const,
+  // Wide-window stats for the dashboard writing-activity heatmap — kept
+  // separate from `stats()` so the year-long window never bloats the 30-day
+  // cache the Journal Growth chart + ring share.
+  heatmap: (days: number) => [...journalKeys.stats(), "heatmap", days] as const,
 };

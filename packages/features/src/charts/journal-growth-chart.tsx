@@ -1,13 +1,16 @@
 import { AreaChart, Skeleton, Text, View } from "@stageholder/ui";
 
 /**
- * Per-day journal entry counts for the trend chart. Each app's
+ * Per-day cumulative journal totals for the trend chart. Each app's
  * `useJournalGrowth` hook produces this shape.
  */
 export interface JournalGrowthDay {
   /** Short axis label (e.g. "MMM d"). */
   label: string;
+  /** Cumulative journal entries at that day. */
   entries: number;
+  /** Cumulative words written at that day — what the trend plots. */
+  words: number;
 }
 
 export interface JournalGrowthChartProps {
@@ -30,7 +33,7 @@ export function JournalGrowthChart({
     return <Skeleton height={200} width="100%" rounded="$3" />;
   }
 
-  const hasData = data.length > 0 && data.some((d) => d.entries > 0);
+  const hasData = data.length > 0 && data.some((d) => d.words > 0);
   if (!hasData) {
     return (
       <View height={200} items="center" justify="center">
@@ -44,14 +47,17 @@ export function JournalGrowthChart({
   return (
     <AreaChart
       height={200}
-      showGrid
+      plain
+      showGrid={false}
       showLegend={false}
+      showXAxis={false}
+      showYAxis={false}
       series={[
         {
-          id: "entries",
-          label: "Entries",
+          id: "words",
+          label: "Words",
           color,
-          points: data.map((d) => ({ x: d.label, y: d.entries })),
+          points: data.map((d) => ({ x: d.label, y: d.words })),
         },
       ]}
     />
