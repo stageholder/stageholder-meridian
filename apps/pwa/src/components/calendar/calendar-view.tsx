@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, type ReactNode } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { format } from "date-fns";
 import {
   ActivityRings,
@@ -41,18 +41,12 @@ function countScheduledHabits(habits: Habit[], date: Date): number {
 
 /**
  * Activity ring that scales to its (square) calendar cell. The kit
- * `ActivityRings` is fixed-px, so we measure the cell and size the ring to
- * ~70% of it — keeping it proportional as the calendar grows/shrinks.
+ * `ActivityRings` is fixed-px, so we measure the cell and size the ring to fill
+ * the space below the date — keeping it proportional as the calendar resizes.
  */
-function CellActivityRing({
-  rings,
-  children,
-}: {
-  rings: ActivityRing[];
-  children?: ReactNode;
-}) {
+function CellActivityRing({ rings }: { rings: ActivityRing[] }) {
   const ref = useRef<HTMLDivElement | null>(null);
-  const [diameter, setDiameter] = useState(38);
+  const [diameter, setDiameter] = useState(34);
 
   useEffect(() => {
     const el = ref.current;
@@ -61,15 +55,16 @@ function CellActivityRing({
       const box = entries[0]?.contentRect;
       if (!box) return;
       const s = Math.min(box.width, box.height); // fill the square cell
-      if (s > 0) setDiameter(Math.max(20, Math.min(84, Math.round(s * 0.92))));
+      if (s > 0) setDiameter(Math.max(18, Math.min(72, Math.round(s * 0.96))));
     });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
-  // Thin bands so the date number fits in the center hole.
-  const thickness = Math.max(2.5, Math.round(diameter / 13));
-  const gap = Math.max(1, Math.round(diameter / 26));
+  // Apple-ring proportions: band ≈ size/9, tight gap → a clean ~30% hollow
+  // centre (no longer thinned to fit a date number, which now sits on top).
+  const thickness = Math.max(3, Math.round(diameter / 9));
+  const gap = Math.max(1, Math.round(diameter / 28));
 
   return (
     <View
@@ -78,16 +73,13 @@ function CellActivityRing({
       width="100%"
       items="center"
       justify="center"
-      overflow="hidden"
     >
       <ActivityRings
         rings={rings}
         size={diameter}
         thickness={thickness}
         gap={gap}
-      >
-        {children}
-      </ActivityRings>
+      />
     </View>
   );
 }
@@ -177,19 +169,18 @@ export function CalendarView() {
                 // Show the ring for today and every past day (history); future
                 // days show just the date.
                 const showRing = date.getTime() <= startOfToday;
-                // Date number lives in the center of the ring (Apple-Fitness
-                // style) so the ring can fill the whole cell.
-                const dateNode = (
-                  <Text
-                    fontSize={10}
-                    fontWeight={isToday ? "700" : "500"}
-                    color="$color"
-                  >
-                    {date.getDate()}
-                  </Text>
-                );
                 return (
-                  <YStack flex={1} items="center" justify="center">
+                  // Apple-Fitness style: the date number sits ON TOP, the
+                  // activity ring below it with a hollow centre.
+                  <YStack flex={1} items="center" justify="center" gap={2}>
+                    <Text
+                      fontSize={11}
+                      fontWeight={isToday ? "700" : "500"}
+                      color="$color"
+                      lineHeight={13}
+                    >
+                      {date.getDate()}
+                    </Text>
                     {showRing ? (
                       <CellActivityRing
                         rings={activityRingsConfig(
@@ -204,12 +195,8 @@ export function CalendarView() {
                             ),
                           ),
                         )}
-                      >
-                        {dateNode}
-                      </CellActivityRing>
-                    ) : (
-                      dateNode
-                    )}
+                      />
+                    ) : null}
                   </YStack>
                 );
               }}

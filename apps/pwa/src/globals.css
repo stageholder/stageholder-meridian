@@ -783,6 +783,27 @@ label[for] {
   aspect-ratio: 1 / 1;
 }
 
+/* Apple-Fitness-style clean calendar: drop EVERY grid/chrome border (outer
+   frame, header rule, weekday-row rule, week-row rules, per-cell right border)
+   and the weekday-row fill, so only the date numbers + activity rings read.
+   Two-class selectors + !important outrank the kit's single-class atomic rules
+   (the kit ships pre-extracted CSS; the app's disableExtraction doesn't touch
+   it). Cells get a rounded highlight so the today/selected tint reads as a chip
+   rather than a boxy square now that the grid lines are gone. */
+.meridian-cal-square .is_StageholderEventCalendar,
+.meridian-cal-square .is_StageholderEventCalendarHeader,
+.meridian-cal-square .is_StageholderEventCalendarWeekdayRow,
+.meridian-cal-square .is_StageholderEventCalendarRow,
+.meridian-cal-square .is_StageholderEventCalendarCell {
+  border-width: 0 !important;
+}
+.meridian-cal-square .is_StageholderEventCalendarWeekdayRow {
+  background-color: transparent !important;
+}
+.meridian-cal-square .is_StageholderEventCalendarCell {
+  border-radius: 16px !important;
+}
+
 /* PWA standalone safe areas for notched devices */
 @supports (padding: env(safe-area-inset-top)) {
   .safe-area-top {

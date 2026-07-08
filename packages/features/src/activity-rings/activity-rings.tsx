@@ -21,8 +21,9 @@ export type ActivityRingsSize = "xs" | "sm" | "md" | "lg" | "xl";
 
 /**
  * Named size presets → kit `<ActivityRings>` dimensions in pixels.
- * `thickness` / `gap` are tuned per size so the innermost (todo) ring
- * never collapses at small sizes.
+ * Band thickness follows Apple's rings (≈ size/9, ~11–12%) so the centre reads
+ * as a clean ~25–30% hollow — not too thin/over-hollow. Small sizes keep a
+ * slightly proportionally-thicker band so the innermost (todo) ring survives.
  */
 const SIZE_PX: Record<
   ActivityRingsSize,
@@ -31,8 +32,8 @@ const SIZE_PX: Record<
   xs: { size: 24, thickness: 3, gap: 1.5 },
   sm: { size: 32, thickness: 4, gap: 2 },
   md: { size: 48, thickness: 5, gap: 3 },
-  lg: { size: 96, thickness: 9, gap: 4 },
-  xl: { size: 160, thickness: 13, gap: 5 },
+  lg: { size: 96, thickness: 11, gap: 4 },
+  xl: { size: 160, thickness: 18, gap: 5 },
 };
 
 const CATEGORIES = [
