@@ -20,18 +20,26 @@ function delta(today: number, yesterday: number): DashboardStatItem["delta"] {
  * cached calendar-month query (cheap), and `useLightTrend` already carries
  * per-day `earned`. Returns the shape `<DashboardStats>` renders directly.
  */
-export function useDashboardStats(userLight?: UserLight): DashboardStatItem[] {
+export function useDashboardStats(userLight?: UserLight): {
+  stats: DashboardStatItem[];
+  isLoading: boolean;
+} {
   const today = todayLocal();
   const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd");
-  const { details: t } = useActivityRings(today);
+  const { details: t, isLoading: todayLoading } = useActivityRings(today);
   const { details: y } = useActivityRings(yesterday);
-  const { data: trend } = useLightTrend();
+  const { data: trend, isLoading: trendLoading } = useLightTrend();
 
   const lightToday = trend.at(-1)?.earned ?? 0;
   const lightYesterday = trend.at(-2)?.earned ?? 0;
   const streak = userLight?.perfectDayStreak ?? 0;
 
-  return [
+  // Cold-loading if the rings/light/level data hasn't arrived — the host shows
+  // a skeleton strip instead of flashing zeros that then count-up to the real
+  // numbers.
+  const isLoading = todayLoading || trendLoading || !userLight;
+
+  const stats: DashboardStatItem[] = [
     {
       key: "light",
       label: "Light today",
@@ -62,4 +70,6 @@ export function useDashboardStats(userLight?: UserLight): DashboardStatItem[] {
       delta: delta(t.journalWords, y.journalWords),
     },
   ];
+
+  return { stats, isLoading };
 }

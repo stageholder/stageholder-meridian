@@ -16,6 +16,7 @@ import {
   DropdownMenu,
   IconButton,
   RippleButton,
+  Skeleton,
   Text,
   View,
   XStack,
@@ -81,10 +82,15 @@ export function HabitListItem({
   const startDate = activeDate < ninetyDaysAgo ? activeDate : ninetyDaysAgo;
   const endDate = activeDate > today ? activeDate : today;
 
-  const { data: entries } = useHabitEntries(habit.id, {
-    startDate,
-    endDate,
-  });
+  const { data: entries, isLoading: entriesLoading } = useHabitEntries(
+    habit.id,
+    { startDate, endDate },
+  );
+  // COLD load only (background refetches keep `entries` populated). Until the
+  // entries arrive we can't know the day's status, so gate the status/action
+  // slot on a skeleton instead of defaulting to the un-acted "Complete" button
+  // (which caused the reported unchecked→checked flash).
+  const statusLoading = entriesLoading && entries === undefined;
 
   const createEntry = useCreateHabitEntry();
   const updateEntry = useUpdateHabitEntry();
@@ -435,135 +441,145 @@ export function HabitListItem({
               e.stopPropagation(),
           } as object)}
         >
-          {/* Burst is centred on the status/Complete control (not the whole
-              row) — its rays emanate from the button the user tapped. */}
-          <View position="relative" items="center" justify="center">
-            <RadianceBurst active={completing} />
-            {isComplete ? (
-              <XStack
-                items="center"
-                gap="$1.5"
-                rounded="$md"
-                px="$2.5"
-                py="$1.5"
-                bg="$successMuted"
-                transition="quick"
-                scale={bouncing ? 1.1 : 1}
-              >
-                <Text color="$success" lineHeight={0}>
-                  <Check size={13} />
-                </Text>
-                <Text fontSize="$1" fontWeight="600" color="$success">
-                  Done
-                </Text>
-              </XStack>
-            ) : isSkipped ? (
-              <XStack
-                items="center"
-                gap="$1.5"
-                rounded="$md"
-                px="$2.5"
-                py="$1.5"
-                bg="$muted"
-              >
-                <Text color="$mutedForeground" lineHeight={0}>
-                  <SkipForward size={12} />
-                </Text>
-                <Text fontSize="$1" fontWeight="600" color="$mutedForeground">
-                  Skipped
-                </Text>
-              </XStack>
-            ) : isFailed ? (
-              <XStack
-                items="center"
-                gap="$1.5"
-                rounded="$md"
-                px="$2.5"
-                py="$1.5"
-                bg="$destructiveMuted"
-              >
-                <Text color="$destructive" lineHeight={0}>
-                  <X size={12} />
-                </Text>
-                <Text fontSize="$1" fontWeight="600" color="$destructive">
-                  Failed
-                </Text>
-              </XStack>
-            ) : (
-              <Button
-                size="sm"
-                borderWidth={0}
-                color={"#ffffff" as never}
-                icon={<Check size={13} color="#ffffff" />}
-                style={{ backgroundColor: "var(--ring-habit)" }}
-                hoverStyle={
-                  {
-                    backgroundColor: "var(--ring-habit)",
-                    opacity: 0.9,
-                  } as never
-                }
-                pressStyle={
-                  {
-                    backgroundColor: "var(--ring-habit)",
-                    opacity: 0.82,
-                  } as never
-                }
-                onPress={handleCheckIn}
-                disabled={isPending}
-                transition="quick"
-                scale={bouncing ? 1.1 : 1}
-              >
-                Complete
-              </Button>
-            )}
-          </View>
-
-          {/* Inline undo / skip / fail — parity with the card view's actions. */}
-          {isSkipped || isFailed ? (
-            <IconButton
-              variant="outline"
-              size="sm"
-              onPress={handleClearStatus}
-              disabled={isPending}
-              aria-label="Undo"
-            >
-              <Undo2 size={14} />
-            </IconButton>
-          ) : null}
-          {activeDateValue > 0 && !isSkipped && !isFailed ? (
-            <IconButton
-              variant="outline"
-              size="sm"
-              onPress={handleUndo}
-              disabled={isPending}
-              aria-label="Undo last check-in"
-            >
-              <Undo2 size={14} />
-            </IconButton>
-          ) : null}
-          {activeDateValue === 0 && !isSkipped && !isFailed ? (
+          {statusLoading ? (
+            <Skeleton width={72} height={28} rounded="$3" />
+          ) : (
             <>
-              <IconButton
-                variant="outline"
-                size="sm"
-                onPress={handleSkip}
-                disabled={isPending}
-                aria-label="Skip"
-              >
-                <SkipForward size={14} />
-              </IconButton>
-              <IconButton
-                variant="outline"
-                intent="danger"
-                size="sm"
-                onPress={handleFail}
-                disabled={isPending}
-                aria-label="Mark failed"
-              >
-                <X size={14} />
-              </IconButton>
+              {/* Burst is centred on the status/Complete control (not the whole
+              row) — its rays emanate from the button the user tapped. */}
+              <View position="relative" items="center" justify="center">
+                <RadianceBurst active={completing} />
+                {isComplete ? (
+                  <XStack
+                    items="center"
+                    gap="$1.5"
+                    rounded="$md"
+                    px="$2.5"
+                    py="$1.5"
+                    bg="$successMuted"
+                    transition="quick"
+                    scale={bouncing ? 1.1 : 1}
+                  >
+                    <Text color="$success" lineHeight={0}>
+                      <Check size={13} />
+                    </Text>
+                    <Text fontSize="$1" fontWeight="600" color="$success">
+                      Done
+                    </Text>
+                  </XStack>
+                ) : isSkipped ? (
+                  <XStack
+                    items="center"
+                    gap="$1.5"
+                    rounded="$md"
+                    px="$2.5"
+                    py="$1.5"
+                    bg="$muted"
+                  >
+                    <Text color="$mutedForeground" lineHeight={0}>
+                      <SkipForward size={12} />
+                    </Text>
+                    <Text
+                      fontSize="$1"
+                      fontWeight="600"
+                      color="$mutedForeground"
+                    >
+                      Skipped
+                    </Text>
+                  </XStack>
+                ) : isFailed ? (
+                  <XStack
+                    items="center"
+                    gap="$1.5"
+                    rounded="$md"
+                    px="$2.5"
+                    py="$1.5"
+                    bg="$destructiveMuted"
+                  >
+                    <Text color="$destructive" lineHeight={0}>
+                      <X size={12} />
+                    </Text>
+                    <Text fontSize="$1" fontWeight="600" color="$destructive">
+                      Failed
+                    </Text>
+                  </XStack>
+                ) : (
+                  <Button
+                    size="sm"
+                    borderWidth={0}
+                    color={"#ffffff" as never}
+                    icon={<Check size={13} color="#ffffff" />}
+                    style={{ backgroundColor: "var(--ring-habit)" }}
+                    hoverStyle={
+                      {
+                        backgroundColor: "var(--ring-habit)",
+                        opacity: 0.9,
+                      } as never
+                    }
+                    pressStyle={
+                      {
+                        backgroundColor: "var(--ring-habit)",
+                        opacity: 0.82,
+                      } as never
+                    }
+                    onPress={handleCheckIn}
+                    disabled={isPending}
+                    transition="quick"
+                    scale={bouncing ? 1.1 : 1}
+                  >
+                    Complete
+                  </Button>
+                )}
+              </View>
+
+              {/* Inline undo / skip / fail — parity with the card view's actions. */}
+              {isSkipped || isFailed ? (
+                <IconButton
+                  variant="outline"
+                  size="sm"
+                  onPress={handleClearStatus}
+                  disabled={isPending}
+                  aria-label="Undo"
+                >
+                  <Undo2 size={14} />
+                </IconButton>
+              ) : null}
+              {activeDateValue > 0 && !isSkipped && !isFailed ? (
+                <IconButton
+                  variant="outline"
+                  size="sm"
+                  onPress={handleUndo}
+                  disabled={isPending}
+                  aria-label="Undo last check-in"
+                >
+                  <Undo2 size={14} />
+                </IconButton>
+              ) : null}
+              {activeDateValue === 0 && !isSkipped && !isFailed ? (
+                <>
+                  <IconButton
+                    variant="outline"
+                    size="sm"
+                    onPress={handleSkip}
+                    disabled={isPending}
+                    aria-label="Skip"
+                  >
+                    <SkipForward size={14} />
+                  </IconButton>
+                  <IconButton
+                    variant="outline"
+                    intent="danger"
+                    size="sm"
+                    onPress={handleFail}
+                    disabled={isPending}
+                    aria-label="Mark failed"
+                  >
+                    <X size={14} />
+                  </IconButton>
+                </>
+              ) : null}
             </>
-          ) : null}
+          )}
 
           {/* Overflow menu — edit / move / archive / delete (skip/fail/undo are
               now inline, matching the card). */}

@@ -8,6 +8,7 @@ import {
 } from "@tamagui/lucide-icons-2";
 import { IconButton, Text, View, XStack, YStack } from "@stageholder/ui";
 import type { Todo } from "@repo/core/types";
+import { RING_CATEGORY } from "../activity-rings";
 
 /**
  * Compact meta badge — the consistent pill treatment shared by every item in
@@ -67,6 +68,11 @@ const PRIORITY_CONFIG = {
 // animated Tamagui Views, so it reproduces identically on both platforms.
 const EMBER = "#f97316";
 const SPARK = "#fb923c";
+// Todo IDENTITY colour (red) for the checked checkbox — resolves theme-aware
+// `var(--ring-todo)` on web and `#ef4444` on native via RING_CATEGORY, applied
+// through the inline `style` prop (which accepts both, unlike the strict
+// Tamagui color props). Replaces the generic `$primary` blue.
+const TODO_COLOR = RING_CATEGORY.todo.color;
 // Kept short so the row vanishes the instant the ignite + sparks finish.
 const BURN_MS = 440;
 
@@ -335,14 +341,22 @@ export function TodoItem({
           rounded={9999}
           borderWidth={2}
           transition="quick"
-          borderColor={isDone ? "$primary" : "$mutedForeground"}
-          bg={isDone ? "$primary" : "transparent"}
-          // Burning ignites the box warm (hex → resolves on web + native).
+          borderColor="$mutedForeground"
+          bg="transparent"
+          // Checked → todo identity RED; burning → warm ember. Both ride the
+          // inline `style` prop (it wins over the base `bg`/`borderColor` and
+          // takes a CSS var / hex that the strict color props reject).
           style={
-            burning ? { borderColor: EMBER, backgroundColor: EMBER } : undefined
+            burning
+              ? { borderColor: EMBER, backgroundColor: EMBER }
+              : isDone
+                ? { borderColor: TODO_COLOR, backgroundColor: TODO_COLOR }
+                : undefined
           }
           hoverStyle={
-            !isDone && !burning ? { borderColor: "$primary" } : undefined
+            !isDone && !burning
+              ? { borderColor: TODO_COLOR as never }
+              : undefined
           }
           role="checkbox"
           aria-checked={isDone || burning}
@@ -353,8 +367,9 @@ export function TodoItem({
               transition="bouncy"
               enterStyle={burning ? { scale: 0, opacity: 0 } : undefined}
             >
-              {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
-              <Check size={12} strokeWidth={3} color="$primaryForeground" />
+              {/* lucide-icons-2 reads its own `color` (no CSS cascade). White
+                  check on the red/ember fill. */}
+              <Check size={12} strokeWidth={3} color="#ffffff" />
             </View>
           ) : null}
         </View>

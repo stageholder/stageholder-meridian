@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { format, isToday as isTodayFn } from "date-fns";
-import { Plus, BookOpen } from "lucide-react";
+import { Plus, ChevronRight, ChevronDown } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { resolveTargetCount } from "@repo/core/habits/entry-resolution";
 import {
   ActivityRings,
   AnimatePresence,
-  Button,
-  Separator,
+  IconButton,
+  Skeleton,
   Text,
   View,
   XStack,
@@ -16,6 +17,7 @@ import { useTodoLists, useAllTodos } from "@/lib/api/todos";
 import { TodoItem } from "@/components/todos/todo-item";
 import { HabitListItem } from "@/components/habits/habit-list-item";
 import { CreateTodoDialog } from "@/components/todos/create-todo-dialog";
+import { CreateHabitDialog } from "@/components/habits/create-habit-dialog";
 import {
   computeActivityRings,
   activityRingsConfig,
@@ -38,29 +40,103 @@ function SectionHeader({
   color,
   label,
   count,
+  action,
 }: {
   color: string;
   label: string;
   count: number;
+  /** Right-aligned affordance (the tinted "+" add button). */
+  action?: ReactNode;
 }) {
   return (
-    <XStack items="center" gap="$2">
-      <View
-        width={8}
-        height={8}
-        rounded={9999}
-        style={{ backgroundColor: color }}
-      />
-      <Text
-        fontSize="$1"
-        fontWeight="600"
-        color="$mutedForeground"
-        textTransform="uppercase"
-        letterSpacing={0.5}
-      >
-        {label} ({count})
-      </Text>
+    <XStack items="center" justify="space-between" gap="$2">
+      <XStack items="center" gap="$2">
+        <View
+          width={8}
+          height={8}
+          rounded={9999}
+          style={{ backgroundColor: color }}
+        />
+        <Text
+          fontSize="$1"
+          fontWeight="600"
+          color="$mutedForeground"
+          textTransform="uppercase"
+          letterSpacing={0.5}
+        >
+          {label} ({count})
+        </Text>
+      </XStack>
+      {action}
     </XStack>
+  );
+}
+
+/** Small category-tinted "+" that sits on the right of a section header. */
+function AddButton({
+  color,
+  label,
+  onPress,
+}: {
+  color: string;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <IconButton variant="ghost" size="sm" aria-label={label} onPress={onPress}>
+      <Plus size={16} color={color} />
+    </IconButton>
+  );
+}
+
+/**
+ * Collapsible "Completed / Done (n)" group, hidden by default — the /todos
+ * page's CompletedSection pattern, generalised so todos AND habits can tuck
+ * their finished items away and keep the day panel clean.
+ */
+function CollapsibleGroup({
+  label,
+  count,
+  children,
+}: {
+  label: string;
+  count: number;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  if (count === 0) return null;
+  return (
+    <YStack gap="$1">
+      <XStack
+        onPress={() => setOpen((v) => !v)}
+        cursor="pointer"
+        items="center"
+        gap="$1.5"
+        rounded="$md"
+        py="$1"
+        transition="quick"
+        hoverStyle={{ bg: "$accent" }}
+        role="button"
+        aria-expanded={open}
+      >
+        <Text color="$mutedForeground" lineHeight={0}>
+          {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </Text>
+        <Text
+          fontSize="$1"
+          fontWeight="600"
+          color="$mutedForeground"
+          textTransform="uppercase"
+          letterSpacing={0.5}
+        >
+          {label}
+        </Text>
+        <Text fontSize="$1" color="$mutedForeground">
+          {count}
+        </Text>
+      </XStack>
+      {open ? <YStack gap="$2">{children}</YStack> : null}
+    </YStack>
   );
 }
 
@@ -68,13 +144,21 @@ interface DayAgendaProps {
   date: Date;
   dayData: CalendarDayData;
   habits: Habit[];
+  /** Cold-loading — show a skeleton instead of a fake empty day. */
+  isLoading?: boolean;
 }
 
-export function DayAgenda({ date, dayData, habits }: DayAgendaProps) {
+export function DayAgenda({
+  date,
+  dayData,
+  habits,
+  isLoading,
+}: DayAgendaProps) {
   const navigate = useNavigate();
   const { data: lists } = useTodoLists();
   const defaultList = lists?.find((l) => l.isDefault) || lists?.[0];
   const [showCreateTodo, setShowCreateTodo] = useState(false);
+  const [showCreateHabit, setShowCreateHabit] = useState(false);
   const { data: allTodos } = useAllTodos();
 
   const dateStr = format(date, "yyyy-MM-dd");
@@ -89,6 +173,55 @@ export function DayAgenda({ date, dayData, habits }: DayAgendaProps) {
   const dayTodos = dayData.todos
     .map((t) => allTodos?.find((a) => a.id === t.id))
     .filter((t): t is Todo => !!t);
+
+  // Split into pending (shown) vs finished (tucked in a collapsible group).
+  const activeTodos = dayTodos.filter((t) => t.status !== "done");
+  const completedTodos = dayTodos.filter((t) => t.status === "done");
+
+  // A habit is "resolved" for the day when its calendar entry is complete,
+  // skipped, or failed. Read from the day's entries so the panel doesn't need
+  // to re-fetch per habit (HabitListItem owns that; the calendar data stays in
+  // sync via the shared `["calendar"]` invalidation on check-in).
+  const habitResolved = (habit: Habit): boolean => {
+    const entry = dayData.habitEntries.find((e) => e.habitId === habit.id);
+    if (!entry) return false;
+    if (entry.type === "skip" || entry.type === "fail") return true;
+    const target =
+      resolveTargetCount(
+        { targetCountSnapshot: entry.targetCountSnapshot },
+        habit,
+      ) || 1;
+    return entry.value >= target;
+  };
+  const pendingHabits = scheduledHabits.filter((h) => !habitResolved(h));
+  const doneHabits = scheduledHabits.filter((h) => habitResolved(h));
+
+  // Cold load — a skeleton mirroring the layout, so the panel never shows a
+  // FAKE empty day (zero rings, "Nothing due", "No habits") before the real
+  // data lands. The date header stays (it's known, not fetched).
+  if (isLoading) {
+    return (
+      <YStack gap="$4">
+        <XStack items="center" gap="$3">
+          <Skeleton width={48} height={48} rounded={9999} />
+          <YStack flex={1} minW={0} gap="$1.5">
+            <Text fontSize="$7" fontWeight="700" color="$color">
+              {isToday ? "Today" : format(date, "EEEE")}
+            </Text>
+            <Text fontSize="$2" color="$mutedForeground">
+              {format(date, "MMMM d, yyyy")}
+            </Text>
+          </YStack>
+        </XStack>
+        {[0, 1, 2].map((i) => (
+          <YStack key={i} gap="$2">
+            <Skeleton width={72} height={12} rounded="$2" />
+            <Skeleton width="100%" height={60} rounded="$4" />
+          </YStack>
+        ))}
+      </YStack>
+    );
+  }
 
   return (
     <>
@@ -122,77 +255,57 @@ export function DayAgenda({ date, dayData, habits }: DayAgendaProps) {
           </YStack>
         </XStack>
 
-        {/* Create actions — category-colored: todo = red, journal = yellow.
-              The kit has no todo/journal intent, so we force the ring color via
-              inline bg (wins in every state) with readable ink (white on red,
-              dark on the lighter yellow). */}
-        <XStack gap="$2">
-          <Button
-            flex={1}
-            size="sm"
-            borderWidth={0}
-            color={"#ffffff" as never}
-            icon={<Plus size={15} color="#ffffff" />}
-            style={{ backgroundColor: "var(--ring-todo)" }}
-            hoverStyle={
-              { backgroundColor: "var(--ring-todo)", opacity: 0.9 } as never
-            }
-            pressStyle={
-              {
-                backgroundColor: "var(--ring-todo)",
-                opacity: 0.82,
-                scale: 0.96,
-              } as never
-            }
-            onPress={() => setShowCreateTodo(true)}
-          >
-            Add Todo
-          </Button>
-          <Button
-            flex={1}
-            intent="outline"
-            size="sm"
-            color={"var(--ring-journal)" as never}
-            borderColor={"var(--ring-journal)" as never}
-            icon={<BookOpen size={15} color="var(--ring-journal)" />}
-            hoverStyle={{ opacity: 0.9 }}
-            pressStyle={{ opacity: 0.82, scale: 0.96 }}
-            onPress={() =>
-              void navigate({ to: "/journal/new", search: { date: dateStr } })
-            }
-          >
-            New Journal
-          </Button>
-        </XStack>
-
-        <Separator />
-
         {/* Todos — the real `TodoItem` (checkbox + burn, actions menu, detail
-            dialog), compact. */}
+            dialog), compact. The "+" on the section header creates a todo. */}
         <YStack gap="$2">
           <SectionHeader
             color="var(--ring-todo)"
             label="Todos"
             count={dayData.todos.length}
+            action={
+              <AddButton
+                color="var(--ring-todo)"
+                label="Add todo"
+                onPress={() => setShowCreateTodo(true)}
+              />
+            }
           />
-          {dayTodos.length > 0 ? (
-            <YStack gap="$2">
-              <AnimatePresence>
-                {dayTodos.map((todo) => (
-                  <TodoItem
-                    key={todo.id}
-                    todo={todo}
-                    listId={todo.listId}
-                    showList
-                    compact
-                  />
-                ))}
-              </AnimatePresence>
-            </YStack>
-          ) : (
+          {activeTodos.length === 0 && completedTodos.length === 0 ? (
             <Text fontSize="$1" color="$mutedForeground">
               Nothing due
             </Text>
+          ) : (
+            <>
+              {activeTodos.length > 0 ? (
+                <YStack gap="$2">
+                  <AnimatePresence>
+                    {activeTodos.map((todo) => (
+                      <TodoItem
+                        key={todo.id}
+                        todo={todo}
+                        listId={todo.listId}
+                        showList
+                        compact
+                      />
+                    ))}
+                  </AnimatePresence>
+                </YStack>
+              ) : null}
+              {/* Finished todos tucked into a collapsible group (todo-page style). */}
+              <CollapsibleGroup label="Completed" count={completedTodos.length}>
+                <AnimatePresence>
+                  {completedTodos.map((todo) => (
+                    <TodoItem
+                      key={todo.id}
+                      todo={todo}
+                      listId={todo.listId}
+                      showList
+                      compact
+                    />
+                  ))}
+                </AnimatePresence>
+              </CollapsibleGroup>
+            </>
           )}
         </YStack>
 
@@ -204,21 +317,42 @@ export function DayAgenda({ date, dayData, habits }: DayAgendaProps) {
             color="var(--ring-habit)"
             label="Habits"
             count={scheduledHabits.length}
+            action={
+              <AddButton
+                color="var(--ring-habit)"
+                label="Add habit"
+                onPress={() => setShowCreateHabit(true)}
+              />
+            }
           />
-          {scheduledHabits.length > 0 ? (
-            <YStack gap="$2">
-              {scheduledHabits.map((habit) => (
-                <HabitListItem
-                  key={habit.id}
-                  habit={habit}
-                  selectedDate={dateStr}
-                />
-              ))}
-            </YStack>
-          ) : (
+          {scheduledHabits.length === 0 ? (
             <Text fontSize="$1" color="$mutedForeground">
               No habits scheduled
             </Text>
+          ) : (
+            <>
+              {pendingHabits.length > 0 ? (
+                <YStack gap="$2">
+                  {pendingHabits.map((habit) => (
+                    <HabitListItem
+                      key={habit.id}
+                      habit={habit}
+                      selectedDate={dateStr}
+                    />
+                  ))}
+                </YStack>
+              ) : null}
+              {/* Completed / skipped / failed habits tucked away. */}
+              <CollapsibleGroup label="Done" count={doneHabits.length}>
+                {doneHabits.map((habit) => (
+                  <HabitListItem
+                    key={habit.id}
+                    habit={habit}
+                    selectedDate={dateStr}
+                  />
+                ))}
+              </CollapsibleGroup>
+            </>
           )}
         </YStack>
 
@@ -228,6 +362,18 @@ export function DayAgenda({ date, dayData, habits }: DayAgendaProps) {
             color="var(--ring-journal)"
             label="Journal"
             count={dayData.journals.length}
+            action={
+              <AddButton
+                color="var(--ring-journal)"
+                label="New journal"
+                onPress={() =>
+                  void navigate({
+                    to: "/journal/new",
+                    search: { date: dateStr },
+                  })
+                }
+              />
+            }
           />
           {dayData.journals.length > 0 ? (
             <YStack gap="$1">
@@ -268,6 +414,11 @@ export function DayAgenda({ date, dayData, habits }: DayAgendaProps) {
           defaultDueDate={dateStr}
         />
       )}
+
+      <CreateHabitDialog
+        open={showCreateHabit}
+        onOpenChange={setShowCreateHabit}
+      />
     </>
   );
 }

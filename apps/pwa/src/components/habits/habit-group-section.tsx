@@ -57,27 +57,27 @@ export function HabitGroupSection({
 
   if (viewMode === "card") {
     // CONTAINER-responsive grid via real CSS Grid in a plain <div>. The PWA is
-    // web-only, so the kit's "no CSS grid, use flexbox" rule (which exists for
-    // the cross-platform packages) doesn't apply here — and grid is the ONLY
-    // tool that does all four of these at once:
+    // web-only, so the kit's "no CSS grid, use flexbox" rule (for the
+    // cross-platform packages) doesn't apply here. Goals:
     //   1. cap at a HARD MAX of 3 columns,
-    //   2. FILL the row width at every size (cards grow, no dead space),
-    //   3. step down to 2 then 1 column as the container narrows,
-    //   4. keep every card the SAME width (incl. a partial last row).
-    // Flexbox can't: a fixed `flexBasis` can't fill a 2-card row to halves
-    // while still capping 3-card rows at thirds (flexGrow=0 leaves dead space;
-    // flexGrow=1 stretches a lone last-row card to full width, inconsistent).
-    // Media props are out too — they're VIEWPORT-based (use-media.md), but the
-    // card area's width swings with the sidebars while the viewport barely
-    // moves, so a window breakpoint can't pick the column count.
+    //   2. keep every card the SAME width regardless of the group's count — a
+    //      group with 1 or 2 cards keeps them at the 3-column width, LEFT-ALIGNED
+    //      with empty tracks on the right, NOT stretched to full/half width,
+    //   3. step down to 2 then 1 column as the container narrows.
+    // Media props are out — they're VIEWPORT-based (use-media.md), but the card
+    // area's width swings with the sidebars while the viewport barely moves, so a
+    // window breakpoint can't pick the column count.
     //
-    // `minmax(max(180px, (100% - 24px) / 3), 1fr)`:
+    // `repeat(auto-fill, minmax(max(180px, (100% - 24px) / 3), 1fr))`:
     //   • track floor = max(180px, one-third-minus-gaps) → caps at 3 columns
     //     (a 4th can't meet the one-third floor) and, once one-third drops
-    //     below 180px, forces the grid down to 2 then 1 column;
-    //   • `1fr` max → the resolved columns GROW to fill the row (3 → thirds,
-    //     2 → halves, 1 → full), and a partial last row's cards stay at that
-    //     same column width (left-aligned), so all cards match.
+    //     below 180px, steps the grid down to 2 then 1 column;
+    //   • `auto-fill` KEEPS the empty tracks (unlike `auto-fit`, which collapses
+    //     them and stretches the survivors to fill the row — the cause of a lone
+    //     "Ungrouped" card going full-width). So a 1- or 2-card group leaves the
+    //     remaining track(s) empty and the cards stay one column wide;
+    //   • with 3 equal tracks the `1fr` resolves to exactly one-third each, so
+    //     every card — full or partial row — is the same width.
     // `alignItems: start` stops grid's default equal-height stretch from
     // inflating each card's internal `flex={1}` spacer into a big empty gap.
     return (
@@ -85,7 +85,7 @@ export function HabitGroupSection({
         style={{
           display: "grid",
           gridTemplateColumns:
-            "repeat(auto-fit, minmax(max(180px, (100% - 24px) / 3), 1fr))",
+            "repeat(auto-fill, minmax(max(180px, (100% - 24px) / 3), 1fr))",
           gap: 12,
           alignItems: "start",
         }}

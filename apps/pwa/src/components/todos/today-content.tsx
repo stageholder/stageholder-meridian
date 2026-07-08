@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { format } from "date-fns";
 import { Sun } from "lucide-react";
 import { AnimatePresence, Text, XStack, YStack } from "@stageholder/ui";
@@ -52,34 +52,60 @@ export function TodayContent() {
 
   const defaultList = lists?.find((l) => l.isDefault) || lists?.[0];
 
-  const section = (
-    label: string,
-    color: ComponentProps<typeof Text>["color"],
-    items: Todo[],
-  ) =>
-    items.length === 0 ? null : (
-      <YStack gap="$0.5">
-        <XStack mb="$1.5" items="center" gap="$2">
-          <Text
-            fontSize="$1"
-            fontWeight="700"
-            color={color}
-            textTransform="uppercase"
-            letterSpacing={0.6}
-          >
-            {label}
-          </Text>
-          <Text fontSize="$1" color="$mutedForeground">
-            {items.length}
-          </Text>
-        </XStack>
-        <AnimatePresence>
-          {items.map((todo) => (
-            <TodoItem key={todo.id} todo={todo} listId={todo.listId} showList />
-          ))}
-        </AnimatePresence>
-      </YStack>
+  // Overdue + Today render as a SINGLE AnimatePresence with interleaved, keyed
+  // section headers. A do-date change that moves a todo between the two buckets
+  // is then a keyed REORDER (same instance, repositioned) instead of an
+  // exit-in-one-list + enter-in-the-other — the latter double-rendered the row
+  // and read as a "blink". Headers appear/disappear with presence (no anim);
+  // todos keep their enter/exit for genuine add / complete / delete.
+  const groups: {
+    key: string;
+    label: string;
+    color: ComponentProps<typeof Text>["color"];
+    items: Todo[];
+  }[] = [
+    { key: "overdue", label: "Overdue", color: "$destructive", items: overdue },
+    {
+      key: "today",
+      label: "Today",
+      color: "$mutedForeground",
+      items: dueToday,
+    },
+  ];
+
+  const rows: ReactNode[] = [];
+  let firstGroup = true;
+  for (const g of groups) {
+    if (g.items.length === 0) continue;
+    rows.push(
+      <XStack
+        key={`header-${g.key}`}
+        mt={firstGroup ? 0 : "$5"}
+        mb="$1.5"
+        items="center"
+        gap="$2"
+      >
+        <Text
+          fontSize="$1"
+          fontWeight="700"
+          color={g.color}
+          textTransform="uppercase"
+          letterSpacing={0.6}
+        >
+          {g.label}
+        </Text>
+        <Text fontSize="$1" color="$mutedForeground">
+          {g.items.length}
+        </Text>
+      </XStack>,
     );
+    for (const todo of g.items) {
+      rows.push(
+        <TodoItem key={todo.id} todo={todo} listId={todo.listId} showList />,
+      );
+    }
+    firstGroup = false;
+  }
 
   return (
     <>
@@ -114,10 +140,9 @@ export function TodayContent() {
               </Text>
             </YStack>
           ) : (
-            <>
-              {section("Overdue", "$destructive", overdue)}
-              {section("Today", "$mutedForeground", dueToday)}
-            </>
+            <YStack gap="$0.5">
+              <AnimatePresence>{rows}</AnimatePresence>
+            </YStack>
           )}
           <CompletedSection todos={completedToday} />
         </YStack>

@@ -116,14 +116,16 @@ export function useDeleteHabit() {
   });
 }
 
-// Entry mutations all touch the same downstream surfaces (the entry list, the
-// habit summary, the calendar, and the gamification light/stats), so they share
-// one invalidation set. Toggling a day's completion / skip / fail is the
+// Entry mutations all touch the same downstream surfaces (the habit summary,
+// the calendar, and the gamification light/stats), so they share one
+// invalidation set. Toggling a day's completion / skip / fail is the
 // high-frequency interaction on the habit cards, so these optimistically patch
 // the cached `["habitEntries", habitId, …]` lists before the server replies and
 // roll back on error — matching the instant feel the offline Dexie writes gave.
+// NOTE: `["habitEntries", habitId]` is invalidated PER MUTATION (only the
+// mutated habit's entries changed) rather than the broad `["habitEntries"]`,
+// which would needlessly refetch every other habit row on the page.
 const HABIT_ENTRY_INVALIDATION = [
-  ["habitEntries"],
   ["habits"],
   ["calendar"],
   [...lightKeys.me],
@@ -196,7 +198,12 @@ export function useUpdateHabitEntry() {
         queryClient.setQueryData(key, list);
       }
     },
-    onSettled: () => {
+    onSettled: (_data, _err, { habitId }) => {
+      // Only the MUTATED habit's entries changed — scope to it instead of the
+      // broad `["habitEntries"]` (which refetched every habit row on the page).
+      void queryClient.invalidateQueries({
+        queryKey: ["habitEntries", habitId],
+      });
       for (const key of HABIT_ENTRY_INVALIDATION) {
         void queryClient.invalidateQueries({ queryKey: key });
       }
@@ -264,7 +271,12 @@ export function useCreateHabitEntry() {
         queryClient.setQueryData(key, list);
       }
     },
-    onSettled: () => {
+    onSettled: (_data, _err, { habitId }) => {
+      // Only the MUTATED habit's entries changed — scope to it instead of the
+      // broad `["habitEntries"]` (which refetched every habit row on the page).
+      void queryClient.invalidateQueries({
+        queryKey: ["habitEntries", habitId],
+      });
       for (const key of HABIT_ENTRY_INVALIDATION) {
         void queryClient.invalidateQueries({ queryKey: key });
       }
@@ -358,7 +370,12 @@ export function useSkipHabitEntry() {
         queryClient.setQueryData(key, list);
       }
     },
-    onSettled: () => {
+    onSettled: (_data, _err, { habitId }) => {
+      // Only the MUTATED habit's entries changed — scope to it instead of the
+      // broad `["habitEntries"]` (which refetched every habit row on the page).
+      void queryClient.invalidateQueries({
+        queryKey: ["habitEntries", habitId],
+      });
       for (const key of HABIT_ENTRY_INVALIDATION) {
         void queryClient.invalidateQueries({ queryKey: key });
       }
@@ -427,7 +444,12 @@ export function useFailHabitEntry() {
         queryClient.setQueryData(key, list);
       }
     },
-    onSettled: () => {
+    onSettled: (_data, _err, { habitId }) => {
+      // Only the MUTATED habit's entries changed — scope to it instead of the
+      // broad `["habitEntries"]` (which refetched every habit row on the page).
+      void queryClient.invalidateQueries({
+        queryKey: ["habitEntries", habitId],
+      });
       for (const key of HABIT_ENTRY_INVALIDATION) {
         void queryClient.invalidateQueries({ queryKey: key });
       }

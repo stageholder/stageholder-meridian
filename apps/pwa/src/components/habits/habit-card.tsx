@@ -67,10 +67,10 @@ export function HabitCard({
   const startDate = activeDate < ninetyDaysAgo ? activeDate : ninetyDaysAgo;
   const endDate = activeDate > today ? activeDate : today;
 
-  const { data: entries } = useHabitEntries(habit.id, {
-    startDate,
-    endDate,
-  });
+  const { data: entries, isLoading: entriesLoading } = useHabitEntries(
+    habit.id,
+    { startDate, endDate },
+  );
 
   const createEntry = useCreateHabitEntry();
   const updateEntry = useUpdateHabitEntry();
@@ -206,6 +206,7 @@ export function HabitCard({
       <HabitCardView
         habit={habit}
         entries={entries}
+        entriesLoading={entriesLoading && entries === undefined}
         selectedDate={selectedDate}
         // Orange = the habit category identity color (matches the calendar +
         // detail pages). The whole habit surface reads as orange, not the

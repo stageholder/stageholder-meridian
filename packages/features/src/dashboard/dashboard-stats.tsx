@@ -1,4 +1,4 @@
-import { Stat, XStack } from "@stageholder/ui";
+import { Skeleton, Stat, XStack, YStack } from "@stageholder/ui";
 
 /** One KPI tile in the dashboard stat row. */
 export interface DashboardStatItem {
@@ -28,6 +28,14 @@ export interface DashboardStatsProps {
   stats: DashboardStatItem[];
   /** Min tile width before wrapping to the next row. Default 132. */
   minTileWidth?: number;
+  /**
+   * Chromeless tiles (transparent, no border/padding) — for embedding the KPIs
+   * as a strip INSIDE another card (e.g. the dashboard hero) rather than as a
+   * standalone row of bordered cards.
+   */
+  plain?: boolean;
+  /** Cold-loading — render skeleton tiles instead of the (zeroed) numbers. */
+  loading?: boolean;
 }
 
 /**
@@ -40,11 +48,32 @@ export interface DashboardStatsProps {
 export function DashboardStats({
   stats,
   minTileWidth = 132,
+  plain,
+  loading,
 }: DashboardStatsProps) {
+  if (loading) {
+    return (
+      <XStack flexWrap="wrap" gap={plain ? "$5" : "$3"}>
+        {stats.map((s) => (
+          <YStack
+            key={s.key}
+            flex={1}
+            minW={minTileWidth}
+            gap="$2"
+            py={plain ? 0 : "$3"}
+            px={plain ? 0 : "$3"}
+          >
+            <Skeleton width={64} height={11} rounded="$2" />
+            <Skeleton width={48} height={24} rounded="$2" />
+          </YStack>
+        ))}
+      </XStack>
+    );
+  }
   return (
-    <XStack flexWrap="wrap" gap="$3">
+    <XStack flexWrap="wrap" gap={plain ? "$5" : "$3"}>
       {stats.map((s) => (
-        <Stat key={s.key} flex={1} minW={minTileWidth}>
+        <Stat key={s.key} flex={1} minW={minTileWidth} plain={plain}>
           <Stat.Label>{s.label}</Stat.Label>
           {s.value !== undefined ? (
             <Stat.Value

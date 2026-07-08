@@ -28,7 +28,7 @@ import {
   YStack,
 } from "@stageholder/ui";
 import type { HeatmapCellRenderArgs } from "@stageholder/ui";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { isWeb } from "tamagui";
 
 /** One day's total word count. `date` is a local `yyyy-MM-dd` key. */
@@ -157,6 +157,15 @@ export function WritingHeatmapChart({
     y: number;
   } | null>(null);
 
+  // Auto-scroll the strip to its RIGHT end (today) on first content layout so
+  // the most-recent activity is visible without a manual scroll — GitHub's
+  // contribution-graph behaviour. `onContentSizeChange` fires on mount + data
+  // change but NOT on container resize (cells are fixed-width), so a resize
+  // never yanks the view back; the browser just preserves the scroll position.
+  const scrollRef = useRef<{
+    scrollToEnd?: (opts?: { animated?: boolean }) => void;
+  }>(null);
+
   if (isLoading) {
     return <Skeleton height={200} width="100%" rounded="$3" />;
   }
@@ -277,7 +286,14 @@ export function WritingHeatmapChart({
           vertical space instead of clumping at the top. Scrolls horizontally
           if the months don't fit the cell width. */}
       <YStack flex={1} justify="center">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView
+          ref={scrollRef as never}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          onContentSizeChange={() =>
+            scrollRef.current?.scrollToEnd?.({ animated: false })
+          }
+        >
           <XStack gap="$4" items="flex-end">
             {blocks.map((b) => (
               <YStack key={b.key} gap="$1.5" items="center">

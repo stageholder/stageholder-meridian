@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { CalendarClock } from "lucide-react";
 import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
@@ -189,61 +189,72 @@ export function UpcomingContent() {
         <TodoListSkeleton />
       ) : (
         <YStack mt="$3" gap="$6">
-          {sortedDates.map((date) => {
-            const dateTodos = groupedByDate.get(date) || [];
-            // Sub-group by list within each date
-            const byList = new Map<string, Todo[]>();
-            for (const todo of dateTodos) {
-              const group = byList.get(todo.listId) || [];
-              group.push(todo);
-              byList.set(todo.listId, group);
-            }
-
-            return (
-              <YStack key={date}>
-                <Text mb="$3" fontSize="$3" fontWeight="600" color="$color">
-                  {formatDateLabel(date)}
-                </Text>
-                <YStack gap="$4" pl="$1.5">
-                  {[...byList.entries()].map(([listId, listTodos]) => {
+          {/* Single AnimatePresence over a FLAT, keyed list (date headers · list
+              headers · todos), so a do-date change that moves a todo to another
+              day is a keyed REORDER — not an exit-here + enter-there blink. */}
+          <YStack gap="$0.5">
+            <AnimatePresence>
+              {(() => {
+                const rows: ReactNode[] = [];
+                let firstDate = true;
+                for (const date of sortedDates) {
+                  const dateTodos = groupedByDate.get(date) || [];
+                  if (dateTodos.length === 0) continue;
+                  const byList = new Map<string, Todo[]>();
+                  for (const todo of dateTodos) {
+                    const g = byList.get(todo.listId) || [];
+                    g.push(todo);
+                    byList.set(todo.listId, g);
+                  }
+                  rows.push(
+                    <Text
+                      key={`date-${date}`}
+                      mt={firstDate ? 0 : "$5"}
+                      mb="$3"
+                      fontSize="$3"
+                      fontWeight="600"
+                      color="$color"
+                    >
+                      {formatDateLabel(date)}
+                    </Text>,
+                  );
+                  for (const [listId, listTodos] of byList) {
                     const list = listMap.get(listId);
-                    return (
-                      <YStack key={listId}>
-                        <XStack mb="$2" items="center" gap="$2">
-                          <View
-                            width={12}
-                            height={12}
-                            rounded={9999}
-                            style={{
-                              backgroundColor: list?.color || "#6b7280",
-                            }}
-                          />
-                          <Text
-                            fontSize="$1"
-                            fontWeight="500"
-                            color="$mutedForeground"
-                          >
-                            {list?.name || "Unknown List"}
-                          </Text>
-                        </XStack>
-                        <YStack gap="$0.5">
-                          <AnimatePresence>
-                            {listTodos.map((todo) => (
-                              <TodoItem
-                                key={todo.id}
-                                todo={todo}
-                                listId={listId}
-                              />
-                            ))}
-                          </AnimatePresence>
-                        </YStack>
-                      </YStack>
+                    rows.push(
+                      <XStack
+                        key={`list-${date}-${listId}`}
+                        mb="$2"
+                        pl="$1.5"
+                        items="center"
+                        gap="$2"
+                      >
+                        <View
+                          width={12}
+                          height={12}
+                          rounded={9999}
+                          style={{ backgroundColor: list?.color || "#6b7280" }}
+                        />
+                        <Text
+                          fontSize="$1"
+                          fontWeight="500"
+                          color="$mutedForeground"
+                        >
+                          {list?.name || "Unknown List"}
+                        </Text>
+                      </XStack>,
                     );
-                  })}
-                </YStack>
-              </YStack>
-            );
-          })}
+                    for (const todo of listTodos) {
+                      rows.push(
+                        <TodoItem key={todo.id} todo={todo} listId={listId} />,
+                      );
+                    }
+                  }
+                  firstDate = false;
+                }
+                return rows;
+              })()}
+            </AnimatePresence>
+          </YStack>
 
           {upcomingTodos.length === 0 && (
             <YStack py="$8" items="center">

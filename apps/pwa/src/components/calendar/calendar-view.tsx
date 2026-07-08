@@ -90,7 +90,7 @@ export function CalendarView() {
   // One merged window (today ±3 months) feeds EventCalendar's own month nav —
   // it manages the visible month internally and filters events to it.
   const { data: calendarData, isLoading, isError } = useCalendarRange();
-  const { data: habits } = useHabits();
+  const { data: habits, isLoading: habitsLoading } = useHabits();
   const habitsList = habits ?? [];
 
   const events = useMemo(
@@ -117,14 +117,15 @@ export function CalendarView() {
       {/* Today agenda — the primary surface (todos / habits / journal).
           No base `width="100%"`: in the stacked (sub-$lg) layout the parent
           YStack's default `align-items: stretch` already fills the width, and
-          omitting it lets the `$lg` fixed width actually take effect in the row
-          layout (a base width prop competes with it). `flexShrink: 0` holds the
-          420 so the calendar — not the agenda — absorbs leftover/!enough space. */}
-      <View $lg={{ width: 420, shrink: 0 }}>
+          omitting it lets the `$lg` flex sizing take effect in the row layout.
+          `flex: 1` + `maxW: 520` + `minW: 0` MIRRORS the calendar pane so the
+          two columns are EQUAL width (each grows to 520, then shares evenly). */}
+      <View $lg={{ flex: 1, maxW: 520, minW: 0 }}>
         <DayAgenda
           date={selectedDate}
           dayData={selectedDayData}
           habits={habitsList}
+          isLoading={isLoading || habitsLoading}
         />
       </View>
 

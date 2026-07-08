@@ -14,6 +14,7 @@ import {
   H3,
   IconButton,
   RippleButton,
+  Skeleton,
   StreakBadge,
   Text,
   View,
@@ -35,6 +36,12 @@ export interface HabitCardProps {
    * view is pure presentation + derived calculations.
    */
   entries: HabitEntry[] | undefined;
+  /**
+   * True while the host's entries query is COLD-loading (no data yet). The
+   * action row shows a skeleton instead of defaulting to the un-acted "Check
+   * In" button, which otherwise flashes before the real status resolves.
+   */
+  entriesLoading?: boolean;
   /** When set, the card shows status for this date instead of today. */
   selectedDate?: string;
 
@@ -116,6 +123,7 @@ export interface HabitCardProps {
 export function HabitCard({
   habit,
   entries,
+  entriesLoading,
   selectedDate,
   accentColor,
   accentTrackColor,
@@ -504,8 +512,14 @@ export function HabitCard({
         </XStack>
 
         {/* Action row — primary (Check In) or status on the left,
-            representative icon actions on the right. */}
-        {isQuota ? (
+            representative icon actions on the right. A cold entries-load shows
+            a skeleton here instead of flashing the un-acted "Check In" button. */}
+        {entriesLoading ? (
+          <XStack items="center" justify="space-between" gap="$2">
+            <Skeleton width={96} height={32} rounded="$md" />
+            <Skeleton width={72} height={28} rounded="$md" />
+          </XStack>
+        ) : isQuota ? (
           /* Quota footer: log-only. LEFT = "Logged" badge when today is done,
              else the Check In button. RIGHT = "{progress}/{target} this week"
              + an Undo when today is logged. No Skip / Fail for quota. */

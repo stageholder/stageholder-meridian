@@ -215,11 +215,16 @@ export function useCreateJournal() {
         }
       }
     },
-    onSettled: () => {
+    onSettled: (data) => {
       void queryClient.invalidateQueries({ queryKey: ["journals"] });
       void queryClient.invalidateQueries({ queryKey: lightKeys.me });
       void queryClient.invalidateQueries({ queryKey: lightKeys.stats });
-      void queryClient.invalidateQueries({ queryKey: ["calendar"] });
+      // Scope the calendar refetch to the new entry's month.
+      void queryClient.invalidateQueries({
+        queryKey: data?.date
+          ? ["calendar", data.date.slice(0, 7)]
+          : ["calendar"],
+      });
       void queryClient.invalidateQueries({ queryKey: journalKeys.stats });
     },
   });
@@ -298,7 +303,7 @@ export function useUpdateJournal() {
         );
       }
     },
-    onSettled: (_data, _err, variables) => {
+    onSettled: (data, _err, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["journals"] });
       void queryClient.invalidateQueries({
         queryKey: ["journal", variables.id],
@@ -309,7 +314,14 @@ export function useUpdateJournal() {
       // to the default staleTime while the entry page already reflects the edit.
       void queryClient.invalidateQueries({ queryKey: lightKeys.me });
       void queryClient.invalidateQueries({ queryKey: lightKeys.stats });
-      void queryClient.invalidateQueries({ queryKey: ["calendar"] });
+      // Autosave fires this on every debounce — scope the calendar refetch to
+      // the edited MONTH (`["calendar", "yyyy-MM"]`) instead of the whole 7-month
+      // range, so typing doesn't re-fetch every cached month each keystroke.
+      void queryClient.invalidateQueries({
+        queryKey: data?.date
+          ? ["calendar", data.date.slice(0, 7)]
+          : ["calendar"],
+      });
       void queryClient.invalidateQueries({ queryKey: journalKeys.stats });
     },
   });
