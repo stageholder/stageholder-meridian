@@ -10,6 +10,8 @@ import {
   ChevronLeft,
   ChevronRight,
   PanelLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "@tamagui/lucide-icons-2";
 import { isDesktop } from "@repo/core/platform";
 import { openURL } from "@repo/core/platform/linking";
@@ -120,10 +122,28 @@ function NavRailTile({
   );
 }
 
+// The desktop rail's expanded/collapsed choice is a per-device preference, so
+// it persists to localStorage (the kit Provider is uncontrolled by default and
+// asks consumers to wire their own persistence via `open` + `onOpenChange`).
+// Default = COLLAPSED (minimized rail) on first run.
+const SIDEBAR_STORAGE_KEY = "meridian:sidebar-open";
+
+function readStoredSidebarOpen(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Outer shell: owns the Sidebar.Provider so every child component (including
  * the inner body, the nav items, the footer FeedbackButton) can call
  * `useSidebar()` to read state and close the mobile drawer on navigation.
+ *
+ * The rail's open state is CONTROLLED here and mirrored to localStorage so the
+ * user's expand/collapse choice survives reloads; it starts collapsed.
  *
  * `collapsedWidth={80}` keeps the macOS traffic-light cluster (~76 px per
  * Apple HIG) inside the collapsed rail when the user runs the desktop Tauri
@@ -133,9 +153,24 @@ function NavRailTile({
  * and left a too-large gap between the traffic lights and the first nav row.
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const [sidebarOpen, setSidebarOpen] = useState(readStoredSidebarOpen);
+
+  const handleSidebarOpenChange = useCallback((open: boolean) => {
+    setSidebarOpen(open);
+    try {
+      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(open));
+    } catch {
+      // Private mode / storage disabled — session-only state is fine.
+    }
+  }, []);
+
   return (
     <View height={"100dvh" as never} overflow="hidden">
-      <Sidebar.Provider defaultOpen height="100%">
+      <Sidebar.Provider
+        open={sidebarOpen}
+        onOpenChange={handleSidebarOpenChange}
+        height="100%"
+      >
         <AppShellBody>{children}</AppShellBody>
       </Sidebar.Provider>
     </View>
@@ -146,7 +181,8 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const { user } = useUser();
-  const { isMobile, setOpenMobile, state, collapsible } = useSidebar();
+  const { isMobile, setOpenMobile, state, collapsible, toggleSidebar } =
+    useSidebar();
   // Rail iconified (desktop, icon-collapse mode) — drives the title tooltips
   // so the collapsed rail's glyphs stay identifiable.
   const collapsed =
@@ -245,6 +281,11 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
               tight). It forwards to the kit's scroll frame, so it scrolls away
               with the content. */}
           <Sidebar.Content pt={12}>
+            {/* Brand at the TOP of the rail — the logo + wordmark, doubling as
+                the home affordance. Wordmark hides when the rail is iconified so
+                the logo stays centered in the 80px column. */}
+            <SidebarBrand onPress={() => handleNavigate("/")} />
+
             {/* Refined product-sidebar nav (Linear/Vercel density): the kit Menu
               gets horizontal padding so the active/hover pill floats inset off
               the rail edges — the old full-bleed highlight read as "no padding
@@ -331,9 +372,39 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
               <Sidebar.MenuItem>
                 <FeedbackButton />
               </Sidebar.MenuItem>
+
+              {/* Collapse / expand the rail — lives at the bottom of the
+                  sidebar itself (in addition to the header toggle). Its state
+                  persists to localStorage via the controlled Provider. */}
+              <Sidebar.MenuItem>
+                {collapsed ? (
+                  <NavRailTile
+                    label="Expand"
+                    icon={PanelLeftOpen}
+                    onPress={toggleSidebar}
+                  />
+                ) : (
+                  <Sidebar.MenuButton
+                    icon={<Icon source={PanelLeftClose} size={18} />}
+                    onPress={toggleSidebar}
+                    height={40}
+                    rounded="$3"
+                    gap="$2.5"
+                  >
+                    <Text
+                      flex={1}
+                      fontSize={14}
+                      fontWeight="500"
+                      color="$sidebarForeground"
+                      numberOfLines={1}
+                      text="left"
+                    >
+                      Collapse
+                    </Text>
+                  </Sidebar.MenuButton>
+                )}
+              </Sidebar.MenuItem>
             </Sidebar.Menu>
-            {/* Brand sits at the very bottom of the sidebar. */}
-            <SidebarBrand />
           </Sidebar.Footer>
         </Sidebar>
       )}
@@ -522,10 +593,11 @@ function AppShellBody({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Brand block for the sidebar header. Hides the wordmark when the rail is
- * iconified so the logo stays centered in the collapsed (80 px) column.
+ * Brand block at the TOP of the sidebar — logo + wordmark, doubling as the home
+ * affordance. Hides the wordmark when the rail is iconified so the logo stays
+ * centered in the collapsed (80 px) column.
  */
-function SidebarBrand() {
+function SidebarBrand({ onPress }: { onPress?: () => void }) {
   const { state, collapsible, isMobile } = useSidebar();
   const iconified =
     !isMobile && state === "collapsed" && collapsible === "icon";
@@ -536,7 +608,14 @@ function SidebarBrand() {
       gap="$2"
       rounded="$md"
       p="$2"
+      mb="$1"
+      cursor="pointer"
+      transition="quick"
+      hoverStyle={{ bg: "$sidebarAccent" }}
       justify={iconified ? "center" : undefined}
+      onPress={onPress}
+      role="button"
+      aria-label="Go to dashboard"
     >
       <MeridianLogo size="md" />
       {!iconified && (
