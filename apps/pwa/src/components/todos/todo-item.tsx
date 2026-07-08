@@ -42,6 +42,8 @@ interface TodoItemProps {
    * single-list pages (Inbox, a specific list) where it'd be redundant.
    */
   showList?: boolean;
+  /** Dense variant for the dashboard Today widget (see the shared view). */
+  compact?: boolean;
 }
 
 // Priority swatches (mirrors quick-add / the meta badge palette).
@@ -68,7 +70,7 @@ const PRIORITIES = [
  * animated row in a Trigger, which would disturb the list's enter/exit
  * animations.)
  */
-export function TodoItem({ todo, listId, showList }: TodoItemProps) {
+export function TodoItem({ todo, listId, showList, compact }: TodoItemProps) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [btnOpen, setBtnOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -288,6 +290,7 @@ export function TodoItem({ todo, listId, showList }: TodoItemProps) {
     <>
       <TodoItemView
         todo={todo}
+        compact={compact}
         onToggle={() =>
           updateTodo.mutate({
             listId,

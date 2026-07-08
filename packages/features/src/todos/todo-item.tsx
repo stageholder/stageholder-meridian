@@ -165,6 +165,12 @@ export interface TodoItemProps {
    * actions menu from here; native has no context menu and ignores it.
    */
   onContextMenu?: (event: unknown) => void;
+  /**
+   * Dense variant for the dashboard's Today widget: drops the description and
+   * collapses the meta-badge row to just an overdue flag, with tighter
+   * vertical padding. Keeps the full checkbox + burn + actions experience.
+   */
+  compact?: boolean;
 }
 
 /**
@@ -189,6 +195,7 @@ export function TodoItem({
   listColor,
   renderActions,
   onContextMenu,
+  compact,
 }: TodoItemProps) {
   const [burning, setBurning] = useState(false);
   const [gone, setGone] = useState(false);
@@ -290,9 +297,18 @@ export function TodoItem({
       cursor="pointer"
       items="center"
       gap="$3"
-      rounded="$md"
-      px="$2.5"
-      py="$2"
+      // Compact rows sit inside dashboard/calendar widgets as bordered CARD
+      // rows so they read as a balanced pair with the habit list rows (which
+      // are bordered `$card` rows). Full rows (the /todos page) stay borderless.
+      // COMPACT_ROW_MIN_H (60) is shared with HabitListItem so the two columns
+      // line up 1:1 (a todo row's content is a touch shorter than a habit row's).
+      rounded={compact ? "$4" : "$md"}
+      px={compact ? "$3" : "$2.5"}
+      py={compact ? "$2.5" : "$2"}
+      minHeight={compact ? 60 : undefined}
+      borderWidth={compact ? 1 : 0}
+      borderColor="$borderColor"
+      bg={compact ? "$card" : undefined}
       position="relative"
       // Cross-platform enter + exit (delete / un-complete) via AnimatePresence
       // in the list views. Completion plays the burn below, then commits.
@@ -379,22 +395,50 @@ export function TodoItem({
         >
           {todo.title}
         </Text>
-        {todo.description ? (
+        {!compact && todo.description ? (
           <Text fontSize="$1" color="$mutedForeground" numberOfLines={1}>
             {todo.description}
           </Text>
         ) : null}
-        {/* Every meta item is a `MetaBadge` pill so the row reads as one
+        {/* Compact (dashboard Today widget): the essentials — priority + due
+            date (overdue-aware). Description / list / do-date / subtasks are
+            dropped to keep the row light. */}
+        {compact ? (
+          priority.label || formattedDueDate ? (
+            <XStack flexWrap="wrap" items="center" gap="$1.5" lineHeight={16}>
+              {priority.label ? (
+                <MetaBadge
+                  bg={priority.bg}
+                  color={priority.color}
+                  label={priority.label}
+                />
+              ) : null}
+              {formattedDueDate ? (
+                <MetaBadge
+                  bg={isOverdue ? "$destructiveMuted" : "$muted"}
+                  color={isOverdue ? "$destructive" : "$mutedForeground"}
+                  label={formattedDueDate}
+                  icon={
+                    <Calendar
+                      size={11}
+                      color={isOverdue ? "$destructive" : "$mutedForeground"}
+                    />
+                  }
+                />
+              ) : null}
+            </XStack>
+          ) : null
+        ) : /* Every meta item is a `MetaBadge` pill so the row reads as one
             consistent set of badges (was a mix of one priority pill + bare
             icon+text runs). The list badge surfaces which list the todo is in
             on cross-list views (host passes `listName`). lineHeight on the row
             + each badge text keeps the small ($1) labels from inheriting the
-            ~23px body line-height (the old dead-space-above bug). */}
-        {priority.label ||
-        listName ||
-        formattedDueDate ||
-        formattedDoDate ||
-        (todo.subtasks && todo.subtasks.length > 0) ? (
+            ~23px body line-height (the old dead-space-above bug). */
+        priority.label ||
+          listName ||
+          formattedDueDate ||
+          formattedDoDate ||
+          (todo.subtasks && todo.subtasks.length > 0) ? (
           <XStack flexWrap="wrap" items="center" gap="$1.5" lineHeight={16}>
             {priority.label ? (
               <MetaBadge

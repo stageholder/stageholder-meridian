@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { format, isToday as isTodayFn } from "date-fns";
 import { Plus, BookOpen } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ActivityRings,
+  AnimatePresence,
   Button,
   Separator,
   Text,
@@ -12,34 +12,26 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
-import { useUpdateTodo, useTodoLists, useAllTodos } from "@/lib/api/todos";
+import { useTodoLists, useAllTodos } from "@/lib/api/todos";
+import { TodoItem } from "@/components/todos/todo-item";
+import { HabitListItem } from "@/components/habits/habit-list-item";
 import { CreateTodoDialog } from "@/components/todos/create-todo-dialog";
-import { TodoDetailDialog } from "@/components/todos/todo-detail-dialog";
 import {
   computeActivityRings,
   activityRingsConfig,
 } from "@/lib/hooks/use-activity-rings";
 import type { CalendarDayData } from "@/lib/api/calendar";
-import type { Habit } from "@repo/core/types";
-
-// Priority pill intent tokens — urgent→destructive, high/medium→warning, low→primary.
-const priorityConfig = {
-  urgent: { label: "Urgent", bg: "$destructiveMuted", color: "$destructive" },
-  high: { label: "High", bg: "$warningMuted", color: "$warning" },
-  medium: { label: "Medium", bg: "$warningMuted", color: "$warning" },
-  low: { label: "Low", bg: "$primaryMuted", color: "$primary" },
-  none: { label: "", bg: "$muted", color: "$mutedForeground" },
-} as const;
+import type { Habit, Todo } from "@repo/core/types";
 
 // Quota (`weekly_target`) habits aren't day-scheduled, so they're excluded
-// from the per-day habit-ring denominator.
-function countScheduledHabits(habits: Habit[], date: Date): number {
+// from the per-day habit-ring denominator + the day's actionable habit list.
+function scheduledDayHabits(habits: Habit[], date: Date): Habit[] {
   const dow = date.getDay();
   return habits.filter(
     (h) =>
       h.frequency !== "weekly_target" &&
       (!h.scheduledDays?.length || h.scheduledDays.includes(dow)),
-  ).length;
+  );
 }
 
 function SectionHeader({
@@ -80,37 +72,23 @@ interface DayAgendaProps {
 
 export function DayAgenda({ date, dayData, habits }: DayAgendaProps) {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const updateTodo = useUpdateTodo();
   const { data: lists } = useTodoLists();
   const defaultList = lists?.find((l) => l.isDefault) || lists?.[0];
   const [showCreateTodo, setShowCreateTodo] = useState(false);
-  const [detailTodoId, setDetailTodoId] = useState<string | null>(null);
   const { data: allTodos } = useAllTodos();
-  const detailTodo = detailTodoId
-    ? allTodos?.find((t) => t.id === detailTodoId)
-    : undefined;
 
   const dateStr = format(date, "yyyy-MM-dd");
   const isToday = isTodayFn(date);
 
-  function handleToggleTodo(
-    todoId: string,
-    listId: string,
-    currentStatus: string,
-  ) {
-    updateTodo.mutate(
-      {
-        listId,
-        todoId,
-        data: { status: currentStatus === "done" ? "todo" : "done" },
-      },
-      {
-        onSuccess: () =>
-          void queryClient.invalidateQueries({ queryKey: ["calendar"] }),
-      },
-    );
-  }
+  const scheduledHabits = scheduledDayHabits(habits, date);
+
+  // The calendar day payload carries only a slim todo shape; the real
+  // `TodoItem` needs the full `Todo`, so resolve each against `allTodos`. The
+  // real item + its mutations invalidate `["calendar"]`, so completing a todo
+  // (with its burn) refreshes this panel's rings automatically.
+  const dayTodos = dayData.todos
+    .map((t) => allTodos?.find((a) => a.id === t.id))
+    .filter((t): t is Todo => !!t);
 
   return (
     <>
@@ -121,7 +99,7 @@ export function DayAgenda({ date, dayData, habits }: DayAgendaProps) {
             rings={activityRingsConfig(
               computeActivityRings(
                 dayData,
-                countScheduledHabits(habits, date),
+                scheduledHabits.length,
                 undefined,
                 new Set(
                   habits
@@ -189,96 +167,27 @@ export function DayAgenda({ date, dayData, habits }: DayAgendaProps) {
 
         <Separator />
 
-        {/* Todos */}
+        {/* Todos — the real `TodoItem` (checkbox + burn, actions menu, detail
+            dialog), compact. */}
         <YStack gap="$2">
           <SectionHeader
             color="var(--ring-todo)"
             label="Todos"
             count={dayData.todos.length}
           />
-          {dayData.todos.length > 0 ? (
-            <YStack gap="$1">
-              {dayData.todos.map((todo) => {
-                const isDone = todo.status === "done";
-                const priority =
-                  priorityConfig[
-                    todo.priority as keyof typeof priorityConfig
-                  ] ?? priorityConfig.none;
-                return (
-                  <XStack
+          {dayTodos.length > 0 ? (
+            <YStack gap="$2">
+              <AnimatePresence>
+                {dayTodos.map((todo) => (
+                  <TodoItem
                     key={todo.id}
-                    onPress={() => setDetailTodoId(todo.id)}
-                    cursor="pointer"
-                    items="center"
-                    gap="$2"
-                    rounded="$md"
-                    px="$2"
-                    py="$1.5"
-                    hoverStyle={{ bg: "$accent" }}
-                  >
-                    <View
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleToggleTodo(todo.id, todo.listId, todo.status);
-                      }}
-                      width={16}
-                      height={16}
-                      shrink={0}
-                      items="center"
-                      justify="center"
-                      rounded={9999}
-                      borderWidth={2}
-                      transition="quick"
-                      borderColor={isDone ? "$primary" : "$mutedForeground"}
-                      bg={isDone ? "$primary" : "transparent"}
-                      hoverStyle={
-                        isDone ? undefined : { borderColor: "$primary" }
-                      }
-                    >
-                      {isDone && (
-                        <Text color="$primaryForeground" lineHeight={0}>
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="10"
-                            height="10"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        </Text>
-                      )}
-                    </View>
-                    <Text
-                      flex={1}
-                      fontSize="$3"
-                      numberOfLines={2}
-                      color={isDone ? "$mutedForeground" : "$color"}
-                      textDecorationLine={isDone ? "line-through" : "none"}
-                    >
-                      {todo.title}
-                    </Text>
-                    {priority.label ? (
-                      <Text
-                        shrink={0}
-                        bg={priority.bg}
-                        color={priority.color}
-                        rounded={9999}
-                        px="$1.5"
-                        py="$0.5"
-                        fontSize={10}
-                        fontWeight="500"
-                      >
-                        {priority.label}
-                      </Text>
-                    ) : null}
-                  </XStack>
-                );
-              })}
+                    todo={todo}
+                    listId={todo.listId}
+                    showList
+                    compact
+                  />
+                ))}
+              </AnimatePresence>
             </YStack>
           ) : (
             <Text fontSize="$1" color="$mutedForeground">
@@ -287,58 +196,28 @@ export function DayAgenda({ date, dayData, habits }: DayAgendaProps) {
           )}
         </YStack>
 
-        {/* Habits */}
+        {/* Habits — the real `HabitListItem` list-view row (icon · name ·
+            week-dot streak strip · check-in / status · skip/fail/undo menu),
+            scoped to THIS day via `selectedDate`. */}
         <YStack gap="$2">
           <SectionHeader
             color="var(--ring-habit)"
             label="Habits"
-            count={dayData.habitEntries.length}
+            count={scheduledHabits.length}
           />
-          {dayData.habitEntries.length > 0 ? (
-            <XStack flexWrap="wrap" gap="$2">
-              {dayData.habitEntries.map((entry) => {
-                const isSkip = entry.type === "skip";
-                const isFail = entry.type === "fail";
-                const done = !isFail && !isSkip && entry.value > 0;
-                return (
-                  <XStack
-                    key={entry.id}
-                    items="center"
-                    gap="$1"
-                    rounded={9999}
-                    px="$2.5"
-                    py="$1"
-                    borderWidth={isSkip ? 1 : 0}
-                    borderColor={isSkip ? "$mutedForeground" : undefined}
-                    bg={
-                      isFail
-                        ? "$destructiveMuted"
-                        : done
-                          ? "$successMuted"
-                          : "$muted"
-                    }
-                  >
-                    <Text
-                      fontSize="$1"
-                      fontWeight="500"
-                      color={
-                        isFail
-                          ? "$destructive"
-                          : done
-                            ? "$success"
-                            : "$mutedForeground"
-                      }
-                    >
-                      {isFail ? "✕" : isSkip ? "Skipped" : done ? "✓" : "✗"}{" "}
-                      {entry.habitName}
-                    </Text>
-                  </XStack>
-                );
-              })}
-            </XStack>
+          {scheduledHabits.length > 0 ? (
+            <YStack gap="$2">
+              {scheduledHabits.map((habit) => (
+                <HabitListItem
+                  key={habit.id}
+                  habit={habit}
+                  selectedDate={dateStr}
+                />
+              ))}
+            </YStack>
           ) : (
             <Text fontSize="$1" color="$mutedForeground">
-              No habit entries
+              No habits scheduled
             </Text>
           )}
         </YStack>
@@ -387,17 +266,6 @@ export function DayAgenda({ date, dayData, habits }: DayAgendaProps) {
           onOpenChange={setShowCreateTodo}
           listId={defaultList.id}
           defaultDueDate={dateStr}
-        />
-      )}
-
-      {detailTodo && (
-        <TodoDetailDialog
-          open={!!detailTodo}
-          onOpenChange={(open) => {
-            if (!open) setDetailTodoId(null);
-          }}
-          todo={detailTodo}
-          listId={detailTodo.listId}
         />
       )}
     </>

@@ -1,44 +1,70 @@
-import { useMemo } from "react";
-import { format } from "date-fns";
-import { HabitSummary as HabitSummaryView } from "@repo/features/dashboard";
-import type { HabitProgressValue } from "@repo/features/dashboard";
+import { Skeleton, Text, YStack } from "@stageholder/ui";
+import { HabitListItem } from "@/components/habits/habit-list-item";
 import { useHabits } from "@/lib/api/habits";
-import { useCalendarData } from "@/lib/api/calendar";
+
+const MAX_ROWS = 5;
 
 /**
- * PWA data wrapper: hooks `useHabits` + `useCalendarData`, computes the
- * per-habit progress map from today's calendar entries, and renders the shared
- * CONTENT-ONLY view. Card chrome + "View all" nav are owned by the host route's
- * kit `Dashboard.Widget`.
+ * Today's habits on the dashboard — the SAME real `HabitListItem` used on the
+ * /habits LIST view (icon · name · week-dot streak strip · check-in / status ·
+ * skip/fail/undo menu). Richer + more representative than a stripped card.
+ * Shows habits scheduled today (quota habits are tracked weekly on /habits, so
+ * they're excluded), capped at {@link MAX_ROWS}. "View all" nav is owned by the
+ * host `Dashboard.Widget`.
  */
 export function HabitSummary() {
-  const { data: habits, isLoading: habitsLoading } = useHabits();
-  const currentMonth = format(new Date(), "yyyy-MM");
-  const { data: calendarData, isLoading: calendarLoading } =
-    useCalendarData(currentMonth);
+  const { data: habits, isLoading } = useHabits();
 
-  const today = format(new Date(), "yyyy-MM-dd");
+  if (isLoading) {
+    return (
+      <YStack gap="$2">
+        {Array.from({ length: 3 }, (_, i) => (
+          <Skeleton key={i} height={40} width="100%" rounded="$3" />
+        ))}
+      </YStack>
+    );
+  }
 
-  const habitProgress = useMemo(() => {
-    const valueMap = new Map<string, HabitProgressValue>();
-    if (!habits || !calendarData?.[today]) return valueMap;
-    for (const entry of calendarData[today].habitEntries) {
-      const existing = valueMap.get(entry.habitId);
-      valueMap.set(entry.habitId, {
-        value: (existing?.value ?? 0) + entry.value,
-        type: entry.type || existing?.type || "completion",
-        targetCountSnapshot:
-          existing?.targetCountSnapshot ?? entry.targetCountSnapshot,
-      });
-    }
-    return valueMap;
-  }, [calendarData, habits, today]);
+  if (!habits || habits.length === 0) {
+    return (
+      <YStack py="$4" items="center">
+        <Text fontSize="$2" color="$mutedForeground">
+          No habits to track yet.
+        </Text>
+      </YStack>
+    );
+  }
+
+  const todayDow = new Date().getDay();
+  const scheduledToday = habits.filter(
+    (h) =>
+      h.frequency !== "weekly_target" &&
+      (!h.scheduledDays ||
+        h.scheduledDays.length === 0 ||
+        h.scheduledDays.includes(todayDow)),
+  );
+  const shown = scheduledToday.slice(0, MAX_ROWS);
+
+  if (shown.length === 0) {
+    return (
+      <YStack py="$4" items="center">
+        <Text fontSize="$2" color="$mutedForeground">
+          Nothing scheduled for today.
+        </Text>
+      </YStack>
+    );
+  }
 
   return (
-    <HabitSummaryView
-      habits={habits}
-      habitProgress={habitProgress}
-      isLoading={habitsLoading || calendarLoading}
-    />
+    <YStack gap="$2">
+      {shown.map((habit) => (
+        <HabitListItem key={habit.id} habit={habit} />
+      ))}
+      {scheduledToday.length > shown.length ? (
+        <Text mt="$1" ml="$2" fontSize="$1" color="$mutedForeground">
+          +{scheduledToday.length - shown.length} more
+        </Text>
+      ) : null}
+    </YStack>
   );
 }

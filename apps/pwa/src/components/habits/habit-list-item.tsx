@@ -1,12 +1,20 @@
 import { useState } from "react";
 import { format, subDays, startOfWeek, addDays } from "date-fns";
 import { useNavigate } from "@tanstack/react-router";
-import { Check, MoreHorizontal, SkipForward, Target } from "lucide-react";
+import {
+  Check,
+  MoreHorizontal,
+  SkipForward,
+  Target,
+  Undo2,
+  X,
+} from "lucide-react";
 import { resolveTargetCount } from "@repo/core/habits/entry-resolution";
 import {
   AlertDialog,
   Button,
   DropdownMenu,
+  IconButton,
   RippleButton,
   Text,
   View,
@@ -24,6 +32,7 @@ import {
   useDeleteHabit,
 } from "@/lib/api/habits";
 import { EditHabitSheet } from "./edit-habit-sheet";
+import { RadianceBurst } from "./radiance-burst";
 
 interface HabitListItemProps {
   habit: Habit;
@@ -85,6 +94,10 @@ export function HabitListItem({
   const navigate = useNavigate();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  // Completion celebration (parity with the card view): a button bounce on any
+  // check-in, plus the RadianceBurst sunburst when the check-in COMPLETES.
+  const [bouncing, setBouncing] = useState(false);
+  const [completing, setCompleting] = useState(false);
 
   const activeDateEntry = entries?.find(
     (e: HabitEntry) => e.date.split("T")[0] === activeDate,
@@ -110,6 +123,10 @@ export function HabitListItem({
 
   async function handleCheckIn() {
     if (isComplete || isPending) return;
+    // Predict completion from the before-value so the burst fires on the same
+    // tick as the mutation (mirrors the card view — no wait on a refetch).
+    const newValue = isSkipped || isFailed ? 1 : activeDateValue + 1;
+    const willComplete = newValue >= targetCount;
     try {
       if (!activeDateEntry) {
         await createEntry.mutateAsync({
@@ -129,6 +146,14 @@ export function HabitListItem({
       toast.success(`Checked in for ${dateLabel}`);
     } catch {
       toast.error("Failed to check in");
+      // Skip the celebration when the mutation failed (cache rolls back).
+      return;
+    }
+    setBouncing(true);
+    setTimeout(() => setBouncing(false), 500);
+    if (willComplete) {
+      setCompleting(true);
+      setTimeout(() => setCompleting(false), 1200);
     }
   }
 
@@ -211,24 +236,6 @@ export function HabitListItem({
     setDeleteOpen(false);
   }
 
-  // Today-status pill copy + colour token. Three distinct visual states
-  // so the row is scannable at a glance without needing the dot strip
-  // the card view uses.
-  const statusLabel = isComplete
-    ? "Done"
-    : isSkipped
-      ? "Skipped"
-      : isFailed
-        ? "Failed"
-        : null;
-  const statusColor = isComplete
-    ? "$primary"
-    : isSkipped
-      ? "$mutedForeground"
-      : isFailed
-        ? "$destructive"
-        : null;
-
   // Current-week dot strip (M T W T F S S) — same data + status logic as the
   // card view's week strip (`@repo/features/habits` HabitCard), rendered as a
   // compact inline run so the list row gives the same at-a-glance streak read.
@@ -265,8 +272,11 @@ export function HabitListItem({
       <XStack
         items="center"
         gap="$3"
-        py="$3"
+        py="$2.5"
         px="$3.5"
+        // Shared row height with the compact TodoItem card row so the dashboard
+        // Todos / Habits columns line up 1:1 (see todo-item.tsx COMPACT_ROW_MIN_H).
+        minHeight={60}
         rounded="$4"
         borderWidth={1}
         borderColor="$borderColor"
@@ -409,120 +419,197 @@ export function HabitListItem({
           })}
         </XStack>
 
-        {/* Single status/action slot — collapses three previously
-            separate visual elements (status pill, complete button,
-            done button) into one. Three states, three treatments:
-              · complete    → check pill with brand colour
-              · skip / fail → muted/destructive outline pill
-              · pending     → primary "Complete" action button         */}
-        {isComplete ? (
-          <XStack
-            shrink={0}
-            items="center"
-            gap="$1.5"
-            px="$2.5"
-            py="$1.5"
-            rounded="$3"
-            borderWidth={1}
-            borderColor="$primary"
-          >
-            <Text color="$primary" lineHeight={0}>
-              <Check size={13} />
-            </Text>
-            <Text fontSize="$1" fontWeight="500" color="$primary">
-              Done
-            </Text>
-          </XStack>
-        ) : statusLabel ? (
-          <View
-            shrink={0}
-            px="$2.5"
-            py="$1.5"
-            rounded="$3"
-            borderWidth={1}
-            borderColor={statusColor as never}
-          >
-            <Text fontSize="$1" fontWeight="500" color={statusColor as never}>
-              {statusLabel}
-            </Text>
+        {/* Actions — card-consistent colours: green "Done" / muted "Skipped" /
+            destructive "Failed" pill, OR the orange (habit-identity) Check-In
+            button; then inline undo / skip / fail icon buttons and the overflow
+            menu. Wrapped in a pointer-down guard so clicks reach the controls
+            even when the row is a drag item in the kit `Sortable` — its kernel
+            `setPointerCapture`s the wrapper on pointer-down and would otherwise
+            swallow the click (this is why the /habits list menu didn't open). */}
+        <XStack
+          shrink={0}
+          items="center"
+          gap="$1.5"
+          {...({
+            onPointerDown: (e: { stopPropagation: () => void }) =>
+              e.stopPropagation(),
+          } as object)}
+        >
+          {/* Burst is centred on the status/Complete control (not the whole
+              row) — its rays emanate from the button the user tapped. */}
+          <View position="relative" items="center" justify="center">
+            <RadianceBurst active={completing} />
+            {isComplete ? (
+              <XStack
+                items="center"
+                gap="$1.5"
+                rounded="$md"
+                px="$2.5"
+                py="$1.5"
+                bg="$successMuted"
+                transition="quick"
+                scale={bouncing ? 1.1 : 1}
+              >
+                <Text color="$success" lineHeight={0}>
+                  <Check size={13} />
+                </Text>
+                <Text fontSize="$1" fontWeight="600" color="$success">
+                  Done
+                </Text>
+              </XStack>
+            ) : isSkipped ? (
+              <XStack
+                items="center"
+                gap="$1.5"
+                rounded="$md"
+                px="$2.5"
+                py="$1.5"
+                bg="$muted"
+              >
+                <Text color="$mutedForeground" lineHeight={0}>
+                  <SkipForward size={12} />
+                </Text>
+                <Text fontSize="$1" fontWeight="600" color="$mutedForeground">
+                  Skipped
+                </Text>
+              </XStack>
+            ) : isFailed ? (
+              <XStack
+                items="center"
+                gap="$1.5"
+                rounded="$md"
+                px="$2.5"
+                py="$1.5"
+                bg="$destructiveMuted"
+              >
+                <Text color="$destructive" lineHeight={0}>
+                  <X size={12} />
+                </Text>
+                <Text fontSize="$1" fontWeight="600" color="$destructive">
+                  Failed
+                </Text>
+              </XStack>
+            ) : (
+              <Button
+                size="sm"
+                borderWidth={0}
+                color={"#ffffff" as never}
+                icon={<Check size={13} color="#ffffff" />}
+                style={{ backgroundColor: "var(--ring-habit)" }}
+                hoverStyle={
+                  {
+                    backgroundColor: "var(--ring-habit)",
+                    opacity: 0.9,
+                  } as never
+                }
+                pressStyle={
+                  {
+                    backgroundColor: "var(--ring-habit)",
+                    opacity: 0.82,
+                  } as never
+                }
+                onPress={handleCheckIn}
+                disabled={isPending}
+                transition="quick"
+                scale={bouncing ? 1.1 : 1}
+              >
+                Complete
+              </Button>
+            )}
           </View>
-        ) : (
-          <Button
-            size="sm"
-            intent="primary"
-            onPress={handleCheckIn}
-            disabled={isPending}
-          >
-            Complete
-          </Button>
-        )}
 
-        {/* Overflow menu — same affordances as the card-view menu so
-            users get parity across modes. Matches the card view's
-            DropdownMenu API: `onPress` (not `onSelect`), `intent="danger"`
-            for the destructive action, `<DropdownMenu.Label>` for text. */}
-        <DropdownMenu>
-          <DropdownMenu.Trigger asChild>
-            {/* RippleButton (not IconButton): ripple press feedback instead of
-                a press-scale that would shift the menu's anchor as it opens. */}
-            <RippleButton
-              intent="ghost"
+          {/* Inline undo / skip / fail — parity with the card view's actions. */}
+          {isSkipped || isFailed ? (
+            <IconButton
+              variant="outline"
               size="sm"
-              iconOnly
-              width="$sm"
-              aria-label="Habit options"
+              onPress={handleClearStatus}
+              disabled={isPending}
+              aria-label="Undo"
             >
-              <MoreHorizontal size={16} />
-            </RippleButton>
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Content>
-            <DropdownMenu.Item onPress={() => setEditOpen(true)}>
-              <DropdownMenu.Label>Edit</DropdownMenu.Label>
-            </DropdownMenu.Item>
-            {activeDateValue > 0 && !isComplete ? (
-              <DropdownMenu.Item onPress={handleUndo}>
-                <DropdownMenu.Label>Undo last</DropdownMenu.Label>
-              </DropdownMenu.Item>
-            ) : null}
-            {isSkipped || isFailed ? (
-              <DropdownMenu.Item onPress={handleClearStatus}>
-                <DropdownMenu.Label>Clear status</DropdownMenu.Label>
-              </DropdownMenu.Item>
-            ) : null}
-            {!isComplete && !isSkipped ? (
-              <DropdownMenu.Item onPress={handleSkip}>
-                <DropdownMenu.Label>Skip today</DropdownMenu.Label>
-              </DropdownMenu.Item>
-            ) : null}
-            {!isComplete && !isFailed ? (
-              <DropdownMenu.Item onPress={handleFail}>
-                <DropdownMenu.Label>Mark failed</DropdownMenu.Label>
-              </DropdownMenu.Item>
-            ) : null}
-            {onMoveToGroup && (
-              <DropdownMenu.Item onPress={onMoveToGroup}>
-                <DropdownMenu.Label>Move to group…</DropdownMenu.Label>
-              </DropdownMenu.Item>
-            )}
-            {isArchived && onUnarchive && (
-              <DropdownMenu.Item onPress={onUnarchive}>
-                <DropdownMenu.Label>Unarchive</DropdownMenu.Label>
-              </DropdownMenu.Item>
-            )}
-            {!isArchived && onArchive && (
-              <DropdownMenu.Item onPress={onArchive}>
-                <DropdownMenu.Label>Archive</DropdownMenu.Label>
-              </DropdownMenu.Item>
-            )}
-            <DropdownMenu.Separator />
-            <DropdownMenu.Item
-              intent="danger"
-              onPress={() => setDeleteOpen(true)}
+              <Undo2 size={14} />
+            </IconButton>
+          ) : null}
+          {activeDateValue > 0 && !isSkipped && !isFailed ? (
+            <IconButton
+              variant="outline"
+              size="sm"
+              onPress={handleUndo}
+              disabled={isPending}
+              aria-label="Undo last check-in"
             >
-              <DropdownMenu.Label>Delete</DropdownMenu.Label>
-            </DropdownMenu.Item>
-          </DropdownMenu.Content>
-        </DropdownMenu>
+              <Undo2 size={14} />
+            </IconButton>
+          ) : null}
+          {activeDateValue === 0 && !isSkipped && !isFailed ? (
+            <>
+              <IconButton
+                variant="outline"
+                size="sm"
+                onPress={handleSkip}
+                disabled={isPending}
+                aria-label="Skip"
+              >
+                <SkipForward size={14} />
+              </IconButton>
+              <IconButton
+                variant="outline"
+                intent="danger"
+                size="sm"
+                onPress={handleFail}
+                disabled={isPending}
+                aria-label="Mark failed"
+              >
+                <X size={14} />
+              </IconButton>
+            </>
+          ) : null}
+
+          {/* Overflow menu — edit / move / archive / delete (skip/fail/undo are
+              now inline, matching the card). */}
+          <DropdownMenu>
+            <DropdownMenu.Trigger asChild>
+              {/* RippleButton (not IconButton): ripple press feedback instead of
+                  a press-scale that would shift the menu's anchor as it opens. */}
+              <RippleButton
+                intent="ghost"
+                size="sm"
+                iconOnly
+                width="$sm"
+                aria-label="Habit options"
+              >
+                <MoreHorizontal size={16} />
+              </RippleButton>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content>
+              <DropdownMenu.Item onPress={() => setEditOpen(true)}>
+                <DropdownMenu.Label>Edit</DropdownMenu.Label>
+              </DropdownMenu.Item>
+              {onMoveToGroup && (
+                <DropdownMenu.Item onPress={onMoveToGroup}>
+                  <DropdownMenu.Label>Move to group…</DropdownMenu.Label>
+                </DropdownMenu.Item>
+              )}
+              {isArchived && onUnarchive && (
+                <DropdownMenu.Item onPress={onUnarchive}>
+                  <DropdownMenu.Label>Unarchive</DropdownMenu.Label>
+                </DropdownMenu.Item>
+              )}
+              {!isArchived && onArchive && (
+                <DropdownMenu.Item onPress={onArchive}>
+                  <DropdownMenu.Label>Archive</DropdownMenu.Label>
+                </DropdownMenu.Item>
+              )}
+              <DropdownMenu.Separator />
+              <DropdownMenu.Item
+                intent="danger"
+                onPress={() => setDeleteOpen(true)}
+              >
+                <DropdownMenu.Label>Delete</DropdownMenu.Label>
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu>
+        </XStack>
       </XStack>
 
       <EditHabitSheet

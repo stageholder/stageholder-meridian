@@ -294,8 +294,6 @@ export function HabitCard({
         // Web-only; ignored on native (host can plug in a Reanimated alt via renderCompletionEffect).
         className={completing ? "habit-card-completing" : undefined}
       >
-        {renderCompletionEffect?.(completing)}
-
         {/* Header — icon · name/desc · streak · menu */}
         <XStack items="center" gap="$2.5">
           <XStack
@@ -512,46 +510,49 @@ export function HabitCard({
              else the Check In button. RIGHT = "{progress}/{target} this week"
              + an Undo when today is logged. No Skip / Fail for quota. */
           <XStack items="center" justify="space-between" gap="$2">
-            {isComplete ? (
-              <XStack
-                items="center"
-                gap="$1.5"
-                rounded="$md"
-                px="$2.5"
-                py="$1.5"
-                bg="$successMuted"
-                transition="quick"
-                scale={bouncing ? 1.1 : 1}
-              >
-                {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
-                <Check size={14} color="$success" />
-                <Text fontSize="$1" fontWeight="600" color="$success">
-                  Logged
-                </Text>
-              </XStack>
-            ) : (
-              <Button
-                size="sm"
-                borderWidth={0}
-                color={"#ffffff" as never}
-                icon={<Check size={14} color="#ffffff" />}
-                style={{ backgroundColor: accentColor }}
-                hoverStyle={
-                  { backgroundColor: accentColor, opacity: 0.9 } as never
-                }
-                pressStyle={
-                  { backgroundColor: accentColor, opacity: 0.82 } as never
-                }
-                onPress={handleCheckIn}
-                disabled={isPending}
-                loading={isPending}
-                loadingText="Logging…"
-                transition="quick"
-                scale={bouncing ? 1.1 : 1}
-              >
-                Check In
-              </Button>
-            )}
+            <View position="relative" items="center" justify="center">
+              {renderCompletionEffect?.(completing)}
+              {isComplete ? (
+                <XStack
+                  items="center"
+                  gap="$1.5"
+                  rounded="$md"
+                  px="$2.5"
+                  py="$1.5"
+                  bg="$successMuted"
+                  transition="quick"
+                  scale={bouncing ? 1.1 : 1}
+                >
+                  {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
+                  <Check size={14} color="$success" />
+                  <Text fontSize="$1" fontWeight="600" color="$success">
+                    Logged
+                  </Text>
+                </XStack>
+              ) : (
+                <Button
+                  size="sm"
+                  borderWidth={0}
+                  color={"#ffffff" as never}
+                  icon={<Check size={14} color="#ffffff" />}
+                  style={{ backgroundColor: accentColor }}
+                  hoverStyle={
+                    { backgroundColor: accentColor, opacity: 0.9 } as never
+                  }
+                  pressStyle={
+                    { backgroundColor: accentColor, opacity: 0.82 } as never
+                  }
+                  onPress={handleCheckIn}
+                  disabled={isPending}
+                  loading={isPending}
+                  loadingText="Logging…"
+                  transition="quick"
+                  scale={bouncing ? 1.1 : 1}
+                >
+                  Check In
+                </Button>
+              )}
+            </View>
 
             <XStack items="center" gap="$1.5">
               <Text fontSize="$1" fontWeight="500" color="$mutedForeground">
@@ -573,82 +574,87 @@ export function HabitCard({
           </XStack>
         ) : (
           <XStack items="center" justify="space-between" gap="$2">
-            {isComplete ? (
-              <XStack
-                items="center"
-                gap="$1.5"
-                rounded="$md"
-                px="$2.5"
-                py="$1.5"
-                bg="$successMuted"
-                transition="quick"
-                scale={bouncing ? 1.1 : 1}
-              >
-                {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
-                <Check size={14} color="$success" />
-                <Text fontSize="$1" fontWeight="600" color="$success">
-                  Complete
+            {/* Burst is centred on the status/Check-In control (not the whole
+                card) — its rays emanate from the button the user tapped. */}
+            <View position="relative" items="center" justify="center">
+              {renderCompletionEffect?.(completing)}
+              {isComplete ? (
+                <XStack
+                  items="center"
+                  gap="$1.5"
+                  rounded="$md"
+                  px="$2.5"
+                  py="$1.5"
+                  bg="$successMuted"
+                  transition="quick"
+                  scale={bouncing ? 1.1 : 1}
+                >
+                  {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
+                  <Check size={14} color="$success" />
+                  <Text fontSize="$1" fontWeight="600" color="$success">
+                    Complete
+                  </Text>
+                </XStack>
+              ) : isSkipped ? (
+                <XStack
+                  items="center"
+                  gap="$1.5"
+                  rounded="$md"
+                  px="$2.5"
+                  py="$1.5"
+                  bg="$muted"
+                >
+                  {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
+                  <SkipForward size={12} color="$mutedForeground" />
+                  <Text fontSize="$1" fontWeight="600" color="$mutedForeground">
+                    Skipped
+                  </Text>
+                </XStack>
+              ) : isFailed ? (
+                <XStack
+                  items="center"
+                  gap="$1.5"
+                  rounded="$md"
+                  px="$2.5"
+                  py="$1.5"
+                  bg="$destructiveMuted"
+                >
+                  {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
+                  <X size={12} color="$destructive" />
+                  <Text fontSize="$1" fontWeight="600" color="$destructive">
+                    Failed
+                  </Text>
+                </XStack>
+              ) : !isScheduledOnActiveDate ? (
+                <Text fontSize="$1" fontWeight="500" color="$mutedForeground">
+                  Rest day
                 </Text>
-              </XStack>
-            ) : isSkipped ? (
-              <XStack
-                items="center"
-                gap="$1.5"
-                rounded="$md"
-                px="$2.5"
-                py="$1.5"
-                bg="$muted"
-              >
-                {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
-                <SkipForward size={12} color="$mutedForeground" />
-                <Text fontSize="$1" fontWeight="600" color="$mutedForeground">
-                  Skipped
-                </Text>
-              </XStack>
-            ) : isFailed ? (
-              <XStack
-                items="center"
-                gap="$1.5"
-                rounded="$md"
-                px="$2.5"
-                py="$1.5"
-                bg="$destructiveMuted"
-              >
-                {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
-                <X size={12} color="$destructive" />
-                <Text fontSize="$1" fontWeight="600" color="$destructive">
-                  Failed
-                </Text>
-              </XStack>
-            ) : !isScheduledOnActiveDate ? (
-              <Text fontSize="$1" fontWeight="500" color="$mutedForeground">
-                Rest day
-              </Text>
-            ) : (
-              <Button
-                size="sm"
-                borderWidth={0}
-                color={"#ffffff" as never}
-                icon={<Check size={14} color="#ffffff" />}
-                style={{ backgroundColor: accentColor }}
-                hoverStyle={
-                  { backgroundColor: accentColor, opacity: 0.9 } as never
-                }
-                pressStyle={
-                  { backgroundColor: accentColor, opacity: 0.82 } as never
-                }
-                onPress={handleCheckIn}
-                disabled={isPending}
-                loading={isPending}
-                loadingText="Checking…"
-                transition="quick"
-                scale={bouncing ? 1.1 : 1}
-              >
-                {activeDateValue > 0
-                  ? `${activeDateValue}/${activeTargetCount}`
-                  : "Check In"}
-              </Button>
-            )}
+              ) : (
+                <Button
+                  size="sm"
+                  borderWidth={0}
+                  color={"#ffffff" as never}
+                  icon={<Check size={14} color="#ffffff" />}
+                  style={{ backgroundColor: accentColor }}
+                  hoverStyle={
+                    { backgroundColor: accentColor, opacity: 0.9 } as never
+                  }
+                  pressStyle={
+                    { backgroundColor: accentColor, opacity: 0.82 } as never
+                  }
+                  onPress={handleCheckIn}
+                  disabled={isPending}
+                  loading={isPending}
+                  loadingText="Checking…"
+                  transition="quick"
+                  scale={bouncing ? 1.1 : 1}
+                >
+                  {activeDateValue > 0
+                    ? `${activeDateValue}/${activeTargetCount}`
+                    : "Check In"}
+                </Button>
+              )}
+            </View>
 
             <XStack items="center" gap="$1.5">
               {(isSkipped || isFailed) && (
