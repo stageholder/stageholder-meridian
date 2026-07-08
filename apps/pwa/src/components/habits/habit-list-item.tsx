@@ -15,6 +15,7 @@ import {
   Button,
   DropdownMenu,
   IconButton,
+  MediaGlyph,
   RippleButton,
   Skeleton,
   Text,
@@ -23,6 +24,7 @@ import {
   YStack,
   toast,
 } from "@stageholder/ui";
+import { parseMediaIcon } from "@repo/features/habits";
 import type { Habit, HabitEntry } from "@repo/core/types";
 import {
   useCreateHabitEntry,
@@ -317,13 +319,15 @@ export function HabitListItem({
             justify="center"
             style={{ backgroundColor: "var(--ring-habit-track)" }}
           >
-            {habit.icon ? (
-              <Text fontSize="$5">{habit.icon}</Text>
-            ) : (
-              <Text color={"var(--ring-habit)" as never} lineHeight={0}>
-                <Target size={16} />
-              </Text>
-            )}
+            <MediaGlyph
+              value={parseMediaIcon(habit.icon)}
+              size={20}
+              fallback={
+                <Text color={"var(--ring-habit)" as never} lineHeight={0}>
+                  <Target size={16} />
+                </Text>
+              }
+            />
           </View>
           <YStack flex={1} minW={0} justify="center" gap="$0.5">
             <Text

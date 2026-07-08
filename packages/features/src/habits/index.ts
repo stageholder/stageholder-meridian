@@ -11,3 +11,4 @@ export {
   type HabitFormValues,
 } from "./habit-form";
 export * from "./habit-group-form";
+export { encodeMediaIcon, parseMediaIcon } from "./icon-value";

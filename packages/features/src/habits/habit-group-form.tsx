@@ -2,16 +2,19 @@ import { useState } from "react";
 import { Form, useMedia } from "tamagui";
 import {
   Button,
-  EmojiPicker,
-  EmojiPickerSheet,
   Input,
   Label,
+  MediaGlyph,
+  MediaPicker,
+  MediaPickerSheet,
   Popover,
   Text,
   View,
   XStack,
   YStack,
+  type MediaValue,
 } from "@stageholder/ui";
+import { encodeMediaIcon, parseMediaIcon } from "./icon-value";
 
 /** Cross-platform create/edit-group form values. */
 export interface HabitGroupFormValues {
@@ -53,10 +56,12 @@ export interface HabitGroupFormProps {
  * mobile sheet. Pure presentational + controlled; the host owns the chrome
  * and the create/update mutation. Re-mount via `key` for reset semantics.
  *
- * The emoji picker mirrors the pattern in habit-form.tsx exactly: anchored
- * Popover at md+ (desktop dialog), EmojiPickerSheet (modal Sheet) below md
- * (mobile FormSheet). A Popover opened inside a Sheet renders behind it —
- * the EmojiPickerSheet stacks at zIndex 1e5 and clears that correctly.
+ * The icon picker is the kit media system (emoji + lucide icon), mirroring
+ * habit-form.tsx: an anchored `MediaPicker` Popover at md+ (desktop dialog),
+ * and the modal `MediaPickerSheet` below md (mobile FormSheet). A Popover
+ * opened inside a Sheet renders behind it — MediaPickerSheet stacks at
+ * zIndex 1e5 and clears that correctly. Values persist as a compact string
+ * (see icon-value.ts) and render through `MediaGlyph`.
  */
 export function HabitGroupForm({
   initial,
@@ -72,17 +77,23 @@ export function HabitGroupForm({
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
 
   // <md the form lives in a bottom Sheet; Popovers render behind Sheets.
-  // Switch to EmojiPickerSheet (modal Sheet) below md, anchored Popover at md+.
+  // Switch to MediaPickerSheet (modal Sheet) below md, anchored Popover at md+.
   const media = useMedia();
 
-  const handlePickIcon = (emoji: string) => {
-    setIcon(emoji);
+  // MediaPicker emits a MediaValue (emoji | icon | image) or null on Remove;
+  // encode it into the string `icon` column. `null` clears back to the color
+  // dot. The Popover path is manually closed here; MediaPickerSheet self-closes.
+  const handlePickIcon = (value: MediaValue | null) => {
+    setIcon(encodeMediaIcon(value) ?? "");
     setIconPickerOpen(false);
   };
 
   // Shared trigger box — passes onPress only on the Sheet path (the Popover
   // asChild path must NOT have a manual onPress; the slot supplies it and a
   // duplicate handler fights the controlled-state toggle — see project memory).
+  // Empty state shows the group's color DOT — the SAME resting glyph the sidebar
+  // renders for an icon-less group, so "what you pick" reads identically to
+  // "what you'll see" (no more smiley-vs-dot mismatch).
   const renderIconTrigger = (onPress?: () => void) => (
     <View
       role="button"
@@ -100,9 +111,19 @@ export function HabitGroupForm({
       hoverStyle={{ bg: "$accent" }}
       {...(onPress ? { onPress } : {})}
     >
-      <Text fontSize="$6" color="$color">
-        {icon || "😀"}
-      </Text>
+      <MediaGlyph
+        value={parseMediaIcon(icon)}
+        size={22}
+        color={color}
+        fallback={
+          <View
+            width={18}
+            height={18}
+            rounded={9999}
+            style={{ backgroundColor: color }}
+          />
+        }
+      />
     </View>
   );
 
@@ -139,10 +160,12 @@ export function HabitGroupForm({
                     overflow="hidden"
                     style={{ boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}
                   >
-                    <EmojiPicker
-                      width={350}
-                      height={400}
-                      onSelect={handlePickIcon}
+                    <MediaPicker
+                      width={360}
+                      height={440}
+                      tabs={["emoji", "icon"]}
+                      value={parseMediaIcon(icon)}
+                      onChange={handlePickIcon}
                     />
                   </Popover.Content>
                 </Popover>
@@ -150,10 +173,12 @@ export function HabitGroupForm({
                 // Mobile: modal Sheet (zIndex 1e5) stacks above the FormSheet.
                 <>
                   {renderIconTrigger(() => setIconPickerOpen(true))}
-                  <EmojiPickerSheet
+                  <MediaPickerSheet
                     open={iconPickerOpen}
                     onClose={() => setIconPickerOpen(false)}
-                    onSelect={handlePickIcon}
+                    tabs={["emoji", "icon"]}
+                    value={parseMediaIcon(icon)}
+                    onChange={handlePickIcon}
                   />
                 </>
               )}

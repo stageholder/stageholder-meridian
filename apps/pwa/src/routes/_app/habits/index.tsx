@@ -1,16 +1,18 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { format, startOfWeek, addDays } from "date-fns";
-import { LayoutGrid, List as ListIcon, Plus, Target } from "lucide-react";
+import { Plus, Target } from "lucide-react";
 import {
   Button,
   EmptyState,
+  MediaGlyph,
   Skeleton,
   Text,
   View,
   XStack,
   YStack,
 } from "@stageholder/ui";
+import { parseMediaIcon } from "@repo/features/habits";
 import { useHabits } from "@/lib/api/habits";
 import { useHabitGroups } from "@/lib/api/habit-groups";
 import { useCalendarData } from "@/lib/api/calendar";
@@ -27,6 +29,7 @@ import {
   HabitGroupSection,
   type HabitViewMode,
 } from "@/components/habits/habit-group-section";
+import { HabitViewToggle } from "@/components/habits/habit-view-toggle";
 import { CreateFab } from "@/components/shared/create-fab";
 import { parseDateLocal } from "@/lib/date";
 import type { Habit, HabitGroup } from "@repo/core/types";
@@ -209,54 +212,8 @@ function HabitsPage() {
           )}
         </XStack>
         <XStack items="center" gap="$2">
-          {/* View-mode toggle. Replaces the kit SegmentedControl whose bright
-              primary-blue selected fill clashed with the page's muted/orange
-              palette. This is a minimal icon segmented control: a bordered
-              track, the active cell carrying a soft `$muted` fill with the icon
-              in the habit accent (orange), inactive icons muted-grey. Reads as
-              on-brand and quiet, matching Linear/Notion-style view switchers. */}
-          <XStack
-            items="center"
-            gap={2}
-            p={2}
-            rounded="$3"
-            borderWidth={1}
-            borderColor="$borderColor"
-          >
-            {(
-              [
-                { mode: "card", Icon: LayoutGrid, label: "Card view" },
-                { mode: "list", Icon: ListIcon, label: "List view" },
-              ] as const
-            ).map(({ mode, Icon, label }) => {
-              const active = viewMode === mode;
-              return (
-                <View
-                  key={mode}
-                  onPress={() => setViewMode(mode)}
-                  cursor="pointer"
-                  items="center"
-                  justify="center"
-                  width={32}
-                  height={26}
-                  rounded="$2"
-                  transition="quick"
-                  bg={(active ? "$muted" : "transparent") as never}
-                  hoverStyle={active ? {} : ({ bg: "$muted" } as never)}
-                  role="button"
-                  aria-label={label}
-                >
-                  <Icon
-                    size={15}
-                    color={
-                      active ? "var(--ring-habit)" : "var(--muted-foreground)"
-                    }
-                    style={{ display: "block" }}
-                  />
-                </View>
-              );
-            })}
-          </XStack>
+          {/* Shared card/list switcher — same component the group route uses. */}
+          <HabitViewToggle value={viewMode} onChange={setViewMode} />
           {/* Desktop only — on mobile the create affordance is the FAB below. */}
           <Button
             display="none"
@@ -342,19 +299,20 @@ function HabitsPage() {
               <YStack key={section.id} gap="$3">
                 {/* Group header — emoji (when set) or color dot, then name. */}
                 <XStack items="center" gap="$2.5" px="$1">
-                  {section.icon ? (
-                    <Text fontSize={16} lineHeight={16} shrink={0}>
-                      {section.icon}
-                    </Text>
-                  ) : (
-                    <View
-                      width={10}
-                      height={10}
-                      rounded={9999}
-                      shrink={0}
-                      style={{ backgroundColor: section.color || "#6b7280" }}
-                    />
-                  )}
+                  <MediaGlyph
+                    value={parseMediaIcon(section.icon)}
+                    size={16}
+                    color={section.color || "#6b7280"}
+                    fallback={
+                      <View
+                        width={10}
+                        height={10}
+                        rounded={9999}
+                        shrink={0}
+                        style={{ backgroundColor: section.color || "#6b7280" }}
+                      />
+                    }
+                  />
                   <Text fontSize="$5" fontWeight="600" color="$color">
                     {section.name}
                   </Text>

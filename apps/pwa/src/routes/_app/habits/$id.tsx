@@ -18,6 +18,7 @@ import {
   H1,
   H3,
   IconButton,
+  MediaGlyph,
   Paragraph,
   Skeleton,
   Stat,
@@ -28,6 +29,7 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
+import { parseMediaIcon } from "@repo/features/habits";
 import { EditHabitSheet } from "@/components/habits/edit-habit-sheet";
 import { MoveToGroupDialog } from "@/components/habits/move-to-group-dialog";
 import {
@@ -571,9 +573,13 @@ function HabitDetailPage() {
             // habit identity tint (faint orange)
             style={{ backgroundColor: habitTrack }}
           >
-            <Text fontSize="$6">
-              {habit.icon || habit.name.charAt(0).toUpperCase()}
-            </Text>
+            <MediaGlyph
+              value={parseMediaIcon(habit.icon)}
+              size={22}
+              fallback={
+                <Text fontSize="$6">{habit.name.charAt(0).toUpperCase()}</Text>
+              }
+            />
           </View>
           <YStack>
             <H1 fontSize="$7" fontWeight="700" color="$color">

@@ -2,10 +2,11 @@ import { useId, useState } from "react";
 import { Form, isWeb, useMedia } from "tamagui";
 import {
   Button,
-  EmojiPicker,
-  EmojiPickerSheet,
   Input,
   Label,
+  MediaGlyph,
+  MediaPicker,
+  MediaPickerSheet,
   NumberInput,
   Popover,
   Select,
@@ -15,8 +16,11 @@ import {
   View,
   XStack,
   YStack,
+  type MediaValue,
 } from "@stageholder/ui";
+import { Smile } from "@tamagui/lucide-icons-2";
 import type { Habit } from "@repo/core/types";
+import { encodeMediaIcon, parseMediaIcon } from "./icon-value";
 
 /**
  * The cross-platform shape of the habit-create / habit-edit form values.
@@ -132,10 +136,11 @@ export interface HabitFormProps {
  * Cross-platform notes:
  *  - `<Form>` from tamagui gives us native Enter-to-submit on web + the
  *    same trigger semantics on native via `Form.Trigger`.
- *  - Kit `EmojiPicker` is a pure-Tamagui grid. To stay clickable when the
- *    host chrome is a Dialog/Sheet, it's shown in an anchored Popover at md+
- *    and in the kit `EmojiPickerSheet` (a modal Sheet) below md — a Popover
- *    opened inside a Sheet renders *behind* it (sheets sit at zIndex 1e5).
+ *  - Kit `MediaPicker` (emoji + lucide icon tabs) is a pure-Tamagui picker.
+ *    To stay clickable when the host chrome is a Dialog/Sheet, it's shown in
+ *    an anchored Popover at md+ and in the kit `MediaPickerSheet` (a modal
+ *    Sheet) below md — a Popover opened inside a Sheet renders *behind* it
+ *    (sheets sit at zIndex 1e5). Values persist via icon-value.ts + MediaGlyph.
  *  - All chrome (Popover, Select, ToggleGroup, NumberInput, Input,
  *    TextArea, Label) is from the kit and runs on both targets.
  */
@@ -178,12 +183,15 @@ export function HabitForm({
   const hasGroups = !!groups && groups.length > 0;
 
   // <md the create form is itself a bottom Sheet; a Popover opened inside a
-  // Sheet renders behind it, so the emoji picker switches to a modal Sheet
-  // (EmojiPickerSheet) on mobile and stays an anchored Popover at md+.
+  // Sheet renders behind it, so the icon picker switches to a modal Sheet
+  // (MediaPickerSheet) on mobile and stays an anchored Popover at md+.
   const media = useMedia();
 
-  const handlePickIcon = (emoji: string) => {
-    setIcon(emoji);
+  // MediaPicker emits a MediaValue (emoji | icon) or null on Remove; encode it
+  // into the string `icon` column. The Popover path is closed here; the Sheet
+  // self-closes on pick.
+  const handlePickIcon = (value: MediaValue | null) => {
+    setIcon(encodeMediaIcon(value) ?? "");
     setIconPickerOpen(false);
   };
 
@@ -207,9 +215,11 @@ export function HabitForm({
       hoverStyle={{ bg: "$accent" }}
       {...(onPress ? { onPress } : {})}
     >
-      <Text fontSize="$6" color="$color">
-        {icon || "😀"}
-      </Text>
+      <MediaGlyph
+        value={parseMediaIcon(icon)}
+        size={22}
+        fallback={<Smile size={20} color="$mutedForeground" />}
+      />
     </View>
   );
 
@@ -266,10 +276,12 @@ export function HabitForm({
                     overflow="hidden"
                     style={{ boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}
                   >
-                    <EmojiPicker
-                      width={350}
-                      height={400}
-                      onSelect={handlePickIcon}
+                    <MediaPicker
+                      width={360}
+                      height={440}
+                      tabs={["emoji", "icon"]}
+                      value={parseMediaIcon(icon)}
+                      onChange={handlePickIcon}
                     />
                   </Popover.Content>
                 </Popover>
@@ -278,10 +290,12 @@ export function HabitForm({
                 // the create form's own bottom sheet.
                 <>
                   {renderIconTrigger(() => setIconPickerOpen(true))}
-                  <EmojiPickerSheet
+                  <MediaPickerSheet
                     open={iconPickerOpen}
                     onClose={() => setIconPickerOpen(false)}
-                    onSelect={handlePickIcon}
+                    tabs={["emoji", "icon"]}
+                    value={parseMediaIcon(icon)}
+                    onChange={handlePickIcon}
                   />
                 </>
               )}

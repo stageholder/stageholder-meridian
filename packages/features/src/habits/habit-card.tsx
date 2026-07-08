@@ -13,6 +13,7 @@ import {
   DropdownMenu,
   H3,
   IconButton,
+  MediaGlyph,
   RippleButton,
   Skeleton,
   StreakBadge,
@@ -22,6 +23,7 @@ import {
   YStack,
 } from "@stageholder/ui";
 import type { Habit, HabitEntry } from "@repo/core/types";
+import { parseMediaIcon } from "./icon-value";
 import {
   resolveTargetCount,
   calculateWeeklyStreak,
@@ -326,9 +328,15 @@ export function HabitCard({
               rounded="$lg"
               style={{ backgroundColor: accentTrackColor }}
             >
-              <Text fontSize="$5">
-                {habit.icon || habit.name.charAt(0).toUpperCase()}
-              </Text>
+              <MediaGlyph
+                value={parseMediaIcon(habit.icon)}
+                size={20}
+                fallback={
+                  <Text fontSize="$5">
+                    {habit.name.charAt(0).toUpperCase()}
+                  </Text>
+                }
+              />
             </View>
             {/* justify="center" + tight line-heights keep the name/desc block
                 vertically centered against the icon, with or without a desc. */}

@@ -4,12 +4,14 @@ import {
   Button,
   EmptyState,
   List,
+  MediaGlyph,
   Text,
   View,
   XStack,
   YStack,
   toast,
 } from "@stageholder/ui";
+import { parseMediaIcon } from "@repo/features/habits";
 import { useArchivedHabits, useUnarchiveHabit } from "@/lib/api/habits";
 import type { Habit } from "@repo/core/types";
 
@@ -61,7 +63,11 @@ function ArchivedHabitsPage() {
                   shrink={0}
                   bg="$muted"
                 >
-                  <Text fontSize="$6">{habit.icon || "🎯"}</Text>
+                  <MediaGlyph
+                    value={parseMediaIcon(habit.icon)}
+                    size={22}
+                    fallback={<Text fontSize="$6">🎯</Text>}
+                  />
                 </View>
                 <YStack flex={1} minW={0} gap="$0.5">
                   <List.Title>{habit.name}</List.Title>

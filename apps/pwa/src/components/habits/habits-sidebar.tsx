@@ -22,6 +22,7 @@ import {
   Button,
   DropdownMenu,
   IconButton,
+  MediaGlyph,
   RippleButton,
   Sidebar,
   Text,
@@ -29,6 +30,7 @@ import {
   View,
   XStack,
 } from "@stageholder/ui";
+import { parseMediaIcon } from "@repo/features/habits";
 import { useHabits } from "@/lib/api/habits";
 import {
   useHabitGroups,
@@ -326,21 +328,22 @@ function GroupNavRow({
         bg={active ? "$sidebarAccent" : "transparent"}
         hoverStyle={{ bg: "$sidebarAccent" }}
       >
-        {/* Emoji / color dot — at the pill's left edge, aligned with the nav
-            rows' icons (no left grip gutter). */}
-        {group.icon ? (
-          <Text fontSize={14} lineHeight={14}>
-            {group.icon}
-          </Text>
-        ) : (
-          <View
-            width={10}
-            height={10}
-            rounded={9999}
-            shrink={0}
-            style={{ backgroundColor: group.color || "#6b7280" }}
-          />
-        )}
+        {/* Group glyph — emoji OR lucide icon (via MediaGlyph), tinted to the
+            group color. No icon → the color dot (its resting empty state). */}
+        <MediaGlyph
+          value={parseMediaIcon(group.icon)}
+          size={16}
+          color={group.color || "#6b7280"}
+          fallback={
+            <View
+              width={10}
+              height={10}
+              rounded={9999}
+              shrink={0}
+              style={{ backgroundColor: group.color || "#6b7280" }}
+            />
+          }
+        />
 
         {/* Name */}
         <Text

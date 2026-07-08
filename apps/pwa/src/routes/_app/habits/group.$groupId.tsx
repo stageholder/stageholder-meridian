@@ -1,16 +1,17 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { LayoutGrid, List as ListIcon, Plus, Target } from "lucide-react";
+import { Plus, Target } from "lucide-react";
 import {
   Button,
   EmptyState,
-  SegmentedControl,
+  MediaGlyph,
   Skeleton,
   Text,
   View,
   XStack,
   YStack,
 } from "@stageholder/ui";
+import { parseMediaIcon } from "@repo/features/habits";
 import { useHabits } from "@/lib/api/habits";
 import { useHabitGroups } from "@/lib/api/habit-groups";
 import { CreateHabitDialog } from "@/components/habits/create-habit-dialog";
@@ -19,6 +20,7 @@ import {
   HabitGroupSection,
   type HabitViewMode,
 } from "@/components/habits/habit-group-section";
+import { HabitViewToggle } from "@/components/habits/habit-view-toggle";
 import { CreateFab } from "@/components/shared/create-fab";
 import type { Habit } from "@repo/core/types";
 
@@ -57,54 +59,26 @@ function HabitGroupPage() {
       {/* Header — emoji (when set) or color dot + group name (left), view toggle + New (right). */}
       <XStack items="center" justify="space-between" gap="$3" flexWrap="wrap">
         <XStack items="center" gap="$2.5">
-          {group?.icon ? (
-            <Text fontSize={20} lineHeight={20} shrink={0}>
-              {group.icon}
-            </Text>
-          ) : (
-            <View
-              width={12}
-              height={12}
-              rounded={9999}
-              shrink={0}
-              style={{ backgroundColor: group?.color || "#6b7280" }}
-            />
-          )}
+          <MediaGlyph
+            value={parseMediaIcon(group?.icon)}
+            size={20}
+            color={group?.color || "#6b7280"}
+            fallback={
+              <View
+                width={12}
+                height={12}
+                rounded={9999}
+                shrink={0}
+                style={{ backgroundColor: group?.color || "#6b7280" }}
+              />
+            }
+          />
           <Text fontSize="$7" fontWeight="700" color="$color">
             {group?.name ?? "Group"}
           </Text>
         </XStack>
         <XStack items="center" gap="$2">
-          <SegmentedControl
-            size="$3"
-            height="$md"
-            fitContent
-            value={viewMode}
-            onValueChange={(v) => setViewMode(v as HabitViewMode)}
-          >
-            <SegmentedControl.Item
-              value="card"
-              aria-label="Card view"
-              px="$2.5"
-            >
-              <LayoutGrid
-                size={16}
-                color="currentColor"
-                style={{ display: "block" }}
-              />
-            </SegmentedControl.Item>
-            <SegmentedControl.Item
-              value="list"
-              aria-label="List view"
-              px="$2.5"
-            >
-              <ListIcon
-                size={16}
-                color="currentColor"
-                style={{ display: "block" }}
-              />
-            </SegmentedControl.Item>
-          </SegmentedControl>
+          <HabitViewToggle value={viewMode} onChange={setViewMode} />
           <Button
             display="none"
             $md={{ display: "flex" }}
