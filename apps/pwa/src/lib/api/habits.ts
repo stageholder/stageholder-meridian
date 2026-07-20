@@ -1,30 +1,43 @@
 // Habits data layer — ONLINE-ONLY.
 //
-// The offline feature (Dexie cache + mutation queue) was removed wholesale and
-// will be rebuilt from scratch later. These hooks used to wrap the now-deleted
-// `@repo/offline` helpers (useOfflineQuery / useOfflineMutation), which layered
-// a local-data fallback and an offline write queue on top of react-query. This
-// layer is now plain `@tanstack/react-query`: every read hits the API, every
-// write goes straight to the server. The optimistic-update UX (instant
-// complete / skip / undo on the habit cards) is preserved by the standard
-// TanStack cancel → snapshot → setQueryData → rollback-on-error → invalidate
-// pattern instead of optimistic Dexie writes.
+// Follows the app's optimistic contract (see `optimistic.ts`): optimistic cache
+// write → roll back on error → write the SERVER entry into the cache on success
+// → invalidate only AGGREGATE keys (habits summary, calendar, light/stats),
+// never the `["habitEntries", habitId]` list we just wrote authoritatively.
+// This removes the refetch-and-revert that made checking a habit feel stale.
 //
-// When the offline rebuild lands it will reintroduce caching BEHIND these same
-// hook names + signatures, so consumers should not need to change again.
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+// Entry writes carry a shared mutation `scope` so they SERIALIZE (never run in
+// parallel), which prevents the per-(habit,date) uniqueness 409 and orders a
+// create before any follow-up update — so the controls never need disabling.
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import type { Habit, HabitEntry } from "@repo/core/types";
 import { lightKeys } from "./light";
 import { habitsApi } from "./clients";
+import {
+  snapshotAndCancel,
+  rollback,
+  patchLists,
+  writeEntityToLists,
+  removeFromLists,
+  invalidateAggregates,
+  type CacheSnapshot,
+} from "./optimistic";
 
 export function useHabits() {
   return useQuery<Habit[]>({
     queryKey: ["habits"],
     // The grouped/sectioned habits UI renders the FULL active set client-side,
-    // so request all of it (server MAX_LIMIT=500) rather than the default first
-    // page of 20 — otherwise habits past #20 silently vanish from their group.
-    // Archived habits are excluded server-side.
+    // so request all of it (server MAX_LIMIT=500). Archived habits are excluded
+    // server-side.
     queryFn: () => habitsApi.list({ limit: "500" }),
+    // Keep the last list on screen during a background refetch so the page
+    // never blanks/flickers when an aggregate invalidation fires.
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -33,6 +46,7 @@ export function useHabit(id: string) {
     queryKey: ["habit", id],
     queryFn: () => habitsApi.get(id),
     enabled: !!id,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -44,8 +58,25 @@ export function useHabitEntries(
     queryKey: ["habitEntries", habitId, params],
     queryFn: () => habitsApi.listEntries(habitId, params),
     enabled: !!habitId,
+    // Date-nav changes `params` (a new key); keep the prior day's entries
+    // visible until the new window loads instead of flashing a skeleton.
+    placeholderData: keepPreviousData,
   });
 }
+
+// A habit's per-day entry writes share one scope so TanStack runs them one at a
+// time — no parallel POSTs (409) and create-before-update ordering.
+const ENTRY_SCOPE = { id: "habit-entry" };
+
+// A habit-entry write changes the day's status (shown from ["habitEntries"]),
+// and derived surfaces we can't recompute locally. We write the server entry
+// back into ["habitEntries", habitId] ourselves, so invalidate only these.
+const HABIT_ENTRY_AGGREGATES = [
+  ["habits"],
+  ["calendar"],
+  lightKeys.me,
+  lightKeys.stats,
+] as const;
 
 export function useCreateHabit() {
   const queryClient = useQueryClient();
@@ -64,10 +95,30 @@ export function useCreateHabit() {
       color?: string;
       icon?: string;
       groupId?: string | null;
-    }
+    },
+    { previous: CacheSnapshot; tempId: string }
   >({
     mutationFn: (data) => habitsApi.create(data),
-    onSuccess: () => {
+    onMutate: async (data) => {
+      const previous = await snapshotAndCancel(queryClient, [["habits"]]);
+      const tempId = `temp-${Date.now()}`;
+      const optimistic = {
+        id: tempId,
+        ...data,
+        order: Number.MAX_SAFE_INTEGER,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as unknown as Habit;
+      patchLists<Habit>(queryClient, [["habits"]], (l) => [...l, optimistic]);
+      return { previous, tempId };
+    },
+    onError: (_e, _v, ctx) => rollback(queryClient, ctx?.previous),
+    onSuccess: (serverHabit, _v, ctx) => {
+      if (ctx?.tempId)
+        writeEntityToLists(queryClient, [["habits"]], serverHabit, ctx.tempId);
+    },
+    onSettled: () => {
+      // Pick up server ordering / group placement for the new row.
       void queryClient.invalidateQueries({ queryKey: ["habits"] });
     },
   });
@@ -93,14 +144,27 @@ export function useUpdateHabit() {
         icon?: string;
         groupId?: string | null;
       };
-    }
+    },
+    { previous: CacheSnapshot }
   >({
     mutationFn: ({ id, data }) => habitsApi.update(id, data),
-    onSuccess: (_data, { id }) => {
-      void queryClient.invalidateQueries({ queryKey: ["habits"] });
-      // The detail page reads ["habit", id] — a separate query nothing else
-      // refreshes, so the header/stats would show stale values after an edit.
-      void queryClient.invalidateQueries({ queryKey: ["habit", id] });
+    onMutate: async ({ id, data }) => {
+      const previous = await snapshotAndCancel(queryClient, [
+        ["habits"],
+        ["habit", id],
+      ]);
+      patchLists<Habit>(queryClient, [["habits"]], (l) =>
+        l.map((h) => (h.id === id ? ({ ...h, ...data } as Habit) : h)),
+      );
+      const detail = queryClient.getQueryData<Habit>(["habit", id]);
+      if (detail)
+        queryClient.setQueryData(["habit", id], { ...detail, ...data });
+      return { previous };
+    },
+    onError: (_e, _v, ctx) => rollback(queryClient, ctx?.previous),
+    onSuccess: (serverHabit, { id }) => {
+      writeEntityToLists(queryClient, [["habits"]], serverHabit);
+      queryClient.setQueryData(["habit", id], serverHabit);
     },
   });
 }
@@ -108,35 +172,35 @@ export function useUpdateHabit() {
 export function useDeleteHabit() {
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, string>({
+  return useMutation<void, Error, string, { previous: CacheSnapshot }>({
     mutationFn: (id) => habitsApi.delete(id),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["habits"] });
+    onMutate: async (id) => {
+      const previous = await snapshotAndCancel(queryClient, [["habits"]]);
+      removeFromLists<Habit>(queryClient, [["habits"]], id);
+      return { previous };
+    },
+    onError: (_e, _v, ctx) => rollback(queryClient, ctx?.previous),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
 }
 
-// Entry mutations all touch the same downstream surfaces (the habit summary,
-// the calendar, and the gamification light/stats), so they share one
-// invalidation set. Toggling a day's completion / skip / fail is the
-// high-frequency interaction on the habit cards, so these optimistically patch
-// the cached `["habitEntries", habitId, …]` lists before the server replies and
-// roll back on error — matching the instant feel the offline Dexie writes gave.
-// NOTE: `["habitEntries", habitId]` is invalidated PER MUTATION (only the
-// mutated habit's entries changed) rather than the broad `["habitEntries"]`,
-// which would needlessly refetch every other habit row on the page.
-const HABIT_ENTRY_INVALIDATION = [
-  ["habits"],
-  ["calendar"],
-  [...lightKeys.me],
-  [...lightKeys.stats],
-] as const;
-
 // Snapshot of every cached habit-entry list (across all date-range param
-// variants) so we can restore it verbatim if the mutation fails.
-type HabitEntriesSnapshot = Array<
-  [readonly unknown[], HabitEntry[] | undefined]
->;
+// variants) so an optimistic write can be restored verbatim on error.
+type HabitEntriesSnapshot = CacheSnapshot;
+
+/** Patch (or replace) a single entry across every cached habitEntries list. */
+function patchEntry(
+  queryClient: ReturnType<typeof useQueryClient>,
+  habitId: string,
+  entryId: string,
+  producer: (e: HabitEntry) => HabitEntry,
+) {
+  patchLists<HabitEntry>(queryClient, [["habitEntries", habitId]], (list) =>
+    list.map((e) => (e.id === entryId ? producer(e) : e)),
+  );
+}
 
 export function useUpdateHabitEntry() {
   const queryClient = useQueryClient();
@@ -147,12 +211,6 @@ export function useUpdateHabitEntry() {
     {
       habitId: string;
       entryId: string;
-      // Mirrors the API's UpdateHabitEntryDto. Allowing `type` and
-      // `skipReason` here lets a caller convert an existing entry between
-      // completion / skip / fail without hitting the per-(habit, date)
-      // uniqueness conflict via DELETE+POST. The server enforces the
-      // value=0 invariant for skip/fail and clears skipReason on
-      // completion, so callers don't have to remember.
       data: {
         value?: number;
         notes?: string;
@@ -162,52 +220,26 @@ export function useUpdateHabitEntry() {
     },
     { previous: HabitEntriesSnapshot }
   >({
+    scope: ENTRY_SCOPE,
     mutationFn: ({ habitId, entryId, data }) =>
       habitsApi.updateEntry(habitId, entryId, data),
     onMutate: async ({ habitId, entryId, data }) => {
-      await queryClient.cancelQueries({
-        queryKey: ["habitEntries", habitId],
-      });
-
-      const previous = queryClient.getQueriesData<HabitEntry[]>({
-        queryKey: ["habitEntries", habitId],
-        exact: false,
-      });
-
-      for (const [key, list] of previous) {
-        if (!Array.isArray(list)) continue;
-        queryClient.setQueryData<HabitEntry[]>(
-          key,
-          list.map((e) =>
-            e.id === entryId
-              ? {
-                  ...e,
-                  ...data,
-                  updatedAt: new Date().toISOString(),
-                }
-              : e,
-          ),
-        );
-      }
-
+      const previous = await snapshotAndCancel(queryClient, [
+        ["habitEntries", habitId],
+      ]);
+      patchEntry(queryClient, habitId, entryId, (e) => ({
+        ...e,
+        ...data,
+        updatedAt: new Date().toISOString(),
+      }));
       return { previous };
     },
-    onError: (_err, _vars, context) => {
-      if (!context?.previous) return;
-      for (const [key, list] of context.previous) {
-        queryClient.setQueryData(key, list);
-      }
+    onError: (_err, _vars, ctx) => rollback(queryClient, ctx?.previous),
+    // Write the server entry back into the entries cache — no re-fetch/revert.
+    onSuccess: (serverEntry, { habitId }) => {
+      writeEntityToLists(queryClient, [["habitEntries", habitId]], serverEntry);
     },
-    onSettled: (_data, _err, { habitId }) => {
-      // Only the MUTATED habit's entries changed — scope to it instead of the
-      // broad `["habitEntries"]` (which refetched every habit row on the page).
-      void queryClient.invalidateQueries({
-        queryKey: ["habitEntries", habitId],
-      });
-      for (const key of HABIT_ENTRY_INVALIDATION) {
-        void queryClient.invalidateQueries({ queryKey: key });
-      }
-    },
+    onSettled: () => invalidateAggregates(queryClient, HABIT_ENTRY_AGGREGATES),
   });
 }
 
@@ -228,20 +260,12 @@ export function useCreateHabitEntry() {
     },
     { previous: HabitEntriesSnapshot; tempId: string }
   >({
+    scope: ENTRY_SCOPE,
     mutationFn: ({ habitId, data }) => habitsApi.createEntry(habitId, data),
     onMutate: async ({ habitId, data }) => {
-      await queryClient.cancelQueries({
-        queryKey: ["habitEntries", habitId],
-      });
-
-      const previous = queryClient.getQueriesData<HabitEntry[]>({
-        queryKey: ["habitEntries", habitId],
-        exact: false,
-      });
-
-      // A temp-id optimistic entry so the card flips to "completed" instantly.
-      // onSuccess swaps in the real server entry so a fast follow-up action
-      // (e.g. an immediate Undo) PATCHes a real id, not this temp one → 404.
+      const previous = await snapshotAndCancel(queryClient, [
+        ["habitEntries", habitId],
+      ]);
       const tempId = `temp-${Date.now()}`;
       const optimistic = {
         id: tempId,
@@ -253,57 +277,26 @@ export function useCreateHabitEntry() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       } as unknown as HabitEntry;
-
-      for (const [key, list] of previous) {
-        if (!Array.isArray(list)) continue;
-        queryClient.setQueryData<HabitEntry[]>(key, [...list, optimistic]);
-      }
-
+      patchLists<HabitEntry>(queryClient, [["habitEntries", habitId]], (l) => [
+        ...l,
+        optimistic,
+      ]);
       return { previous, tempId };
     },
-    onSuccess: (serverEntry, _vars, context) => {
-      if (!context?.tempId) return;
-      replaceTempEntry(queryClient, context.tempId, serverEntry);
+    onError: (_err, _vars, ctx) => rollback(queryClient, ctx?.previous),
+    // Swap the temp entry for the real server entry so a follow-up action
+    // PATCHes a real id (not a temp id → 404).
+    onSuccess: (serverEntry, { habitId }, ctx) => {
+      if (ctx?.tempId)
+        writeEntityToLists(
+          queryClient,
+          [["habitEntries", habitId]],
+          serverEntry,
+          ctx.tempId,
+        );
     },
-    onError: (_err, _vars, context) => {
-      if (!context?.previous) return;
-      for (const [key, list] of context.previous) {
-        queryClient.setQueryData(key, list);
-      }
-    },
-    onSettled: (_data, _err, { habitId }) => {
-      // Only the MUTATED habit's entries changed — scope to it instead of the
-      // broad `["habitEntries"]` (which refetched every habit row on the page).
-      void queryClient.invalidateQueries({
-        queryKey: ["habitEntries", habitId],
-      });
-      for (const key of HABIT_ENTRY_INVALIDATION) {
-        void queryClient.invalidateQueries({ queryKey: key });
-      }
-    },
+    onSettled: () => invalidateAggregates(queryClient, HABIT_ENTRY_AGGREGATES),
   });
-}
-
-// Swap an optimistic `temp-…` entry for the real server entry across every
-// cached habit-entry list, so its real id is present before the mutating
-// button re-enables (a follow-up PATCH/undo on a temp id would 404).
-function replaceTempEntry(
-  queryClient: ReturnType<typeof useQueryClient>,
-  tempId: string,
-  serverEntry: HabitEntry,
-) {
-  const caches = queryClient.getQueriesData<HabitEntry[]>({
-    queryKey: ["habitEntries"],
-    exact: false,
-  });
-  for (const [key, list] of caches) {
-    if (!Array.isArray(list)) continue;
-    if (!list.some((e) => e.id === tempId)) continue;
-    queryClient.setQueryData<HabitEntry[]>(
-      key,
-      list.map((e) => (e.id === tempId ? serverEntry : e)),
-    );
-  }
 }
 
 export function useSkipHabitEntry() {
@@ -312,35 +305,21 @@ export function useSkipHabitEntry() {
   return useMutation<
     HabitEntry,
     Error,
-    {
-      habitId: string;
-      data: { date: string; skipReason?: string };
-    },
+    { habitId: string; data: { date: string; skipReason?: string } },
     { previous: HabitEntriesSnapshot; tempId: string }
   >({
-    mutationFn: ({ habitId, data }) => {
-      // Build via a variable so the {type, skipReason} extras flow through
-      // without tripping object-literal excess property checks. The server's
-      // CreateHabitEntryDto accepts these even though the factory's typed
-      // payload doesn't list them — see report on `createEntry` typing.
-      const payload = {
+    scope: ENTRY_SCOPE,
+    mutationFn: ({ habitId, data }) =>
+      habitsApi.createEntry(habitId, {
         date: data.date,
         value: 0,
         type: "skip" as const,
         skipReason: data.skipReason,
-      };
-      return habitsApi.createEntry(habitId, payload);
-    },
+      }),
     onMutate: async ({ habitId, data }) => {
-      await queryClient.cancelQueries({
-        queryKey: ["habitEntries", habitId],
-      });
-
-      const previous = queryClient.getQueriesData<HabitEntry[]>({
-        queryKey: ["habitEntries", habitId],
-        exact: false,
-      });
-
+      const previous = await snapshotAndCancel(queryClient, [
+        ["habitEntries", habitId],
+      ]);
       const tempId = `temp-${Date.now()}`;
       const optimistic = {
         id: tempId,
@@ -352,34 +331,23 @@ export function useSkipHabitEntry() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       } as unknown as HabitEntry;
-
-      for (const [key, list] of previous) {
-        if (!Array.isArray(list)) continue;
-        queryClient.setQueryData<HabitEntry[]>(key, [...list, optimistic]);
-      }
-
+      patchLists<HabitEntry>(queryClient, [["habitEntries", habitId]], (l) => [
+        ...l,
+        optimistic,
+      ]);
       return { previous, tempId };
     },
-    onSuccess: (serverEntry, _vars, context) => {
-      if (!context?.tempId) return;
-      replaceTempEntry(queryClient, context.tempId, serverEntry);
+    onError: (_err, _vars, ctx) => rollback(queryClient, ctx?.previous),
+    onSuccess: (serverEntry, { habitId }, ctx) => {
+      if (ctx?.tempId)
+        writeEntityToLists(
+          queryClient,
+          [["habitEntries", habitId]],
+          serverEntry,
+          ctx.tempId,
+        );
     },
-    onError: (_err, _vars, context) => {
-      if (!context?.previous) return;
-      for (const [key, list] of context.previous) {
-        queryClient.setQueryData(key, list);
-      }
-    },
-    onSettled: (_data, _err, { habitId }) => {
-      // Only the MUTATED habit's entries changed — scope to it instead of the
-      // broad `["habitEntries"]` (which refetched every habit row on the page).
-      void queryClient.invalidateQueries({
-        queryKey: ["habitEntries", habitId],
-      });
-      for (const key of HABIT_ENTRY_INVALIDATION) {
-        void queryClient.invalidateQueries({ queryKey: key });
-      }
-    },
+    onSettled: () => invalidateAggregates(queryClient, HABIT_ENTRY_AGGREGATES),
   });
 }
 
@@ -392,30 +360,20 @@ export function useFailHabitEntry() {
   return useMutation<
     HabitEntry,
     Error,
-    {
-      habitId: string;
-      data: { date: string };
-    },
+    { habitId: string; data: { date: string } },
     { previous: HabitEntriesSnapshot; tempId: string }
   >({
-    mutationFn: ({ habitId, data }) => {
-      const payload = {
+    scope: ENTRY_SCOPE,
+    mutationFn: ({ habitId, data }) =>
+      habitsApi.createEntry(habitId, {
         date: data.date,
         value: 0,
         type: "fail" as const,
-      };
-      return habitsApi.createEntry(habitId, payload);
-    },
+      }),
     onMutate: async ({ habitId, data }) => {
-      await queryClient.cancelQueries({
-        queryKey: ["habitEntries", habitId],
-      });
-
-      const previous = queryClient.getQueriesData<HabitEntry[]>({
-        queryKey: ["habitEntries", habitId],
-        exact: false,
-      });
-
+      const previous = await snapshotAndCancel(queryClient, [
+        ["habitEntries", habitId],
+      ]);
       const tempId = `temp-${Date.now()}`;
       const optimistic = {
         id: tempId,
@@ -426,34 +384,23 @@ export function useFailHabitEntry() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       } as unknown as HabitEntry;
-
-      for (const [key, list] of previous) {
-        if (!Array.isArray(list)) continue;
-        queryClient.setQueryData<HabitEntry[]>(key, [...list, optimistic]);
-      }
-
+      patchLists<HabitEntry>(queryClient, [["habitEntries", habitId]], (l) => [
+        ...l,
+        optimistic,
+      ]);
       return { previous, tempId };
     },
-    onSuccess: (serverEntry, _vars, context) => {
-      if (!context?.tempId) return;
-      replaceTempEntry(queryClient, context.tempId, serverEntry);
+    onError: (_err, _vars, ctx) => rollback(queryClient, ctx?.previous),
+    onSuccess: (serverEntry, { habitId }, ctx) => {
+      if (ctx?.tempId)
+        writeEntityToLists(
+          queryClient,
+          [["habitEntries", habitId]],
+          serverEntry,
+          ctx.tempId,
+        );
     },
-    onError: (_err, _vars, context) => {
-      if (!context?.previous) return;
-      for (const [key, list] of context.previous) {
-        queryClient.setQueryData(key, list);
-      }
-    },
-    onSettled: (_data, _err, { habitId }) => {
-      // Only the MUTATED habit's entries changed — scope to it instead of the
-      // broad `["habitEntries"]` (which refetched every habit row on the page).
-      void queryClient.invalidateQueries({
-        queryKey: ["habitEntries", habitId],
-      });
-      for (const key of HABIT_ENTRY_INVALIDATION) {
-        void queryClient.invalidateQueries({ queryKey: key });
-      }
-    },
+    onSettled: () => invalidateAggregates(queryClient, HABIT_ENTRY_AGGREGATES),
   });
 }
 
@@ -492,22 +439,24 @@ export function useReorderHabits() {
       if (context?.previous)
         queryClient.setQueryData(["habits"], context.previous);
     },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ["habits"] });
-    },
+    // No settle-refetch: the optimistic order already matches the server's.
   });
 }
 
 export function useArchiveHabit() {
   const queryClient = useQueryClient();
-  return useMutation<Habit, Error, string>({
+  return useMutation<Habit, Error, string, { previous: CacheSnapshot }>({
     mutationFn: (id) => habitsApi.archive(id),
-    onSuccess: (_data, id) => {
-      void queryClient.invalidateQueries({ queryKey: ["habits"] });
+    // Archived habits are excluded from ["habits"], so drop the row instantly.
+    onMutate: async (id) => {
+      const previous = await snapshotAndCancel(queryClient, [["habits"]]);
+      removeFromLists<Habit>(queryClient, [["habits"]], id);
+      return { previous };
+    },
+    onError: (_e, _v, ctx) => rollback(queryClient, ctx?.previous),
+    onSettled: (_data, _err, id) => {
       void queryClient.invalidateQueries({ queryKey: ["habitsArchived"] });
       void queryClient.invalidateQueries({ queryKey: ["calendar"] });
-      // Refresh the detail page (its menu label + archived banner read
-      // ["habit", id]).
       void queryClient.invalidateQueries({ queryKey: ["habit", id] });
     },
   });
@@ -515,11 +464,18 @@ export function useArchiveHabit() {
 
 export function useUnarchiveHabit() {
   const queryClient = useQueryClient();
-  return useMutation<Habit, Error, string>({
+  return useMutation<Habit, Error, string, { previous: CacheSnapshot }>({
     mutationFn: (id) => habitsApi.unarchive(id),
-    onSuccess: (_data, id) => {
+    onMutate: async (id) => {
+      const previous = await snapshotAndCancel(queryClient, [
+        ["habitsArchived"],
+      ]);
+      removeFromLists<Habit>(queryClient, [["habitsArchived"]], id);
+      return { previous };
+    },
+    onError: (_e, _v, ctx) => rollback(queryClient, ctx?.previous),
+    onSettled: (_data, _err, id) => {
       void queryClient.invalidateQueries({ queryKey: ["habits"] });
-      void queryClient.invalidateQueries({ queryKey: ["habitsArchived"] });
       void queryClient.invalidateQueries({ queryKey: ["calendar"] });
       void queryClient.invalidateQueries({ queryKey: ["habit", id] });
     },

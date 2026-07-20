@@ -15,8 +15,11 @@ export function LevelUpCelebration({
   const tierInfo = LIGHT_TIERS[tier - 1];
   const tierTitle = tierInfo?.title ?? "Unknown";
 
+  // Auto-dismiss. This is a full-screen scrim that (intentionally) captures a
+  // tap-anywhere to dismiss, so it also intercepts clicks while shown — keep the
+  // hold short so it celebrates without sitting on the user's next interaction.
   useEffect(() => {
-    const timer = setTimeout(onDismiss, 4000);
+    const timer = setTimeout(onDismiss, 2600);
     return () => clearTimeout(timer);
   }, [onDismiss]);
 

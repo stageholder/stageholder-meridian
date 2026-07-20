@@ -30,6 +30,7 @@ import {
 import type { Journal, JournalContent, JournalStats } from "@repo/core/types";
 import type { PaginatedJournals } from "@repo/core/api/journals";
 import { tryGetCurrentUserSub } from "@/lib/current-user-sub";
+import { writeEntityToLists } from "./optimistic";
 import { lightKeys } from "./light";
 import { todayLocal } from "@/lib/date";
 import { useEncryptionStore } from "@/lib/crypto/encryption-store";
@@ -303,20 +304,23 @@ export function useUpdateJournal() {
         );
       }
     },
-    onSettled: (data, _err, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ["journals"] });
-      void queryClient.invalidateQueries({
-        queryKey: ["journal", variables.id],
-      });
-      // Editing a journal changes its word count, which feeds the daily
-      // journal-progress ring and the XP system (UserLight). Invalidate the
-      // gamification queries too, or the ring shows the pre-edit state for up
-      // to the default staleTime while the entry page already reflects the edit.
+    // Write the server's (decrypted) entry back into the caches so we do NOT
+    // re-fetch. Critically, autosave must never invalidate ["journal", id] —
+    // that would refetch the entry the user is actively typing in and can
+    // clobber the buffer / jump the cursor. The server response is exactly what
+    // we just saved, so writing it is safe.
+    onSuccess: (serverJournal, variables) => {
+      queryClient.setQueryData(["journal", variables.id], serverJournal);
+      writeEntityToLists(queryClient, [["journals"]], serverJournal);
+    },
+    onSettled: (data) => {
+      // Only the derived/aggregate surfaces — the entry + list caches already
+      // hold the authoritative record (written in onSuccess). Editing changes
+      // the word count that feeds the daily journal ring + XP (UserLight).
       void queryClient.invalidateQueries({ queryKey: lightKeys.me });
       void queryClient.invalidateQueries({ queryKey: lightKeys.stats });
-      // Autosave fires this on every debounce — scope the calendar refetch to
-      // the edited MONTH (`["calendar", "yyyy-MM"]`) instead of the whole 7-month
-      // range, so typing doesn't re-fetch every cached month each keystroke.
+      // Autosave fires on every debounce — scope the calendar refetch to the
+      // edited MONTH so typing doesn't re-fetch every cached month per keystroke.
       void queryClient.invalidateQueries({
         queryKey: data?.date
           ? ["calendar", data.date.slice(0, 7)]

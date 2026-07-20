@@ -1,23 +1,25 @@
 // Todos data layer — ONLINE-ONLY.
 //
-// The offline feature (Dexie cache + mutation queue) was removed wholesale and
-// will be rebuilt from scratch later. These hooks used to wrap the now-deleted
-// `@repo/offline` helpers; this layer is now plain `@tanstack/react-query`.
-// Every read hits the API; every write goes straight to the server.
-//
-// The one interaction that needs to feel instant — toggling a todo
-// done/undone — keeps its optimism via the standard TanStack cancel → snapshot
-// → setQueryData → rollback-on-error → invalidate pattern (it replaces the old
-// optimistic Dexie write). The remaining create/delete/reorder/subtask
-// mutations had no UI optimism before (the offline layer only wrote optimistic
-// Dexie records on the *offline* branch), so they just invalidate on success.
-//
-// When the offline rebuild lands it will reintroduce caching BEHIND these same
-// hook names + signatures, so consumers should not need to change again.
+// Every write follows the app's optimistic contract (see `optimistic.ts`):
+// optimistic cache write → roll back on error → write the SERVER response into
+// the cache on success → invalidate only AGGREGATE keys (light/stats/calendar),
+// never the todo lists we just wrote authoritatively. This is what makes
+// toggling done, changing a date, creating, deleting, and reordering feel
+// instant in production instead of waiting on (and reverting during) a refetch.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { TodoList, Todo } from "@repo/core/types";
 import { lightKeys } from "./light";
 import { todosApi } from "./clients";
+import {
+  snapshotAndCancel,
+  rollback,
+  patchLists,
+  patchItemInLists,
+  writeEntityToLists,
+  removeFromLists,
+  invalidateAggregates,
+  type CacheSnapshot,
+} from "./optimistic";
 
 export function useTodoLists() {
   return useQuery<TodoList[]>({
@@ -66,20 +68,56 @@ export function useAllTodos() {
   });
 }
 
+// Todo rows are read from BOTH the per-list `["todos", listId]` caches and the
+// flat `["allTodos"]` cache (Today/Inbox/Upcoming/dashboard), so every
+// optimistic write and every server-response write must hit both.
+const TODO_LIST_KEYS = [["todos"], ["allTodos"]] as const;
+// Derived surfaces a todo write affects that we can't recompute locally.
+const TODO_AGGREGATE_KEYS = [
+  lightKeys.me,
+  lightKeys.stats,
+  ["calendar"],
+] as const;
+
 export function useCreateTodoList() {
   const queryClient = useQueryClient();
 
   return useMutation<
     TodoList,
     Error,
-    {
-      name: string;
-      color?: string;
-      icon?: string;
-    }
+    { name: string; color?: string; icon?: string },
+    { previous: CacheSnapshot; tempId: string }
   >({
     mutationFn: (data) => todosApi.createList(data),
-    onSuccess: () => {
+    // Optimistic temp list so the sidebar shows it the instant you submit.
+    onMutate: async (data) => {
+      const previous = await snapshotAndCancel(queryClient, [["todoLists"]]);
+      const tempId = `temp-${Date.now()}`;
+      const optimistic = {
+        id: tempId,
+        name: data.name,
+        color: data.color,
+        icon: data.icon,
+        order: Number.MAX_SAFE_INTEGER,
+        isDefault: false,
+      } as unknown as TodoList;
+      patchLists<TodoList>(queryClient, [["todoLists"]], (list) => [
+        ...list,
+        optimistic,
+      ]);
+      return { previous, tempId };
+    },
+    onError: (_e, _v, ctx) => rollback(queryClient, ctx?.previous),
+    onSuccess: (serverList, _v, ctx) => {
+      if (ctx?.tempId)
+        writeEntityToLists(
+          queryClient,
+          [["todoLists"]],
+          serverList,
+          ctx.tempId,
+        );
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["todoLists"] });
     },
   });
@@ -91,38 +129,47 @@ export function useUpdateTodoList() {
   return useMutation<
     TodoList,
     Error,
-    {
-      listId: string;
-      data: {
-        name?: string;
-        color?: string;
-        icon?: string;
-      };
-    }
+    { listId: string; data: { name?: string; color?: string; icon?: string } },
+    { previous: CacheSnapshot }
   >({
     mutationFn: ({ listId, data }) => todosApi.updateList(listId, data),
-    onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({ queryKey: ["todoLists"] });
-      // The list detail page header reads a separate ["todoList", id] query;
-      // without this it keeps the stale name/color until navigation.
-      void queryClient.invalidateQueries({
-        queryKey: ["todoList", variables.listId],
-      });
+    onMutate: async ({ listId, data }) => {
+      const previous = await snapshotAndCancel(queryClient, [
+        ["todoLists"],
+        ["todoList", listId],
+      ]);
+      patchItemInLists<TodoList>(queryClient, [["todoLists"]], listId, data);
+      // The detail header reads the singleton ["todoList", id] cache.
+      const detail = queryClient.getQueryData<TodoList>(["todoList", listId]);
+      if (detail)
+        queryClient.setQueryData(["todoList", listId], { ...detail, ...data });
+      return { previous };
     },
+    onError: (_e, _v, ctx) => rollback(queryClient, ctx?.previous),
+    onSuccess: (serverList, { listId }) => {
+      writeEntityToLists(queryClient, [["todoLists"]], serverList);
+      queryClient.setQueryData(["todoList", listId], serverList);
+    },
+    // Nothing to invalidate — both caches now hold the authoritative record.
   });
 }
 
 export function useDeleteTodoList() {
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, string>({
+  return useMutation<void, Error, string, { previous: CacheSnapshot }>({
     mutationFn: (listId) => todosApi.deleteList(listId),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["todoLists"] });
+    onMutate: async (listId) => {
+      const previous = await snapshotAndCancel(queryClient, [["todoLists"]]);
+      removeFromLists<TodoList>(queryClient, [["todoLists"]], listId);
+      return { previous };
+    },
+    onError: (_e, _v, ctx) => rollback(queryClient, ctx?.previous),
+    onSettled: () => {
       // Deleting a list cascades a soft-delete to its todos server-side, so
       // every todo cache that could still hold them must refetch — otherwise
-      // they linger as "Unknown List" ghost rows in Today/Inbox/Upcoming and
-      // keep the sidebar counts inflated.
+      // they linger as "Unknown List" ghost rows in Today/Inbox/Upcoming.
+      void queryClient.invalidateQueries({ queryKey: ["todoLists"] });
       void queryClient.invalidateQueries({ queryKey: ["allTodos"] });
       void queryClient.invalidateQueries({ queryKey: ["todos"] });
       void queryClient.invalidateQueries({ queryKey: ["calendar"] });
@@ -164,9 +211,7 @@ export function useReorderTodoLists() {
       if (context?.previous)
         queryClient.setQueryData(["todoLists"], context.previous);
     },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ["todoLists"] });
-    },
+    // No settle-refetch: the optimistic order already matches the server's.
   });
 }
 
@@ -186,20 +231,47 @@ export function useCreateTodo() {
         dueDate?: string;
         doDate?: string;
       };
-    }
+    },
+    { previous: CacheSnapshot; tempId: string; listId: string }
   >({
     mutationFn: ({ listId, data }) => todosApi.createTodo(listId, data),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["todos"] });
-      void queryClient.invalidateQueries({ queryKey: ["allTodos"] });
+    // Optimistic temp row so a newly-added todo appears the instant you submit,
+    // instead of after a create + refetch round-trip.
+    onMutate: async ({ listId, data }) => {
+      const previous = await snapshotAndCancel(queryClient, TODO_LIST_KEYS);
+      const tempId = `temp-${Date.now()}`;
+      const optimistic = {
+        id: tempId,
+        listId,
+        title: data.title,
+        description: data.description,
+        status: data.status ?? "todo",
+        priority: data.priority ?? "none",
+        dueDate: data.dueDate,
+        doDate: data.doDate,
+        order: Number.MAX_SAFE_INTEGER,
+        subtasks: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as unknown as Todo;
+      patchLists<Todo>(queryClient, [["todos", listId]], (l) => [
+        ...l,
+        optimistic,
+      ]);
+      patchLists<Todo>(queryClient, [["allTodos"]], (l) => [...l, optimistic]);
+      return { previous, tempId, listId };
+    },
+    onError: (_e, _v, ctx) => rollback(queryClient, ctx?.previous),
+    onSuccess: (serverTodo, _v, ctx) => {
+      if (ctx?.tempId)
+        writeEntityToLists(queryClient, TODO_LIST_KEYS, serverTodo, ctx.tempId);
+    },
+    onSettled: () => {
+      // Only the calendar (a derived surface) still needs a refresh.
       void queryClient.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
 }
-
-// Snapshot of every cached todo list (per-list `["todos", listId]` variants +
-// the flat `["allTodos"]`) so the optimistic toggle can roll back on error.
-type TodosSnapshot = Array<[readonly unknown[], Todo[] | undefined]>;
 
 export function useUpdateTodo() {
   const queryClient = useQueryClient();
@@ -219,62 +291,35 @@ export function useUpdateTodo() {
         doDate?: string | null;
       };
     },
-    { previous: TodosSnapshot }
+    { previous: CacheSnapshot }
   >({
     mutationFn: (args) =>
       todosApi.updateTodo(args.listId, args.todoId, args.data),
     onMutate: async ({ todoId, data }) => {
-      // Patch both the per-list cache and the flat all-todos cache so the
-      // checkbox flips instantly wherever the row is rendered (list view,
-      // today/inbox/upcoming dashboards). Nulls coming from the form clear a
-      // field; mirror the old getPatch's null→undefined normalization so the
-      // optimistic record matches what the server will store.
+      // Patch every list the row renders in (per-list + flat all-todos) so the
+      // checkbox / date / priority flips instantly wherever it's shown. Nulls
+      // from the form clear a field; mirror the server's null→undefined store.
       const patch: Partial<Todo> = {};
       for (const [key, value] of Object.entries(data)) {
         (patch as Record<string, unknown>)[key] =
           value === null ? undefined : value;
       }
-
-      await queryClient.cancelQueries({ queryKey: ["todos"] });
-      await queryClient.cancelQueries({ queryKey: ["allTodos"] });
-
-      const previous: TodosSnapshot = [
-        ...queryClient.getQueriesData<Todo[]>({
-          queryKey: ["todos"],
-          exact: false,
-        }),
-        ...queryClient.getQueriesData<Todo[]>({
-          queryKey: ["allTodos"],
-          exact: false,
-        }),
-      ];
-
-      for (const [key, list] of previous) {
-        if (!Array.isArray(list)) continue;
-        queryClient.setQueryData<Todo[]>(
-          key,
-          list.map((t) =>
-            t.id === todoId
-              ? { ...t, ...patch, updatedAt: new Date().toISOString() }
-              : t,
-          ),
-        );
-      }
-
+      const previous = await snapshotAndCancel(queryClient, TODO_LIST_KEYS);
+      patchItemInLists<Todo>(queryClient, TODO_LIST_KEYS, todoId, {
+        ...patch,
+        updatedAt: new Date().toISOString(),
+      } as Partial<Todo>);
       return { previous };
     },
-    onError: (_err, _vars, context) => {
-      if (!context?.previous) return;
-      for (const [key, list] of context.previous) {
-        queryClient.setQueryData(key, list);
-      }
+    onError: (_err, _vars, context) => rollback(queryClient, context?.previous),
+    // Write the server's authoritative row back into every list cache — so we
+    // do NOT re-invalidate (and re-fetch, and briefly revert) the lists.
+    onSuccess: (serverTodo) => {
+      writeEntityToLists(queryClient, TODO_LIST_KEYS, serverTodo);
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ["todos"] });
-      void queryClient.invalidateQueries({ queryKey: ["allTodos"] });
-      void queryClient.invalidateQueries({ queryKey: lightKeys.me });
-      void queryClient.invalidateQueries({ queryKey: lightKeys.stats });
-      void queryClient.invalidateQueries({ queryKey: ["calendar"] });
+      // Only the derived surfaces — the lists already hold the server record.
+      invalidateAggregates(queryClient, TODO_AGGREGATE_KEYS);
     },
   });
 }
@@ -282,22 +327,27 @@ export function useUpdateTodo() {
 export function useDeleteTodo() {
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, { listId: string; todoId: string }>({
+  return useMutation<
+    void,
+    Error,
+    { listId: string; todoId: string },
+    { previous: CacheSnapshot }
+  >({
     mutationFn: (args) => todosApi.deleteTodo(args.listId, args.todoId),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["todos"] });
-      void queryClient.invalidateQueries({ queryKey: ["allTodos"] });
+    // Optimistically drop the row so it disappears on tap, not after a refetch.
+    onMutate: async ({ todoId }) => {
+      const previous = await snapshotAndCancel(queryClient, TODO_LIST_KEYS);
+      removeFromLists<Todo>(queryClient, TODO_LIST_KEYS, todoId);
+      return { previous };
+    },
+    onError: (_e, _v, ctx) => rollback(queryClient, ctx?.previous),
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
 }
 
 // --- Online-only operations (complex embedded structures) ---
-//
-// These were always online-only (the offline layer never queued them). With
-// the offline package gone the explicit `isOnline` guards drop away — the whole
-// app is online-only now, so a thrown "requires connection" error would be
-// dead code. They keep their per-list + all-todos (+ calendar) invalidations.
 
 export function useReorderTodos() {
   const queryClient = useQueryClient();
@@ -330,8 +380,6 @@ export function useReorderTodos() {
         );
       }
       if (Array.isArray(previousAll)) {
-        // Patch order fields only — allTodos spans every list, so a global
-        // re-sort would interleave them; the derived views bucket it themselves.
         queryClient.setQueryData<Todo[]>(
           ["allTodos"],
           previousAll.map((t) =>
@@ -347,49 +395,84 @@ export function useReorderTodos() {
       if (context?.previousAll)
         queryClient.setQueryData(["allTodos"], context.previousAll);
     },
-    onSettled: (_data, _err, { listId }) => {
-      void queryClient.invalidateQueries({ queryKey: ["todos", listId] });
-      void queryClient.invalidateQueries({ queryKey: ["allTodos"] });
-    },
+    // No settle-refetch: optimistic order already matches the server.
   });
+}
+
+// Subtasks live embedded on the parent Todo, so every subtask write is an
+// optimistic patch of that parent row across both list caches, then a
+// server-response write on success. No list re-fetch.
+function patchParentSubtasks(
+  queryClient: ReturnType<typeof useQueryClient>,
+  todoId: string,
+  update: (subtasks: NonNullable<Todo["subtasks"]>) => Todo["subtasks"],
+) {
+  patchLists<Todo>(queryClient, TODO_LIST_KEYS, (list) =>
+    list.map((t) =>
+      t.id === todoId ? { ...t, subtasks: update(t.subtasks ?? []) } : t,
+    ),
+  );
 }
 
 export function useReorderSubtasks() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (args: {
-      listId: string;
-      todoId: string;
-      items: { id: string; order: number }[];
-    }) => {
-      // Factory `reorderSubtasks` returns the updated Todo from the server;
-      // preserve that return shape.
-      return todosApi.reorderSubtasks(args.todoId, { items: args.items });
+  return useMutation<
+    Todo,
+    Error,
+    { listId: string; todoId: string; items: { id: string; order: number }[] },
+    { previous: CacheSnapshot }
+  >({
+    mutationFn: (args) =>
+      todosApi.reorderSubtasks(args.todoId, { items: args.items }),
+    onMutate: async ({ todoId, items }) => {
+      const previous = await snapshotAndCancel(queryClient, TODO_LIST_KEYS);
+      const orderById = new Map(items.map((i) => [i.id, i.order]));
+      patchParentSubtasks(queryClient, todoId, (subs) =>
+        [...subs]
+          .map((s) =>
+            orderById.has(s.id) ? { ...s, order: orderById.get(s.id)! } : s,
+          )
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+      );
+      return { previous };
     },
-    onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({
-        queryKey: ["todos", variables.listId],
-      });
-      void queryClient.invalidateQueries({ queryKey: ["allTodos"] });
-    },
+    onError: (_e, _v, ctx) => rollback(queryClient, ctx?.previous),
+    onSuccess: (serverTodo) =>
+      writeEntityToLists(queryClient, TODO_LIST_KEYS, serverTodo),
   });
 }
 
 export function useAddSubtask() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (args: {
+  return useMutation<
+    Todo,
+    Error,
+    {
       listId: string;
       todoId: string;
       data: { title: string; priority?: string };
-    }) => todosApi.addSubtask(args.todoId, args.data),
-    onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({
-        queryKey: ["todos", variables.listId],
-      });
-      void queryClient.invalidateQueries({ queryKey: ["allTodos"] });
+    },
+    { previous: CacheSnapshot }
+  >({
+    mutationFn: (args) => todosApi.addSubtask(args.todoId, args.data),
+    onMutate: async ({ todoId, data }) => {
+      const previous = await snapshotAndCancel(queryClient, TODO_LIST_KEYS);
+      const tempSub = {
+        id: `temp-${Date.now()}`,
+        title: data.title,
+        status: "todo",
+        priority: data.priority ?? "none",
+        order: Number.MAX_SAFE_INTEGER,
+      } as unknown as NonNullable<Todo["subtasks"]>[number];
+      patchParentSubtasks(queryClient, todoId, (subs) => [...subs, tempSub]);
+      return { previous };
+    },
+    onError: (_e, _v, ctx) => rollback(queryClient, ctx?.previous),
+    onSuccess: (serverTodo) =>
+      writeEntityToLists(queryClient, TODO_LIST_KEYS, serverTodo),
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
@@ -398,18 +481,30 @@ export function useAddSubtask() {
 export function useUpdateSubtask() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: (args: {
+  return useMutation<
+    Todo,
+    Error,
+    {
       listId: string;
       todoId: string;
       subtaskId: string;
       data: { title?: string; status?: string; priority?: string };
-    }) => todosApi.updateSubtask(args.todoId, args.subtaskId, args.data),
-    onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({
-        queryKey: ["todos", variables.listId],
-      });
-      void queryClient.invalidateQueries({ queryKey: ["allTodos"] });
+    },
+    { previous: CacheSnapshot }
+  >({
+    mutationFn: (args) =>
+      todosApi.updateSubtask(args.todoId, args.subtaskId, args.data),
+    onMutate: async ({ todoId, subtaskId, data }) => {
+      const previous = await snapshotAndCancel(queryClient, TODO_LIST_KEYS);
+      patchParentSubtasks(queryClient, todoId, (subs) =>
+        subs.map((s) => (s.id === subtaskId ? { ...s, ...data } : s)),
+      );
+      return { previous };
+    },
+    onError: (_e, _v, ctx) => rollback(queryClient, ctx?.previous),
+    onSuccess: (serverTodo) =>
+      writeEntityToLists(queryClient, TODO_LIST_KEYS, serverTodo),
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
@@ -418,22 +513,24 @@ export function useUpdateSubtask() {
 export function useRemoveSubtask() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (args: {
-      listId: string;
-      todoId: string;
-      subtaskId: string;
-    }) => {
-      // Factory `removeSubtask` returns the updated Todo. The hook previously
-      // discarded the response (apiClient.delete with no return), so we still
-      // return void here to preserve call-site shape.
+  return useMutation<
+    void,
+    Error,
+    { listId: string; todoId: string; subtaskId: string },
+    { previous: CacheSnapshot }
+  >({
+    mutationFn: async (args) => {
       await todosApi.removeSubtask(args.todoId, args.subtaskId);
     },
-    onSuccess: (_data, variables) => {
-      void queryClient.invalidateQueries({
-        queryKey: ["todos", variables.listId],
-      });
-      void queryClient.invalidateQueries({ queryKey: ["allTodos"] });
+    onMutate: async ({ todoId, subtaskId }) => {
+      const previous = await snapshotAndCancel(queryClient, TODO_LIST_KEYS);
+      patchParentSubtasks(queryClient, todoId, (subs) =>
+        subs.filter((s) => s.id !== subtaskId),
+      );
+      return { previous };
+    },
+    onError: (_e, _v, ctx) => rollback(queryClient, ctx?.previous),
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["calendar"] });
     },
   });

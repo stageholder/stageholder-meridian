@@ -10,6 +10,36 @@ import type { Habit, HabitEntry } from "@repo/core/types";
 
 import { apiClient } from "../client";
 import { habitKeys } from "../keys";
+import {
+  snapshotAndCancel,
+  rollback,
+  patchLists,
+  writeEntityToLists,
+  ENTRY_SCOPE,
+  type CacheSnapshot,
+} from "../optimistic";
+
+/** Replace whichever cached entry shares the server entry's day with the
+ *  authoritative server record, across the base + windowed entries caches — so
+ *  a check-in never needs to re-fetch (and briefly revert) the entries list. */
+function writeEntryByDate(
+  qc: ReturnType<typeof useQueryClient>,
+  habitId: string,
+  serverEntry: HabitEntry,
+) {
+  const day = serverEntry.date?.slice(0, 10);
+  patchLists<HabitEntry>(qc, [habitKeys.entries(habitId)], (list) => {
+    let replaced = false;
+    const next = list.map((e) => {
+      if (e.date?.slice(0, 10) === day) {
+        replaced = true;
+        return serverEntry;
+      }
+      return e;
+    });
+    return replaced ? next : [...next, serverEntry];
+  });
+}
 
 /**
  * Recover gracefully when a POST to /habits/:id/entries races another
@@ -108,7 +138,36 @@ export function useCreateHabit() {
       });
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: habitKeys.lists() }),
+    // Optimistic temp row so a new habit shows the instant you submit.
+    onMutate: async (input: CreateHabitInput) => {
+      const previous = await snapshotAndCancel(qc, [habitKeys.lists()]);
+      const tempId = `optimistic-${Date.now()}`;
+      const optimistic = {
+        id: tempId,
+        frequency: "daily",
+        targetCount: 1,
+        ...input,
+        order: Number.MAX_SAFE_INTEGER,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as unknown as Habit;
+      patchLists<Habit>(qc, [habitKeys.lists()], (l) => [...l, optimistic]);
+      return { previous, tempId };
+    },
+    onError: (
+      _e: unknown,
+      _v: unknown,
+      ctx: { previous?: CacheSnapshot } | undefined,
+    ) => rollback(qc, ctx?.previous),
+    onSuccess: (
+      server: Habit,
+      _v: CreateHabitInput,
+      ctx: { tempId?: string } | undefined,
+    ) => {
+      if (ctx?.tempId)
+        writeEntityToLists(qc, [habitKeys.lists()], server, ctx.tempId);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: habitKeys.lists() }),
   });
 }
 
@@ -191,7 +250,33 @@ export function useReorderHabits() {
     }) => {
       await apiClient.post("/habits/reorder", data);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: habitKeys.lists() }),
+    // Optimistically apply the new order/group so a dropped habit holds its
+    // position instead of snapping back until the refetch lands.
+    onMutate: async ({
+      items,
+    }: {
+      items: { id: string; order: number; groupId?: string | null }[];
+    }) => {
+      const previous = await snapshotAndCancel(qc, [habitKeys.lists()]);
+      const patchById = new Map(items.map((i) => [i.id, i]));
+      patchLists<Habit>(qc, [habitKeys.lists()], (l) =>
+        l.map((h) => {
+          const p = patchById.get(h.id);
+          if (!p) return h;
+          return {
+            ...h,
+            order: p.order,
+            ...(p.groupId !== undefined ? { groupId: p.groupId } : {}),
+          } as Habit;
+        }),
+      );
+      return { previous };
+    },
+    onError: (
+      _e: unknown,
+      _v: unknown,
+      ctx: { previous?: CacheSnapshot } | undefined,
+    ) => rollback(qc, ctx?.previous),
   });
 }
 
@@ -260,6 +345,9 @@ export type CheckInInput = {
 export function useCheckInHabit() {
   const qc = useQueryClient();
   return useMutation({
+    // Serialize per-habit-day entry writes so rapid taps can't race into a
+    // duplicate POST (409) or a stale-id PATCH — without disabling the control.
+    scope: ENTRY_SCOPE,
     mutationFn: async (input: CheckInInput) => {
       const { data } = await apiClient.post<HabitEntry>(
         `/habits/${input.habitId}/entries`,
@@ -304,12 +392,12 @@ export function useCheckInHabit() {
         qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
       }
     },
-    onSettled: (_data, _error, vars) => {
-      qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
+    // Write the server entry into the entries cache — no entries re-fetch/revert.
+    onSuccess: (server, vars) => writeEntryByDate(qc, vars.habitId, server),
+    onSettled: () => {
+      // NOT entries — those hold the authoritative server entry (onSuccess).
+      // The habits screen's To-do/Done sectioning is derived from the calendar.
       qc.invalidateQueries({ queryKey: habitKeys.lists() });
-      // The habits screen's To-do/Done sectioning is derived from the calendar
-      // month query (useCalendarData), so refresh it too — otherwise a
-      // check-in flips the card but its section stays stale (H3).
       qc.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
@@ -356,6 +444,7 @@ function optimisticInsertNonCompletion(
 export function useSkipHabit() {
   const qc = useQueryClient();
   return useMutation({
+    scope: ENTRY_SCOPE,
     mutationFn: async (input: {
       habitId: string;
       date?: string;
@@ -385,12 +474,11 @@ export function useSkipHabit() {
         qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
       }
     },
-    onSettled: (_data, _error, vars) => {
-      qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
+    // Write the server entry into the entries cache — no entries re-fetch/revert.
+    onSuccess: (server, vars) => writeEntryByDate(qc, vars.habitId, server),
+    onSettled: () => {
+      // NOT entries — those hold the authoritative server entry (onSuccess).
       qc.invalidateQueries({ queryKey: habitKeys.lists() });
-      // The habits screen's To-do/Done sectioning is derived from the calendar
-      // month query (useCalendarData), so refresh it too — otherwise a
-      // check-in flips the card but its section stays stale (H3).
       qc.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
@@ -404,6 +492,7 @@ export function useSkipHabit() {
 export function useFailHabit() {
   const qc = useQueryClient();
   return useMutation({
+    scope: ENTRY_SCOPE,
     mutationFn: async (input: { habitId: string; date?: string }) => {
       const { data } = await apiClient.post<HabitEntry>(
         `/habits/${input.habitId}/entries`,
@@ -428,12 +517,11 @@ export function useFailHabit() {
         qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
       }
     },
-    onSettled: (_data, _error, vars) => {
-      qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
+    // Write the server entry into the entries cache — no entries re-fetch/revert.
+    onSuccess: (server, vars) => writeEntryByDate(qc, vars.habitId, server),
+    onSettled: () => {
+      // NOT entries — those hold the authoritative server entry (onSuccess).
       qc.invalidateQueries({ queryKey: habitKeys.lists() });
-      // The habits screen's To-do/Done sectioning is derived from the calendar
-      // month query (useCalendarData), so refresh it too — otherwise a
-      // check-in flips the card but its section stays stale (H3).
       qc.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
@@ -454,6 +542,7 @@ export type UpdateHabitEntryInput = {
 export function useUpdateHabitEntry() {
   const qc = useQueryClient();
   return useMutation({
+    scope: ENTRY_SCOPE,
     mutationFn: async ({ habitId, entryId, patch }: UpdateHabitEntryInput) => {
       const { data } = await apiClient.patch<HabitEntry>(
         `/habits/${habitId}/entries/${entryId}`,
@@ -483,12 +572,11 @@ export function useUpdateHabitEntry() {
         qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
       }
     },
-    onSettled: (_data, _error, vars) => {
-      qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
+    // Write the server entry into the entries cache — no entries re-fetch/revert.
+    onSuccess: (server, vars) => writeEntryByDate(qc, vars.habitId, server),
+    onSettled: () => {
+      // NOT entries — those hold the authoritative server entry (onSuccess).
       qc.invalidateQueries({ queryKey: habitKeys.lists() });
-      // The habits screen's To-do/Done sectioning is derived from the calendar
-      // month query (useCalendarData), so refresh it too — otherwise a
-      // check-in flips the card but its section stays stale (H3).
       qc.invalidateQueries({ queryKey: ["calendar"] });
     },
   });

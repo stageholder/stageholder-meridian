@@ -123,14 +123,16 @@ export function HabitListItem({
     ? habit.name
     : `${habit.name} (${activeDate})`;
 
-  const isPending =
-    createEntry.isPending ||
-    updateEntry.isPending ||
-    skipEntry.isPending ||
-    failEntry.isPending;
+  // A brief guard ONLY while a just-created entry is still a temp (unsaved)
+  // record — acting on it would PATCH a temp id (404). It clears the instant the
+  // create resolves (temp→real swap). We deliberately do NOT gate on network
+  // `isSaving`: the optimistic cache already reflects each tap, and the entry
+  // mutations are scope-serialized, so rapid taps stay safe AND responsive
+  // instead of the control going dead for the whole round-trip.
+  const isSaving = activeDateEntry?.id?.startsWith("temp-") ?? false;
 
   async function handleCheckIn() {
-    if (isComplete || isPending) return;
+    if (isComplete || isSaving) return;
     // Predict completion from the before-value so the burst fires on the same
     // tick as the mutation (mirrors the card view — no wait on a refetch).
     const newValue = isSkipped || isFailed ? 1 : activeDateValue + 1;
@@ -166,7 +168,7 @@ export function HabitListItem({
   }
 
   async function handleSkip() {
-    if (isComplete || isSkipped || isPending) return;
+    if (isComplete || isSkipped || isSaving) return;
     try {
       if (!activeDateEntry) {
         await skipEntry.mutateAsync({
@@ -187,7 +189,7 @@ export function HabitListItem({
   }
 
   async function handleFail() {
-    if (isComplete || isFailed || isPending) return;
+    if (isComplete || isFailed || isSaving) return;
     try {
       if (!activeDateEntry) {
         await failEntry.mutateAsync({
@@ -208,7 +210,7 @@ export function HabitListItem({
   }
 
   async function handleUndo() {
-    if (activeDateValue <= 0 || isPending) return;
+    if (activeDateValue <= 0 || isSaving) return;
     if (!activeDateEntry) return;
     try {
       await updateEntry.mutateAsync({
@@ -223,7 +225,7 @@ export function HabitListItem({
   }
 
   async function handleClearStatus() {
-    if (!activeDateEntry || isPending) return;
+    if (!activeDateEntry || isSaving) return;
     try {
       await updateEntry.mutateAsync({
         habitId: habit.id,
@@ -527,7 +529,7 @@ export function HabitListItem({
                       } as never
                     }
                     onPress={handleCheckIn}
-                    disabled={isPending}
+                    disabled={isSaving}
                     transition="quick"
                     scale={bouncing ? 1.1 : 1}
                   >
@@ -542,7 +544,7 @@ export function HabitListItem({
                   variant="outline"
                   size="sm"
                   onPress={handleClearStatus}
-                  disabled={isPending}
+                  disabled={isSaving}
                   aria-label="Undo"
                 >
                   <Undo2 size={14} />
@@ -553,7 +555,7 @@ export function HabitListItem({
                   variant="outline"
                   size="sm"
                   onPress={handleUndo}
-                  disabled={isPending}
+                  disabled={isSaving}
                   aria-label="Undo last check-in"
                 >
                   <Undo2 size={14} />
@@ -565,7 +567,7 @@ export function HabitListItem({
                     variant="outline"
                     size="sm"
                     onPress={handleSkip}
-                    disabled={isPending}
+                    disabled={isSaving}
                     aria-label="Skip"
                   >
                     <SkipForward size={14} />
@@ -575,7 +577,7 @@ export function HabitListItem({
                     intent="danger"
                     size="sm"
                     onPress={handleFail}
-                    disabled={isPending}
+                    disabled={isSaving}
                     aria-label="Mark failed"
                   >
                     <X size={14} />

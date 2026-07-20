@@ -13,6 +13,12 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { HabitGroup } from "@repo/core/types";
+import {
+  snapshotAndCancel,
+  rollback,
+  patchLists,
+  type CacheSnapshot,
+} from "../optimistic";
 
 import { apiClient } from "../client";
 import { habitGroupKeys, habitKeys } from "../keys";
@@ -88,6 +94,24 @@ export function useReorderHabitGroups() {
     mutationFn: async (data: { items: { id: string; order: number }[] }) => {
       await apiClient.post("/habit-groups/reorder", data);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: habitGroupKeys.all }),
+    // Optimistically apply the new order so a dropped group holds its position
+    // instead of snapping back until the refetch lands.
+    onMutate: async ({ items }: { items: { id: string; order: number }[] }) => {
+      const previous = await snapshotAndCancel(qc, [habitGroupKeys.all]);
+      const orderById = new Map(items.map((i) => [i.id, i.order]));
+      patchLists<HabitGroup>(qc, [habitGroupKeys.all], (l) =>
+        [...l]
+          .map((g) =>
+            orderById.has(g.id) ? { ...g, order: orderById.get(g.id)! } : g,
+          )
+          .sort((a, b) => a.order - b.order),
+      );
+      return { previous };
+    },
+    onError: (
+      _e: unknown,
+      _v: unknown,
+      ctx: { previous?: CacheSnapshot } | undefined,
+    ) => rollback(qc, ctx?.previous),
   });
 }

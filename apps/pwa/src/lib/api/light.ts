@@ -25,8 +25,10 @@ export function useUpdateTargets() {
     { todoTargetDaily?: number; journalTargetDailyWords?: number }
   >({
     mutationFn: (data) => lightApi.updateTargets(data),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: lightKeys.me });
+    // The server returns the full updated UserLight — write it straight into the
+    // cache (authoritative) instead of invalidating + refetching.
+    onSuccess: (updated) => {
+      queryClient.setQueryData(lightKeys.me, updated);
     },
   });
 }

@@ -275,9 +275,22 @@ export function useUpdateJournal() {
       if (!ctx?.snapshots) return;
       for (const [key, prev] of ctx.snapshots) qc.setQueryData(key, prev);
     },
-    onSettled: (_data, _error, vars) => {
-      qc.invalidateQueries({ queryKey: journalKeys.lists() });
-      if (vars) qc.invalidateQueries({ queryKey: journalKeys.detail(vars.id) });
+    // Write the server entry into the caches instead of invalidating — autosave
+    // must NEVER refetch ["journal", id] (journalKeys.detail): that would reload
+    // the entry the user is actively typing in and can clobber the buffer. The
+    // server response is exactly what we just saved, so writing it is safe.
+    onSuccess: (server, vars) => {
+      qc.setQueryData(journalKeys.detail(vars.id), server);
+      const lists = qc.getQueriesData<Journal[]>({
+        queryKey: journalKeys.lists(),
+      });
+      for (const [key, list] of lists) {
+        if (!Array.isArray(list)) continue;
+        qc.setQueryData<Journal[]>(
+          key,
+          list.map((j) => (j.id === server.id ? server : j)),
+        );
+      }
     },
   });
 }

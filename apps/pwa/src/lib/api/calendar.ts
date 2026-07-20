@@ -9,7 +9,7 @@
 //
 // When the offline rebuild lands it will reintroduce the local fallback BEHIND
 // these same hook names, so consumers should not need to change again.
-import { useQuery, useQueries } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueries } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { addMonths, format } from "date-fns";
 import type { CalendarEvent } from "@stageholder/ui";
@@ -54,6 +54,10 @@ export function useCalendarData(month: string) {
       return res.data?.data ?? res.data;
     },
     enabled: !!month,
+    // Keep the current month's data on screen while an aggregate invalidation
+    // (a todo/habit/journal write) triggers a background refetch — so the
+    // calendar updates in place instead of blanking to a skeleton.
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -89,6 +93,7 @@ export function useCalendarRange(center: Date = new Date(), radius = 3) {
         return res.data?.data ?? res.data;
       },
       enabled: !!month,
+      placeholderData: keepPreviousData,
     })),
   });
 

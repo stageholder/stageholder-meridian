@@ -15,6 +15,13 @@ import type { Todo, TodoList } from "@repo/core/types";
 
 import { apiClient } from "../client";
 import { todoKeys, todoListKeys } from "../keys";
+import {
+  snapshotAndCancel,
+  rollback,
+  patchLists,
+  writeEntityToLists,
+  type CacheSnapshot,
+} from "../optimistic";
 
 export type TodoStatus = Todo["status"];
 export type TodoPriority = Todo["priority"];
@@ -111,7 +118,28 @@ export function useReorderTodoLists() {
     mutationFn: async (data: { items: { id: string; order: number }[] }) => {
       await apiClient.post("/todo-lists/reorder", data);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: todoListKeys.all }),
+    // Optimistically apply the new order so a dropped list holds its position
+    // instead of snapping back until the refetch lands.
+    onMutate: async ({ items }) => {
+      const previous = await snapshotAndCancel(qc, [todoListKeys.lists()]);
+      const orderById = new Map(items.map((i) => [i.id, i.order]));
+      patchLists<TodoList>(qc, [todoListKeys.lists()], (l) =>
+        [...l]
+          .map((x) =>
+            orderById.has(x.id) ? { ...x, order: orderById.get(x.id)! } : x,
+          )
+          .sort(
+            (a, b) =>
+              Number(b.isDefault) - Number(a.isDefault) || a.order - b.order,
+          ),
+      );
+      return { previous };
+    },
+    onError: (
+      _e: unknown,
+      _v: unknown,
+      ctx: { previous?: CacheSnapshot } | undefined,
+    ) => rollback(qc, ctx?.previous),
   });
 }
 
@@ -135,7 +163,41 @@ export function useCreateTodo() {
       const { data } = await apiClient.post<Todo>("/todos", input);
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: todoKeys.lists() }),
+    // Optimistic temp row so a newly-added todo appears the instant you submit.
+    onMutate: async (input: CreateTodoInput) => {
+      const previous = await snapshotAndCancel(qc, [todoKeys.lists()]);
+      const tempId = `optimistic-${Date.now()}`;
+      const optimistic = {
+        id: tempId,
+        listId: input.listId,
+        title: input.title,
+        description: input.description ?? undefined,
+        status: "todo",
+        priority: input.priority ?? "none",
+        dueDate: input.dueDate ?? undefined,
+        doDate: input.doDate ?? undefined,
+        order: Number.MAX_SAFE_INTEGER,
+        subtasks: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as unknown as Todo;
+      patchLists<Todo>(qc, [todoKeys.lists()], (l) => [...l, optimistic]);
+      return { previous, tempId };
+    },
+    onError: (
+      _e: unknown,
+      _v: unknown,
+      ctx: { previous?: CacheSnapshot } | undefined,
+    ) => rollback(qc, ctx?.previous),
+    onSuccess: (
+      server: Todo,
+      _v: CreateTodoInput,
+      ctx: { tempId?: string } | undefined,
+    ) => {
+      if (ctx?.tempId)
+        writeEntityToLists(qc, [todoKeys.lists()], server, ctx.tempId);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["calendar"] }),
   });
 }
 
@@ -186,7 +248,12 @@ export function useUpdateTodo() {
       if (!ctx?.snapshots) return;
       for (const [key, prev] of ctx.snapshots) qc.setQueryData(key, prev);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: todoKeys.lists() }),
+    // Write the server's authoritative row into every list cache so we do NOT
+    // re-fetch (and briefly revert) the lists. Only the calendar (derived) is
+    // invalidated.
+    onSuccess: (server: Todo) =>
+      writeEntityToLists(qc, [todoKeys.lists()], server),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["calendar"] }),
   });
 }
 
@@ -309,7 +376,9 @@ export function useAddSubtask() {
       if (!ctx?.snapshots) return;
       for (const [key, prev] of ctx.snapshots) qc.setQueryData(key, prev);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: todoKeys.lists() }),
+    // Server returns the updated parent Todo — write it back (no list refetch).
+    onSuccess: (server: Todo) =>
+      writeEntityToLists(qc, [todoKeys.lists()], server),
   });
 }
 
@@ -337,7 +406,9 @@ export function useUpdateSubtask() {
       if (!ctx?.snapshots) return;
       for (const [key, prev] of ctx.snapshots) qc.setQueryData(key, prev);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: todoKeys.lists() }),
+    // Server returns the updated parent Todo — write it back (no list refetch).
+    onSuccess: (server: Todo) =>
+      writeEntityToLists(qc, [todoKeys.lists()], server),
   });
 }
 

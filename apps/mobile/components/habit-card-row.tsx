@@ -70,11 +70,12 @@ export function HabitCardRow({
   // (PATCH, not DELETE, mirroring the PWA's habit-card undo path).
   const todayEntry = entries?.find((e) => e.date.split("T")[0] === today);
 
-  const isPending =
-    checkIn.isPending ||
-    skip.isPending ||
-    fail.isPending ||
-    updateEntry.isPending;
+  // Only guard while a just-created entry is still an optimistic (unsaved)
+  // record — acting on it would PATCH a synthetic id (404). It clears the instant
+  // the create resolves. NOT gated on network `isPending`: the optimistic cache
+  // reflects each tap and the entry mutations are scope-serialized, so the card
+  // stays responsive instead of going dead for the whole round-trip.
+  const isPending = todayEntry?.id?.startsWith("optimistic-") ?? false;
 
   return (
     <HabitCard

@@ -195,11 +195,12 @@ export function HabitCard({
     });
   }
 
-  const isPending =
-    createEntry.isPending ||
-    updateEntry.isPending ||
-    skipEntry.isPending ||
-    failEntry.isPending;
+  // Only guard while a just-created entry is still a temp (unsaved) record —
+  // acting on it would PATCH a temp id (404). NOT gated on network `isPending`:
+  // the optimistic cache reflects each tap and the entry mutations are
+  // scope-serialized, so the card stays responsive instead of going dead for
+  // the whole round-trip. (The view prop is still named `isPending`.)
+  const isSaving = activeDateEntry?.id?.startsWith("temp-") ?? false;
 
   return (
     <>
@@ -213,7 +214,7 @@ export function HabitCard({
         // per-habit blue. CSS vars defined in app/globals.css.
         accentColor="var(--ring-habit)"
         accentTrackColor="var(--ring-habit-track)"
-        isPending={isPending}
+        isPending={isSaving}
         onCheckIn={handleCheckIn}
         onSkip={handleSkip}
         onFail={handleFail}
