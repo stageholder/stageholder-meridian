@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  Calendar,
   Check,
   Clock,
+  Flag,
   ListChecks,
   Trash2,
 } from "@tamagui/lucide-icons-2";
@@ -434,7 +434,7 @@ export function TodoItem({
                   color={isOverdue ? "$destructive" : "$mutedForeground"}
                   label={formattedDueDate}
                   icon={
-                    <Calendar
+                    <Flag
                       size={11}
                       color={isOverdue ? "$destructive" : "$mutedForeground"}
                     />
@@ -483,7 +483,7 @@ export function TodoItem({
                 color={isOverdue ? "$destructive" : "$mutedForeground"}
                 label={formattedDueDate}
                 icon={
-                  <Calendar
+                  <Flag
                     size={11}
                     color={isOverdue ? "$destructive" : "$mutedForeground"}
                   />

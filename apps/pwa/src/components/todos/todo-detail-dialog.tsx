@@ -819,7 +819,8 @@ export function TodoDetailDialog({
 
               <Separator mt="$3" />
 
-              {/* Due Date */}
+              {/* Deadline (was "Due Date") — the hard limit, secondary to the
+                  primary Do date below. */}
               <YStack>
                 <Text
                   px="$2"
@@ -829,7 +830,7 @@ export function TodoDetailDialog({
                   color="$mutedForeground"
                   textTransform="uppercase"
                 >
-                  Due Date
+                  Deadline
                 </Text>
                 <View mt="$0.5" px="$1">
                   <QuickDatePicker
@@ -839,7 +840,7 @@ export function TodoDetailDialog({
                         dueDate: d ? format(d, "yyyy-MM-dd") : null,
                       })
                     }
-                    placeholder="Set due date"
+                    placeholder="Set deadline"
                   />
                 </View>
               </YStack>

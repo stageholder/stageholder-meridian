@@ -1,10 +1,15 @@
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Inbox } from "@tamagui/lucide-icons-2";
 import { Form, isWeb } from "tamagui";
 import {
+  parseSmartTodo,
+  type SmartParseResult,
+} from "@repo/core/todos/smart-parse";
+import { resolveSmartLocale } from "@repo/core/todos/date-parse";
+import { SmartTodoInput } from "./smart-todo-input";
+import {
   Button,
-  Input,
   Label,
   QuickDatePicker,
   Select,
@@ -137,6 +142,37 @@ export function TodoForm({
   const [dueDate, setDueDate] = useState(initial.dueDate ?? "");
   const [doDate, setDoDate] = useState(initial.doDate ?? "");
 
+  const listRefs = useMemo(
+    () =>
+      (lists ?? []).map((l) => ({
+        id: l.id,
+        name: l.name,
+        color: l.color,
+        isDefault: l.isDefault,
+      })),
+    [lists],
+  );
+
+  // The title uses the shared `SmartTodoInput` (web pills / native chips), giving
+  // the create dialog the same "type tomorrow !p1 #work" behaviour as the inline
+  // quick-add. Enabled only when the form STARTED empty (a create) — on EDIT the
+  // title is a plain field, so a word that happens to look like a date in an
+  // existing title is never stripped.
+  const smartEnabled = (initial.title ?? "").trim().length === 0;
+  // Detect the device language once so the title field and the submit-time strip
+  // parse with the same locale (English is always active alongside it).
+  const smartLocale = useMemo(() => resolveSmartLocale(), []);
+
+  // Sync the form's own chips/controls from what was typed in the smart title.
+  // Non-clearing: typing a token SETS the matching control but never wipes a
+  // value the user picked manually via the chips.
+  function applyParse(r: SmartParseResult) {
+    if (r.doDate) setDoDate(r.doDate);
+    if (r.dueDate) setDueDate(r.dueDate);
+    if (r.priority) setPriority(r.priority);
+    if (r.listId) setSelectedListId(r.listId);
+  }
+
   // List chip is only offered when the host gives >1 list (single-list users
   // and list-scoped pages pass a filtered single-list array). `selectedList`
   // drives the chip face (Inbox icon for the default list, color dot else).
@@ -145,9 +181,19 @@ export function TodoForm({
   const selectedList = lists?.find((l) => l.id === activeListId);
 
   function handleSubmit() {
-    if (!title.trim()) return;
+    // On a smart (create) form the title still carries the raw tokens
+    // ("buy milk tomorrow !p1") — strip them for the saved name; the fields were
+    // already lifted into the controls via `applyParse`.
+    const cleanTitle = smartEnabled
+      ? parseSmartTodo(title, {
+          lists: listRefs,
+          now: new Date(),
+          locale: smartLocale,
+        }).title
+      : title.trim();
+    if (!cleanTitle) return;
     void onSubmit({
-      title: title.trim(),
+      title: cleanTitle,
       description: description.trim() || undefined,
       priority,
       dueDate: dueDate || undefined,
@@ -161,10 +207,15 @@ export function TodoForm({
       <YStack gap="$4">
         <YStack gap="$1">
           <Label htmlFor={titleId}>Title</Label>
-          <Input
-            id={titleId}
+          <SmartTodoInput
             value={title}
-            onChangeText={setTitle}
+            onValueChange={setTitle}
+            lists={listRefs}
+            locale={smartLocale}
+            parse={smartEnabled}
+            showChips={false}
+            onParse={applyParse}
+            onSubmit={() => handleSubmit()}
             placeholder="What needs to be done?"
             autoFocus
           />
@@ -318,7 +369,11 @@ export function TodoForm({
           </Select>
 
           <DateChip placeholder="Do" value={doDate} onChange={setDoDate} />
-          <DateChip placeholder="Due" value={dueDate} onChange={setDueDate} />
+          <DateChip
+            placeholder="Deadline"
+            value={dueDate}
+            onChange={setDueDate}
+          />
         </XStack>
 
         {/* Full-width 50/50 lg buttons on mobile (the bottom sheet);

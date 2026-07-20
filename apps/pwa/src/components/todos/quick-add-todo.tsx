@@ -1,236 +1,63 @@
-import { useRef, useState, useEffect, useCallback } from "react";
-import { Plus, Maximize2, Flag, Inbox, Check } from "lucide-react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import { Plus, Maximize2 } from "lucide-react";
 import { useCreateTodo, useTodoLists } from "@/lib/api/todos";
 import { CreateTodoDialog } from "./create-todo-dialog";
 import { CreateFab } from "@/components/shared/create-fab";
+import { Button, Text, toast, XStack, YStack } from "@stageholder/ui";
+import { parseSmartTodo } from "@repo/core/todos/smart-parse";
+import type { SmartParseResult } from "@repo/core/todos/smart-parse";
+import { resolveSmartLocale } from "@repo/core/todos/date-parse";
 import {
-  Button,
-  DropdownMenu,
-  QuickDatePicker,
-  Text,
-  toast,
-  View,
-  XStack,
-  YStack,
-} from "@stageholder/ui";
-// Form + styled aren't re-exported by the kit yet; pull from the shared tamagui
-// dep. `Input` here is the RAW tamagui input (not the kit Input): the kit Input
-// locks its height to the size token, which left dead space above the title —
-// a bare input with auto height hugs the title text instead.
-import { Form, Input as BareInput, styled } from "tamagui";
-import { format } from "date-fns";
-import { parseDateLocal } from "@/lib/date";
-import type { TodoList } from "@repo/core/types";
+  SmartTodoInput,
+  type SmartTodoInputHandle,
+} from "@repo/features/todos";
 
 interface QuickAddTodoProps {
   listId: string;
 }
 
-// Priority swatch (decorative hex dot) + the selected-state badge tokens
-// (urgent→destructive, high/medium→warning, low→primary — mirrors todo-item).
-const PRIORITIES = [
-  { value: "none", label: "None", color: null },
-  { value: "low", label: "Low", color: "#3b82f6" },
-  { value: "medium", label: "Medium", color: "#eab308" },
-  { value: "high", label: "High", color: "#f97316" },
-  { value: "urgent", label: "Urgent", color: "#ef4444" },
-] as const;
-
-// Shared metadata-row trigger pill — matches the kit QuickDatePicker's `sm`
-// pill (px $2.5 / py $1.5 / icon 14 / font $2) so the priority, date, and list
-// pills read as one consistent, compact set.
-const MetaPill = styled(XStack, {
-  name: "MetaPill",
-  items: "center",
-  gap: "$1.5",
-  px: "$2.5",
-  py: "$1.5",
-  rounded: 999,
-  borderWidth: 1,
-  borderColor: "$borderColor",
-  bg: "$background",
-  cursor: "pointer",
-  transition: "quick",
-  hoverStyle: { bg: "$secondary" },
-});
-
-function getToday() {
-  return format(new Date(), "yyyy-MM-dd");
-}
-
-// Bridges the ISO-string state to the kit DatePicker's Date | null contract.
-function isoToDate(value: string): Date | null {
-  return value ? parseDateLocal(value) : null;
-}
-function dateToIso(date: Date | null): string {
-  return date ? format(date, "yyyy-MM-dd") : "";
-}
-
-// Priority trigger pill + dropdown menu.
-function PriorityChip({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const current = PRIORITIES.find((p) => p.value === value) ?? PRIORITIES[0];
-  const isSet = value !== "none" && !!current.color;
-  return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenu.Trigger asChild>
-        <MetaPill>
-          {isSet ? (
-            <Flag size={14} color={current.color ?? undefined} />
-          ) : (
-            <Text color="$mutedForeground" lineHeight={0}>
-              <Flag size={14} />
-            </Text>
-          )}
-          <Text
-            fontSize="$2"
-            fontWeight="500"
-            color={isSet ? "$color" : "$mutedForeground"}
-          >
-            {isSet ? current.label : "Priority"}
-          </Text>
-        </MetaPill>
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Content>
-        {PRIORITIES.map((p) => (
-          <DropdownMenu.Item
-            key={p.value}
-            onPress={() => {
-              onChange(p.value);
-              setOpen(false);
-            }}
-          >
-            {p.color ? (
-              <View
-                width={8}
-                height={8}
-                rounded={9999}
-                style={{ backgroundColor: p.color }}
-              />
-            ) : (
-              <View width={8} height={8} />
-            )}
-            <DropdownMenu.Label>{p.label}</DropdownMenu.Label>
-            {value === p.value ? (
-              <Text color="$primary" lineHeight={0}>
-                <Check size={15} />
-              </Text>
-            ) : null}
-          </DropdownMenu.Item>
-        ))}
-      </DropdownMenu.Content>
-    </DropdownMenu>
-  );
-}
-
-// List trigger pill + dropdown menu (only rendered when there's more than one list).
-function ListChip({
-  lists,
-  value,
-  onChange,
-}: {
-  lists: TodoList[];
-  value: string;
-  onChange: (id: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const selected = lists.find((l) => l.id === value);
-  const isCustom = !!selected && !selected.isDefault;
-  return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenu.Trigger asChild>
-        <MetaPill>
-          {isCustom ? (
-            <View
-              width={8}
-              height={8}
-              rounded={9999}
-              style={{ backgroundColor: selected!.color || "#6b7280" }}
-            />
-          ) : (
-            <Text color="$mutedForeground" lineHeight={0}>
-              <Inbox size={14} />
-            </Text>
-          )}
-          <Text
-            fontSize="$2"
-            fontWeight="500"
-            color={isCustom ? "$color" : "$mutedForeground"}
-          >
-            {selected?.name || "List"}
-          </Text>
-        </MetaPill>
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Content>
-        {lists.map((list) => (
-          <DropdownMenu.Item
-            key={list.id}
-            onPress={() => {
-              onChange(list.id);
-              setOpen(false);
-            }}
-          >
-            {list.isDefault ? (
-              <Text color="$primary" lineHeight={0}>
-                <Inbox size={14} />
-              </Text>
-            ) : (
-              <View
-                width={8}
-                height={8}
-                rounded={9999}
-                style={{ backgroundColor: list.color || "#6b7280" }}
-              />
-            )}
-            <DropdownMenu.Label>{list.name}</DropdownMenu.Label>
-            {value === list.id ? (
-              <Text color="$primary" lineHeight={0}>
-                <Check size={15} />
-              </Text>
-            ) : null}
-          </DropdownMenu.Item>
-        ))}
-      </DropdownMenu.Content>
-    </DropdownMenu>
-  );
-}
-
+/**
+ * Todoist-style quick-add. The composer is a single smart field
+ * (`SmartTodoInput`): type the task and any of a natural-language date
+ * ("tomorrow", "next fri", "Jun 12"), `!p1..!p4` for priority, or `#list` — each
+ * is highlighted in place and previewed as a removable chip. All parsing is the
+ * shared `parseSmartTodo` (see `@repo/core/todos/smart-parse`), so the value
+ * that gets saved is exactly what the pills show. "More" opens the full GUI
+ * dialog for anyone who prefers pickers; mobile uses the FAB → dialog.
+ */
 export function QuickAddTodo({ listId }: QuickAddTodoProps) {
-  const [title, setTitle] = useState("");
+  const [text, setText] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [showFullDialog, setShowFullDialog] = useState(false);
-  const [doDate, setDoDate] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [priority, setPriority] = useState("none");
   const [selectedListId, setSelectedListId] = useState(listId);
-  // Ref to the title input — kit Input forwards refs as of alpha.7, so we
-  // re-focus the composer after each submit without remounting.
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<SmartTodoInputHandle>(null);
   const createTodo = useCreateTodo();
   const { data: lists } = useTodoLists();
-  // Synchronous double-submit latch. `createTodo.isPending` only flips on a
-  // later render, so two Enter presses in the same tick both pass that guard
-  // and create two todos — this ref closes the window immediately.
+  // Synchronous double-submit latch — two Enters in one tick both pass
+  // `isPending` (which only flips next render), so this ref closes the window.
   const submittingRef = useRef(false);
 
+  const listRefs = useMemo(
+    () =>
+      (lists ?? []).map((l) => ({
+        id: l.id,
+        name: l.name,
+        color: l.color,
+        isDefault: l.isDefault,
+      })),
+    [lists],
+  );
+  // Auto-detected device language (English stays active too).
+  const smartLocale = useMemo(() => resolveSmartLocale(), []);
+
   // Re-sync the destination when the route's list changes (navigating between
-  // list pages reuses this instance). Within a page `listId` is stable, so a
-  // manual ListChip pick — which doesn't change `listId` — is never clobbered.
+  // list pages reuses this instance).
   useEffect(() => {
     setSelectedListId(listId);
   }, [listId]);
 
   const resetForm = useCallback(() => {
-    setTitle("");
-    setDoDate("");
-    setDueDate("");
-    setPriority("none");
+    setText("");
     setSelectedListId(listId);
   }, [listId]);
 
@@ -239,60 +66,43 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
     resetForm();
   }
 
-  const handleSubmit = useCallback(() => {
-    if (!title.trim() || createTodo.isPending || submittingRef.current) return;
-    submittingRef.current = true;
-    createTodo.mutate(
-      {
-        listId: selectedListId,
-        data: {
-          title: title.trim(),
-          priority: priority !== "none" ? priority : undefined,
-          doDate: doDate || undefined,
-          dueDate: dueDate || undefined,
+  const handleSubmit = useCallback(
+    (result: SmartParseResult) => {
+      if (!result.title.trim() || createTodo.isPending || submittingRef.current)
+        return;
+      submittingRef.current = true;
+      createTodo.mutate(
+        {
+          // A typed `#list` wins; otherwise the current list is the destination.
+          listId: result.listId ?? selectedListId,
+          data: {
+            title: result.title,
+            priority: result.priority,
+            doDate: result.doDate,
+            dueDate: result.dueDate,
+          },
         },
-      },
-      {
-        onSuccess: () => {
-          // Keep the composer open and refocused for rapid entry.
-          resetForm();
-          setDoDate(getToday());
-          inputRef.current?.focus();
+        {
+          onSuccess: () => {
+            // Keep the composer open + refocused for rapid entry.
+            resetForm();
+            inputRef.current?.focus();
+          },
+          onError: () => toast.error("Failed to create todo"),
+          onSettled: () => {
+            submittingRef.current = false;
+          },
         },
-        onError: () => toast.error("Failed to create todo"),
-        onSettled: () => {
-          submittingRef.current = false;
-        },
-      },
-    );
-  }, [
-    title,
-    selectedListId,
-    priority,
-    doDate,
-    dueDate,
-    createTodo,
-    resetForm,
-    toast,
-  ]);
+      );
+    },
+    [createTodo, selectedListId, resetForm],
+  );
 
   const handleActivate = useCallback(() => {
     setIsEditing(true);
     setSelectedListId(listId);
-    setDoDate(getToday());
-    inputRef.current?.focus();
+    requestAnimationFrame(() => inputRef.current?.focus());
   }, [listId]);
-
-  // Escape closes the composer.
-  useEffect(() => {
-    if (!isEditing) return;
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") handleCancel();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditing]);
 
   // Global "quick add" shortcut (dispatched elsewhere as a window event).
   const activateRef = useRef(handleActivate);
@@ -308,7 +118,7 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
     return (
       <>
         {/* Desktop: the inline "Add a todo…" trigger expands the composer.
-            Hidden on mobile — the FAB below opens the full create dialog. */}
+            Hidden on mobile — the FAB opens the full create dialog. */}
         <XStack
           group
           onPress={handleActivate}
@@ -344,9 +154,6 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
           </Text>
         </XStack>
 
-        {/* Mobile: a FAB opens the full create dialog (the inline quick-add
-            composer is desktop-only). Reuses this component's own dialog +
-            list context, so it lands the todo in the current list. */}
         <CreateFab
           label="New todo"
           tintVar="--ring-todo"
@@ -372,72 +179,21 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
         borderColor="$borderColor"
         bg="$card"
         p="$3"
-        gap="$3"
+        gap="$2.5"
       >
-        {/* Title — Form gives Enter-to-submit; the standalone "Add Todo"
-            button below shares the same handleSubmit. */}
-        <Form onSubmit={() => handleSubmit()} width="100%">
-          {/* Bare tamagui Input (NOT the kit Input): the kit Input's Frame
-              locks height to the size token ($5 = 52px), which vertically
-              centered the title and left ~14px of dead space above it. This
-              bare input has auto height so it hugs the title; we re-add only
-              the `standard` underline (bottom border, primary on focus) and
-              keep the same `$5` font. autoFocus + forwarded ref re-focus after
-              each submit. `outlineWidth:0` suppresses Tamagui's focus ring. */}
-          <BareInput
-            ref={inputRef}
-            autoFocus
-            value={title}
-            onChangeText={setTitle}
-            placeholder="Todo title…"
-            cursor="text"
-            width="100%"
-            height={"auto" as never}
-            px={0}
-            py="$1.5"
-            rounded={0}
-            borderWidth={0}
-            borderBottomWidth={1}
-            borderColor="$borderColor"
-            bg="transparent"
-            fontSize="$5"
-            fontWeight="500"
-            color="$color"
-            placeholderTextColor="$mutedForeground"
-            outlineWidth={0}
-            focusStyle={{ borderColor: "$primary", outlineWidth: 0 }}
-            focusVisibleStyle={{ outlineWidth: 0 }}
-          />
-        </Form>
+        <SmartTodoInput
+          ref={inputRef}
+          value={text}
+          onValueChange={setText}
+          lists={listRefs}
+          locale={smartLocale}
+          onSubmit={handleSubmit}
+          onCancel={handleCancel}
+          autoFocus
+          placeholder="Task name — try “tomorrow”, “!p1”, “#work”, “by friday”"
+        />
 
-        {/* Metadata — priority pill + kit quick date pickers (pill-style,
-            Todoist-style quick-pick rows) + list pill. */}
-        <XStack flexWrap="wrap" items="center" gap="$2">
-          <PriorityChip value={priority} onChange={setPriority} />
-          <QuickDatePicker
-            size="sm"
-            value={isoToDate(doDate)}
-            onChange={(d) => setDoDate(dateToIso(d))}
-            placeholder="Do date"
-          />
-          <QuickDatePicker
-            size="sm"
-            value={isoToDate(dueDate)}
-            onChange={(d) => setDueDate(dateToIso(d))}
-            placeholder="Due date"
-          />
-          {lists && lists.length > 1 ? (
-            <ListChip
-              lists={lists}
-              value={selectedListId}
-              onChange={setSelectedListId}
-            />
-          ) : null}
-        </XStack>
-
-        {/* Footer — [Add Todo] [More] [Cancel] grouped at the left. Cancel
-            sits next to More and shares its `outline` size so the two
-            secondary actions read as one matched pair. */}
+        {/* Footer — [Add Todo] [More] [Cancel]. */}
         <XStack items="center" gap="$2">
           <Button
             size="sm"
@@ -456,8 +212,16 @@ export function QuickAddTodo({ listId }: QuickAddTodoProps) {
                 scale: 0.96,
               } as never
             }
-            onPress={handleSubmit}
-            disabled={!title.trim() || createTodo.isPending}
+            onPress={() =>
+              handleSubmit(
+                parseSmartTodo(text, {
+                  lists: listRefs,
+                  now: new Date(),
+                  locale: smartLocale,
+                }),
+              )
+            }
+            disabled={!text.trim() || createTodo.isPending}
             loading={createTodo.isPending}
             loadingText="Adding…"
           >

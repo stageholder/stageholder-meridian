@@ -21,3 +21,12 @@ export {
   type TodoFormValues,
   type TodoListChoice,
 } from "./todo-form";
+
+// Cross-platform smart quick-add field (web overlay pills / native chips) —
+// resolves `.tsx` on web and `.native.tsx` on RN via the bundler.
+export { SmartTodoInput } from "./smart-todo-input";
+export type {
+  SmartTodoInputHandle,
+  SmartTodoInputProps,
+  SmartListOption,
+} from "./smart-todo-input.types";
