@@ -323,7 +323,7 @@ function JournalListItem({ journal, isActive, onPress }: JournalListItemProps) {
               </Text>
             ) : null}
             {shownTags.map((tag) => (
-              <Badge key={tag} intent="neutral" variant="soft" size="$2">
+              <Badge key={tag} intent="neutral" variant="soft" size="sm">
                 <Badge.Label>{tag}</Badge.Label>
               </Badge>
             ))}

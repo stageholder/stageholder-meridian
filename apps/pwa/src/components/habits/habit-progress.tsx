@@ -46,7 +46,7 @@ export function HabitProgress({
           />
         </Progress>
       </YStack>
-      {streak > 0 ? <StreakBadge count={streak} size="$2" /> : null}
+      {streak > 0 ? <StreakBadge count={streak} size="sm" /> : null}
     </XStack>
   );
 }
