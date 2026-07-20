@@ -1,11 +1,11 @@
 import { useState, type ReactNode } from "react";
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, CalendarDays } from "lucide-react";
 import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
 import {
   AnimatePresence,
-  DateRangePicker,
+  DatePicker,
   Text,
   View,
   XStack,
@@ -166,13 +166,18 @@ export function UpcomingContent() {
           );
         })}
 
-        {/* Custom range — kit DateRangePicker (replaces the hand-rolled
-            Calendar popover). Past dates are disabled since this view is for
-            upcoming todos. */}
-        <DateRangePicker
+        {/* Custom range — the kit `DatePicker` (range mode) with a CUSTOM pill
+            trigger so it sits in the same compact-chip row as the presets
+            instead of the default full-width input. Past dates are disabled
+            since this view is for upcoming todos. */}
+        <DatePicker
+          mode="range"
           value={customRange}
-          onChange={handleCustomRange}
-          placeholder="Custom range"
+          onChange={(v) =>
+            handleCustomRange(
+              (v as CalendarRangeValue) ?? { start: null, end: null },
+            )
+          }
           isDateDisabled={(date) => {
             const d = new Date(date);
             d.setHours(0, 0, 0, 0);
@@ -180,6 +185,40 @@ export function UpcomingContent() {
             now.setHours(0, 0, 0, 0);
             return d < now;
           }}
+          trigger={({ formatted, open }) => (
+            <XStack
+              onPress={open}
+              cursor="pointer"
+              items="center"
+              gap="$1.5"
+              rounded={9999}
+              borderWidth={1}
+              px="$3"
+              py="$1"
+              transition="quick"
+              borderColor={hasCustomRange ? "$primary" : "$borderColor"}
+              bg={hasCustomRange ? "$primary" : "transparent"}
+              hoverStyle={hasCustomRange ? undefined : { bg: "$accent" }}
+            >
+              <Text
+                lineHeight={0}
+                color={
+                  hasCustomRange ? "$primaryForeground" : "$mutedForeground"
+                }
+              >
+                <CalendarDays size={13} />
+              </Text>
+              <Text
+                fontSize="$1"
+                fontWeight="500"
+                color={
+                  hasCustomRange ? "$primaryForeground" : "$mutedForeground"
+                }
+              >
+                {hasCustomRange && formatted ? formatted : "Custom range"}
+              </Text>
+            </XStack>
+          )}
         />
       </XStack>
 

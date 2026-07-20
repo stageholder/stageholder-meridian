@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useHandleCallback, useUser } from "@stageholder/sdk/spa";
-import { YStack, Text } from "@stageholder/ui";
+import { LoadingScreen } from "@stageholder/ui";
 
 export const Route = createFileRoute("/_auth/auth/callback")({
   component: CallbackPage,
@@ -46,11 +46,7 @@ function CallbackPage() {
     navigate({ to: "/auth/error", search: { reason } });
   }, [error, navigate]);
 
-  return (
-    <YStack minH={"100vh" as never} items="center" justify="center">
-      <Text fontSize="$3" color="$mutedForeground">
-        Completing sign-in…
-      </Text>
-    </YStack>
-  );
+  // Kit standard loading screen (matches almanac's auth callback): the brand
+  // logo + a spinner + the status message, on the themed dot-grid backdrop.
+  return <LoadingScreen message="Completing sign-in…" />;
 }

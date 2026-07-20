@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { Button, Dialog, Text, toast, XStack, YStack } from "@stageholder/ui";
+import {
+  Button,
+  Dialog,
+  LoadingScreen,
+  Text,
+  toast,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 import {
   PASSPHRASE_RECOVERY_COPY,
   PassphrasePrompt,
@@ -43,12 +51,13 @@ export function EncryptionGate({ children }: { children: React.ReactNode }) {
   }, [checked, checkStatus]);
 
   if (isLoading || !checked) {
+    // Kit-standard loading screen, filling just the journal content area (the
+    // relative wrapper scopes `fill`'s absolute overlay so it doesn't cover the
+    // app nav). Matches the auth-callback loader.
     return (
-      <XStack height="100%" items="center" justify="center">
-        <Text fontSize="$3" color="$mutedForeground">
-          Loading...
-        </Text>
-      </XStack>
+      <YStack height="100%" width="100%" position="relative">
+        <LoadingScreen fill message="Loading your journal…" />
+      </YStack>
     );
   }
 
