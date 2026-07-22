@@ -54,7 +54,22 @@ export function countScheduledHabitsForDate(
   habits: Habit[] | undefined,
   date: string,
 ): number {
-  if (!habits) return 0;
+  return scheduledHabitsForDate(habits, date).length;
+}
+
+/**
+ * The subset of `habits` scheduled on `date` — same predicate as
+ * `countScheduledHabitsForDate`, but returns the habits themselves so day
+ * surfaces (calendar agenda, Today dashboard) can render an actionable row per
+ * scheduled habit (not just those that already have an entry). Non-day
+ * `weekly_target` (quota) habits and not-yet-created / archived habits are
+ * excluded. Preserves the input order.
+ */
+export function scheduledHabitsForDate(
+  habits: Habit[] | undefined,
+  date: string,
+): Habit[] {
+  if (!habits) return [];
   const dow = new Date(date + "T00:00:00").getDay();
   return habits.filter((h) => {
     if (h.archivedAt) return false;
@@ -63,7 +78,7 @@ export function countScheduledHabitsForDate(
     if (createdDate && createdDate > date) return false;
     if (!h.scheduledDays || h.scheduledDays.length === 0) return true;
     return h.scheduledDays.includes(dow);
-  }).length;
+  });
 }
 
 /** Shape of the per-day entry aggregate used by the weekly-quota helpers. */

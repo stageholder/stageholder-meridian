@@ -4,9 +4,10 @@
 // @repo/features) with the toggle-complete + delete mutations wired.
 //
 // Creation is the FAB: it opens the full CreateTodoDialog (priority, due/do
-// dates, list) as a bottom Sheet — same shared TodoForm the PWA uses. (The
-// old quick-add row above the list was removed — one create affordance, the
-// standard mobile pattern.)
+// dates, list) as a bottom Sheet — the same shared TodoForm the PWA uses. (Its
+// title field still supports the "tomorrow !p1 #work" smart-typing.) An inline
+// quick-add composer was tried and removed — one create affordance, the FAB, is
+// the standard mobile pattern.
 //
 // PWA parity (condensed for one screen instead of the PWA's five routes):
 //   - LIST chips row — All · each list (color dot; tap to filter; tap the
@@ -25,15 +26,20 @@ import {
   Pill,
   PullToRefresh,
   Separator,
+  SwipeableRow,
   Text,
   View,
   XStack,
   YStack,
 } from "@stageholder/ui";
 import { TodoItem, TodoListSkeleton } from "@repo/features/todos";
+import {
+  formatUpcomingLabel,
+  groupUpcomingByDate,
+} from "@repo/core/todos/upcoming";
 import type { Todo, TodoList } from "@repo/core/types";
-import { ListOrdered, Pencil, Plus } from "@tamagui/lucide-icons-2";
-import { format } from "date-fns";
+import { ListOrdered, Pencil, Plus, Trash2 } from "@tamagui/lucide-icons-2";
+import { format, subDays } from "date-fns";
 import { useMemo, useState } from "react";
 import { ScrollView as RNScrollView } from "react-native";
 import {
@@ -60,13 +66,18 @@ import {
   useTodos,
 } from "@/lib/api";
 
-/** Which date section an open todo belongs to — keyed off dueDate, falling
- *  back to doDate (the PWA's today/upcoming bucketing). */
+/** Which date section an open todo belongs to. Do-date and due-date are treated
+ *  INDEPENDENTLY (matching the PWA's today/upcoming views): a todo counts as
+ *  due/overdue-today if EITHER date is today-or-past, so a task due next week but
+ *  scheduled to do today lands in Today (not Upcoming). Placement uses the
+ *  earliest relevant date; a purely-future task is Upcoming, no dates → Someday. */
 function bucketOf(t: Todo, today: string): Bucket {
-  const d = (t.dueDate ?? t.doDate ?? "").slice(0, 10);
-  if (!d) return "someday";
-  if (d < today) return "overdue";
-  if (d === today) return "today";
+  const dates = [t.dueDate, t.doDate]
+    .filter((d): d is string => !!d)
+    .map((d) => d.slice(0, 10));
+  if (dates.length === 0) return "someday";
+  const past = dates.filter((d) => d <= today);
+  if (past.length > 0) return past.some((d) => d < today) ? "overdue" : "today";
   return "upcoming";
 }
 
@@ -78,6 +89,14 @@ const BUCKET_LABEL: Record<Bucket, string> = {
   upcoming: "Upcoming",
   someday: "Someday",
 };
+
+/** Range presets for the Upcoming window (days ahead; 0 = All). */
+const UPCOMING_PRESETS: { label: string; days: number }[] = [
+  { label: "7 days", days: 7 },
+  { label: "14 days", days: 14 },
+  { label: "30 days", days: 30 },
+  { label: "All", days: 0 },
+];
 
 export default function TodosScreen() {
   const insets = useSafeAreaInsets();
@@ -105,6 +124,8 @@ export default function TodosScreen() {
   const [listSheet, setListSheet] = useState<false | null | TodoList>(false);
   // Reorder sheet.
   const [reorderOpen, setReorderOpen] = useState(false);
+  // Upcoming range window (days ahead; 0 = All). Mirrors the PWA's preset row.
+  const [upcomingRange, setUpcomingRange] = useState(7);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -116,12 +137,19 @@ export default function TodosScreen() {
   }
 
   const lists = listsQuery.data ?? [];
+  const listMap = useMemo(() => new Map(lists.map((l) => [l.id, l])), [lists]);
   const todos = useMemo(() => {
     const all = todosQuery.data ?? [];
     return activeListId ? all.filter((t) => t.listId === activeListId) : all;
   }, [todosQuery.data, activeListId]);
 
   const today = format(new Date(), "yyyy-MM-dd");
+  // Completed section windows to the last 7 days (PWA parity — otherwise it
+  // grows unbounded). Older completions still live in the list-scoped views.
+  const sevenDaysAgo = format(subDays(new Date(), 7), "yyyy-MM-dd");
+  // Show each todo's list badge only in the mixed "All" view (redundant when
+  // the rail is already filtered to a single list).
+  const showListBadge = activeListId === null && lists.length > 1;
 
   // Open todos bucketed by date (Overdue/Today/Upcoming/Someday), completed
   // after. Within a group, newest updates float up so a just-completed item
@@ -137,16 +165,63 @@ export default function TodosScreen() {
       someday: [],
     };
     for (const t of todos) {
-      if (t.status === "done") d.push(t);
-      else b[bucketOf(t, today)].push(t);
+      if (t.status === "done") {
+        const when = (t.completedAt ?? t.updatedAt).slice(0, 10);
+        if (when >= sevenDaysAgo) d.push(t);
+      } else b[bucketOf(t, today)].push(t);
     }
     for (const k of BUCKET_ORDER) b[k].sort(byUpdated);
     return { buckets: b, done: d.sort(byUpdated) };
-  }, [todos, today]);
+  }, [todos, today, sevenDaysAgo]);
+
+  // Upcoming bucket → grouped by earliest future date, windowed by the range
+  // preset (shared with the PWA's upcoming view). Other buckets stay flat.
+  const upcomingGroups = useMemo(
+    () => groupUpcomingByDate(buckets.upcoming, today, upcomingRange),
+    [buckets.upcoming, today, upcomingRange],
+  );
+  const upcomingShown = useMemo(
+    () => upcomingGroups.reduce((n, g) => n + g.todos.length, 0),
+    [upcomingGroups],
+  );
 
   const activeList = activeListId
     ? (lists.find((l) => l.id === activeListId) ?? null)
     : null;
+
+  // One todo row — reused by the flat buckets, the grouped Upcoming view, and
+  // the Completed section. Swipe LEFT reveals a Delete panel (iOS-Mail style:
+  // a long swipe deletes immediately via autoCommit) — the mobile-reachable
+  // delete affordance the shared TodoItem's hover-delete never gave on touch.
+  function renderTodo(todo: Todo) {
+    return (
+      <SwipeableRow
+        key={todo.id}
+        rightActions={[
+          {
+            label: "Delete",
+            color: "#e7000b",
+            icon: <Trash2 size={18} color="#ffffff" />,
+            onPress: () => deleteTodo.mutate(todo.id),
+            autoCommit: true,
+          },
+        ]}
+      >
+        <TodoItem
+          todo={todo}
+          listName={showListBadge ? listMap.get(todo.listId)?.name : undefined}
+          listColor={
+            showListBadge ? listMap.get(todo.listId)?.color : undefined
+          }
+          onToggle={() =>
+            toggleTodo.mutate({ id: todo.id, status: todo.status })
+          }
+          onDelete={() => deleteTodo.mutate(todo.id)}
+          onOpenDetail={() => handleOpenEdit(todo)}
+        />
+      </SwipeableRow>
+    );
+  }
 
   // Open a row for editing — seed the content and flip the sheet open.
   function handleOpenEdit(todo: Todo) {
@@ -341,8 +416,72 @@ export default function TodosScreen() {
                 views, stacked). A section renders only when non-empty;
                 Overdue's header reads destructive. */}
             {showOpen &&
-              BUCKET_ORDER.map((bucket) =>
-                buckets[bucket].length === 0 ? null : (
+              BUCKET_ORDER.map((bucket) => {
+                if (buckets[bucket].length === 0) return null;
+
+                // Upcoming: a range-preset row + date-grouped sub-sections
+                // (Tomorrow / weekday headers), mirroring the PWA upcoming view.
+                if (bucket === "upcoming") {
+                  return (
+                    <YStack key={bucket} gap="$2" pt="$1">
+                      <XStack items="center" gap="$2" px="$2.5">
+                        <Text
+                          fontSize="$1"
+                          fontWeight="600"
+                          color="$mutedForeground"
+                          letterSpacing={0.6}
+                          textTransform="uppercase"
+                        >
+                          Upcoming · {upcomingShown}
+                        </Text>
+                        <View flex={1}>
+                          <Separator />
+                        </View>
+                      </XStack>
+
+                      {/* Range presets — 7 / 14 / 30 days / All. */}
+                      <XStack gap="$1.5" flexWrap="wrap" px="$1">
+                        {UPCOMING_PRESETS.map((p) => (
+                          <Pill
+                            key={p.days}
+                            size="sm"
+                            selected={upcomingRange === p.days}
+                            onPress={() => setUpcomingRange(p.days)}
+                          >
+                            {p.label}
+                          </Pill>
+                        ))}
+                      </XStack>
+
+                      {upcomingGroups.length === 0 ? (
+                        <Text
+                          fontSize="$2"
+                          color="$mutedForeground"
+                          px="$2.5"
+                          py="$1"
+                        >
+                          Nothing in this window — try a wider range.
+                        </Text>
+                      ) : (
+                        upcomingGroups.map((group) => (
+                          <YStack key={group.date} gap="$1.5" pt="$1">
+                            <Text
+                              fontSize="$2"
+                              fontWeight="600"
+                              color="$color"
+                              px="$2.5"
+                            >
+                              {formatUpcomingLabel(group.date, today)}
+                            </Text>
+                            {group.todos.map((todo) => renderTodo(todo))}
+                          </YStack>
+                        ))
+                      )}
+                    </YStack>
+                  );
+                }
+
+                return (
                   <YStack key={bucket} gap="$2" pt="$1">
                     <XStack items="center" gap="$2" px="$2.5">
                       <Text
@@ -362,23 +501,10 @@ export default function TodosScreen() {
                         <Separator />
                       </View>
                     </XStack>
-                    {buckets[bucket].map((todo) => (
-                      <TodoItem
-                        key={todo.id}
-                        todo={todo}
-                        onToggle={() =>
-                          toggleTodo.mutate({
-                            id: todo.id,
-                            status: todo.status,
-                          })
-                        }
-                        onDelete={() => deleteTodo.mutate(todo.id)}
-                        onOpenDetail={() => handleOpenEdit(todo)}
-                      />
-                    ))}
+                    {buckets[bucket].map((todo) => renderTodo(todo))}
                   </YStack>
-                ),
-              )}
+                );
+              })}
 
             {/* Completed section */}
             {showDone && done.length > 0 ? (
@@ -397,17 +523,7 @@ export default function TodosScreen() {
                     <Separator />
                   </View>
                 </XStack>
-                {done.map((todo) => (
-                  <TodoItem
-                    key={todo.id}
-                    todo={todo}
-                    onToggle={() =>
-                      toggleTodo.mutate({ id: todo.id, status: todo.status })
-                    }
-                    onDelete={() => deleteTodo.mutate(todo.id)}
-                    onOpenDetail={() => handleOpenEdit(todo)}
-                  />
-                ))}
+                {done.map((todo) => renderTodo(todo))}
               </YStack>
             ) : null}
           </YStack>

@@ -92,8 +92,20 @@ export function createMeridianClient(): ApiClient {
         const status = error.response?.status;
 
         if (status === 402) {
+          // Forward the FULL Meridian 402 body (parity with the PWA's
+          // PaywallListener) so the sheet can show the server's real feature
+          // label + current usage + suggested plan instead of hardcoding
+          // "Unlimited" / "Free".
           const body = error.response?.data as
-            | { code?: string; feature?: string; limit?: number }
+            | {
+                code?: string;
+                feature?: string;
+                featureLabel?: string;
+                limit?: number;
+                current?: number;
+                suggestedPlan?: string;
+                suggestedPlanName?: string;
+              }
             | undefined;
           if (
             body?.code === "limit_reached" &&
@@ -102,7 +114,11 @@ export function createMeridianClient(): ApiClient {
           ) {
             DeviceEventEmitter.emit(ClientEvents.paywall, {
               feature: body.feature,
+              featureLabel: body.featureLabel,
               limit: body.limit,
+              current: body.current,
+              suggestedPlan: body.suggestedPlan,
+              suggestedPlanName: body.suggestedPlanName,
             });
           }
         }

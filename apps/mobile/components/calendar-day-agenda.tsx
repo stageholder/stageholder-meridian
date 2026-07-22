@@ -20,8 +20,9 @@ import {
   YStack,
 } from "@stageholder/ui";
 import { activityRingsConfig } from "@repo/features/activity-rings";
+import { scheduledHabitsForDate } from "@repo/core/habits/entry-resolution";
 import type { Habit } from "@repo/core/types";
-import { Check, Minus, Plus, X } from "@tamagui/lucide-icons-2";
+import { Check, Plus } from "@tamagui/lucide-icons-2";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useRouter } from "expo-router";
@@ -32,6 +33,7 @@ import {
   type CalendarDayData,
 } from "@/lib/api/hooks/calendar";
 import { useToggleTodo } from "@/lib/api";
+import { HabitCheckInRow } from "./habit-check-in-row";
 import { IGNITION } from "@/lib/ignition-palette";
 
 const PRIORITY_COLOR: Record<string, string> = {
@@ -80,9 +82,16 @@ export function CalendarDayAgenda({
     );
   }
 
+  // The habits scheduled on the selected day — rendered as INTERACTIVE
+  // check-in rows (parity with the PWA agenda's date-scoped HabitListItem),
+  // not just the day's existing entries as read-only chips. Non-day quota
+  // (weekly_target) habits are excluded, matching the PWA.
+  const dateStr = format(date, "yyyy-MM-dd");
+  const scheduledHabits = scheduledHabitsForDate(habits, dateStr);
+
   const hasAnything =
     dayData.todos.length > 0 ||
-    dayData.habitEntries.length > 0 ||
+    scheduledHabits.length > 0 ||
     dayData.journals.length > 0;
 
   return (
@@ -190,32 +199,20 @@ export function CalendarDayAgenda({
         </YStack>
       ) : null}
 
-      {/* Habit check-ins — status chips. */}
-      {dayData.habitEntries.length > 0 ? (
+      {/* Habits scheduled this day — interactive check-in rows (check in /
+          skip / fail / undo for the SELECTED date, not just today). */}
+      {scheduledHabits.length > 0 ? (
         <YStack gap="$1.5">
           <Text fontSize="$1" fontWeight="600" color="$mutedForeground">
             HABITS
           </Text>
-          {dayData.habitEntries.map((entry) => (
-            <XStack key={entry.id} items="center" gap="$2.5" py="$1">
-              {entry.type === "fail" ? (
-                <X size={14} color="$destructive" />
-              ) : entry.type === "skip" ? (
-                <Minus size={14} color="$mutedForeground" />
-              ) : (
-                <Check size={14} color={IGNITION.habit.base as never} />
-              )}
-              <Text flex={1} fontSize="$3" color="$color" numberOfLines={1}>
-                {entry.habitName}
-              </Text>
-              <Text fontSize="$1" color="$mutedForeground">
-                {entry.type === "skip"
-                  ? "Skipped"
-                  : entry.type === "fail"
-                    ? "Failed"
-                    : `+${entry.value}`}
-              </Text>
-            </XStack>
+          {scheduledHabits.map((habit) => (
+            <HabitCheckInRow
+              key={habit.id}
+              habit={habit}
+              activeDate={dateStr}
+              onOpenDetail={() => router.push(`/habits/${habit.id}`)}
+            />
           ))}
         </YStack>
       ) : null}

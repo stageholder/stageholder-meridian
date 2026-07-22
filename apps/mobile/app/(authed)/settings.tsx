@@ -46,6 +46,7 @@ import {
   ExternalLink,
   KeyRound,
   Pencil,
+  Sparkles,
   Target,
   User,
 } from "@tamagui/lucide-icons-2";
@@ -488,6 +489,18 @@ export default function SettingsScreen() {
                   </Tabs.Content>
                   <Tabs.Content value="account" {...FLAT_CONTENT}>
                     <YStack gap="$4">
+                      {/* Featured upgrade row — the plan-comparison / IAP
+                          screen (parity with the PWA settings' featured
+                          "Upgrade plan" row). */}
+                      <Button
+                        intent="primary"
+                        icon={<Sparkles size={16} />}
+                        iconAfter={<ArrowRight size={14} opacity={0.7} />}
+                        onPress={() => router.push("/upgrade")}
+                      >
+                        Upgrade your plan
+                      </Button>
+
                       <Paragraph fontSize="$3" color="$mutedForeground">
                         Your billing and subscription live in-app. Password,
                         MFA, connected accounts, sessions, and account deletion

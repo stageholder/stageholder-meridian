@@ -31,10 +31,15 @@ import { useRouter } from "expo-router";
 import { ClientEvents } from "@/lib/api/client";
 import { canManageBilling } from "@/lib/api/hub";
 
-/** The 402 `limit_reached` payload the API client forwards. */
+/** The 402 `limit_reached` payload the API client forwards (full body, parity
+ *  with the PWA's Api402Body). */
 interface PaywallReason {
   feature: string;
+  featureLabel?: string;
   limit: number;
+  current?: number;
+  suggestedPlan?: string;
+  suggestedPlanName?: string;
 }
 
 type Pillar = "todos" | "habits" | "journal" | null;
@@ -83,8 +88,6 @@ function featureLabel(feature: string): string {
   }
 }
 
-const PLAN_NAME = "Unlimited";
-
 /**
  * Listens for the API client's 402 paywall event and renders the native
  * paywall sheet. Self-contained: holds its own open/reason state so it needs
@@ -112,7 +115,11 @@ export function PaywallHost() {
   if (!reason) return null;
 
   const pillar = pillarForFeature(reason.feature);
-  const label = featureLabel(reason.feature);
+  // Prefer the server-provided label + suggested plan (parity with the PWA
+  // modal); fall back to the local pretty label / "Unlimited" only if absent.
+  const label = reason.featureLabel ?? featureLabel(reason.feature);
+  const planName =
+    reason.suggestedPlanName ?? reason.suggestedPlan ?? "Unlimited";
 
   const goToUpgrade = () => {
     setOpen(false);
@@ -171,7 +178,7 @@ export function PaywallHost() {
           </Text>
           <Text fontSize="$3" color="$mutedForeground">
             Your Free plan includes {reason.limit} {label}. Upgrade to{" "}
-            {PLAN_NAME} for unlimited {label} and no usage caps.
+            {planName} for unlimited {label} and no usage caps.
           </Text>
         </YStack>
 
@@ -189,7 +196,7 @@ export function PaywallHost() {
             value={`${reason.limit} of ${reason.limit}`}
             mono
           />
-          <LedgerCell label="Recommended" value={PLAN_NAME} />
+          <LedgerCell label="Recommended" value={planName} />
         </XStack>
 
         {/* CTAs — one primary, one quiet exit (matches the PWA modal). */}

@@ -36,6 +36,7 @@ import { Redirect, Tabs, useRouter, useSegments } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
+import { useMeridianMe } from "@/lib/api";
 import { isOnboarded } from "@/lib/onboarding";
 import { configurePurchases } from "@/lib/purchases";
 
@@ -70,6 +71,19 @@ export default function AuthedLayout() {
     };
   }, [sub, onOnboarding]);
 
+  // SERVER source of truth for onboarding — so a user who onboarded on the PWA
+  // (or another device) isn't shown the wizard here. Merged with the local
+  // flag: EITHER being true means done. The local flag is the instant/offline
+  // path; the server flag catches cross-device completion.
+  const meQuery = useMeridianMe(!!sub);
+  const localDone = onboarded === true;
+  const serverDone = meQuery.data?.hasCompletedOnboarding === true;
+  const anyDone = localDone || serverDone;
+  const localResolved = onboarded !== null;
+  // Success OR error both count as "resolved" — on a /me error we fall back to
+  // the local flag rather than hang (offline = same behavior as before).
+  const serverResolved = !meQuery.isLoading;
+
   // Configure RevenueCat as soon as we have an identity — at the authed root,
   // not just on the paywall mount — so restore/purchase work from anywhere and
   // store events are keyed to this user the moment they sign in.
@@ -89,8 +103,16 @@ export default function AuthedLayout() {
   // full-screen overlay (bottom of the render) masks the dashboard while the
   // flag resolves / the replace lands, so nothing half-loaded ever flashes.
   // (Hook lives ABOVE the early returns — hooks must run unconditionally.)
-  const needsOnboarding = onboarded === false && !onOnboarding;
-  const resolvingFlag = onboarded === null && !onOnboarding;
+  // Route to onboarding only once we're SURE it's needed: neither flag says
+  // done, the local flag has resolved, AND the server flag has resolved (so a
+  // PWA-onboarded user is masked by the splash during the /me fetch instead of
+  // flashing the wizard). If the local flag already says done, short-circuit.
+  const needsOnboarding =
+    !onOnboarding && !anyDone && localResolved && serverResolved;
+  // Hold the masking splash while EITHER flag is still resolving (and neither
+  // has already confirmed done).
+  const resolvingFlag =
+    !onOnboarding && !anyDone && (!localResolved || !serverResolved);
   useEffect(() => {
     if (needsOnboarding) router.replace("/(authed)/onboarding");
   }, [needsOnboarding, router]);

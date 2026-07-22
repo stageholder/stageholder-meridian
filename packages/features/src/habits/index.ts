@@ -5,6 +5,10 @@
 
 export { HabitCard, type HabitCardProps } from "./habit-card";
 export {
+  HabitCheckInRow,
+  type HabitCheckInRowProps,
+} from "./habit-check-in-row";
+export {
   HabitForm,
   HABIT_FORM_DEFAULTS,
   type HabitFormProps,

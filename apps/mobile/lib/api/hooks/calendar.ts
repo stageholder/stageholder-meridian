@@ -15,7 +15,10 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { addMonths, format } from "date-fns";
 import type { CalendarEvent } from "@stageholder/ui";
 import type { Habit } from "@repo/core/types";
-import type { ActivityRingsData } from "@repo/features/activity-rings";
+import {
+  computeRingPercentages,
+  type ActivityRingsData,
+} from "@repo/features/activity-rings";
 
 import { apiClient } from "../client";
 import { useHabits } from "./habits";
@@ -237,8 +240,10 @@ export function countScheduledHabits(habits: Habit[], date: Date): number {
   ).length;
 }
 
-/** Per-day completion percentages for the three rings — verbatim port of
- *  the PWA's computeActivityRings (use-activity-rings.ts). */
+/** Per-day completion percentages for the three rings. Extracts the raw counts
+ *  from the mobile `CalendarDayData`, then delegates the formula to the shared
+ *  `computeRingPercentages` (@repo/features/activity-rings) — one source of
+ *  truth with the PWA, which can no longer drift. */
 export function computeActivityRings(
   dayData: CalendarDayData | undefined,
   scheduledHabitCount: number,
@@ -248,26 +253,21 @@ export function computeActivityRings(
   if (!dayData) return { todo: 0, habit: 0, journal: 0 };
 
   const todoDone = dayData.todos.filter((t) => t.status === "done").length;
-  const todoPct = Math.min(100, (todoDone / targets.todoDaily) * 100);
 
   const dayHabitEntries = dayData.habitEntries.filter(
     (e) => !quotaIds.has(e.habitId),
   );
   const habitDone = dayHabitEntries.filter((e) => e.value > 0).length;
   const habitSkipped = dayHabitEntries.filter((e) => e.type === "skip").length;
-  const habitPct =
-    scheduledHabitCount === 0
-      ? 0
-      : Math.min(100, ((habitDone + habitSkipped) / scheduledHabitCount) * 100);
 
   const journalWords = dayData.journals.reduce(
     (sum, j) => sum + (j.wordCount ?? 0),
     0,
   );
-  const journalPct = Math.min(
-    100,
-    (journalWords / targets.journalDailyWords) * 100,
-  );
 
-  return { todo: todoPct, habit: habitPct, journal: journalPct };
+  return computeRingPercentages({
+    todo: { done: todoDone, target: targets.todoDaily },
+    habit: { done: habitDone + habitSkipped, scheduled: scheduledHabitCount },
+    journal: { words: journalWords, target: targets.journalDailyWords },
+  });
 }

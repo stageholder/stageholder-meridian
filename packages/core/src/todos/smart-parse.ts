@@ -229,6 +229,25 @@ export function parseSmartTodo(
     .replace(/\s{2,}/g, " ")
     .trim();
 
+  // If stripping the tokens leaves NOTHING behind, the user typed a bare token
+  // line — "Tomorrow", "!p1", "#work" — with no residual name. That's almost
+  // certainly meant as the LITERAL title (a todo called "Tomorrow"), not a
+  // field-only entry that would strip down to an untitled todo (empty title →
+  // the create form no-ops). So keep the whole line as the title and drop the
+  // smart interpretation entirely, so every surface agrees: no highlight, no
+  // chips, no lifted date/priority — just the plain title. The moment there's
+  // any other word ("Tomorrow meeting"), normal parsing resumes.
+  if (!title && tokens.length > 0) {
+    return {
+      title: text.trim(),
+      doDate: undefined,
+      dueDate: undefined,
+      priority: undefined,
+      listId: undefined,
+      tokens: [],
+    };
+  }
+
   return { title, doDate, dueDate, priority, listId, tokens };
 }
 

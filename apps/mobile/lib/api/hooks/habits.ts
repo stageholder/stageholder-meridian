@@ -356,36 +356,42 @@ export function useCheckInHabit() {
       return data;
     },
     onMutate: async (input) => {
-      const key = habitKeys.entries(input.habitId);
-      await qc.cancelQueries({ queryKey: key });
-      const prev = qc.getQueryData<HabitEntry[]>(key);
-      const today = input.date ?? new Date().toISOString().slice(0, 10);
-      const existing = prev?.find((e) => e.date === today);
-      // Optimistic: insert/update today's entry inline.
-      const next: HabitEntry[] = existing
-        ? prev!.map((e) =>
-            e.date === today
-              ? { ...e, value: (e.value ?? 0) + (input.value ?? 1) }
+      // Prefix-match EVERY entries window (base + windowed, e.g. the habits
+      // screen's 90-day fetch and the calendar/agenda day windows) so the
+      // optimistic flip is instant on whichever surface is mounted — not just
+      // the un-windowed query. Mirrors writeEntryByDate's prefix write.
+      const previous = await snapshotAndCancel(qc, [
+        habitKeys.entries(input.habitId),
+      ]);
+      const day = input.date ?? new Date().toISOString().slice(0, 10);
+      const inc = input.value ?? 1;
+      patchLists<HabitEntry>(qc, [habitKeys.entries(input.habitId)], (list) => {
+        const existing = list.find((e) => e.date.slice(0, 10) === day);
+        if (existing) {
+          return list.map((e) =>
+            e.date.slice(0, 10) === day
+              ? { ...e, value: (e.value ?? 0) + inc }
               : e,
-          )
-        : [
-            ...(prev ?? []),
-            {
-              id: `optimistic-${today}`,
-              habitId: input.habitId,
-              userSub: "",
-              date: today,
-              value: input.value ?? 1,
-              type: "completion" as const,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
-          ];
-      qc.setQueryData<HabitEntry[]>(key, next);
-      return { prev, key };
+          );
+        }
+        return [
+          ...list,
+          {
+            id: `optimistic-${day}`,
+            habitId: input.habitId,
+            userSub: "",
+            date: day,
+            value: inc,
+            type: "completion" as const,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          } as HabitEntry,
+        ];
+      });
+      return { previous };
     },
     onError: (err, vars, ctx) => {
-      if (ctx?.prev !== undefined) qc.setQueryData(ctx.key, ctx.prev);
+      rollback(qc, ctx?.previous);
       // 409 = another client raced us and created an entry first. Force a
       // refetch so the next render's smart handlers PATCH the live entry.
       if (isAxios409(err)) {
@@ -414,30 +420,39 @@ function optimisticInsertNonCompletion(
   type: "skip" | "fail",
   skipReason?: string,
 ) {
-  const key = habitKeys.entries(habitId);
   const d = date ?? new Date().toISOString().slice(0, 10);
-  const prev = qc.getQueryData<HabitEntry[]>(key);
-  const existing = prev?.find((e) => e.date === d);
-  const next: HabitEntry[] = existing
-    ? prev!.map((e) =>
-        e.date === d ? ({ ...e, type, value: 0, skipReason } as HabitEntry) : e,
-      )
-    : [
-        ...(prev ?? []),
-        {
-          id: `optimistic-${type}-${d}`,
-          habitId,
-          userSub: "",
-          date: d,
-          value: 0,
-          type,
-          skipReason,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        } as HabitEntry,
-      ];
-  qc.setQueryData<HabitEntry[]>(key, next);
-  return { prev, key };
+  // Snapshot every entries window for rollback (the caller has already
+  // cancelled in-flight fetches on the same prefix).
+  const previous = qc.getQueriesData({
+    queryKey: habitKeys.entries(habitId),
+  }) as CacheSnapshot;
+  // Patch ALL windows (base + windowed) so the flip is instant on whichever
+  // surface is mounted — parity with the check-in path + writeEntryByDate.
+  patchLists<HabitEntry>(qc, [habitKeys.entries(habitId)], (list) => {
+    const existing = list.find((e) => e.date.slice(0, 10) === d);
+    if (existing) {
+      return list.map((e) =>
+        e.date.slice(0, 10) === d
+          ? ({ ...e, type, value: 0, skipReason } as HabitEntry)
+          : e,
+      );
+    }
+    return [
+      ...list,
+      {
+        id: `optimistic-${type}-${d}`,
+        habitId,
+        userSub: "",
+        date: d,
+        value: 0,
+        type,
+        skipReason,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as HabitEntry,
+    ];
+  });
+  return { previous };
 }
 
 /** Mark a date as skipped (off-day, doesn't break streak). */
@@ -467,7 +482,7 @@ export function useSkipHabit() {
       );
     },
     onError: (err, vars, ctx) => {
-      if (ctx?.prev !== undefined) qc.setQueryData(ctx.key, ctx.prev);
+      rollback(qc, ctx?.previous);
       // 409 = race with another client. Refetch so the next attempt sees
       // the live entry and PATCHes it instead of POSTing again.
       if (isAxios409(err)) {
@@ -510,7 +525,7 @@ export function useFailHabit() {
       );
     },
     onError: (err, vars, ctx) => {
-      if (ctx?.prev !== undefined) qc.setQueryData(ctx.key, ctx.prev);
+      rollback(qc, ctx?.previous);
       // 409 = race with another client. Refetch so the next attempt sees
       // the live entry and PATCHes it instead of POSTing again.
       if (isAxios409(err)) {
@@ -551,21 +566,20 @@ export function useUpdateHabitEntry() {
       return data;
     },
     onMutate: async ({ habitId, entryId, patch }) => {
-      const key = habitKeys.entries(habitId);
-      await qc.cancelQueries({ queryKey: key });
-      const prev = qc.getQueryData<HabitEntry[]>(key);
-      if (prev) {
-        qc.setQueryData<HabitEntry[]>(
-          key,
-          prev.map((e) =>
-            e.id === entryId ? ({ ...e, ...patch } as HabitEntry) : e,
-          ),
-        );
-      }
-      return { prev, key };
+      // Prefix-match every entries window so an Undo / clear / status change
+      // flips instantly on whichever surface is mounted.
+      const previous = await snapshotAndCancel(qc, [
+        habitKeys.entries(habitId),
+      ]);
+      patchLists<HabitEntry>(qc, [habitKeys.entries(habitId)], (list) =>
+        list.map((e) =>
+          e.id === entryId ? ({ ...e, ...patch } as HabitEntry) : e,
+        ),
+      );
+      return { previous };
     },
     onError: (err, vars, ctx) => {
-      if (ctx?.prev !== undefined) qc.setQueryData(ctx.key, ctx.prev);
+      rollback(qc, ctx?.previous);
       // 409 = race with another client. Refetch so the next attempt sees
       // the live entry and PATCHes it instead of POSTing again.
       if (isAxios409(err)) {

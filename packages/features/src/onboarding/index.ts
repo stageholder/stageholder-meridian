@@ -1,10 +1,12 @@
-// Barrel for the `onboarding` domain — pure presentational wizard steps.
-// Each step takes its data + advancement callback via props; the host app
-// (PWA today, mobile later) owns the wizard state machine, profile saving,
-// and routing.
+// Barrel for the `onboarding` domain — the Meridian onboarding wizard, built
+// on the kit's config-driven `Onboarding` component. The host owns only the
+// data + side effects (profile fetch, completion, routing); the wizard owns
+// the steps + structure. (The old per-step components + hand-rolled shells
+// were replaced by this — see onboarding-wizard.tsx.)
 
-export { WelcomeStep } from "./welcome-step";
-export { GoalsStep } from "./goals-step";
-export { CompleteStep } from "./complete-step";
-export { TourStep } from "./tour-step";
-export { ProfileStep, type ProfileStepProps } from "./profile-step";
+export {
+  OnboardingWizard,
+  ONBOARDING_STEP_IDS,
+  type OnboardingWizardProps,
+  type OnboardingProfileValue,
+} from "./onboarding-wizard";

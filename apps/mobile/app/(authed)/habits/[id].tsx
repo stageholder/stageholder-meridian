@@ -28,6 +28,7 @@ import {
   Button,
   EventCalendar,
   IconButton,
+  MediaGlyph,
   ScrollView,
   Skeleton,
   Stat,
@@ -39,6 +40,7 @@ import {
   toast,
 } from "@stageholder/ui";
 import type { Habit, HabitEntry } from "@repo/core/types";
+import { parseMediaIcon } from "@repo/features/habits";
 import {
   resolveTargetCount,
   isEntryComplete,
@@ -639,9 +641,15 @@ export default function HabitDetailScreen() {
                   rounded="$4"
                   bg={IGNITION.habit.track}
                 >
-                  <Text fontSize="$6">
-                    {habit.icon || habit.name.charAt(0).toUpperCase()}
-                  </Text>
+                  <MediaGlyph
+                    value={parseMediaIcon(habit.icon)}
+                    size={24}
+                    fallback={
+                      <Text fontSize="$6">
+                        {habit.name.charAt(0).toUpperCase()}
+                      </Text>
+                    }
+                  />
                 </View>
                 <YStack flex={1} minW={0}>
                   <Text

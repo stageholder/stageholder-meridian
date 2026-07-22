@@ -11,8 +11,9 @@
 //   1. Provide the QueryClient + cache persistence
 //   2. Bridge `useAccessToken()` from @stageholder/sdk/react-native into
 //      the module-level Axios interceptor (see ./auth.ts for why)
-//   3. Forward 401 / 402 events from the API client to the consumer's
-//      router (onUnauthorized) and paywall surface (onPaywall)
+//   3. Forward 401 events from the API client to the consumer's router
+//      (onUnauthorized). (402/paywall is handled directly by <PaywallHost>,
+//      which listens to the same DeviceEventEmitter event — see app/_layout.)
 //
 // The provider sits INSIDE <StageholderProvider> in the layout tree so
 // `useAccessToken()` is in scope — see app/_layout.tsx.
@@ -32,18 +33,16 @@ export type QueryProviderProps = {
   children: ReactNode;
   /** Fired when any API call returns 401. Typically navigates to /sign-in. */
   onUnauthorized?: () => void;
-  /** Fired when an API call returns 402 with a `limit_reached` body. */
-  onPaywall?: (detail: { feature: string; limit: number }) => void;
 };
 
 export function QueryProvider({
   children,
   onUnauthorized,
-  onPaywall,
 }: QueryProviderProps) {
-  // Bridge DeviceEventEmitter events into React-land callbacks. Re-arm on
-  // every handler change — useEffect cleanup detaches the old listener,
-  // fresh subscribe attaches the new one.
+  // Bridge the 401 DeviceEventEmitter event into a React-land callback. Re-arm
+  // on every handler change — useEffect cleanup detaches the old listener,
+  // fresh subscribe attaches the new one. (402/paywall has its own listener in
+  // <PaywallHost>, so it isn't forwarded here.)
   useEffect(() => {
     if (!onUnauthorized) return;
     const sub = DeviceEventEmitter.addListener(
@@ -54,17 +53,6 @@ export function QueryProvider({
     );
     return () => sub.remove();
   }, [onUnauthorized]);
-
-  useEffect(() => {
-    if (!onPaywall) return;
-    const sub = DeviceEventEmitter.addListener(
-      ClientEvents.paywall,
-      (detail: { feature: string; limit: number }) => {
-        onPaywall(detail);
-      },
-    );
-    return () => sub.remove();
-  }, [onPaywall]);
 
   return (
     <PersistQueryClientProvider

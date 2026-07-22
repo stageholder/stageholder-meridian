@@ -1,86 +1,122 @@
-import { useState, useCallback, useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button, Text, View, XStack, YStack, toast } from "@stageholder/ui";
-import { useUser as useSdkUser } from "@stageholder/sdk/spa";
+import { Button, Text, YStack, toast } from "@stageholder/ui";
+import {
+  useUser as useSdkUser,
+  useProfile,
+  useUpdateProfile,
+} from "@stageholder/sdk/spa";
 import { useUser } from "@/hooks/use-user";
 import { apiClient } from "@/lib/api-client";
 import type { MeridianUserMeta } from "@/lib/me-query";
 import {
-  WelcomeStep,
-  GoalsStep,
-  CompleteStep,
-  TourStep,
+  OnboardingWizard,
+  ONBOARDING_STEP_IDS,
+  type OnboardingProfileValue,
 } from "@repo/features/onboarding";
-import { ProfileStep } from "@/components/onboarding/profile-step";
+import type { OnboardingValues } from "@stageholder/ui";
 
 export const Route = createFileRoute("/_auth/onboarding")({
   component: OnboardingPage,
 });
 
-const TOTAL_STEPS = 5;
-
 async function postCompletion(): Promise<void> {
   // Hits the Meridian API directly via the SPA-backed apiClient (Bearer +
-  // transparent refresh handled by the SDK). The old BFF `/api/me/onboarding/complete`
-  // route is gone — there's no server hop between the SPA and the API.
+  // transparent refresh handled by the SDK). Flips the server
+  // `hasCompletedOnboarding` flag.
   await apiClient.post("/me/onboarding/complete", {});
 }
 
 function OnboardingPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  // Auth + identity come from the SDK SESSION (token-backed). hasCompletedOnboarding
-  // comes from `/me` (use-user) — used ONLY for the "already onboarded" shortcut,
-  // never for the auth gate.
+  // Auth + identity come from the SDK SESSION. hasCompletedOnboarding comes from
+  // `/me` (use-user) — used ONLY for the "already onboarded" shortcut.
   const sdk = useSdkUser();
   const { user } = useUser();
-  const [step, setStep] = useState(0);
-  const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
+  const { data: profile, isLoading: profileLoading } = useProfile();
+  const updateProfile = useUpdateProfile();
 
-  useEffect(() => {
-    // Only redirect FORWARD (already onboarded → app). NEVER redirect back to
-    // /auth/login from here — that's what caused the onboarding↔login loop.
-    // If the session/identity isn't available, we render an error below.
-    if (user?.hasCompletedOnboarding) {
-      navigate({ to: "/" });
-    }
-  }, [user?.hasCompletedOnboarding, navigate]);
-
-  // Mark onboarding complete, then enter the app. Throws on failure so callers
-  // can surface it. The KEY fix for the "skip does nothing / bounces back" bug:
-  // optimistically write `hasCompletedOnboarding: true` into the meta cache
-  // BEFORE navigating. The `_app` gate reads onboarding status from that cache
-  // (via the router context), so the optimistic write means the gate lets us in
-  // on the very next evaluation — no race with the background refetch, no bounce
-  // back to onboarding. `invalidateQueries` then reconciles with the server.
-  const completeAndEnter = useCallback(async () => {
-    await postCompletion();
+  // Enter the app IMMEDIATELY — the finish action must NEVER block on (or be
+  // reverted by) the network, or a slow / failed completion call traps the user
+  // on the finish screen ("stuck after finish"). We optimistically write
+  // `hasCompletedOnboarding: true` into the meta cache (the `_app` gate's source
+  // — see App.tsx) and navigate. Crucially we do NOT invalidate here: an
+  // immediate `/me` refetch can read-after-write race and flip the flag back to
+  // `false`, bouncing the user back to onboarding. The optimistic value holds;
+  // a later natural refetch reconciles once the write has propagated. (Mirrors
+  // the native host, which enters via its local flag regardless of the server.)
+  const enterApp = useCallback(() => {
     const key = ["meridian-user-meta", sdk.user?.sub] as const;
     queryClient.setQueryData<MeridianUserMeta>(key, (old) => ({
       personalOrgId: old?.personalOrgId ?? "",
       hasCompletedOnboarding: true,
     }));
-    void queryClient.invalidateQueries({ queryKey: key });
     navigate({ to: "/" });
   }, [queryClient, navigate, sdk.user?.sub]);
 
-  // CompleteStep catches the throw and surfaces its own inline error.
-  const finishOnboarding = completeAndEnter;
-
-  // Skip must NOT fail silently (the old behavior looked like a dead button).
-  const handleSkip = useCallback(async () => {
-    try {
-      await completeAndEnter();
-    } catch {
-      toast.error("Couldn't skip setup", {
-        description: "Something went wrong. Please try again.",
-      });
+  // Persist completion server-side with a few retries — in the BACKGROUND, so it
+  // can't block entry. Returns whether it ultimately succeeded.
+  const persistCompletion = useCallback(async (): Promise<boolean> => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await postCompletion();
+        return true;
+      } catch {
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+      }
     }
-  }, [completeAndEnter]);
+    return false;
+  }, []);
 
-  // While the SDK session is still resolving, show a quiet loading state.
-  if (sdk.isLoading) {
+  // End of the wizard: enter the app now, then save the profile + persist
+  // completion in the background (both best-effort — editable / retried later).
+  // Never throws (the kit's finish awaits this).
+  const handleComplete = useCallback(
+    async (values: OnboardingValues) => {
+      enterApp();
+      const p = values[ONBOARDING_STEP_IDS.profile] as
+        | OnboardingProfileValue
+        | undefined;
+      if (p?.displayName?.trim()) {
+        updateProfile
+          .mutateAsync({
+            displayName: p.displayName.trim(),
+            timezone: p.timezone,
+          })
+          .catch(() =>
+            toast.error("Couldn't save your profile", {
+              description: "You can update it later in Settings.",
+            }),
+          );
+      }
+      const ok = await persistCompletion();
+      if (!ok) {
+        toast.error("We couldn't finish syncing your setup", {
+          description: "You're in — it'll retry next time you open the app.",
+        });
+      }
+    },
+    [enterApp, updateProfile, persistCompletion],
+  );
+
+  // Header close (X) = "skip setup": enter now, persist completion in the
+  // background (no profile save).
+  const handleSkip = useCallback(() => {
+    enterApp();
+    void persistCompletion();
+  }, [enterApp, persistCompletion]);
+
+  // Already onboarded → straight to the app (never back to /auth/login). In an
+  // effect (not during render) to avoid a render-phase navigation warning.
+  useEffect(() => {
+    if (user?.hasCompletedOnboarding) navigate({ to: "/" });
+  }, [user?.hasCompletedOnboarding, navigate]);
+
+  // While the SESSION or the PROFILE is still resolving, show a quiet loader —
+  // the wizard is seeded from the fetched profile, so it mounts only once ready.
+  if (sdk.isLoading || (sdk.user && profileLoading)) {
     return (
       <YStack minH={"100vh" as never} items="center" justify="center" px="$6">
         <Text fontSize="$3" color="$mutedForeground">
@@ -91,8 +127,7 @@ function OnboardingPage() {
   }
 
   // No session/identity — show an error and let the user retry. We do NOT
-  // redirect back to /auth/login (that's the loop). A manual "Try again"
-  // re-runs the boot, and the route guard handles a genuinely signed-out user.
+  // redirect back to /auth/login (that's the loop).
   if (!sdk.user) {
     return (
       <YStack
@@ -115,105 +150,20 @@ function OnboardingPage() {
     );
   }
 
-  const stepComponent = (() => {
-    switch (step) {
-      case 0:
-        return (
-          <WelcomeStep
-            name={sdk.user.name ?? ""}
-            onContinue={() => setStep(1)}
-          />
-        );
-      case 1:
-        return <ProfileStep onContinue={() => setStep(2)} />;
-      case 2:
-        return (
-          <GoalsStep
-            selectedGoals={selectedGoals}
-            onGoalsChange={setSelectedGoals}
-            onContinue={() => setStep(3)}
-          />
-        );
-      case 3:
-        return (
-          <TourStep
-            selectedGoals={selectedGoals}
-            onContinue={() => setStep(4)}
-          />
-        );
-      case 4:
-        return <CompleteStep onFinish={finishOnboarding} />;
-      default:
-        return null;
-    }
-  })();
-
-  const lastStep = TOTAL_STEPS - 1;
+  const initialProfile: OnboardingProfileValue = {
+    displayName: profile?.displayName ?? sdk.user.name ?? "",
+    timezone:
+      profile?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
+  };
 
   return (
-    // Centered, constrained shell so onboarding doesn't stretch edge-to-edge
-    // on wide viewports. The _auth zone has no parent layout (it's the
-    // unauth lane), so this page owns its own viewport chrome.
-    <YStack
-      minH={"100vh" as never}
-      items="center"
-      justify="center"
-      px="$6"
-      py="$8"
-    >
-      <YStack width="100%" maxW={576} gap="$6">
-        {/* Progress dots */}
-        <XStack items="center" justify="center" gap="$2">
-          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-            <View
-              key={i}
-              height={7}
-              width={7}
-              rounded={9999}
-              transition="quick"
-              // active dot brand, completed dot muted-brand, upcoming faint
-              bg={
-                i === step ? "$primary" : i < step ? "$primaryMuted" : "$muted"
-              }
-            />
-          ))}
-        </XStack>
-
-        {/* Step content */}
-        <YStack
-          rounded="$6"
-          borderWidth={1}
-          borderColor="$borderColor"
-          bg="$card"
-          p="$6"
-          // Soft drop shadow (was Tailwind shadow-sm) via Tamagui shadow props.
-          shadowColor="rgba(0, 0, 0, 0.05)"
-          shadowOffset={{ width: 0, height: 1 }}
-          shadowRadius={2}
-        >
-          {stepComponent}
-        </YStack>
-
-        {/* Navigation */}
-        <XStack items="center" justify="space-between">
-          <View>
-            {step > 0 && step < lastStep && (
-              <Button
-                intent="ghost"
-                size="sm"
-                onPress={() => setStep(step - 1)}
-              >
-                Back
-              </Button>
-            )}
-          </View>
-          {step < lastStep && (
-            <Button intent="ghost" size="sm" onPress={handleSkip}>
-              Skip setup
-            </Button>
-          )}
-        </XStack>
-      </YStack>
+    <YStack minH={"100vh" as never} justify="center" py="$8">
+      <OnboardingWizard
+        firstName={(sdk.user.name ?? "").split(" ")[0]}
+        initialProfile={initialProfile}
+        onComplete={handleComplete}
+        onSkip={handleSkip}
+      />
     </YStack>
   );
 }

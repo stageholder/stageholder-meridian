@@ -36,11 +36,10 @@ import {
 } from "@stageholder/ui";
 import {
   DashboardStats,
-  HabitSummary,
-  TodayTodos,
   type DashboardStatItem,
-  type HabitProgressValue,
 } from "@repo/features/dashboard";
+import { TodoItem } from "@repo/features/todos";
+import { scheduledHabitsForDate } from "@repo/core/habits/entry-resolution";
 import {
   JournalGrowthChart,
   LightEarnedChart,
@@ -48,10 +47,10 @@ import {
   WritingHeatmapChart,
 } from "@repo/features/charts";
 import { LevelProgress, LevelUpCelebration } from "@repo/features/light";
-import type { HabitEntry, Todo } from "@repo/core/types";
+import type { Todo } from "@repo/core/types";
 import type { UserLight } from "@repo/core/types/light";
 import { CalendarDays } from "@tamagui/lucide-icons-2";
-import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { format, subDays } from "date-fns";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
@@ -64,9 +63,8 @@ import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
 import { TrialPill } from "@/components/trial-pill";
 
 import {
-  apiClient,
-  habitKeys,
   journalKeys,
+  useDeleteTodo,
   useHabits,
   useJournals,
   useTodayHabitProgress,
@@ -74,6 +72,8 @@ import {
   useTodos,
   useUserLight,
 } from "@/lib/api";
+import { HabitCheckInRow } from "@/components/habit-check-in-row";
+import { EditTodoDialog } from "@/components/edit-todo-dialog";
 import { useDayActivityCounts } from "@/lib/api/hooks/calendar";
 import { IGNITION } from "@/lib/ignition-palette";
 import { useLevelUp } from "@/lib/use-level-up";
@@ -304,55 +304,48 @@ export default function TodayScreen() {
     yesterdayCounts.counts,
   ]);
 
-  // HabitSummary wants a Map<habitId, {value,type,targetCountSnapshot}> for
-  // TODAY, so a completed habit reads as done (not 0/target). We fetch each
-  // habit's entries in parallel via useQueries — these hit the SAME query keys
-  // (`habitKeys.entries(id)`) that `useTodayHabitProgress` already populates, so
-  // react-query dedups them and there's no extra network cost; we're just
-  // reading the cached entries to derive today's per-habit value.
-  const habitList = habitsQuery.data ?? [];
-  const entriesQueries = useQueries({
-    queries: habitList.map((h) => ({
-      queryKey: habitKeys.entries(h.id),
-      queryFn: async () => {
-        const { data } = await apiClient.get<
-          { data: HabitEntry[] } | HabitEntry[]
-        >(`/habits/${h.id}/entries`);
-        return Array.isArray(data) ? data : data.data;
-      },
-    })),
-  });
-  const habitProgressMap = useMemo(() => {
-    const map = new Map<string, HabitProgressValue>();
-    habitList.forEach((h, i) => {
-      const entries = entriesQueries[i]?.data ?? [];
-      // Aggregate any entries dated today (a habit can have multiple value-1
-      // check-ins; the resolver sums them) into one progress value.
-      const todayEntries = entries.filter(
-        (e) => e.date.split("T")[0] === today,
+  // The habits scheduled today — the widget renders the first few as REAL
+  // interactive check-in rows (parity with the PWA dashboard, which reuses the
+  // real HabitListItem). Each HabitCheckInRow self-fetches its day entry, so no
+  // per-habit progress map is needed here anymore.
+  const scheduledTodayHabits = useMemo(
+    () => scheduledHabitsForDate(habitsQuery.data, today),
+    [habitsQuery.data, today],
+  );
+
+  // Today's open todos (do/due today-or-overdue), earliest-date first, so the
+  // widget mirrors the /todos Today view. Rendered as the real TodoItem.
+  const todayTodoList = useMemo(() => {
+    const todos = todosQuery.data ?? [];
+    const open = todos.filter((t) => {
+      if (t.status === "done") return false;
+      const due = t.dueDate?.slice(0, 10);
+      const doD = t.doDate?.slice(0, 10);
+      return (
+        (due !== undefined && due <= today) ||
+        (doD !== undefined && doD <= today)
       );
-      if (todayEntries.length === 0) return;
-      const value = todayEntries.reduce((sum, e) => sum + (e.value ?? 0), 0);
-      // Type precedence: an explicit skip/fail wins over a plain completion.
-      const type =
-        todayEntries.find((e) => e.type === "skip" || e.type === "fail")
-          ?.type ?? todayEntries[0]?.type;
-      map.set(h.id, {
-        value,
-        type,
-        targetCountSnapshot: todayEntries[0]?.targetCountSnapshot,
-      });
     });
-    return map;
-    // `entriesQueries` is a fresh array reference each render, so this memo
-    // effectively recomputes per render — fine for a short list (it's a cheap
-    // reduce). Keying it on the data references would need a stable hash we
-    // don't have here; the recompute cost isn't worth that complexity.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [habitList, today, entriesQueries]);
+    const dateKey = (t: Todo) => {
+      const ds = [t.doDate, t.dueDate]
+        .filter((d): d is string => !!d)
+        .map((d) => d.slice(0, 10));
+      return ds.length ? ds.sort()[0] : today;
+    };
+    return open.sort((a, b) => dateKey(a).localeCompare(dateKey(b)));
+  }, [todosQuery.data, today]);
 
   function handleToggleTodo(todo: Todo) {
     toggleTodo.mutate({ id: todo.id, status: todo.status });
+  }
+  const deleteTodo = useDeleteTodo();
+  // Tap a todo → open the shared edit sheet (same as the /todos screen). Split
+  // open flag from content so the sheet keeps its values through the exit anim.
+  const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
+  const [editTodoOpen, setEditTodoOpen] = useState(false);
+  function openTodoEdit(todo: Todo) {
+    setEditingTodo(todo);
+    setEditTodoOpen(true);
   }
 
   return (
@@ -526,36 +519,57 @@ export default function TodayScreen() {
                 <DashboardStats stats={stats} />
               </Dashboard.Widget>
 
-              {/* ---- Habit summary (features) ---- */}
+              {/* ---- Habits Today — REAL interactive check-in rows (parity
+                   with the PWA dashboard). Check in / skip / fail right here;
+                   "View all" opens the full habits screen. ---- */}
               <Dashboard.Widget
                 colSpan={12}
                 title="Habits Today"
                 actions={<ViewAll onPress={() => router.push("/habits")} />}
               >
-                <HabitSummary
-                  habits={habitsQuery.data}
-                  habitProgress={habitProgressMap}
-                  isLoading={habitsQuery.isLoading}
-                />
+                {habitsQuery.isLoading && !habitsQuery.data ? (
+                  <TodayWidgetSkeleton />
+                ) : scheduledTodayHabits.length === 0 ? (
+                  <TodayWidgetEmpty text="No habits scheduled today." />
+                ) : (
+                  <YStack gap="$2">
+                    {scheduledTodayHabits.slice(0, WIDGET_CAP).map((habit) => (
+                      <HabitCheckInRow
+                        key={habit.id}
+                        habit={habit}
+                        activeDate={today}
+                        onOpenDetail={() => router.push(`/habits/${habit.id}`)}
+                      />
+                    ))}
+                  </YStack>
+                )}
               </Dashboard.Widget>
 
-              {/* ---- Today's todos (features) ---- */}
+              {/* ---- Today's Todos — REAL TodoItem (compact): checkbox + burn,
+                   tap to edit. Mirrors the PWA dashboard's compact TodoItem. -- */}
               <Dashboard.Widget
                 colSpan={12}
                 title="Today's Todos"
                 actions={<ViewAll onPress={() => router.push("/todos")} />}
               >
-                <TodayTodos
-                  todos={todosQuery.data ?? []}
-                  isLoading={todosQuery.isLoading}
-                  total={todoStats.total}
-                  percentage={
-                    todoStats.total > 0
-                      ? Math.round((todoStats.done / todoStats.total) * 100)
-                      : 0
-                  }
-                  onToggleTodo={handleToggleTodo}
-                />
+                {todosQuery.isLoading && !todosQuery.data ? (
+                  <TodayWidgetSkeleton />
+                ) : todayTodoList.length === 0 ? (
+                  <TodayWidgetEmpty text="Nothing due today — nice work." />
+                ) : (
+                  <YStack gap="$2">
+                    {todayTodoList.slice(0, WIDGET_CAP).map((todo) => (
+                      <TodoItem
+                        key={todo.id}
+                        todo={todo}
+                        compact
+                        onToggle={() => handleToggleTodo(todo)}
+                        onDelete={() => deleteTodo.mutate(todo.id)}
+                        onOpenDetail={() => openTodoEdit(todo)}
+                      />
+                    ))}
+                  </YStack>
+                )}
               </Dashboard.Widget>
 
               {/* ---- Trend charts (PWA dashboard parity: journal pair, then
@@ -599,11 +613,41 @@ export default function TodayScreen() {
         </PullToRefresh>
       </SafeAreaView>
 
+      {/* Tap a todo in the widget → shared edit sheet (same as /todos). */}
+      <EditTodoDialog
+        open={editTodoOpen}
+        onOpenChange={setEditTodoOpen}
+        todo={editingTodo}
+      />
+
       {/* Level-up overlay — rendered above the scroll frame so it covers the
           whole screen when a tier is crossed from Today. */}
       {levelUpTier ? (
         <LevelUpCelebration tier={levelUpTier} onDismiss={dismissLevelUp} />
       ) : null}
+    </YStack>
+  );
+}
+
+/** Max rows a Today widget shows before "View all". */
+const WIDGET_CAP = 5;
+
+/** Compact empty-state line for a Today widget body. */
+function TodayWidgetEmpty({ text }: { text: string }) {
+  return (
+    <Text fontSize="$2" color="$mutedForeground" py="$2">
+      {text}
+    </Text>
+  );
+}
+
+/** A couple of muted placeholder rows while a Today widget's data loads. */
+function TodayWidgetSkeleton() {
+  return (
+    <YStack gap="$2">
+      {[0, 1, 2].map((i) => (
+        <View key={i} height={56} rounded="$4" bg="$muted" opacity={0.4} />
+      ))}
     </YStack>
   );
 }

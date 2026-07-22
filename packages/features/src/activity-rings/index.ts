@@ -19,3 +19,5 @@ export {
   type ActivityRingsData,
   type ActivityRingsDetails,
 } from "./config";
+
+export { computeRingPercentages, type RingInputs } from "./compute";

@@ -30,6 +30,7 @@ import {
   Spinner,
   Text,
   View,
+  XStack,
   YStack,
   toast,
 } from "@stageholder/ui";
@@ -50,6 +51,11 @@ import {
 
 import { CreateFab } from "@/components/create-fab";
 import { CreateHabitDialog } from "@/components/create-habit-dialog";
+import {
+  HabitDateNav,
+  HabitViewToggle,
+  type HabitViewMode,
+} from "@/components/habit-day-controls";
 import { EditHabitDialog } from "@/components/edit-habit-dialog";
 import { HabitCardRow } from "@/components/habit-card-row";
 import {
@@ -113,26 +119,33 @@ export default function HabitsScreen() {
   );
   // Reorder-groups sheet.
   const [reorderGroupsOpen, setReorderGroupsOpen] = useState(false);
+  // Card ⇄ list view mode, and the day being viewed/checked-in (defaults to
+  // today; the date-nav lets you review / back-fill a past day).
+  const [viewMode, setViewMode] = useState<HabitViewMode>("card");
+  const [selectedDate, setSelectedDate] = useState(localDateKey());
 
   const isArchivedView = activeChip === ARCHIVED_CHIP;
   // Archived view fetches its own cache lazily — the query is gated so it only
   // hits the network when that chip is actually active.
   const archivedQuery = useArchivedHabits(isArchivedView);
 
-  // Status filter data — today's date + the calendar month (only fetched when
-  // a status filter is active; disabled by passing an empty string).
+  // Status filter data — the VIEWED date + its calendar month (only fetched
+  // when a status filter is active; disabled by passing an empty string). The
+  // date-nav can move the viewed day off today, so everything scopes to
+  // `selectedDate`, not the real today.
   const today = localDateKey();
-  const calendarMonth = today.slice(0, 7);
+  const isViewingToday = selectedDate === today;
+  const calendarMonth = selectedDate.slice(0, 7);
   const { data: calendarData, isLoading: statusLoading } = useCalendarData(
     statusFilter !== "all" ? calendarMonth : "",
   );
-  // Map habitId → today's entry for the status-filter predicate.
+  // Map habitId → the viewed day's entry for the status-filter predicate.
   const entryByHabit = useMemo<Map<string, HabitDayEntry>>(() => {
     const m = new Map<string, HabitDayEntry>();
     // Array.isArray guard — a rehydrated persisted-cache day could carry a
     // non-array habitEntries and throw on this first render (before refetch).
-    const todayEntries = calendarData?.[today]?.habitEntries;
-    for (const e of Array.isArray(todayEntries) ? todayEntries : []) {
+    const dayEntries = calendarData?.[selectedDate]?.habitEntries;
+    for (const e of Array.isArray(dayEntries) ? dayEntries : []) {
       m.set(e.habitId, {
         value: e.value,
         type: e.type,
@@ -140,7 +153,7 @@ export default function HabitsScreen() {
       });
     }
     return m;
-  }, [calendarData, today]);
+  }, [calendarData, selectedDate]);
 
   // For weekly_target (quota) habits, whether THIS week's quota is already met.
   // Quota habits track weekly, not per-day, so once the week's quota is reached
@@ -150,7 +163,7 @@ export default function HabitsScreen() {
   const weeklyMetByHabit = useMemo<Map<string, boolean>>(() => {
     const m = new Map<string, boolean>();
     if (statusFilter === "all") return m;
-    const weekStart = startOfWeek(new Date(today + "T00:00:00"), {
+    const weekStart = startOfWeek(new Date(selectedDate + "T00:00:00"), {
       weekStartsOn: 1,
     });
     for (const h of habitsQuery.data ?? []) {
@@ -179,7 +192,7 @@ export default function HabitsScreen() {
       );
     }
     return m;
-  }, [habitsQuery.data, calendarData, today, statusFilter]);
+  }, [habitsQuery.data, calendarData, selectedDate, statusFilter]);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -213,7 +226,7 @@ export default function HabitsScreen() {
         h,
         activeStatus,
         entryByHabit.get(h.id),
-        today,
+        selectedDate,
         // Quota habits evaluate by weekly progress; per-day for everything else.
         h.frequency === "weekly_target"
           ? weeklyMetByHabit.get(h.id)
@@ -242,7 +255,14 @@ export default function HabitsScreen() {
       });
     }
     return result;
-  }, [habits, groups, statusFilter, entryByHabit, weeklyMetByHabit, today]);
+  }, [
+    habits,
+    groups,
+    statusFilter,
+    entryByHabit,
+    weeklyMetByHabit,
+    selectedDate,
+  ]);
 
   // When a real group is the active filter, render only that section.
   const visibleSections = useMemo(() => {
@@ -313,13 +333,37 @@ export default function HabitsScreen() {
           <Text fontSize="$8" fontWeight="700" color="$color">
             Habits
           </Text>
-          {/* Status filter — All / To do / Done, relative to today. */}
+          {/* Status filter — All / To do / Done, relative to the viewed day. */}
           <StatusFilterTabs
             value={statusFilter}
             onValueChange={(v) =>
               setStatusFilter(v as "all" | HabitStatusFilter)
             }
           />
+
+          {/* Day nav + view toggle (not in the archived history view). Check in
+              / review a past day on the left; card ⇄ list on the right. */}
+          {!isArchivedView ? (
+            <XStack items="center" justify="space-between" gap="$2">
+              <XStack items="center" gap="$1" flex={1} minW={0}>
+                <HabitDateNav
+                  value={selectedDate}
+                  today={today}
+                  onChange={setSelectedDate}
+                />
+                {!isViewingToday ? (
+                  <Button
+                    intent="ghost"
+                    size="sm"
+                    onPress={() => setSelectedDate(today)}
+                  >
+                    Today
+                  </Button>
+                ) : null}
+              </XStack>
+              <HabitViewToggle value={viewMode} onChange={setViewMode} />
+            </XStack>
+          ) : null}
         </YStack>
 
         {/* Group chips rail — All · groups · pencil-on-active · "+ group" ·
@@ -486,6 +530,11 @@ export default function HabitsScreen() {
                     // would collide with filtered-out habits' orders — so drag
                     // is disabled whenever a status filter is active (M5).
                     reorderDisabled={statusFilter !== "all"}
+                    viewMode={viewMode}
+                    // Only pass a date when it's NOT today — today stays the
+                    // default (undefined) so the rows read the un-suffixed
+                    // "today" path (parity with the PWA section).
+                    selectedDate={isViewingToday ? undefined : selectedDate}
                     onEdit={setEditingHabit}
                     onOpenDetail={openDetail}
                     onArchive={archive}

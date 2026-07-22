@@ -259,7 +259,18 @@ export function TodoForm({
               // the Select's own Adapt path crashes on RN).
               inSheet={isWeb ? undefined : true}
             >
-              <Select.Trigger pill width={"auto" as never} minW={0}>
+              <Select.Trigger
+                pill
+                width={"auto" as never}
+                // STOPGAP: the kit Select trigger's inner label wrapper (`flex:1`
+                // → flexBasis:0) collapses to a circle on native — Yoga has no
+                // min-content floor, so an auto-width pill trigger clips its label
+                // to a broken glyph. Fixed at the source (kit Select.tsx inner
+                // wrapper → flexBasis:'auto'); needs a kit republish (> alpha.119)
+                // to reach us. Until then a numeric minWidth floor keeps the label
+                // visible; once the kit fix ships this can drop back to minW={0}.
+                minWidth={110}
+              >
                 <XStack items="center" gap="$1.5">
                   {selectedList?.isDefault ? (
                     <Inbox size={12} color="$primary" />
@@ -327,7 +338,15 @@ export function TodoForm({
             onValueChange={setPriority}
             inSheet={isWeb ? undefined : true}
           >
-            <Select.Trigger pill width={"auto" as never} minW={0}>
+            <Select.Trigger
+              pill
+              width={"auto" as never}
+              // STOPGAP (see the List trigger above): the kit Select trigger's
+              // inner label wrapper collapses to a circle on native. Fixed at the
+              // source (kit Select.tsx); a numeric minWidth floor keeps the label
+              // visible until the kit republish (> alpha.119) reaches us.
+              minWidth={110}
+            >
               <XStack items="center" gap="$1.5">
                 {priority !== "none" ? (
                   <View

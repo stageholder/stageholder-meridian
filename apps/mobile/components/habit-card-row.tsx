@@ -5,34 +5,31 @@
 // needs a `useHabitEntries` query + several mutation hooks, and React hooks
 // can't run inside a `.map`, so each row is its own component.
 //
-// Mutations resolve via `mutateAsync` so HabitCard can sequence its bounce /
-// completion animations on success (the view awaits onCheckIn etc. and skips
-// the celebration when the promise rejects). The entry hooks are optimistic, so
-// the card flips instantly; the awaited promise just gates the animation.
+// Entry actions are provided by the shared `useHabitDayActions` hook (the single
+// source of truth for the create-or-update rules, shared with the compact
+// `HabitCheckInRow`). The card flips optimistically; HabitCard awaits the
+// returned promise only to sequence its bounce / completion animation (it skips
+// the celebration when the promise rejects).
 //
-// Entry actions ALL follow the create-or-update rule: the API has ONE entry per
-// habit per day, so POSTing a second one for a day that already has an entry
-// returns 409. Every action that sets today's state POSTs when there's no entry
-// yet, else PATCHes the existing one. (See the long-standing note in
-// hooks/habits.ts.)
+// `selectedDate` (yyyy-mm-dd) scopes the card to a day other than today — the
+// habits screen's date-nav passes it so you can check in / review a past day.
+// Omitted → today. HabitCard is already date-aware (`selectedDate` prop), so we
+// just thread the same date into the entries window + the actions hook.
 
 import { Celebration, toast } from "@stageholder/ui";
 import { HabitCard } from "@repo/features/habits";
 import type { Habit } from "@repo/core/types";
+import { format, subDays } from "date-fns";
 
-import {
-  useCheckInHabit,
-  useDeleteHabit,
-  useFailHabit,
-  useHabitEntries,
-  useSkipHabit,
-  useUpdateHabitEntry,
-} from "@/lib/api";
+import { useDeleteHabit, useHabitEntries } from "@/lib/api";
+import { useHabitDayActions } from "@/lib/hooks/use-habit-day-actions";
 import { IGNITION } from "@/lib/ignition-palette";
 import { localDateKey } from "@/lib/streak";
 
 export interface HabitCardRowProps {
   habit: Habit;
+  /** The day this card acts on (yyyy-mm-dd). Omit → today. */
+  selectedDate?: string;
   /** Opens the native edit sheet for this habit (per-card Edit action). */
   onEdit: () => void;
   /** Opens the native habit detail screen (card body tap). */
@@ -49,6 +46,7 @@ export interface HabitCardRowProps {
 
 export function HabitCardRow({
   habit,
+  selectedDate,
   onEdit,
   onOpenDetail,
   isArchived,
@@ -56,31 +54,31 @@ export function HabitCardRow({
   onUnarchive,
   onMoveToGroup,
 }: HabitCardRowProps) {
-  const entriesQuery = useHabitEntries(habit.id);
-  const checkIn = useCheckInHabit();
-  const skip = useSkipHabit();
-  const fail = useFailHabit();
-  const updateEntry = useUpdateHabitEntry();
+  const today = localDateKey();
+  const activeDate = selectedDate ?? today;
+  // Bound the fetch to the last 90 days (PWA parity — the no-range path returns
+  // ALL entries unbounded). 90 days covers the streak + current-week quota math.
+  // Widen the window to include `activeDate` when the date-nav jumps past 90
+  // days back or into the future, so an existing entry there isn't misread as
+  // un-acted → duplicate 409.
+  const ninetyDaysAgo = format(subDays(new Date(), 90), "yyyy-MM-dd");
+  const startDate = activeDate < ninetyDaysAgo ? activeDate : ninetyDaysAgo;
+  const endDate = activeDate > today ? activeDate : today;
+  const entriesQuery = useHabitEntries(habit.id, { startDate, endDate });
   const deleteHabit = useDeleteHabit();
 
-  const today = localDateKey();
   const entries = entriesQuery.data;
-
-  // The active-date entry — Undo / Clear-status target the right entry id
-  // (PATCH, not DELETE, mirroring the PWA's habit-card undo path).
-  const todayEntry = entries?.find((e) => e.date.split("T")[0] === today);
-
-  // Only guard while a just-created entry is still an optimistic (unsaved)
-  // record — acting on it would PATCH a synthetic id (404). It clears the instant
-  // the create resolves. NOT gated on network `isPending`: the optimistic cache
-  // reflects each tap and the entry mutations are scope-serialized, so the card
-  // stays responsive instead of going dead for the whole round-trip.
-  const isPending = todayEntry?.id?.startsWith("optimistic-") ?? false;
+  const actions = useHabitDayActions(habit.id, activeDate, entries);
 
   return (
     <HabitCard
       habit={habit}
       entries={entries}
+      // Date-scoped — HabitCard computes activeDate = selectedDate || today.
+      selectedDate={selectedDate}
+      // COLD load only — a background refetch keeps `entries` populated. Gates
+      // the status/action slot on a skeleton instead of flashing "Check In".
+      entriesLoading={entriesQuery.isLoading && entries === undefined}
       // Resolved hex (IGNITION.habit) — HabitCard applies these via the style
       // hatch (`backgroundColor`), so raw colors are required (tokens / CSS
       // vars wouldn't resolve on native).
@@ -95,83 +93,13 @@ export function HabitCardRow({
           colors={["#f97316", "#fb923c", "#fdba74"]}
         />
       )}
-      isPending={isPending}
-      // ── Entry actions — ALL follow the create-or-update rule ──
-      onCheckIn={async () => {
-        try {
-          if (!todayEntry) {
-            await checkIn.mutateAsync({ habitId: habit.id, date: today });
-          } else {
-            const isNonCompletion =
-              todayEntry.type === "skip" || todayEntry.type === "fail";
-            await updateEntry.mutateAsync({
-              habitId: habit.id,
-              entryId: todayEntry.id,
-              patch: isNonCompletion
-                ? { type: "completion", value: 1 }
-                : { value: (todayEntry.value ?? 0) + 1 },
-            });
-          }
-        } catch (e) {
-          toast.error("Couldn't check in");
-          // Re-throw so HabitCard's awaited handler skips the celebration.
-          throw e;
-        }
-      }}
-      onSkip={async () => {
-        try {
-          if (!todayEntry) {
-            await skip.mutateAsync({ habitId: habit.id, date: today });
-          } else {
-            await updateEntry.mutateAsync({
-              habitId: habit.id,
-              entryId: todayEntry.id,
-              patch: { type: "skip", value: 0 },
-            });
-          }
-        } catch {
-          toast.error("Couldn't skip");
-        }
-      }}
-      onFail={async () => {
-        try {
-          if (!todayEntry) {
-            await fail.mutateAsync({ habitId: habit.id, date: today });
-          } else {
-            await updateEntry.mutateAsync({
-              habitId: habit.id,
-              entryId: todayEntry.id,
-              patch: { type: "fail", value: 0 },
-            });
-          }
-        } catch {
-          toast.error("Couldn't mark failed");
-        }
-      }}
-      onUndo={async () => {
-        if (!todayEntry) return;
-        try {
-          await updateEntry.mutateAsync({
-            habitId: habit.id,
-            entryId: todayEntry.id,
-            patch: { value: Math.max(0, (todayEntry.value ?? 0) - 1) },
-          });
-        } catch {
-          toast.error("Couldn't undo");
-        }
-      }}
-      onClearStatus={async () => {
-        if (!todayEntry) return;
-        try {
-          await updateEntry.mutateAsync({
-            habitId: habit.id,
-            entryId: todayEntry.id,
-            patch: { value: 0, type: "completion" },
-          });
-        } catch {
-          toast.error("Couldn't clear status");
-        }
-      }}
+      isPending={actions.isPending}
+      // ── Entry actions — the shared create-or-update hook, date-scoped. ──
+      onCheckIn={actions.checkIn}
+      onSkip={actions.skip}
+      onFail={actions.fail}
+      onUndo={actions.undo}
+      onClearStatus={actions.clearStatus}
       onEdit={onEdit}
       onOpenDetail={onOpenDetail}
       // Delete IS wired — the card's own AlertDialog confirms first. On failure

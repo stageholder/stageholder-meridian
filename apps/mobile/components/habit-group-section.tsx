@@ -13,7 +13,9 @@ import { Sortable, Text, View, XStack, YStack } from "@stageholder/ui";
 import type { Habit } from "@repo/core/types";
 
 import { HabitCardRow } from "@/components/habit-card-row";
+import { HabitCheckInRow } from "@/components/habit-check-in-row";
 import { useReorderHabits } from "@/lib/api";
+import { localDateKey } from "@/lib/streak";
 
 interface HabitGroupSectionProps {
   /** Display name + dot color for the section header. */
@@ -32,6 +34,10 @@ interface HabitGroupSectionProps {
    *  section only holds the VISIBLE (filtered) habits and re-indexing them
    *  would collide with the filtered-out habits' orders. */
   reorderDisabled?: boolean;
+  /** "card" = big HabitCard rows; "list" = compact HabitCheckInRow. Default card. */
+  viewMode?: "card" | "list";
+  /** The day the rows act on (yyyy-mm-dd). Omit → today. */
+  selectedDate?: string;
   onEdit: (habit: Habit) => void;
   onOpenDetail: (habit: Habit) => void;
   onArchive: (habit: Habit) => void;
@@ -46,12 +52,15 @@ export function HabitGroupSection({
   groupId,
   hideHeader,
   reorderDisabled,
+  viewMode = "card",
+  selectedDate,
   onEdit,
   onOpenDetail,
   onArchive,
   onMoveToGroup,
 }: HabitGroupSectionProps) {
   const reorderHabits = useReorderHabits();
+  const activeDate = selectedDate ?? localDateKey();
 
   function handleReorder(from: number, to: number) {
     const next = [...habits];
@@ -96,14 +105,25 @@ export function HabitGroupSection({
         disabled={reorderDisabled}
         renderItem={(habit) => (
           <View width="100%" pb="$2">
-            <HabitCardRow
-              habit={habit}
-              isArchived={false}
-              onEdit={() => onEdit(habit)}
-              onOpenDetail={() => onOpenDetail(habit)}
-              onArchive={() => onArchive(habit)}
-              onMoveToGroup={() => onMoveToGroup(habit)}
-            />
+            {viewMode === "list" ? (
+              // Compact list view — inline check-in; management (edit / archive
+              // / move / delete) is via the detail screen on tap.
+              <HabitCheckInRow
+                habit={habit}
+                activeDate={activeDate}
+                onOpenDetail={() => onOpenDetail(habit)}
+              />
+            ) : (
+              <HabitCardRow
+                habit={habit}
+                selectedDate={selectedDate}
+                isArchived={false}
+                onEdit={() => onEdit(habit)}
+                onOpenDetail={() => onOpenDetail(habit)}
+                onArchive={() => onArchive(habit)}
+                onMoveToGroup={() => onMoveToGroup(habit)}
+              />
+            )}
           </View>
         )}
       />
