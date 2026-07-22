@@ -31,7 +31,16 @@ import { queryClient, queryPersister } from "./query-client";
 
 export type QueryProviderProps = {
   children: ReactNode;
-  /** Fired when any API call returns 401. Typically navigates to /sign-in. */
+  /**
+   * Fired when any API call returns 401. NON-DESTRUCTIVE observation hook only
+   * (telemetry, a soft "reconnecting" hint) — do NOT purge the session or
+   * redirect from here. A 401 does not prove the session is dead: it may be a
+   * transient mid-refresh race. Terminal session death is owned exclusively by
+   * the SDK's `onAuthError` (StageholderProvider in app/_layout.tsx), which
+   * fires only on a real `invalid_grant`. Inferring teardown from a 401 forced
+   * a spurious re-login on network blips (removed with @stageholder/sdk
+   * alpha.60). Currently left unwired.
+   */
   onUnauthorized?: () => void;
 };
 

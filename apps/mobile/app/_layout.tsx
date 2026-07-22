@@ -21,9 +21,10 @@
 //      `defaultTheme` + a `<Theme name>` wrapper both follow it so the whole
 //      tree (and the OS status bar) re-themes live.
 //
-// The SDK still drives auth state and the redirect-on-signOut / 401 callbacks;
-// QueryProvider sits INSIDE <StageholderProvider> so its AuthTokenBridge can
-// read `useAccessToken()` (see lib/api/Provider.tsx).
+// The SDK drives auth state and the teardown callbacks — redirect-on-signOut
+// (explicit) and onAuthError (terminal session death, e.g. a dead refresh
+// token). QueryProvider sits INSIDE <StageholderProvider> so its
+// AuthTokenBridge can read `useAccessToken()` (see lib/api/Provider.tsx).
 
 import { StageholderProvider } from "@stageholder/sdk/react-native";
 import {
@@ -43,7 +44,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { QueryProvider, queryClient, getAccessToken } from "@/lib/api";
+import { QueryProvider, queryClient } from "@/lib/api";
 import { queryPersister } from "@/lib/api/query-client";
 import { PaywallHost } from "@/components/paywall-sheet";
 import { useAppFonts } from "@/lib/fonts";
@@ -76,51 +77,20 @@ const CLIENT_ID =
 
 /**
  * SECURITY (cross-account DEK bleed): on a confirmed end-of-session — an
- * explicit sign-out, or a 401 the SDK confirms is a DEAD session (see
- * `handleUnauthorized`) — scrub the journal key material (in-memory DEK +
- * wrapped-DEK + salt) and purge the React Query cache both in memory
- * (`clear()`) and on disk (`removeClient()` on the AsyncStorage persister), so
- * the next account signing in on this device inherits neither the previous
- * user's DEK nor any of their decrypted/cached journal data. Idempotent — safe
- * to run from more than one path (profile-sheet also calls this pre-signOut).
+ * explicit sign-out (`onSignedOut`) or terminal session death (`onAuthError`,
+ * the SDK's refresh got `invalid_grant`) — scrub the journal key material
+ * (in-memory DEK + wrapped-DEK + salt) and purge the React Query cache both in
+ * memory (`clear()`) and on disk (`removeClient()` on the AsyncStorage
+ * persister), so the next account signing in on this device inherits neither
+ * the previous user's DEK nor any of their decrypted/cached journal data.
+ * Idempotent — safe to run from more than one path (profile-sheet also calls
+ * this pre-signOut, and onSignedOut/onAuthError may both fire around a
+ * teardown).
  */
 function purgeSessionState(): void {
   lockJournal();
   queryClient.clear();
   void queryPersister.removeClient();
-}
-
-// Re-entrancy guard: a burst of 401s (several in-flight requests failing at
-// once) must resolve to a SINGLE purge + redirect, not one per response.
-let handlingUnauthorized = false;
-
-/**
- * 401 policy. A wholesale purge (DEK wipe + cache clear + forced re-login +
- * passphrase re-entry) is expensive and user-hostile to trigger on a SPURIOUS
- * or transient 401 (a mid-refresh race, or one endpoint 401ing while the
- * session is still valid). The SDK's `getAccessToken()` auto-refreshes and
- * returns null ONLY when the session is genuinely dead — so confirm that before
- * tearing everything down. If a valid token comes back, the 401 was transient:
- * leave the session (and the decrypted journal DEK) intact and let the failed
- * query retry on its own.
- */
-async function handleUnauthorized(onDead: () => void): Promise<void> {
-  if (handlingUnauthorized) return;
-  handlingUnauthorized = true;
-  try {
-    let stillValid = false;
-    try {
-      stillValid = !!(await getAccessToken());
-    } catch {
-      // Refresh threw → treat the session as dead.
-      stillValid = false;
-    }
-    if (stillValid) return; // transient 401 — keep the session.
-    purgeSessionState();
-    onDead();
-  } finally {
-    handlingUnauthorized = false;
-  }
 }
 
 export default function RootLayout() {
@@ -250,12 +220,26 @@ export default function RootLayout() {
               purgeSessionState();
               router.replace("/sign-in");
             }}
+            onAuthError={() => {
+              // Terminal session death: the SDK's token refresh got
+              // `invalid_grant` (a dead / rotated-away refresh token — e.g.
+              // the "logged out after a while" case). This is DISTINCT from a
+              // transient network/5xx refresh failure, which the SDK keeps the
+              // session alive through (stale claims) and never surfaces here.
+              // Same teardown as an explicit sign-out.
+              //
+              // This is the AUTHORITATIVE terminal signal as of
+              // @stageholder/sdk alpha.60: `getAccessToken()` now returns null
+              // for BOTH "temporarily unavailable, retry" and terminal death,
+              // so teardown must NOT be inferred from a 401 / a null token
+              // anymore (doing so forced a spurious re-login on any network
+              // blip). The API 401 interceptor is now non-destructive — it lets
+              // React Query retry, and death arrives here instead.
+              purgeSessionState();
+              router.replace("/sign-in");
+            }}
           >
-            <QueryProvider
-              onUnauthorized={() => {
-                void handleUnauthorized(() => router.replace("/sign-in"));
-              }}
-            >
+            <QueryProvider>
               <TamaguiProvider
                 config={tamaguiConfig}
                 defaultTheme={resolvedTheme}
