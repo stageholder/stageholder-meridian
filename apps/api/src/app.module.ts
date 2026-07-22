@@ -11,6 +11,14 @@ import {
   StageholderAuthGuard,
   StageholderWebhookModule,
 } from "@stageholder/sdk/nestjs";
+import { MongoWebhookDedupeStore } from "./modules/hub-webhook/webhook-dedupe.store";
+import { MongoWebhookDeliveryStore } from "./modules/hub-webhook/webhook-delivery.store";
+import {
+  WebhookDeliveryLog,
+  WebhookDeliveryLogSchema,
+  WebhookDedupeMark,
+  WebhookDedupeMarkSchema,
+} from "./modules/hub-webhook/webhook-store.schema";
 import { TagModule } from "./modules/tag/tag.module";
 import { TodoListModule } from "./modules/todo-list/todo-list.module";
 import { TodoModule } from "./modules/todo/todo.module";
@@ -73,8 +81,27 @@ import { HubWebhookModule } from "./modules/hub-webhook/hub-webhook.module";
     // Hub-emitted outbound webhooks. Secret is generated once when the admin
     // registers Meridian's endpoint in Hub's `/admin/webhook-endpoints` UI;
     // copy it into the env. Without it the guard refuses every request.
-    StageholderWebhookModule.forRoot({
+    //
+    // `forRootAsync` (not `forRoot`) so the SDK's `WebhookDispatcher` gets
+    // DURABLE, replica-shared stores instead of its in-memory defaults:
+    //   - dedupe (idempotency) → Mongo `webhook_dedupe` (TTL'd), so a Svix
+    //     redelivery is skipped across all API instances.
+    //   - deliveryStore (audit log) → Mongo `webhook_deliveries`, powering the
+    //     operator console's delivery inspector + replay.
+    // The `imports` supply the models the store classes inject. No `controller`
+    // option — Meridian mounts its own `@Public()` receiver (HubWebhookModule)
+    // because `StageholderAuthGuard` is a global `APP_GUARD` and the SDK's
+    // built-in controller has no public-route escape.
+    StageholderWebhookModule.forRootAsync({
       secret: process.env.STAGEHOLDER_WEBHOOK_SECRET ?? "",
+      imports: [
+        MongooseModule.forFeature([
+          { name: WebhookDeliveryLog.name, schema: WebhookDeliveryLogSchema },
+          { name: WebhookDedupeMark.name, schema: WebhookDedupeMarkSchema },
+        ]),
+      ],
+      dedupe: { useClass: MongoWebhookDedupeStore },
+      deliveryStore: { useClass: MongoWebhookDeliveryStore },
     }),
     TagModule,
     TodoListModule,

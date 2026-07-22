@@ -1,8 +1,6 @@
 import { Module } from "@nestjs/common";
-import { MongooseModule } from "@nestjs/mongoose";
-import { HubWebhookService } from "./hub-webhook.service";
 import { HubWebhookController } from "./hub-webhook.controller";
-import { HubWebhookFailed, HubWebhookFailedSchema } from "./hub-webhook.schema";
+import { HubWebhookHandlers } from "./hub-webhook.handlers";
 import { JournalModule } from "../journal/journal.module";
 import { HabitModule } from "../habit/habit.module";
 import { HabitEntryModule } from "../habit-entry/habit-entry.module";
@@ -19,20 +17,20 @@ import { UserModule } from "../user/user.module";
 /**
  * Stageholder webhook receiver for Meridian.
  *
- * Replaced the legacy `HubEventsModule` polling cron — Hub now pushes
- * events via Svix to {@link HubWebhookController}'s POST endpoint. The
- * `StageholderWebhookGuard` from the SDK verifies signatures; everything
- * downstream of the guard is plain Nest.
+ * Hub pushes events via Svix to {@link HubWebhookController}'s POST endpoint.
+ * Everything below the transport boundary is the SDK's webhook stack:
+ * `StageholderWebhookGuard` verifies signatures, `WebhookDispatcher` routes to
+ * `@StageholderWebhookHandler`-decorated methods on {@link HubWebhookHandlers},
+ * dedupes by event id, and records deliveries. The dispatcher, guard, dedupe
+ * store, and delivery store are all provided by
+ * `StageholderWebhookModule.forRootAsync` in app.module.ts (global).
  *
- * Data services for the cascade-delete fan-out are imported here. When
- * adding a new event handler that needs another service, import its
- * module here so the DI graph stays explicit.
+ * This module just contributes the receiver controller, the handler provider,
+ * and the data-service modules the cascade-delete fan-out needs. Adding a new
+ * event handler that needs another service? Import its module here.
  */
 @Module({
   imports: [
-    MongooseModule.forFeature([
-      { name: HubWebhookFailed.name, schema: HubWebhookFailedSchema },
-    ]),
     JournalModule,
     HabitModule,
     HabitEntryModule,
@@ -47,6 +45,6 @@ import { UserModule } from "../user/user.module";
     UserModule,
   ],
   controllers: [HubWebhookController],
-  providers: [HubWebhookService],
+  providers: [HubWebhookHandlers],
 })
 export class HubWebhookModule {}
