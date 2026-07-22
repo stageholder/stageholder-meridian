@@ -20,6 +20,10 @@ import {
 } from "@stageholder/ui";
 import { Smile } from "@tamagui/lucide-icons-2";
 import type { Habit } from "@repo/core/types";
+import {
+  useSheetAutoFocus,
+  type Focusable,
+} from "../_internal/use-sheet-autofocus";
 import { encodeMediaIcon, parseMediaIcon } from "./icon-value";
 
 /**
@@ -159,6 +163,9 @@ export function HabitForm({
   // warns "duplicate ID for input" — same fix as TodoForm.
   const uid = useId();
   const nameId = `habit-form-name-${uid}`;
+  // Native: defer the keyboard until the host sheet's slide settles (an eager
+  // autoFocus stacked keyboard + form mount + sheet spring on one frame).
+  const nameRef = useSheetAutoFocus<Focusable>();
   const descriptionId = `habit-form-description-${uid}`;
   const targetId = `habit-form-target-${uid}`;
   const unitId = `habit-form-unit-${uid}`;
@@ -304,12 +311,13 @@ export function HabitForm({
           <YStack flex={1}>
             <Label htmlFor={nameId}>Name</Label>
             <Input
+              ref={nameRef as never}
               id={nameId}
               mt="$1"
               value={name}
               onChangeText={setName}
               placeholder="e.g. Read for 30 minutes"
-              autoFocus
+              autoFocus={isWeb}
             />
           </YStack>
         </XStack>

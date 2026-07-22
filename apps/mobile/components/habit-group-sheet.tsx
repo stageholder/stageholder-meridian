@@ -29,6 +29,7 @@ import {
   useDeleteHabitGroup,
   useUpdateHabitGroup,
 } from "@/lib/api";
+import { useOpenEpoch } from "@/lib/hooks/use-open-epoch";
 
 interface HabitGroupSheetProps {
   open: boolean;
@@ -49,6 +50,9 @@ export function HabitGroupSheet({
   const createGroup = useCreateHabitGroup();
   const updateGroup = useUpdateHabitGroup();
   const deleteGroup = useDeleteHabitGroup();
+  // Fresh-form key that moves only on closed→open (keying on `open` itself
+  // remounted the form mid-close-animation).
+  const openEpoch = useOpenEpoch(open);
 
   const isEdit = group !== null;
 
@@ -117,11 +121,12 @@ export function HabitGroupSheet({
       }
     >
       <HabitGroupForm
-        // Re-seed on each open (React idiom — no useEffect needed in the view).
-        // Create mode keys on `open` too, so each fresh open remounts a blank
-        // form — a constant "create" key reused the prior instance, leaving the
-        // last-typed name behind on the next create.
-        key={group?.id ?? `create-${open}`}
+        // Re-seed on each open (React idiom — no useEffect needed in the
+        // view). Create mode keys on the open EPOCH (not `open` itself): each
+        // fresh open still remounts a blank form — covering a reopen that
+        // lands before the closing sheet unmounts — without the old
+        // mid-close-animation remount.
+        key={group?.id ?? `create-${openEpoch}`}
         initial={
           group
             ? {

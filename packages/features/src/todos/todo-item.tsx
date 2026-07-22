@@ -6,6 +6,7 @@ import {
   ListChecks,
   Trash2,
 } from "@tamagui/lucide-icons-2";
+import { isWeb } from "tamagui";
 import { IconButton, Text, View, XStack, YStack } from "@stageholder/ui";
 import type { Todo } from "@repo/core/types";
 import { RING_CATEGORY } from "../activity-rings";
@@ -76,6 +77,23 @@ const TODO_COLOR = RING_CATEGORY.todo.color;
 // Kept short so the row vanishes the instant the ignite + sparks finish.
 const BURN_MS = 440;
 
+// Row-level enter/exit cosmetics run ONLY on web. On native (Reanimated
+// driver) every `transition`/`enterStyle` prop turns the view into an
+// animated node with its own shared values — dozens of rows × several nodes
+// each was measurable scroll + mount cost, for animations that either need
+// web AnimatePresence (exit) or are imperceptible next to list virtualization
+// churn (enter). The burn/checkbox feedback animations below stay on both
+// platforms — those are user-triggered, one row at a time.
+const ROW_ANIMATION = (
+  isWeb
+    ? {
+        transition: { default: "quick", exit: "medium" },
+        enterStyle: { opacity: 0, y: 6 },
+        exitStyle: { opacity: 0, scale: 0.94 },
+      }
+    : {}
+) as object;
+
 const SPARKS: { left: string; delay: number }[] = [
   { left: "18%", delay: 0 },
   { left: "34%", delay: 45 },
@@ -89,6 +107,15 @@ function parseDateLocal(input: string): Date {
   const ymd = input.length >= 10 ? input.slice(0, 10) : input;
   return new Date(ymd + "T00:00:00");
 }
+
+// Cached formatter — `toLocaleDateString(...)` builds a fresh
+// Intl.DateTimeFormat on every call, a known per-row Hermes hotspot (the kit
+// hit the same thing in its chat rows). Two date badges × N rows made this
+// measurable on list mount.
+const BADGE_DATE_FMT = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+});
 
 /** Local midnight of the current day — the boundary for date-only compares. */
 function localTodayStart(): Date {
@@ -266,17 +293,11 @@ export function TodoItem({
   }
 
   const formattedDueDate = todo.dueDate
-    ? parseDateLocal(todo.dueDate).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      })
+    ? BADGE_DATE_FMT.format(parseDateLocal(todo.dueDate))
     : null;
 
   const formattedDoDate = todo.doDate
-    ? parseDateLocal(todo.doDate).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      })
+    ? BADGE_DATE_FMT.format(parseDateLocal(todo.doDate))
     : null;
 
   // Date-only comparison: a todo due TODAY is not overdue. Comparing against
@@ -316,11 +337,9 @@ export function TodoItem({
       borderColor="$borderColor"
       bg={compact ? "$card" : undefined}
       position="relative"
-      // Cross-platform enter + exit (delete / un-complete) via AnimatePresence
-      // in the list views. Completion plays the burn below, then commits.
-      transition={{ default: "quick", exit: "medium" }}
-      enterStyle={{ opacity: 0, y: 6 }}
-      exitStyle={{ opacity: 0, scale: 0.94 }}
+      // Web-only enter + exit (delete / un-complete) via AnimatePresence in
+      // the list views; see ROW_ANIMATION. Completion plays the burn below.
+      {...ROW_ANIMATION}
       hoverStyle={burning ? undefined : { bg: "$accent" }}
       role="button"
       aria-label="Open todo details"
@@ -520,7 +539,11 @@ export function TodoItem({
         <View shrink={0} onPressIn={pressedControl}>
           {renderActions()}
         </View>
-      ) : (
+      ) : isWeb ? (
+        // Hover-reveal delete is a WEB-only affordance: on touch it's
+        // permanently invisible ($group-hover never fires) yet still mounted
+        // an animated node per row. Native hosts provide their own reachable
+        // delete (swipe action / edit sheet).
         <IconButton
           variant="ghost"
           size="sm"
@@ -534,7 +557,7 @@ export function TodoItem({
         >
           <Trash2 size={14} />
         </IconButton>
-      )}
+      ) : null}
     </XStack>
   );
 }

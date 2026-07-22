@@ -17,6 +17,7 @@ import {
 } from "@repo/features/habits";
 
 import { useCreateHabit, useHabitGroups } from "@/lib/api";
+import { useOpenEpoch } from "@/lib/hooks/use-open-epoch";
 import { IGNITION } from "@/lib/ignition-palette";
 
 interface CreateHabitDialogProps {
@@ -33,6 +34,9 @@ export function CreateHabitDialog({
 }: CreateHabitDialogProps) {
   const createHabit = useCreateHabit();
   const groupsQuery = useHabitGroups();
+  // Fresh-form key that moves only on closed→open (keying on `open` itself
+  // remounted the form mid-close-animation).
+  const openEpoch = useOpenEpoch(open);
 
   // The shared form's group picker is HIDDEN at 0 groups; the user always has
   // the four seeded time-of-day groups, so it normally shows.
@@ -77,7 +81,7 @@ export function CreateHabitDialog({
       title="New Habit"
     >
       <HabitForm
-        key={open ? "open" : "closed"}
+        key={openEpoch}
         initial={{ ...HABIT_FORM_DEFAULTS, groupId: groupId ?? null }}
         groups={groupOptions}
         submitLabel="Create"

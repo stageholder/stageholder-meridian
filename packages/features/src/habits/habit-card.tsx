@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import { isWeb } from "tamagui";
 import { format, subDays, startOfWeek, addDays } from "date-fns";
 import {
   Check,
@@ -176,64 +177,74 @@ export function HabitCard({
     habit.scheduledDays.length === 0 ||
     habit.scheduledDays.includes(activeDow);
 
-  // Aggregate entries per day for the weekly-quota streak / progress.
-  const entryMap = new Map<
-    string,
-    { value: number; type?: string; targetCountSnapshot?: number }
-  >();
-  for (const e of entries || []) {
-    const dateStr = e.date.split("T")[0]!;
-    const existing = entryMap.get(dateStr);
-    entryMap.set(dateStr, {
-      value: (existing?.value ?? 0) + e.value,
-      type: e.type || existing?.type || "completion",
-      targetCountSnapshot:
-        existing?.targetCountSnapshot ?? e.targetCountSnapshot,
+  // PERF: streak walk (O(90) day loop), per-day entry aggregation, and the
+  // week-dot scan (7 × entries.find) previously re-ran on EVERY render of
+  // every card — including screen-level re-renders that didn't touch this
+  // habit (sheet opens, filter taps). Memoized on the actual inputs; React
+  // Query's structural sharing keeps `entries`/`habit` referentially stable
+  // when unchanged, so this recomputes only when the data really moves.
+  const { streak, weeklyProgress, weekDays } = useMemo(() => {
+    // Aggregate entries per day for the weekly-quota streak / progress.
+    const entryMap = new Map<
+      string,
+      { value: number; type?: string; targetCountSnapshot?: number }
+    >();
+    for (const e of entries || []) {
+      const dateStr = e.date.split("T")[0]!;
+      const existing = entryMap.get(dateStr);
+      entryMap.set(dateStr, {
+        value: (existing?.value ?? 0) + e.value,
+        type: e.type || existing?.type || "completion",
+        targetCountSnapshot:
+          existing?.targetCountSnapshot ?? e.targetCountSnapshot,
+      });
+    }
+
+    const streak = isQuota
+      ? calculateWeeklyStreak(entryMap, habit)
+      : calculateStreak(entries || [], habit);
+    const weeklyProgress = isQuota
+      ? weeklyCompletions(
+          entryMap,
+          startOfWeek(new Date(), { weekStartsOn: 1 }),
+          habit,
+        )
+      : 0;
+
+    // Week dots data
+    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const weekDays = Array.from({ length: 7 }, (_, i) => {
+      const date = addDays(weekStart, i);
+      const dateStr = format(date, "yyyy-MM-dd");
+      const entry = entries?.find(
+        (e: HabitEntry) => e.date.split("T")[0] === dateStr,
+      );
+      const dow = date.getDay();
+      // Quota habits have no rest days — every day is schedulable/loggable.
+      const isScheduled =
+        isQuota ||
+        !habit.scheduledDays ||
+        habit.scheduledDays.length === 0 ||
+        habit.scheduledDays.includes(dow);
+      // `|| 1` so a habit with a missing/0 targetCount still completes at value
+      // 1 — matches the header's `isComplete` (which falls back to 1). Without
+      // it, `ratio = value / undefined` left the dot empty even after a
+      // successful check-in (the header said "Complete" but the dot didn't fill).
+      const effectiveTarget =
+        (entry ? resolveTargetCount(entry, habit) : habit.targetCount) || 1;
+      return {
+        label: format(date, "EEEEE"),
+        dateStr,
+        value: entry?.value ?? 0,
+        type: entry?.type as "completion" | "skip" | "fail" | undefined,
+        isToday: dateStr === today,
+        isScheduled,
+        effectiveTarget,
+      };
     });
-  }
 
-  const streak = isQuota
-    ? calculateWeeklyStreak(entryMap, habit)
-    : calculateStreak(entries || [], habit);
-  const weeklyProgress = isQuota
-    ? weeklyCompletions(
-        entryMap,
-        startOfWeek(new Date(), { weekStartsOn: 1 }),
-        habit,
-      )
-    : 0;
-
-  // Week dots data
-  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const weekDays = Array.from({ length: 7 }, (_, i) => {
-    const date = addDays(weekStart, i);
-    const dateStr = format(date, "yyyy-MM-dd");
-    const entry = entries?.find(
-      (e: HabitEntry) => e.date.split("T")[0] === dateStr,
-    );
-    const dow = date.getDay();
-    // Quota habits have no rest days — every day is schedulable/loggable.
-    const isScheduled =
-      isQuota ||
-      !habit.scheduledDays ||
-      habit.scheduledDays.length === 0 ||
-      habit.scheduledDays.includes(dow);
-    // `|| 1` so a habit with a missing/0 targetCount still completes at value
-    // 1 — matches the header's `isComplete` (which falls back to 1). Without
-    // it, `ratio = value / undefined` left the dot empty even after a
-    // successful check-in (the header said "Complete" but the dot didn't fill).
-    const effectiveTarget =
-      (entry ? resolveTargetCount(entry, habit) : habit.targetCount) || 1;
-    return {
-      label: format(date, "EEEEE"),
-      dateStr,
-      value: entry?.value ?? 0,
-      type: entry?.type as "completion" | "skip" | "fail" | undefined,
-      isToday: dateStr === today,
-      isScheduled,
-      effectiveTarget,
-    };
-  });
+    return { streak, weeklyProgress, weekDays };
+  }, [entries, habit, isQuota, today]);
 
   async function handleCheckIn() {
     if (isComplete || !isScheduledOnActiveDate || isPending) return;
@@ -299,7 +310,10 @@ export function HabitCard({
         bg="$card"
         p="$3"
         gap="$2.5"
-        transition="medium"
+        // Card-root transition only serves the web-only completion keyframe;
+        // on native (Reanimated driver) it just made every card an idle
+        // animated node. Feedback animations live on the inner controls.
+        transition={isWeb ? "medium" : undefined}
         // allowlist: habit-card-completing — bespoke completion keyframe (no token equivalent).
         // Web-only; ignored on native (host can plug in a Reanimated alt via renderCompletionEffect).
         className={completing ? "habit-card-completing" : undefined}
@@ -313,7 +327,9 @@ export function HabitCard({
             cursor="pointer"
             items="center"
             gap="$2.5"
-            transition="quick"
+            // Hover fade is web-only; without a hover state the native
+            // transition was another idle animated node per card.
+            transition={isWeb ? "quick" : undefined}
             hoverStyle={{ opacity: 0.8 }}
             role="button"
             aria-label={`Open ${habit.name}`}
@@ -463,7 +479,11 @@ export function HabitCard({
                   width={11}
                   height={11}
                   rounded={9999}
-                  transition="quick"
+                  // Web animates the dot's color flip; on native the
+                  // transition made 7 permanently-animated nodes PER CARD
+                  // (shared values + UI-thread bindings) to smooth an 11px
+                  // color change — snap it instead.
+                  transition={isWeb ? "quick" : undefined}
                   items="center"
                   justify="center"
                   // DOM `title` tooltip attr isn't in the kit View prop type

@@ -7,7 +7,9 @@ import {
   type SmartParseResult,
 } from "@repo/core/todos/smart-parse";
 import { resolveSmartLocale } from "@repo/core/todos/date-parse";
+import { useSheetAutoFocus } from "../_internal/use-sheet-autofocus";
 import { SmartTodoInput } from "./smart-todo-input";
+import type { SmartTodoInputHandle } from "./smart-todo-input.types";
 import {
   Button,
   Label,
@@ -163,6 +165,12 @@ export function TodoForm({
   // parse with the same locale (English is always active alongside it).
   const smartLocale = useMemo(() => resolveSmartLocale(), []);
 
+  // Native: focus the title (and summon the keyboard) only after the host
+  // sheet's slide-up settles — an eager `autoFocus` ran the keyboard
+  // animation on the same frame as the sheet spring + form mount and janked
+  // every open. Web keeps plain `autoFocus` (no spring to protect).
+  const titleRef = useSheetAutoFocus<SmartTodoInputHandle>();
+
   // Sync the form's own chips/controls from what was typed in the smart title.
   // Non-clearing: typing a token SETS the matching control but never wipes a
   // value the user picked manually via the chips.
@@ -208,6 +216,7 @@ export function TodoForm({
         <YStack gap="$1">
           <Label htmlFor={titleId}>Title</Label>
           <SmartTodoInput
+            ref={titleRef}
             value={title}
             onValueChange={setTitle}
             lists={listRefs}
@@ -217,7 +226,7 @@ export function TodoForm({
             onParse={applyParse}
             onSubmit={() => handleSubmit()}
             placeholder="What needs to be done?"
-            autoFocus
+            autoFocus={isWeb}
           />
         </YStack>
 

@@ -17,6 +17,7 @@
 // the mobile `HabitCheckInRow` are thin wrappers over it.
 
 import { useState, type ReactNode } from "react";
+import { isWeb } from "tamagui";
 import {
   Button,
   IconButton,
@@ -126,7 +127,10 @@ export function HabitCheckInRow({
       borderWidth={1}
       borderColor="$borderColor"
       bg="$card"
-      transition="quick"
+      // Hover polish is web-only; the transition on native just made every
+      // compact row an idle Reanimated node (shared values per row) with no
+      // visible effect. Web keeps the animated border fade.
+      transition={isWeb ? "quick" : undefined}
       // Web hover polish (parity with the PWA list row); no-op on native.
       hoverStyle={{ borderColor: "$primary" }}
     >

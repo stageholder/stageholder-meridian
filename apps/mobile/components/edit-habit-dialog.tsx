@@ -91,8 +91,10 @@ export function EditHabitDialog({
       title="Edit Habit"
     >
       <HabitForm
-        // Re-seed on each open (React idiom — no useEffect needed in the view).
-        key={open ? "open" : "closed"}
+        // Re-seed per habit (the kit Sheet unmounts content on close, so a
+        // fresh open re-seeds anyway; keying on `open` remounted the form
+        // mid-close-animation for nothing).
+        key={habit.id}
         initial={initial}
         groups={groupOptions}
         submitLabel="Save"

@@ -54,5 +54,10 @@ export const queryClient = new QueryClient({
 export const queryPersister = createAsyncStoragePersister({
   storage: AsyncStorage,
   key: "meridian.query-cache.v1",
-  throttleTime: 1000, // batch writes to once per second
+  // PERF: each persist JSON.stringifies the ENTIRE dehydrated cache (24h
+  // gcTime — every habit entry window, calendar month, stats…) on the JS
+  // thread. At 1s that spike landed mid-scroll during any burst of
+  // refetches/mutations. 5s keeps relaunch hydration effectively as fresh
+  // (the persister still writes the trailing edge) at a fifth of the cost.
+  throttleTime: 5000,
 });

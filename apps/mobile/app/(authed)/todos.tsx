@@ -40,7 +40,7 @@ import {
 import type { Todo, TodoList } from "@repo/core/types";
 import { ListOrdered, Pencil, Plus, Trash2 } from "@tamagui/lucide-icons-2";
 import { format, subDays } from "date-fns";
-import { useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { ScrollView as RNScrollView } from "react-native";
 import {
   SafeAreaView,
@@ -97,6 +97,59 @@ const UPCOMING_PRESETS: { label: string; days: number }[] = [
   { label: "30 days", days: 30 },
   { label: "All", days: 0 },
 ];
+
+/**
+ * One todo row — reused by the flat buckets, the grouped Upcoming view, and
+ * the Completed section. Swipe LEFT reveals a Delete panel (iOS-Mail style:
+ * a long swipe deletes immediately via autoCommit) — the mobile-reachable
+ * delete affordance the shared TodoItem's hover-delete never gave on touch.
+ *
+ * PERF: memoized at module level with per-todo-STABLE callbacks from the
+ * screen (`onToggleTodo(todo)` etc., not fresh closures per render). The
+ * screen re-renders on every sheet open/close and filter tap; without the
+ * memo every SwipeableRow + TodoItem re-rendered on the same JS frame the
+ * create/edit sheet starts its slide — the single biggest source of the
+ * FAB-tap jank. React Query's structural sharing keeps unchanged `todo`
+ * objects referentially identical, so the shallow compare bails per-row.
+ */
+const TodoRow = memo(function TodoRow({
+  todo,
+  listName,
+  listColor,
+  onToggleTodo,
+  onDeleteTodo,
+  onOpenEdit,
+}: {
+  todo: Todo;
+  listName?: string;
+  listColor?: string;
+  onToggleTodo: (todo: Todo) => void;
+  onDeleteTodo: (id: string) => void;
+  onOpenEdit: (todo: Todo) => void;
+}) {
+  return (
+    <SwipeableRow
+      rightActions={[
+        {
+          label: "Delete",
+          color: "#e7000b",
+          icon: <Trash2 size={18} color="#ffffff" />,
+          onPress: () => onDeleteTodo(todo.id),
+          autoCommit: true,
+        },
+      ]}
+    >
+      <TodoItem
+        todo={todo}
+        listName={listName}
+        listColor={listColor}
+        onToggle={() => onToggleTodo(todo)}
+        onDelete={() => onDeleteTodo(todo.id)}
+        onOpenDetail={() => onOpenEdit(todo)}
+      />
+    </SwipeableRow>
+  );
+});
 
 export default function TodosScreen() {
   const insets = useSafeAreaInsets();
@@ -189,44 +242,36 @@ export default function TodosScreen() {
     ? (lists.find((l) => l.id === activeListId) ?? null)
     : null;
 
-  // One todo row — reused by the flat buckets, the grouped Upcoming view, and
-  // the Completed section. Swipe LEFT reveals a Delete panel (iOS-Mail style:
-  // a long swipe deletes immediately via autoCommit) — the mobile-reachable
-  // delete affordance the shared TodoItem's hover-delete never gave on touch.
-  function renderTodo(todo: Todo) {
-    return (
-      <SwipeableRow
-        key={todo.id}
-        rightActions={[
-          {
-            label: "Delete",
-            color: "#e7000b",
-            icon: <Trash2 size={18} color="#ffffff" />,
-            onPress: () => deleteTodo.mutate(todo.id),
-            autoCommit: true,
-          },
-        ]}
-      >
-        <TodoItem
-          todo={todo}
-          listName={showListBadge ? listMap.get(todo.listId)?.name : undefined}
-          listColor={
-            showListBadge ? listMap.get(todo.listId)?.color : undefined
-          }
-          onToggle={() =>
-            toggleTodo.mutate({ id: todo.id, status: todo.status })
-          }
-          onDelete={() => deleteTodo.mutate(todo.id)}
-          onOpenDetail={() => handleOpenEdit(todo)}
-        />
-      </SwipeableRow>
-    );
-  }
+  // Stable per-screen callbacks for the memoized TodoRow — RQ v5's `mutate`
+  // is referentially stable, so these never change identity and rows only
+  // re-render when their own `todo` object does.
+  const handleToggleTodo = useCallback(
+    (todo: Todo) => toggleTodo.mutate({ id: todo.id, status: todo.status }),
+    [toggleTodo.mutate],
+  );
+  const handleDeleteTodo = useCallback(
+    (id: string) => deleteTodo.mutate(id),
+    [deleteTodo.mutate],
+  );
 
   // Open a row for editing — seed the content and flip the sheet open.
-  function handleOpenEdit(todo: Todo) {
+  const handleOpenEdit = useCallback((todo: Todo) => {
     setEditing(todo);
     setEditOpen(true);
+  }, []);
+
+  function renderTodo(todo: Todo) {
+    return (
+      <TodoRow
+        key={todo.id}
+        todo={todo}
+        listName={showListBadge ? listMap.get(todo.listId)?.name : undefined}
+        listColor={showListBadge ? listMap.get(todo.listId)?.color : undefined}
+        onToggleTodo={handleToggleTodo}
+        onDeleteTodo={handleDeleteTodo}
+        onOpenEdit={handleOpenEdit}
+      />
+    );
   }
 
   // On close, only flip the open flag — `editing` stays so the sheet keeps its

@@ -9,6 +9,7 @@
 // sparse update carrying {id, order, groupId} — the server keeps the habit in
 // this group while applying the new order.
 
+import { memo } from "react";
 import { Sortable, Text, View, XStack, YStack } from "@stageholder/ui";
 import type { Habit } from "@repo/core/types";
 
@@ -44,7 +45,12 @@ interface HabitGroupSectionProps {
   onMoveToGroup: (habit: Habit) => void;
 }
 
-export function HabitGroupSection({
+// PERF: memoized — the habits screen re-renders on every sheet open / filter
+// tap, and each section carries a Sortable plus a full HabitCard (dropdown,
+// week dots, per-card entries query) per habit. The screen passes stable
+// (useCallback) handlers + memoized `habits` arrays, so the shallow compare
+// bails whole sections out of those unrelated re-renders.
+export const HabitGroupSection = memo(function HabitGroupSection({
   name,
   color,
   icon,
@@ -129,4 +135,4 @@ export function HabitGroupSection({
       />
     </YStack>
   );
-}
+});

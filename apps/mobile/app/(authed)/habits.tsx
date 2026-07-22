@@ -43,7 +43,7 @@ import {
 import { weeklyCompletions } from "@repo/core/habits/entry-resolution";
 import { addDays, format, startOfWeek } from "date-fns";
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -273,23 +273,35 @@ export default function HabitsScreen() {
     return nonEmpty;
   }, [sections, activeChip]);
 
-  function openDetail(habit: Habit) {
-    router.push(`/habits/${habit.id}`);
-  }
+  // Stable callbacks — HabitGroupSection is memoized, so these must keep
+  // their identity across screen re-renders (sheet opens, filter taps) for
+  // the sections (and every card under them) to bail out of re-rendering.
+  const openDetail = useCallback(
+    (habit: Habit) => {
+      router.push(`/habits/${habit.id}`);
+    },
+    [router],
+  );
 
-  function archive(habit: Habit) {
-    archiveHabit.mutate(habit.id, {
-      onSuccess: () => toast.success(`"${habit.name}" archived`),
-      onError: () => toast.error("Couldn't archive habit"),
-    });
-  }
+  const archive = useCallback(
+    (habit: Habit) => {
+      archiveHabit.mutate(habit.id, {
+        onSuccess: () => toast.success(`"${habit.name}" archived`),
+        onError: () => toast.error("Couldn't archive habit"),
+      });
+    },
+    [archiveHabit.mutate],
+  );
 
-  function restore(habit: Habit) {
-    unarchiveHabit.mutate(habit.id, {
-      onSuccess: () => toast.success(`"${habit.name}" restored`),
-      onError: () => toast.error("Couldn't restore habit"),
-    });
-  }
+  const restore = useCallback(
+    (habit: Habit) => {
+      unarchiveHabit.mutate(habit.id, {
+        onSuccess: () => toast.success(`"${habit.name}" restored`),
+        onError: () => toast.error("Couldn't restore habit"),
+      });
+    },
+    [unarchiveHabit.mutate],
+  );
 
   const archivedHabits = archivedQuery.data ?? [];
   const hasHabits = habits.length > 0;

@@ -204,7 +204,16 @@ export default function AuthedLayout() {
               />
             );
           }}
-          screenOptions={{ headerShown: false }}
+          screenOptions={{
+            headerShown: false,
+            // PERF: tab screens stay MOUNTED once visited (by design — instant
+            // tab switches), but without freeze every React Query cache update
+            // re-rendered all five screens' full trees (charts, card lists) on
+            // every mutation/refetch, wherever it originated. react-freeze
+            // (via react-native-screens) suspends render work for blurred
+            // tabs; they catch up once on focus.
+            freezeOnBlur: true,
+          }}
         >
           <Tabs.Screen name="index" options={{ title: "Today" }} />
           <Tabs.Screen name="todos" options={{ title: "Todos" }} />

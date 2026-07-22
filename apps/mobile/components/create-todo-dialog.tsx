@@ -15,6 +15,7 @@ import {
 } from "@repo/features/todos";
 
 import { useCreateTodo, useTodoLists, type TodoPriority } from "@/lib/api";
+import { useOpenEpoch } from "@/lib/hooks/use-open-epoch";
 import { IGNITION } from "@/lib/ignition-palette";
 
 interface CreateTodoDialogProps {
@@ -39,6 +40,9 @@ export function CreateTodoDialog({
 }: CreateTodoDialogProps) {
   const createTodo = useCreateTodo();
   const { data: lists } = useTodoLists();
+  // Fresh-form key that moves only on closed→open (see the hook header —
+  // keying on `open` itself remounted the form mid-close-animation).
+  const openEpoch = useOpenEpoch(open);
 
   // When `listId` is passed, hide the List select by feeding a single-list
   // shape (the form shows the select only when lists.length > 1).
@@ -102,8 +106,8 @@ export function CreateTodoDialog({
     >
       <TodoForm
         // Include the seed date in the key so re-opening from a DIFFERENT
-        // calendar day re-seeds the form (not just open↔closed).
-        key={`${open ? "open" : "closed"}-${defaultDueDate ?? ""}`}
+        // calendar day re-seeds the form (not just per-open).
+        key={`${openEpoch}-${defaultDueDate ?? ""}`}
         initial={initial}
         lists={lookupLists}
         submitLabel="Create"

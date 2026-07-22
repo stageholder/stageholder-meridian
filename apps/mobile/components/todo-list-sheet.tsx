@@ -25,6 +25,7 @@ import {
   useDeleteTodoList,
   useUpdateTodoList,
 } from "@/lib/api";
+import { useOpenEpoch } from "@/lib/hooks/use-open-epoch";
 
 interface TodoListSheetProps {
   open: boolean;
@@ -45,6 +46,9 @@ export function TodoListSheet({
   const createList = useCreateTodoList();
   const updateList = useUpdateTodoList();
   const deleteList = useDeleteTodoList();
+  // Fresh-form key that moves only on closed→open (keying on `open` itself
+  // remounted the form mid-close-animation).
+  const openEpoch = useOpenEpoch(open);
 
   const isEdit = list !== null;
 
@@ -110,10 +114,11 @@ export function TodoListSheet({
       }
     >
       <TodoListForm
-        // Create mode keys on `open` too, so each fresh open remounts a blank
-        // form — a constant "create" key reused the prior instance, leaving the
-        // last-typed name behind on the next create.
-        key={list?.id ?? `create-${open}`}
+        // Create mode keys on the open EPOCH (not `open` itself): each fresh
+        // open still remounts a blank form — covering a reopen that lands
+        // before the closing sheet unmounts — without the old
+        // mid-close-animation remount.
+        key={list?.id ?? `create-${openEpoch}`}
         initial={
           list
             ? { name: list.name, color: list.color ?? "#3b82f6" }

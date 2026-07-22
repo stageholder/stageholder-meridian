@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Form, useMedia } from "tamagui";
+import { Form, isWeb, useMedia } from "tamagui";
 import {
   Button,
   Input,
@@ -14,6 +14,10 @@ import {
   YStack,
   type MediaValue,
 } from "@stageholder/ui";
+import {
+  useSheetAutoFocus,
+  type Focusable,
+} from "../_internal/use-sheet-autofocus";
 import { encodeMediaIcon, parseMediaIcon } from "./icon-value";
 
 /** Cross-platform create/edit-group form values. */
@@ -75,6 +79,8 @@ export function HabitGroupForm({
   const [color, setColor] = useState(initial.color);
   const [icon, setIcon] = useState(initial.icon ?? "");
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
+  // Native: defer the keyboard until the host sheet's slide settles.
+  const nameRef = useSheetAutoFocus<Focusable>();
 
   // <md the form lives in a bottom Sheet; Popovers render behind Sheets.
   // Switch to MediaPickerSheet (modal Sheet) below md, anchored Popover at md+.
@@ -188,12 +194,13 @@ export function HabitGroupForm({
           <YStack flex={1}>
             <Label htmlFor="habit-group-form-name">Name</Label>
             <Input
+              ref={nameRef as never}
               id="habit-group-form-name"
               mt="$1"
               value={name}
               onChangeText={setName}
               placeholder="My Group"
-              autoFocus
+              autoFocus={isWeb}
             />
           </YStack>
         </XStack>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Form } from "tamagui";
+import { Form, isWeb } from "tamagui";
 import {
   Button,
   Input,
@@ -9,6 +9,10 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
+import {
+  useSheetAutoFocus,
+  type Focusable,
+} from "../_internal/use-sheet-autofocus";
 
 /**
  * The cross-platform shape of the create/edit-list form values. The host
@@ -73,6 +77,8 @@ export function TodoListForm({
 }: TodoListFormProps) {
   const [name, setName] = useState(initial.name);
   const [color, setColor] = useState(initial.color);
+  // Native: defer the keyboard until the host sheet's slide settles.
+  const nameRef = useSheetAutoFocus<Focusable>();
 
   function handleSubmit() {
     if (!name.trim()) return;
@@ -85,11 +91,12 @@ export function TodoListForm({
         <YStack gap="$1">
           <Label htmlFor="todo-list-form-name">Name</Label>
           <Input
+            ref={nameRef as never}
             id="todo-list-form-name"
             value={name}
             onChangeText={setName}
             placeholder="My List"
-            autoFocus
+            autoFocus={isWeb}
           />
         </YStack>
 
