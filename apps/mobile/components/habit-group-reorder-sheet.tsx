@@ -101,7 +101,7 @@ export function HabitGroupReorderSheet({
               <Text
                 fontSize="$3"
                 color="$mutedForeground"
-                textAlign="center"
+                text="center"
                 py="$6"
               >
                 No groups yet. Tap "+ Group" to create one.

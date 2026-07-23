@@ -497,7 +497,11 @@ export function useUpdateSubtask() {
     onMutate: async ({ todoId, subtaskId, data }) => {
       const previous = await snapshotAndCancel(queryClient, TODO_LIST_KEYS);
       patchParentSubtasks(queryClient, todoId, (subs) =>
-        subs.map((s) => (s.id === subtaskId ? { ...s, ...data } : s)),
+        // Cast: `data` fields are typed as bare strings (transport shape), the
+        // cache holds the narrowed Subtask unions — values are the same set.
+        subs.map((s) =>
+          s.id === subtaskId ? ({ ...s, ...data } as typeof s) : s,
+        ),
       );
       return { previous };
     },

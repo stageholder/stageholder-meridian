@@ -15,7 +15,7 @@ import { HabitCheckInRow as SharedHabitCheckInRow } from "@repo/features/habits"
 import { resolveTargetCount } from "@repo/core/habits/entry-resolution";
 import type { Habit } from "@repo/core/types";
 
-import { useHabitEntries } from "@/lib/api";
+import { useSharedHabitEntries } from "@/lib/api";
 import { useHabitDayActions } from "@/lib/hooks/use-habit-day-actions";
 import { IGNITION } from "@/lib/ignition-palette";
 
@@ -32,12 +32,10 @@ export function HabitCheckInRow({
   activeDate,
   onOpenDetail,
 }: HabitCheckInRowProps) {
-  // Tight one-day window — all this row needs is the active date's entry. The
-  // separate cache key is fine: optimistic writes prefix-match every window.
-  const entriesQuery = useHabitEntries(habit.id, {
-    startDate: activeDate,
-    endDate: activeDate,
-  });
+  // THE canonical shared 90-day window — the old per-row 1-day window put the
+  // same habit's entries under a separate cache key (extra fetch + observer
+  // per row); the day-actions hook date-filters, so the wide array works.
+  const entriesQuery = useSharedHabitEntries(habit.id, activeDate);
   const entries = entriesQuery.data;
   const actions = useHabitDayActions(habit.id, activeDate, entries);
   const entry = actions.activeDateEntry;

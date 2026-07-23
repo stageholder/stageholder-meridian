@@ -17,6 +17,7 @@
 import { useUser } from "@stageholder/sdk/react-native";
 import {
   ActivityRings,
+  AnimatePresence,
   Banner,
   Button,
   Card,
@@ -49,17 +50,18 @@ import {
 import { LevelProgress, LevelUpCelebration } from "@repo/features/light";
 import type { Todo } from "@repo/core/types";
 import type { UserLight } from "@repo/core/types/light";
-import { CalendarDays } from "@tamagui/lucide-icons-2";
+import { CalendarDays, Search } from "@tamagui/lucide-icons-2";
 import { useQueryClient } from "@tanstack/react-query";
 import { format, subDays } from "date-fns";
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 
 import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
+import { CommandPalette } from "@/components/command-palette";
 import { TrialPill } from "@/components/trial-pill";
 
 import {
@@ -166,6 +168,25 @@ export default function TodayScreen() {
 
   // ---- Refresh ----
   const [refreshing, setRefreshing] = useState(false);
+  // Command palette (PWA ⌘K parity) — opened from the header Search button.
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // PERF: gate for the below-the-fold trend charts — the four SVG chart
+  // trees mount one painted frame + 300ms after the screen, so they never
+  // compete with the launch/navigation frames. NOT InteractionManager —
+  // verified on-simulator that runAfterInteractions can hang for seconds in
+  // this app (open interaction handles), which stalled these gates.
+  const [chartsReady, setChartsReady] = useState(false);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const raf = requestAnimationFrame(() => {
+      timer = setTimeout(() => setChartsReady(true), 300);
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
   async function handleRefresh() {
     setRefreshing(true);
     try {
@@ -388,6 +409,16 @@ export default function TodayScreen() {
                     keeps this in the app-shell header; Today's header is the
                     mobile equivalent chrome). Taps to /upgrade. */}
                 <TrialPill />
+                {/* Command palette — the PWA's ⌘K, opened from a button on
+                    touch (the kit adapts it to a bottom Sheet on phones). */}
+                <IconButton
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Open command palette"
+                  onPress={() => setPaletteOpen(true)}
+                >
+                  <Search size={20} />
+                </IconButton>
                 {/* Month calendar (rings-per-day + day agenda) — the PWA's
                     /calendar, hidden-route on mobile. */}
                 <IconButton
@@ -558,16 +589,23 @@ export default function TodayScreen() {
                   <TodayWidgetEmpty text="Nothing due today — nice work." />
                 ) : (
                   <YStack gap="$2">
-                    {todayTodoList.slice(0, WIDGET_CAP).map((todo) => (
-                      <TodoItem
-                        key={todo.id}
-                        todo={todo}
-                        compact
-                        onToggle={() => handleToggleTodo(todo)}
-                        onDelete={() => deleteTodo.mutate(todo.id)}
-                        onOpenDetail={() => openTodoEdit(todo)}
-                      />
-                    ))}
+                    {/* PWA-parity animation: `animated` turns on the row
+                        enter/exit on native and AnimatePresence plays the
+                        exit when a checked todo leaves the widget. Safe
+                        here — the list is capped at WIDGET_CAP rows. */}
+                    <AnimatePresence>
+                      {todayTodoList.slice(0, WIDGET_CAP).map((todo) => (
+                        <TodoItem
+                          key={todo.id}
+                          todo={todo}
+                          compact
+                          animated
+                          onToggle={() => handleToggleTodo(todo)}
+                          onDelete={() => deleteTodo.mutate(todo.id)}
+                          onOpenDetail={() => openTodoEdit(todo)}
+                        />
+                      ))}
+                    </AnimatePresence>
                   </YStack>
                 )}
               </Dashboard.Widget>
@@ -575,38 +613,59 @@ export default function TodayScreen() {
               {/* ---- Trend charts (PWA dashboard parity: journal pair, then
                    the weekly-activity + light-growth pair). Shared views over
                    the kit's cross-platform charts; color is a theme token
-                   because the views' CSS-var default can't resolve on RN. ---- */}
-              {/* Journal pair: growth trend then its word-count heatmap, both
-                  in the journal identity colour (#facc15). */}
+                   because the views' CSS-var default can't resolve on RN.
+
+                   PERF: chart CONTENT gates on `chartsReady` — the widget
+                   frames mount with the screen, but the four SVG chart trees
+                   (all below the fold) mount only after the tab-switch /
+                   first-mount interactions settle, so they never compete with
+                   the navigation frame. Fixed-height placeholders keep the
+                   scroll extent stable. ---- */}
               <Dashboard.Widget colSpan={12} title="Journal Growth">
-                <JournalGrowthChart
-                  data={journalGrowth.data}
-                  isLoading={journalGrowth.isLoading}
-                  color="#facc15"
-                />
+                {chartsReady ? (
+                  <JournalGrowthChart
+                    data={journalGrowth.data}
+                    isLoading={journalGrowth.isLoading}
+                    color="#facc15"
+                  />
+                ) : (
+                  <View height={200} />
+                )}
               </Dashboard.Widget>
               {/* Writing activity — GitHub-style word-count heatmap in the
                   journal identity colour. Colour is baked into the view (no
                   CSS-var resolution needed), so no `color` prop here. */}
               <Dashboard.Widget colSpan={12} title="Writing Activity">
-                <WritingHeatmapChart
-                  data={writingHeatmap.data}
-                  isLoading={writingHeatmap.isLoading}
-                />
+                {chartsReady ? (
+                  <WritingHeatmapChart
+                    data={writingHeatmap.data}
+                    isLoading={writingHeatmap.isLoading}
+                  />
+                ) : (
+                  <View height={200} />
+                )}
               </Dashboard.Widget>
               {/* Activity pair: weekly activity (stacked todo/habit/journal in
                   identity colours) then light growth (gapped bars). */}
               <Dashboard.Widget colSpan={12} title="Weekly Activity">
-                <WeeklyActivityChart
-                  data={weeklyActivity.data}
-                  isLoading={weeklyActivity.isLoading}
-                />
+                {chartsReady ? (
+                  <WeeklyActivityChart
+                    data={weeklyActivity.data}
+                    isLoading={weeklyActivity.isLoading}
+                  />
+                ) : (
+                  <View height={200} />
+                )}
               </Dashboard.Widget>
               <Dashboard.Widget colSpan={12} title="Light Growth">
-                <LightEarnedChart
-                  data={lightTrend}
-                  isLoading={lightTrendLoading}
-                />
+                {chartsReady ? (
+                  <LightEarnedChart
+                    data={lightTrend}
+                    isLoading={lightTrendLoading}
+                  />
+                ) : (
+                  <View height={200} />
+                )}
               </Dashboard.Widget>
             </Dashboard>
           </YStack>
@@ -619,6 +678,10 @@ export default function TodayScreen() {
         onOpenChange={setEditTodoOpen}
         todo={editingTodo}
       />
+
+      {/* Command palette (⌘K parity) — kit CommandMenu, bottom Sheet on
+          phones; hosts its own New Todo / New Habit create sheets. */}
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
 
       {/* Level-up overlay — rendered above the scroll frame so it covers the
           whole screen when a tier is crossed from Today. */}

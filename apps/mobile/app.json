@@ -20,8 +20,8 @@
     "android": {
       "package": "com.stageholder.meridian.mobile",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#0e7490"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#001f3f"
       },
       "intentFilters": [
         {
@@ -39,7 +39,16 @@
       "expo-router",
       "expo-secure-store",
       "expo-web-browser",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#001f3f"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

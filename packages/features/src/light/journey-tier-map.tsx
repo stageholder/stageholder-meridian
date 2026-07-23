@@ -22,6 +22,11 @@ interface JourneyTierMapProps {
    * types even for native call sites).
    */
   totalLight?: number;
+  /**
+   * NATIVE sibling only — pauses the current tier's StarVisual pulse while
+   * the host screen is blurred. Accepted-unused here (see totalLight).
+   */
+  animateStars?: boolean;
 }
 
 export function JourneyTierMap({ currentTier }: JourneyTierMapProps) {

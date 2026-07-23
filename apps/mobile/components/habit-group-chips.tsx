@@ -9,7 +9,8 @@
 // "+ group" · "Archived". Tapping a chip sets the active filter; tapping the
 // pencil on the active group opens its edit sheet.
 
-import { Pill, Text, View, XStack } from "@stageholder/ui";
+import { MediaGlyph, Pill, Text, View, XStack } from "@stageholder/ui";
+import { parseMediaIcon } from "@repo/features/habits";
 import type { HabitGroup } from "@repo/core/types";
 import { Archive, ListOrdered, Pencil, Plus } from "@tamagui/lucide-icons-2";
 import { ScrollView as RNScrollView } from "react-native";
@@ -73,18 +74,22 @@ export function HabitGroupChips({
           onPress={() => onSelect(group.id)}
         >
           <XStack items="center" gap="$1.5">
-            {group.icon ? (
-              <Text fontSize={12} lineHeight={12}>
-                {group.icon}
-              </Text>
-            ) : (
-              <View
-                width={8}
-                height={8}
-                rounded={9999}
-                style={{ backgroundColor: group.color ?? "#6b7280" }}
-              />
-            )}
+            {/* MediaGlyph decodes the icon column (emoji OR encoded lucide
+                value) — rendering the raw string printed lucide names as
+                text ("sunrise Morning", the simulator-verified bug). */}
+            <MediaGlyph
+              value={parseMediaIcon(group.icon)}
+              size={12}
+              color={group.color ?? "#6b7280"}
+              fallback={
+                <View
+                  width={8}
+                  height={8}
+                  rounded={9999}
+                  style={{ backgroundColor: group.color ?? "#6b7280" }}
+                />
+              }
+            />
             <Text fontSize="$2" color="$color">
               {group.name}
             </Text>

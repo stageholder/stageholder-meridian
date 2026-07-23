@@ -17,8 +17,6 @@
 
 import { useMemo, useState } from "react";
 import {
-  ActivityRings,
-  EventCalendar,
   IconButton,
   ScrollView,
   Separator,
@@ -27,7 +25,6 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
-import { activityRingsConfig } from "@repo/features/activity-rings";
 import { ChevronLeft } from "@tamagui/lucide-icons-2";
 import { format } from "date-fns";
 import { useRouter } from "expo-router";
@@ -39,19 +36,9 @@ import {
 import { CalendarDayAgenda } from "@/components/calendar-day-agenda";
 import { CreateTodoDialog } from "@/components/create-todo-dialog";
 import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
-import {
-  EMPTY_DAY,
-  buildCalendarEvents,
-  computeActivityRings,
-  countScheduledHabits,
-  useCalendarRange,
-} from "@/lib/api/hooks/calendar";
+import { WeekStrip } from "@/components/week-strip";
+import { EMPTY_DAY, useCalendarRange } from "@/lib/api/hooks/calendar";
 import { useHabits } from "@/lib/api";
-
-// Fixed cell-ring geometry — ~92% of a typical 38px compact cell square,
-// thin bands so the date number fits the center hole (PWA's formula with
-// the measurement replaced by the constant it converges to on phones).
-const CELL_RING = { size: 32, thickness: 3, gap: 1 } as const;
 
 export default function CalendarScreen() {
   const insets = useSafeAreaInsets();
@@ -64,11 +51,6 @@ export default function CalendarScreen() {
   const { data: habits } = useHabits();
   const habitsList = useMemo(() => habits ?? [], [habits]);
 
-  const events = useMemo(
-    () => buildCalendarEvents(calendarData),
-    [calendarData],
-  );
-
   const quotaIds = useMemo(
     () =>
       new Set(
@@ -78,11 +60,6 @@ export default function CalendarScreen() {
       ),
     [habitsList],
   );
-
-  const startOfToday = useMemo(() => {
-    const n = new Date();
-    return new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime();
-  }, []);
 
   const selectedDayData =
     calendarData[format(selectedDate, "yyyy-MM-dd")] ?? EMPTY_DAY;
@@ -121,60 +98,34 @@ export default function CalendarScreen() {
         >
           <YStack gap="$4" px="$4" pt="$1" pb="$10">
             {isError ? (
-              <XStack height={260} items="center" justify="center">
+              <XStack height={120} items="center" justify="center">
                 <Text fontSize="$3" color="$destructive">
                   Failed to load the calendar. Pull back and retry.
                 </Text>
               </XStack>
-            ) : isLoading && events.length === 0 ? (
-              <XStack height={260} items="center" justify="center">
+            ) : isLoading && Object.keys(calendarData).length === 0 ? (
+              <XStack height={120} items="center" justify="center">
                 <Spinner size="large" />
               </XStack>
             ) : (
-              <EventCalendar
-                events={events}
-                variant="month"
-                density="compact"
-                selectedDate={selectedDate}
-                onDateClick={setSelectedDate}
-                renderDayCell={({ date, isToday }) => {
-                  const dayData = calendarData[format(date, "yyyy-MM-dd")];
-                  // Rings for today + history; future shows just the date.
-                  const showRing = date.getTime() <= startOfToday;
-                  const dateNode = (
-                    <Text
-                      fontSize={10}
-                      fontWeight={isToday ? "700" : "500"}
-                      color="$color"
-                    >
-                      {date.getDate()}
-                    </Text>
-                  );
-                  return (
-                    <YStack flex={1} items="center" justify="center" py="$0.5">
-                      {showRing ? (
-                        <ActivityRings
-                          rings={activityRingsConfig(
-                            computeActivityRings(
-                              dayData,
-                              countScheduledHabits(habitsList, date),
-                              undefined,
-                              quotaIds,
-                            ),
-                          )}
-                          size={CELL_RING.size}
-                          thickness={CELL_RING.thickness}
-                          gap={CELL_RING.gap}
-                        >
-                          {dateNode}
-                        </ActivityRings>
-                      ) : (
-                        dateNode
-                      )}
-                    </YStack>
-                  );
-                }}
-              />
+              <YStack gap="$2">
+                {/* Month label follows the selected day. */}
+                <Text fontSize="$5" fontWeight="600" color="$color" px="$1">
+                  {format(selectedDate, "MMMM yyyy")}
+                </Text>
+                {/* Apple-Fitness weekly strip (PWA Apple-redesign parity):
+                    date-on-top, hollow static rings, no grid borders, paged
+                    horizontal week scrolling. Replaces the kit EventCalendar
+                    month grid, whose bordered cells + date-in-hole cells
+                    diverged from the PWA design. */}
+                <WeekStrip
+                  calendarData={calendarData}
+                  habits={habitsList}
+                  quotaIds={quotaIds}
+                  selectedKey={format(selectedDate, "yyyy-MM-dd")}
+                  onSelectDay={setSelectedDate}
+                />
+              </YStack>
             )}
 
             <Separator />

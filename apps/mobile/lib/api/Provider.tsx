@@ -1,14 +1,10 @@
 // apps/mobile/lib/api/Provider.tsx
 //
-// QueryProvider — wraps the app with React Query's PersistQueryClientProvider
-// so the cache survives app relaunches via AsyncStorage. Storage identity is
-// the persister `key` (`meridian.query-cache.v1`, see ./query-client.ts); to
-// INVALIDATE the persisted cache after a breaking query-shape change, bump the
-// `buster` string in persistOptions below (NOT the key) — the buster is what
-// PersistQueryClientProvider compares on rehydrate to discard a stale cache.
+// QueryProvider — provides the app's single in-memory QueryClient. (Cache
+// persistence to AsyncStorage was removed 2026-07-23 — see query-client.ts.)
 //
 // Three responsibilities:
-//   1. Provide the QueryClient + cache persistence
+//   1. Provide the QueryClient
 //   2. Bridge `useAccessToken()` from @stageholder/sdk/react-native into
 //      the module-level Axios interceptor (see ./auth.ts for why)
 //   3. Forward 401 events from the API client to the consumer's router
@@ -19,15 +15,13 @@
 // `useAccessToken()` is in scope — see app/_layout.tsx.
 
 import { useAccessToken } from "@stageholder/sdk/react-native";
-import { defaultShouldDehydrateQuery } from "@tanstack/react-query";
-import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, type ReactNode } from "react";
 import { DeviceEventEmitter } from "react-native";
 
 import { setAccessTokenAccessor } from "./auth";
 import { ClientEvents } from "./client";
-import { journalKeys } from "./keys";
-import { queryClient, queryPersister } from "./query-client";
+import { queryClient } from "./query-client";
 
 export type QueryProviderProps = {
   children: ReactNode;
@@ -64,37 +58,16 @@ export function QueryProvider({
   }, [onUnauthorized]);
 
   return (
-    <PersistQueryClientProvider
-      client={queryClient}
-      persistOptions={{
-        persister: queryPersister,
-        // Buster string — bump when the cache contents need to be
-        // invalidated wholesale (e.g. after a major hook refactor).
-        // v2: light-events entries were briefly cached as the raw {data,meta}
-        // envelope (pre-factory hook); rehydrating that shape crashed the
-        // Journey feed before the corrected refetch could land.
-        // v3: the Habit shape now carries groupId/order/archivedAt + the new
-        // habitGroups cache; old persisted Habit rows lack those fields, so the
-        // grouped/sectioned screen would render a stale (ungrouped, order-0)
-        // layout until the refetch landed.
-        buster: "v3",
-        // SECURITY: journal caches hold DECRYPTED plaintext (the list/detail
-        // entries after decrypt, and the autosave optimistic update writes the
-        // plaintext patch into the list cache every ~1s). NEVER flush that to
-        // AsyncStorage — keep journal queries IN MEMORY ONLY (PWA parity). The
-        // predicate matches both the list and detail keys (queryKey[0] ===
-        // "journals").
-        dehydrateOptions: {
-          shouldDehydrateQuery: (query) =>
-            query.queryKey[0] === journalKeys.all[0]
-              ? false
-              : defaultShouldDehydrateQuery(query),
-        },
-      }}
-    >
+    // Plain in-memory QueryClient — cache persistence was REMOVED 2026-07-23
+    // (see query-client.ts header): the smooth sibling apps (almanac/atlas
+    // mobile, same stack) don't persist, and the persister was a standing
+    // JS-thread tax (boot rehydration + stringify bursts) plus a class of
+    // wrong-shape-rehydrate bugs. This also retires the journal-plaintext
+    // dehydrate exclusion wholesale — nothing is written to disk at all.
+    <QueryClientProvider client={queryClient}>
       <AuthTokenBridge />
       {children}
-    </PersistQueryClientProvider>
+    </QueryClientProvider>
   );
 }
 

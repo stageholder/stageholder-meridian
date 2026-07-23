@@ -45,7 +45,6 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { QueryProvider, queryClient } from "@/lib/api";
-import { queryPersister } from "@/lib/api/query-client";
 import { PaywallHost } from "@/components/paywall-sheet";
 import { useAppFonts } from "@/lib/fonts";
 import { expoHapticImpl } from "@/lib/haptic-impl";
@@ -79,18 +78,17 @@ const CLIENT_ID =
  * SECURITY (cross-account DEK bleed): on a confirmed end-of-session — an
  * explicit sign-out (`onSignedOut`) or terminal session death (`onAuthError`,
  * the SDK's refresh got `invalid_grant`) — scrub the journal key material
- * (in-memory DEK + wrapped-DEK + salt) and purge the React Query cache both in
- * memory (`clear()`) and on disk (`removeClient()` on the AsyncStorage
- * persister), so the next account signing in on this device inherits neither
- * the previous user's DEK nor any of their decrypted/cached journal data.
- * Idempotent — safe to run from more than one path (profile-sheet also calls
- * this pre-signOut, and onSignedOut/onAuthError may both fire around a
- * teardown).
+ * (in-memory DEK + wrapped-DEK + salt) and purge the in-memory React Query
+ * cache, so the next account signing in on this device inherits neither the
+ * previous user's DEK nor any of their decrypted/cached journal data. (The
+ * on-disk cache purge is gone with cache persistence itself — nothing is
+ * written to disk anymore; see lib/api/query-client.ts.) Idempotent — safe
+ * to run from more than one path (profile-sheet also calls this pre-signOut,
+ * and onSignedOut/onAuthError may both fire around a teardown).
  */
 function purgeSessionState(): void {
   lockJournal();
   queryClient.clear();
-  void queryPersister.removeClient();
 }
 
 export default function RootLayout() {

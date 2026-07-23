@@ -46,6 +46,12 @@ interface JourneyTierMapProps {
    * shows the live progress bar toward the next tier.
    */
   totalLight?: number;
+  /**
+   * Gate for the current tier's StarVisual pulse — the host passes its
+   * screen-focus state so the 1.5s pulse interval stops ticking while the
+   * screen is blurred (the app's only recurring timer). Default true.
+   */
+  animateStars?: boolean;
 }
 
 // Gold path + amber chrome — deliberately theme-independent (the journey's
@@ -59,6 +65,7 @@ const NODE_SIZE = 44;
 export function JourneyTierMap({
   currentTier,
   totalLight,
+  animateStars = true,
 }: JourneyTierMapProps) {
   return (
     <YStack enterStyle={{ opacity: 0 }} transition="medium">
@@ -120,7 +127,11 @@ export function JourneyTierMap({
                   isCurrent ? "0 0 14px rgba(245, 158, 11, 0.35)" : undefined
                 }
               >
-                <StarVisual tier={tier.tier} size="sm" animate={isCurrent} />
+                <StarVisual
+                  tier={tier.tier}
+                  size="sm"
+                  animate={isCurrent && animateStars}
+                />
               </View>
               <View
                 width={2}

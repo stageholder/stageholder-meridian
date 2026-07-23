@@ -148,7 +148,10 @@ const RULES: Rule[] = [
   // Weekday name, optional "hari " prefix and " depan" suffix.
   {
     re: new RegExp(`${B}(?:hari )?(${WEEK_RE})( depan)?${END}`, "gi"),
-    resolve: (m, r) => forwardWeekday(r, WEEKDAYS[m[2].toLowerCase()], !!m[3]),
+    // `?? 0` / `!`-free: group 2 always matches (WEEK_RE alternation), but the
+    // strict indexed-access config can't see that — fall back harmlessly.
+    resolve: (m, r) =>
+      forwardWeekday(r, WEEKDAYS[(m[2] ?? "").toLowerCase()] ?? 0, !!m[3]),
   },
 
   // "tanggal N", "N <bulan>", "<bulan> N".
@@ -158,11 +161,13 @@ const RULES: Rule[] = [
   },
   {
     re: new RegExp(`${B}(\\d{1,2}) (${MONTHS_RE})${END}`, "gi"),
-    resolve: (m, r) => dayInMonth(r, Number(m[2]), MONTHS[m[3].toLowerCase()]),
+    resolve: (m, r) =>
+      dayInMonth(r, Number(m[2]), MONTHS[(m[3] ?? "").toLowerCase()] ?? 0),
   },
   {
     re: new RegExp(`${B}(${MONTHS_RE}) (\\d{1,2})${END}`, "gi"),
-    resolve: (m, r) => dayInMonth(r, Number(m[3]), MONTHS[m[2].toLowerCase()]),
+    resolve: (m, r) =>
+      dayInMonth(r, Number(m[3]), MONTHS[(m[2] ?? "").toLowerCase()] ?? 0),
   },
 ];
 
@@ -177,7 +182,7 @@ export function parseIndonesianDates(
     rule.re.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = rule.re.exec(text)) !== null) {
-      const lead = m[1].length; // the (^|\s) boundary
+      const lead = (m[1] ?? "").length; // the (^|\s) boundary
       const start = m.index + lead;
       const end = m.index + m[0].length; // lookahead is zero-width
       const date = rule.resolve(m, ref);

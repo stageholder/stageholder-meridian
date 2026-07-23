@@ -185,7 +185,10 @@ export function WritingHeatmapChart({
     // Parse the yyyy-MM-dd key into a LOCAL date (not `new Date("...")`, which
     // is UTC midnight and can slip a day in negative-offset timezones).
     const [y, m, day] = d.date.split("-").map(Number);
-    return { date: new Date(y, (m ?? 1) - 1, day ?? 1), value: d.words };
+    return {
+      date: new Date(y ?? 1970, (m ?? 1) - 1, day ?? 1),
+      value: d.words,
+    };
   });
 
   const endDate = startOfDay(new Date());
@@ -237,7 +240,7 @@ export function WritingHeatmapChart({
   );
 
   return (
-    <YStack flex={1} minHeight={220} gap="$3">
+    <YStack flex={1} minH={220} gap="$3">
       <XStack items="center" justify="space-between" flexWrap="wrap" gap="$2">
         <Text fontSize="$2" color="$mutedForeground">
           {/* On native (no cursor) the tapped day shows here; web uses the

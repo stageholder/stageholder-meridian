@@ -90,13 +90,21 @@ export function useDeleteHabitGroup() {
 
 export function useReorderHabitGroups() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (data: { items: { id: string; order: number }[] }) => {
+  // Explicit generics: RQ v5.100's 4-arg callbacks infer TVariables/TContext
+  // across ALL handlers — per-handler param annotations poison the inference
+  // into `unknown` and fail the typecheck.
+  return useMutation<
+    void,
+    Error,
+    { items: { id: string; order: number }[] },
+    { previous: CacheSnapshot }
+  >({
+    mutationFn: async (data) => {
       await apiClient.post("/habit-groups/reorder", data);
     },
     // Optimistically apply the new order so a dropped group holds its position
     // instead of snapping back until the refetch lands.
-    onMutate: async ({ items }: { items: { id: string; order: number }[] }) => {
+    onMutate: async ({ items }) => {
       const previous = await snapshotAndCancel(qc, [habitGroupKeys.all]);
       const orderById = new Map(items.map((i) => [i.id, i.order]));
       patchLists<HabitGroup>(qc, [habitGroupKeys.all], (l) =>
@@ -108,10 +116,6 @@ export function useReorderHabitGroups() {
       );
       return { previous };
     },
-    onError: (
-      _e: unknown,
-      _v: unknown,
-      ctx: { previous?: CacheSnapshot } | undefined,
-    ) => rollback(qc, ctx?.previous),
+    onError: (_e, _v, ctx) => rollback(qc, ctx?.previous),
   });
 }

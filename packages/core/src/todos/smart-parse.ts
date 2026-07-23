@@ -140,7 +140,7 @@ export function parseSmartTodo(
   // 1) Priority — first `!pN`/`!word` wins.
   let priority: SmartPriority | undefined;
   for (const m of text.matchAll(PRIORITY_RE)) {
-    const raw = m[1].toLowerCase();
+    const raw = (m[1] ?? "").toLowerCase();
     const value = (PRIORITY_FROM_P[raw] ?? raw) as SmartPriority;
     const start = m.index ?? 0;
     const end = start + m[0].length;
@@ -164,7 +164,7 @@ export function parseSmartTodo(
   let listId: string | undefined;
   for (const m of text.matchAll(LIST_RE)) {
     if (listId) break;
-    const fragment = m[1];
+    const fragment = m[1] ?? "";
     const list = resolveList(fragment, ctx.lists);
     if (!list) continue;
     const start = m.index ?? 0;

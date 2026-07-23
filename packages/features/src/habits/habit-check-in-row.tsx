@@ -122,7 +122,7 @@ export function HabitCheckInRow({
       gap="$3"
       py="$2.5"
       px="$3"
-      minHeight={minHeight}
+      minH={minHeight}
       rounded="$4"
       borderWidth={1}
       borderColor="$borderColor"
@@ -223,6 +223,8 @@ export function HabitCheckInRow({
                   pressStyle={
                     { backgroundColor: accentColor, opacity: 0.85 } as never
                   }
+                  // See StatusPill — transition makes the bounce animate.
+                  transition="quick"
                   scale={bouncing ? 1.08 : 1}
                   disabled={disabled}
                   onPress={() => {
@@ -308,6 +310,10 @@ function StatusPill({
       px="$2.5"
       py="$1.5"
       bg={bg as never}
+      // `transition` makes the bounce (scale 1 → 1.08 → 1) actually ANIMATE —
+      // without it the scale flip snapped invisibly (the check-in "bounce"
+      // never played). User-triggered, one row at a time — cheap on native.
+      transition="quick"
       scale={scale}
     >
       {icon}

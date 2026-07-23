@@ -7,7 +7,9 @@
 // (the inner Select's Adapt can't survive a double teleport on native). The
 // form re-mounts on each open (`key={open}`) so it resets by remount.
 
-import { FormSheet, toast } from "@stageholder/ui";
+import { FormSheet, Sheet, toast } from "@stageholder/ui";
+
+import { FormSheetSkeleton } from "@/components/form-sheet-skeleton";
 import {
   TodoForm,
   makeTodoFormDefaults,
@@ -99,25 +101,46 @@ export function CreateTodoDialog({
       // buttons, so hide the kit footer; we keep the kit FormSheet for its
       // keyboard-stretch handling + frame + title.
       hideFooter
+      // Default mountChildren ('open'): closed = nothing mounted, open =
+      // mount fresh. `first-open` was tried and reverted — the form's
+      // reset-per-open epoch key remounts it at every open anyway, so warm-
+      // keeping only added a permanently-mounted form to the screen (the
+      // smooth sibling apps also run sheets on the default).
+      //
+      // `scrollable` + constant snap is the "dim → wait → slide" fix: a
+      // `fit` sheet can't START its slide until the whole TodoForm has
+      // mounted AND been measured (the kit's documented fit-mode mechanic),
+      // so the overlay dimmed, then nothing, then a late slide. A constant
+      // height starts the slide on the open frame and the form mounts
+      // DURING the motion; fields scroll if a small phone runs out of room.
+      scrollable
+      snapPoints={[560]}
       open={open}
       onOpenChange={onOpenChange}
       title="New Todo"
       description="Create a new todo with optional details, priority, and dates."
     >
-      <TodoForm
-        // Include the seed date in the key so re-opening from a DIFFERENT
-        // calendar day re-seeds the form (not just per-open).
-        key={`${openEpoch}-${defaultDueDate ?? ""}`}
-        initial={initial}
-        lists={lookupLists}
-        submitLabel="Create"
-        submittingLabel="Creating…"
-        isSubmitting={createTodo.isPending}
-        // Resolved hex — native can't parse the web `var(--ring-todo)` default.
-        accentColor={IGNITION.todo.base}
-        onSubmit={handleSubmit}
-        onCancel={() => onOpenChange(false)}
-      />
+      {/* Kit open choreography (alpha.121): the sheet slides IMMEDIATELY
+          with this skeleton; the real form (2 Selects + 2 date pickers +
+          smart input) cross-fades in when the spring settles — the form
+          mount never competes with the slide. Safe with `scrollable`
+          (constant snap); never pair LazyBody with fit. */}
+      <Sheet.LazyBody fallback={<FormSheetSkeleton />}>
+        <TodoForm
+          // Include the seed date in the key so re-opening from a DIFFERENT
+          // calendar day re-seeds the form (not just per-open).
+          key={`${openEpoch}-${defaultDueDate ?? ""}`}
+          initial={initial}
+          lists={lookupLists}
+          submitLabel="Create"
+          submittingLabel="Creating…"
+          isSubmitting={createTodo.isPending}
+          // Resolved hex — native can't parse the web `var(--ring-todo)` default.
+          accentColor={IGNITION.todo.base}
+          onSubmit={handleSubmit}
+          onCancel={() => onOpenChange(false)}
+        />
+      </Sheet.LazyBody>
     </FormSheet>
   );
 }

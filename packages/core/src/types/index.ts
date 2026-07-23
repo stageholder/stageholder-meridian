@@ -1,4 +1,4 @@
-export type { TodoList, Todo } from "./todo";
+export type { TodoList, Todo, Subtask } from "./todo";
 export type {
   Journal,
   JournalContent,

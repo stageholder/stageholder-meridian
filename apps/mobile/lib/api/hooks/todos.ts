@@ -14,6 +14,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Todo, TodoList } from "@repo/core/types";
 
 import { apiClient } from "../client";
+import {
+  invalidateCalendarMonthsFor,
+  removeTodoFromCalendar,
+  writeTodoToCalendar,
+} from "../calendar-cache";
 import { todoKeys, todoListKeys } from "../keys";
 import {
   snapshotAndCancel,
@@ -114,8 +119,16 @@ export function useDeleteTodoList() {
 
 export function useReorderTodoLists() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (data: { items: { id: string; order: number }[] }) => {
+  // Explicit generics: RQ v5.100's 4-arg callbacks infer TVariables/TContext
+  // across ALL handlers — per-handler param annotations poison the inference
+  // into `unknown` and fail the typecheck.
+  return useMutation<
+    void,
+    Error,
+    { items: { id: string; order: number }[] },
+    { previous: CacheSnapshot }
+  >({
+    mutationFn: async (data) => {
       await apiClient.post("/todo-lists/reorder", data);
     },
     // Optimistically apply the new order so a dropped list holds its position
@@ -135,11 +148,7 @@ export function useReorderTodoLists() {
       );
       return { previous };
     },
-    onError: (
-      _e: unknown,
-      _v: unknown,
-      ctx: { previous?: CacheSnapshot } | undefined,
-    ) => rollback(qc, ctx?.previous),
+    onError: (_e, _v, ctx) => rollback(qc, ctx?.previous),
   });
 }
 
@@ -158,13 +167,19 @@ export type CreateTodoInput = {
 
 export function useCreateTodo() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: CreateTodoInput) => {
+  // Explicit generics — see useReorderTodoLists for why (RQ v5.100 inference).
+  return useMutation<
+    Todo,
+    Error,
+    CreateTodoInput,
+    { previous: CacheSnapshot; tempId: string }
+  >({
+    mutationFn: async (input) => {
       const { data } = await apiClient.post<Todo>("/todos", input);
       return data;
     },
     // Optimistic temp row so a newly-added todo appears the instant you submit.
-    onMutate: async (input: CreateTodoInput) => {
+    onMutate: async (input) => {
       const previous = await snapshotAndCancel(qc, [todoKeys.lists()]);
       const tempId = `optimistic-${Date.now()}`;
       const optimistic = {
@@ -184,20 +199,14 @@ export function useCreateTodo() {
       patchLists<Todo>(qc, [todoKeys.lists()], (l) => [...l, optimistic]);
       return { previous, tempId };
     },
-    onError: (
-      _e: unknown,
-      _v: unknown,
-      ctx: { previous?: CacheSnapshot } | undefined,
-    ) => rollback(qc, ctx?.previous),
-    onSuccess: (
-      server: Todo,
-      _v: CreateTodoInput,
-      ctx: { tempId?: string } | undefined,
-    ) => {
+    onError: (_e, _v, ctx) => rollback(qc, ctx?.previous),
+    onSuccess: (server, _v, ctx) => {
       if (ctx?.tempId)
         writeEntityToLists(qc, [todoKeys.lists()], server, ctx.tempId);
+      // A dated todo lands in its due/do-day calendar buckets — refresh only
+      // those months (a dateless todo never appears on the calendar at all).
+      invalidateCalendarMonthsFor(qc, [server.dueDate, server.doDate]);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["calendar"] }),
   });
 }
 
@@ -223,6 +232,12 @@ export function useUpdateTodo() {
       const snapshots = qc.getQueriesData<Todo[]>({
         queryKey: todoKeys.lists(),
       });
+      // The todo's PRE-edit dates — a date edit must also refresh the months
+      // it is moving OUT of, which the server response no longer carries.
+      const prevTodo = snapshots
+        .flatMap(([, list]) => (Array.isArray(list) ? list : []))
+        .find((t) => t.id === id);
+      const prevDates = [prevTodo?.dueDate, prevTodo?.doDate];
       // `patch` allows `null` (clear a date/description); a Todo stores the
       // cleared shape as `undefined`. Normalize null→undefined so the
       // optimistic record matches what the server will return (mirrors the
@@ -242,18 +257,34 @@ export function useUpdateTodo() {
           ),
         );
       }
-      return { snapshots };
+      return { snapshots, prevDates };
     },
     onError: (_err, _vars, ctx) => {
       if (!ctx?.snapshots) return;
       for (const [key, prev] of ctx.snapshots) qc.setQueryData(key, prev);
     },
     // Write the server's authoritative row into every list cache so we do NOT
-    // re-fetch (and briefly revert) the lists. Only the calendar (derived) is
-    // invalidated.
-    onSuccess: (server: Todo) =>
-      writeEntityToLists(qc, [todoKeys.lists()], server),
-    onSettled: () => qc.invalidateQueries({ queryKey: ["calendar"] }),
+    // re-fetch (and briefly revert) the lists.
+    //
+    // Calendar: the toggle (status flip — THE hot interaction) patches the
+    // todo's summary fields in-place across cached months (no network, no
+    // identity churn beyond the touched months). A due/do-date edit moves the
+    // todo between day buckets, which an in-place patch can't express — those
+    // rare edits invalidate only the affected months. The old blanket
+    // ["calendar"] invalidation refetched all ~7 cached months per checkbox
+    // tap and re-rendered everything derived from them.
+    onSuccess: (server: Todo, vars, ctx) => {
+      writeEntityToLists(qc, [todoKeys.lists()], server);
+      if ("dueDate" in vars.patch || "doDate" in vars.patch) {
+        invalidateCalendarMonthsFor(qc, [
+          server.dueDate,
+          server.doDate,
+          ...(ctx?.prevDates ?? []),
+        ]);
+      } else {
+        writeTodoToCalendar(qc, server);
+      }
+    },
   });
 }
 
@@ -309,7 +340,12 @@ export function useDeleteTodo() {
       if (!ctx?.snapshots) return;
       for (const [key, prev] of ctx.snapshots) qc.setQueryData(key, prev);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: todoKeys.lists() }),
+    onSettled: (id) => {
+      void qc.invalidateQueries({ queryKey: todoKeys.lists() });
+      // Drop the deleted todo from cached months in place (previously it
+      // lingered until the next full calendar refetch).
+      if (id) removeTodoFromCalendar(qc, id);
+    },
   });
 }
 

@@ -76,23 +76,23 @@ const SPARK = "#fb923c";
 const TODO_COLOR = RING_CATEGORY.todo.color;
 // Kept short so the row vanishes the instant the ignite + sparks finish.
 const BURN_MS = 440;
+// Native runs a TIGHTER burn: long enough for the ignite + sparks to read,
+// short enough that the row's move-to-Completed never feels gated. (440ms on
+// touch read as a dead checkbox — see handleToggle.)
+const BURN_MS_NATIVE = 260;
 
-// Row-level enter/exit cosmetics run ONLY on web. On native (Reanimated
-// driver) every `transition`/`enterStyle` prop turns the view into an
-// animated node with its own shared values — dozens of rows × several nodes
-// each was measurable scroll + mount cost, for animations that either need
-// web AnimatePresence (exit) or are imperceptible next to list virtualization
-// churn (enter). The burn/checkbox feedback animations below stay on both
-// platforms — those are user-triggered, one row at a time.
-const ROW_ANIMATION = (
-  isWeb
-    ? {
-        transition: { default: "quick", exit: "medium" },
-        enterStyle: { opacity: 0, y: 6 },
-        exitStyle: { opacity: 0, scale: 0.94 },
-      }
-    : {}
-) as object;
+// Row-level enter/exit cosmetics: always on web; on native only when the
+// host opts in via the `animated` prop. On the Reanimated driver every
+// `transition`/`enterStyle` prop turns the view into an animated node with
+// its own shared values — fine for a capped widget (Today's ≤5 rows, wrapped
+// in AnimatePresence for the exit), measurable scroll + mount cost across a
+// whole virtualized list. The burn/checkbox feedback animations stay on both
+// platforms regardless — those are user-triggered, one row at a time.
+const ROW_ANIMATION_PROPS = {
+  transition: { default: "quick", exit: "medium" },
+  enterStyle: { opacity: 0, y: 6 },
+  exitStyle: { opacity: 0, scale: 0.94 },
+} as object;
 
 const SPARKS: { left: string; delay: number }[] = [
   { left: "18%", delay: 0 },
@@ -204,6 +204,13 @@ export interface TodoItemProps {
    * vertical padding. Keeps the full checkbox + burn + actions experience.
    */
   compact?: boolean;
+  /**
+   * NATIVE row enter/exit animation opt-in (web always animates). Turn on
+   * for SMALL, capped lists (the Today widget, wrapped in AnimatePresence);
+   * leave off inside virtualized lists, where per-row animated nodes are
+   * measurable scroll cost.
+   */
+  animated?: boolean;
 }
 
 /**
@@ -229,6 +236,7 @@ export function TodoItem({
   renderActions,
   onContextMenu,
   compact,
+  animated,
 }: TodoItemProps) {
   const [burning, setBurning] = useState(false);
   const [gone, setGone] = useState(false);
@@ -275,14 +283,24 @@ export function TodoItem({
       return;
     }
     if (burning) return;
-    // Play the ignite + burn first, THEN commit ("animate, then API").
+    // Both platforms: the checkbox fills ember + the sparks rise on THIS
+    // frame (instant feedback), then the commit lands after the burn and the
+    // optimistic cache flip moves the row to Completed. Native runs the
+    // tighter 260ms burn: the original 440ms wait — combined with the old
+    // 20px tap target (now 44pt via hitSlop) — is what read as a dead
+    // checkbox on device. The completion animation stays; only the dead air
+    // went.
     setBurning(true);
-    setTimeout(() => {
-      // Burn finished → drop the row immediately (don't wait on the mutation
-      // round-trip or a second exit animation), then commit in the background.
-      setGone(true);
-      onToggle();
-    }, BURN_MS);
+    setTimeout(
+      () => {
+        // Burn finished → drop the row immediately (don't wait on the
+        // mutation round-trip or a second exit animation), then commit in
+        // the background.
+        setGone(true);
+        onToggle();
+      },
+      isWeb ? BURN_MS : BURN_MS_NATIVE,
+    );
   }
 
   function handleDelete(e?: { stopPropagation?: () => void }) {
@@ -332,14 +350,15 @@ export function TodoItem({
       rounded={compact ? "$4" : "$md"}
       px={compact ? "$3" : "$2.5"}
       py={compact ? "$2.5" : "$2"}
-      minHeight={compact ? 60 : undefined}
+      minH={compact ? 60 : undefined}
       borderWidth={compact ? 1 : 0}
       borderColor="$borderColor"
       bg={compact ? "$card" : undefined}
       position="relative"
-      // Web-only enter + exit (delete / un-complete) via AnimatePresence in
-      // the list views; see ROW_ANIMATION. Completion plays the burn below.
-      {...ROW_ANIMATION}
+      // Enter + exit (delete / un-complete) via AnimatePresence in the list
+      // views — web always, native when the host opts in (`animated`).
+      // Completion plays the burn below.
+      {...(isWeb || animated ? ROW_ANIMATION_PROPS : {})}
       hoverStyle={burning ? undefined : { bg: "$accent" }}
       role="button"
       aria-label="Open todo details"
@@ -351,6 +370,10 @@ export function TodoItem({
         <View
           onPressIn={pressedControl}
           onPress={handleToggle}
+          // 20px visual, 44pt EFFECTIVE target — the bare 20px circle was
+          // less than half the Apple/Android minimum touch size, so real
+          // thumbs missed it and the row's open-detail fired instead.
+          {...({ hitSlop: 12 } as object)}
           // 20px (was 24): balanced against the compact title (18px line) +
           // date (16px line) block so the circle doesn't out-size the text.
           width={20}
@@ -439,7 +462,7 @@ export function TodoItem({
             dropped to keep the row light. */}
         {compact ? (
           priority.label || formattedDueDate ? (
-            <XStack flexWrap="wrap" items="center" gap="$1.5" lineHeight={16}>
+            <XStack flexWrap="wrap" items="center" gap="$1.5">
               {priority.label ? (
                 <MetaBadge
                   bg={priority.bg}
@@ -473,7 +496,7 @@ export function TodoItem({
           formattedDueDate ||
           formattedDoDate ||
           (todo.subtasks && todo.subtasks.length > 0) ? (
-          <XStack flexWrap="wrap" items="center" gap="$1.5" lineHeight={16}>
+          <XStack flexWrap="wrap" items="center" gap="$1.5">
             {priority.label ? (
               <MetaBadge
                 bg={priority.bg}

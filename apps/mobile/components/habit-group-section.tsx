@@ -10,7 +10,15 @@
 // this group while applying the new order.
 
 import { memo } from "react";
-import { Sortable, Text, View, XStack, YStack } from "@stageholder/ui";
+import {
+  MediaGlyph,
+  Sortable,
+  Text,
+  View,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
+import { parseMediaIcon } from "@repo/features/habits";
 import type { Habit } from "@repo/core/types";
 
 import { HabitCardRow } from "@/components/habit-card-row";
@@ -82,19 +90,22 @@ export const HabitGroupSection = memo(function HabitGroupSection({
     <YStack gap="$2">
       {hideHeader ? null : (
         <XStack items="center" gap="$2.5" px="$1">
-          {icon ? (
-            <Text fontSize={16} lineHeight={16} shrink={0}>
-              {icon}
-            </Text>
-          ) : (
-            <View
-              width={10}
-              height={10}
-              rounded={9999}
-              shrink={0}
-              style={{ backgroundColor: color }}
-            />
-          )}
+          {/* MediaGlyph decodes emoji OR encoded lucide values — raw text
+              printed lucide names ("sunrise") next to the group name. */}
+          <MediaGlyph
+            value={parseMediaIcon(icon)}
+            size={16}
+            color={color}
+            fallback={
+              <View
+                width={10}
+                height={10}
+                rounded={9999}
+                shrink={0}
+                style={{ backgroundColor: color }}
+              />
+            }
+          />
           <Text fontSize="$5" fontWeight="600" color="$color">
             {name}
           </Text>

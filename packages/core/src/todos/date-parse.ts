@@ -27,7 +27,10 @@ export const SUPPORTED_SMART_LOCALES: readonly SmartLocale[] = [
 
 // The subset backed by a chrono locale (everything except the custom "id").
 type ChronoLocale = Exclude<SmartLocale, "id">;
-const CHRONO_LOCALES: Record<ChronoLocale, typeof chrono.en> = {
+// Only `parse` is used; `typeof chrono.en` would over-constrain (the en
+// namespace carries extras — `GB`, `configuration` — the others lack).
+type ChronoParser = Pick<typeof chrono.en, "parse">;
+const CHRONO_LOCALES: Record<ChronoLocale, ChronoParser> = {
   en: chrono.en,
   fr: chrono.fr,
   ja: chrono.ja,
@@ -77,7 +80,7 @@ export function resolveSmartLocale(pref?: string): SmartLocale {
   }
 
   for (const tag of candidates) {
-    const lang = (tag || "").toLowerCase().split(/[-_]/)[0];
+    const lang = (tag || "").toLowerCase().split(/[-_]/)[0] ?? "";
     if (
       lang !== "en" &&
       (SUPPORTED_SMART_LOCALES as readonly string[]).includes(lang)
@@ -100,16 +103,27 @@ export interface ParsedDateMatch {
 }
 
 function chronoMatches(
-  parser: typeof chrono.en,
+  parser: ChronoParser,
   text: string,
   ref: Date,
 ): ParsedDateMatch[] {
-  return parser.parse(text, ref, { forwardDate: true }).map((r) => ({
-    date: format(r.start.date(), "yyyy-MM-dd"),
-    start: r.index,
-    end: r.index + r.text.length,
-    text: r.text,
-  }));
+  // Guarded: chrono compiles its parser regexes lazily on first parse, and
+  // some locales use features not every engine ships (ru/uk build `\p{L}`
+  // property-escape patterns — Hermes versions without them THROW at RegExp
+  // construction). parseSmartTodo is called during render on native, so an
+  // engine gap here would crash the whole create sheet; degrade to "no date
+  // matches from this parser" instead. English stays guarded too — one
+  // contract ("the parser never throws") for every path.
+  try {
+    return parser.parse(text, ref, { forwardDate: true }).map((r) => ({
+      date: format(r.start.date(), "yyyy-MM-dd"),
+      start: r.index,
+      end: r.index + r.text.length,
+      text: r.text,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -127,7 +141,12 @@ export function parseDates(
   ];
 
   if (locale === "id") {
-    all.push(...parseIndonesianDates(text, ref));
+    try {
+      all.push(...parseIndonesianDates(text, ref));
+    } catch {
+      /* hand-rolled parser is Hermes-safe by design, but keep the
+         never-throws contract airtight — English matches still stand. */
+    }
   } else if (locale !== "en") {
     all.push(...chronoMatches(CHRONO_LOCALES[locale], text, ref));
   }

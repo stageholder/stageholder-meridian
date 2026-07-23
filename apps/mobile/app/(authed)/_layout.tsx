@@ -206,13 +206,16 @@ export default function AuthedLayout() {
           }}
           screenOptions={{
             headerShown: false,
-            // PERF: tab screens stay MOUNTED once visited (by design — instant
-            // tab switches), but without freeze every React Query cache update
-            // re-rendered all five screens' full trees (charts, card lists) on
-            // every mutation/refetch, wherever it originated. react-freeze
-            // (via react-native-screens) suspends render work for blurred
-            // tabs; they catch up once on focus.
-            freezeOnBlur: true,
+            // PERF NOTE — deliberately NO `freezeOnBlur`. It was tried (to
+            // stop background tabs re-rendering on every cache update) and
+            // REVERTED: react-freeze suspends a blurred tab's subtree, so
+            // every tab PRESS had to synchronously re-render the whole target
+            // screen on the tap frame — the "switching tabs lags" bug. The
+            // problem freeze was papering over (the broad invalidation
+            // cascade re-rendering all five screens per mutation) is fixed at
+            // the source now (surgical calendar-cache writes + memoized
+            // rows), so background re-renders are rare and cheap, and a tab
+            // switch is back to a pure native visibility flip (zero JS work).
           }}
         >
           <Tabs.Screen name="index" options={{ title: "Today" }} />

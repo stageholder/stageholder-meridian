@@ -6,9 +6,11 @@
 // state lives in HabitEntry rows fetched via useHabitEntries.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { format, subDays } from "date-fns";
 import type { Habit, HabitEntry } from "@repo/core/types";
 
 import { apiClient } from "../client";
+import { writeHabitEntryToCalendar } from "../calendar-cache";
 import { habitKeys } from "../keys";
 import {
   snapshotAndCancel,
@@ -112,6 +114,40 @@ export function useHabitEntries(
   });
 }
 
+/**
+ * THE canonical entries window — last 90 days through today, widened only
+ * when `activeDate` falls outside it (deep calendar date-nav). 90 days covers
+ * the streak walk + current-week quota math (PWA parity).
+ *
+ * PERF: every surface that needs a habit's entries (HabitCard, the compact
+ * check-in row, the Today aggregate) MUST fetch through this one window so
+ * they share a single cache entry + network request per habit. Before this,
+ * the same habit's entries lived under THREE keys at once (unwindowed via
+ * the Today useQueries, a 1-day window per check-in row, a 90-day window per
+ * card) — ~3× the observers, ~3× the refetches, and a cold refetch-all every
+ * time the card⇄list toggle switched key shapes.
+ */
+export function habitEntriesWindow(activeDate?: string): {
+  startDate: string;
+  endDate: string;
+} {
+  const today = format(new Date(), "yyyy-MM-dd");
+  const d = activeDate ?? today;
+  const ninetyDaysAgo = format(subDays(new Date(), 90), "yyyy-MM-dd");
+  return {
+    startDate: d < ninetyDaysAgo ? d : ninetyDaysAgo,
+    endDate: d > today ? d : today,
+  };
+}
+
+/** `useHabitEntries` pinned to the canonical shared window. */
+export function useSharedHabitEntries(
+  habitId: string | null | undefined,
+  activeDate?: string,
+) {
+  return useHabitEntries(habitId, habitEntriesWindow(activeDate));
+}
+
 /* ---------------------------- Mutations ------------------------------ */
 
 export type CreateHabitInput = {
@@ -129,8 +165,16 @@ export type CreateHabitInput = {
 
 export function useCreateHabit() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: CreateHabitInput) => {
+  // Explicit generics: RQ v5.100's 4-arg callbacks infer TVariables/TContext
+  // across ALL handlers — per-handler param annotations (the old pattern
+  // here) poison that inference into `unknown` and fail the typecheck.
+  return useMutation<
+    Habit,
+    Error,
+    CreateHabitInput,
+    { previous: CacheSnapshot; tempId: string }
+  >({
+    mutationFn: async (input) => {
       const { data } = await apiClient.post<Habit>("/habits", {
         frequency: "daily",
         targetCount: 1,
@@ -139,7 +183,7 @@ export function useCreateHabit() {
       return data;
     },
     // Optimistic temp row so a new habit shows the instant you submit.
-    onMutate: async (input: CreateHabitInput) => {
+    onMutate: async (input) => {
       const previous = await snapshotAndCancel(qc, [habitKeys.lists()]);
       const tempId = `optimistic-${Date.now()}`;
       const optimistic = {
@@ -154,16 +198,8 @@ export function useCreateHabit() {
       patchLists<Habit>(qc, [habitKeys.lists()], (l) => [...l, optimistic]);
       return { previous, tempId };
     },
-    onError: (
-      _e: unknown,
-      _v: unknown,
-      ctx: { previous?: CacheSnapshot } | undefined,
-    ) => rollback(qc, ctx?.previous),
-    onSuccess: (
-      server: Habit,
-      _v: CreateHabitInput,
-      ctx: { tempId?: string } | undefined,
-    ) => {
+    onError: (_e, _v, ctx) => rollback(qc, ctx?.previous),
+    onSuccess: (server, _v, ctx) => {
       if (ctx?.tempId)
         writeEntityToLists(qc, [habitKeys.lists()], server, ctx.tempId);
     },
@@ -244,19 +280,19 @@ export function useDeleteHabit() {
 
 export function useReorderHabits() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (data: {
-      items: { id: string; order: number; groupId?: string | null }[];
-    }) => {
+  // Explicit generics — see useCreateHabit for why (RQ v5.100 inference).
+  return useMutation<
+    void,
+    Error,
+    { items: { id: string; order: number; groupId?: string | null }[] },
+    { previous: CacheSnapshot }
+  >({
+    mutationFn: async (data) => {
       await apiClient.post("/habits/reorder", data);
     },
     // Optimistically apply the new order/group so a dropped habit holds its
     // position instead of snapping back until the refetch lands.
-    onMutate: async ({
-      items,
-    }: {
-      items: { id: string; order: number; groupId?: string | null }[];
-    }) => {
+    onMutate: async ({ items }) => {
       const previous = await snapshotAndCancel(qc, [habitKeys.lists()]);
       const patchById = new Map(items.map((i) => [i.id, i]));
       patchLists<Habit>(qc, [habitKeys.lists()], (l) =>
@@ -272,11 +308,7 @@ export function useReorderHabits() {
       );
       return { previous };
     },
-    onError: (
-      _e: unknown,
-      _v: unknown,
-      ctx: { previous?: CacheSnapshot } | undefined,
-    ) => rollback(qc, ctx?.previous),
+    onError: (_e, _v, ctx) => rollback(qc, ctx?.previous),
   });
 }
 
@@ -398,13 +430,15 @@ export function useCheckInHabit() {
         qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
       }
     },
-    // Write the server entry into the entries cache — no entries re-fetch/revert.
-    onSuccess: (server, vars) => writeEntryByDate(qc, vars.habitId, server),
-    onSettled: () => {
-      // NOT entries — those hold the authoritative server entry (onSuccess).
-      // The habits screen's To-do/Done sectioning is derived from the calendar.
-      qc.invalidateQueries({ queryKey: habitKeys.lists() });
-      qc.invalidateQueries({ queryKey: ["calendar"] });
+    // Write the server entry into the entries cache AND the one affected
+    // calendar month — no refetch anywhere. The old onSettled here broadly
+    // invalidated habitKeys.lists() (pure waste: Habit rows carry NO
+    // entry-derived fields — streaks are client-computed from entries) and
+    // ["calendar"] (refetched all ~7 cached months, whose new array
+    // identities defeated every row memo → whole-app re-render per tap).
+    onSuccess: (server, vars) => {
+      writeEntryByDate(qc, vars.habitId, server);
+      writeHabitEntryToCalendar(qc, server);
     },
   });
 }
@@ -489,12 +523,11 @@ export function useSkipHabit() {
         qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
       }
     },
-    // Write the server entry into the entries cache — no entries re-fetch/revert.
-    onSuccess: (server, vars) => writeEntryByDate(qc, vars.habitId, server),
-    onSettled: () => {
-      // NOT entries — those hold the authoritative server entry (onSuccess).
-      qc.invalidateQueries({ queryKey: habitKeys.lists() });
-      qc.invalidateQueries({ queryKey: ["calendar"] });
+    // Write the server entry into the entries cache AND the one affected
+    // calendar month — no refetch anywhere (see useCheckInHabit).
+    onSuccess: (server, vars) => {
+      writeEntryByDate(qc, vars.habitId, server);
+      writeHabitEntryToCalendar(qc, server);
     },
   });
 }
@@ -532,12 +565,11 @@ export function useFailHabit() {
         qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
       }
     },
-    // Write the server entry into the entries cache — no entries re-fetch/revert.
-    onSuccess: (server, vars) => writeEntryByDate(qc, vars.habitId, server),
-    onSettled: () => {
-      // NOT entries — those hold the authoritative server entry (onSuccess).
-      qc.invalidateQueries({ queryKey: habitKeys.lists() });
-      qc.invalidateQueries({ queryKey: ["calendar"] });
+    // Write the server entry into the entries cache AND the one affected
+    // calendar month — no refetch anywhere (see useCheckInHabit).
+    onSuccess: (server, vars) => {
+      writeEntryByDate(qc, vars.habitId, server);
+      writeHabitEntryToCalendar(qc, server);
     },
   });
 }
@@ -586,12 +618,11 @@ export function useUpdateHabitEntry() {
         qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
       }
     },
-    // Write the server entry into the entries cache — no entries re-fetch/revert.
-    onSuccess: (server, vars) => writeEntryByDate(qc, vars.habitId, server),
-    onSettled: () => {
-      // NOT entries — those hold the authoritative server entry (onSuccess).
-      qc.invalidateQueries({ queryKey: habitKeys.lists() });
-      qc.invalidateQueries({ queryKey: ["calendar"] });
+    // Write the server entry into the entries cache AND the one affected
+    // calendar month — no refetch anywhere (see useCheckInHabit).
+    onSuccess: (server, vars) => {
+      writeEntryByDate(qc, vars.habitId, server);
+      writeHabitEntryToCalendar(qc, server);
     },
   });
 }

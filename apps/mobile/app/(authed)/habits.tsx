@@ -27,6 +27,7 @@ import {
   Button,
   EmptyState,
   PullToRefresh,
+  Skeleton,
   Spinner,
   Text,
   View,
@@ -76,9 +77,22 @@ import {
   useHabits,
   useUnarchiveHabit,
 } from "@/lib/api";
+import { useStagedMount } from "@/lib/hooks/use-staged-mount";
 import { useCalendarData } from "@/lib/api/hooks/calendar";
 import { IGNITION } from "@/lib/ignition-palette";
 import { localDateKey } from "@/lib/streak";
+
+/** Card-shaped shimmer for the staged first mount — the list's silhouette
+ *  paints on the tap frame while the real sections mount a beat later. */
+function HabitListSkeleton() {
+  return (
+    <YStack gap="$4">
+      {[0, 1, 2].map((i) => (
+        <Skeleton key={i} height={170} width="100%" rounded="$5" />
+      ))}
+    </YStack>
+  );
+}
 
 /** One rendered section: a group, or the synthetic Ungrouped bucket. */
 interface Section {
@@ -93,6 +107,11 @@ interface Section {
 }
 
 export default function HabitsScreen() {
+  // Two-phase first mount: the tab's FIRST tap paints header + chips + a
+  // skeleton, and the card list (the expensive part — Sortable + dropdown +
+  // entries query per card) mounts one beat later. Later tab switches never
+  // see this — the screen stays mounted.
+  const bodyMounted = useStagedMount();
   const habitsQuery = useHabits();
   const groupsQuery = useHabitGroups();
   const router = useRouter();
@@ -399,160 +418,170 @@ export default function HabitsScreen() {
             pt="$3"
             pb={BOTTOM_NAV_CLEARANCE + insets.bottom}
           >
-            {/* Error — only when the active list itself failed. */}
-            {(isArchivedView ? archivedQuery.error : habitsQuery.error) ? (
-              <Banner intent="danger">
-                <Banner.Body>
-                  <Banner.Title>Couldn&apos;t load habits</Banner.Title>
-                  <Banner.Description>
-                    {(
-                      (isArchivedView
-                        ? archivedQuery.error
-                        : habitsQuery.error) as Error
-                    ).message ?? "Network error."}
-                  </Banner.Description>
-                  <Banner.Action self="flex-end" mt="$2">
-                    <Button
-                      intent="secondary"
-                      size="sm"
-                      onPress={handleRefresh}
-                    >
-                      Try again
-                    </Button>
-                  </Banner.Action>
-                </Banner.Body>
-              </Banner>
-            ) : null}
-
-            {/* Loading — first fetch, before any data. */}
-            {(
-              isArchivedView
-                ? archivedQuery.isLoading && archivedHabits.length === 0
-                : habitsQuery.isLoading && habits.length === 0
-            ) ? (
-              <View py="$10" items="center" justify="center">
-                <Spinner size="large" />
-              </View>
-            ) : null}
-
-            {/* Status filter loading — hold the spinner while calendar data
-                is in-flight so we don't flash a wrong empty state. */}
-            {!isArchivedView && statusFilterLoading ? (
-              <View py="$10" items="center" justify="center">
-                <Spinner size="large" />
-              </View>
-            ) : null}
-
-            {/* ── Archived view — restore per card, no drag. ── */}
-            {isArchivedView ? (
-              archivedEmpty ? (
-                <EmptyState>
-                  <EmptyState.IconSlot>
-                    <Text fontSize={28}>🗄️</Text>
-                  </EmptyState.IconSlot>
-                  <EmptyState.Title>No archived habits</EmptyState.Title>
-                  <EmptyState.Description>
-                    Archive a habit from its menu to tuck it away here without
-                    losing its history.
-                  </EmptyState.Description>
-                </EmptyState>
-              ) : (
-                <YStack gap="$2">
-                  {archivedHabits.map((habit) => (
-                    <HabitCardRow
-                      key={habit.id}
-                      habit={habit}
-                      isArchived
-                      onEdit={() => setEditingHabit(habit)}
-                      onOpenDetail={() => openDetail(habit)}
-                      onUnarchive={() => restore(habit)}
-                    />
-                  ))}
-                </YStack>
-              )
+            {!bodyMounted ? (
+              // First-mount stage 1: the tap frame paints this silhouette;
+              // the real sections mount on the next beat (useStagedMount).
+              <HabitListSkeleton />
             ) : (
               <>
-                {/* Empty — loaded, no active habits. */}
-                {showEmpty ? (
-                  <EmptyState>
-                    <EmptyState.IconSlot>
-                      <Text fontSize={28}>◎</Text>
-                    </EmptyState.IconSlot>
-                    <EmptyState.Title>No habits yet</EmptyState.Title>
-                    <EmptyState.Description>
-                      Add a daily ritual you want to keep — a walk, a few pages,
-                      ten minutes of stillness.
-                    </EmptyState.Description>
-                  </EmptyState>
+                {/* Error — only when the active list itself failed. */}
+                {(isArchivedView ? archivedQuery.error : habitsQuery.error) ? (
+                  <Banner intent="danger">
+                    <Banner.Body>
+                      <Banner.Title>Couldn&apos;t load habits</Banner.Title>
+                      <Banner.Description>
+                        {(
+                          (isArchivedView
+                            ? archivedQuery.error
+                            : habitsQuery.error) as Error
+                        ).message ?? "Network error."}
+                      </Banner.Description>
+                      <Banner.Action self="flex-end" mt="$2">
+                        <Button
+                          intent="secondary"
+                          size="sm"
+                          onPress={handleRefresh}
+                        >
+                          Try again
+                        </Button>
+                      </Banner.Action>
+                    </Banner.Body>
+                  </Banner>
                 ) : null}
 
-                {/* Filtered empty — habits exist but none match the status
+                {/* Loading — first fetch, before any data. */}
+                {(
+                  isArchivedView
+                    ? archivedQuery.isLoading && archivedHabits.length === 0
+                    : habitsQuery.isLoading && habits.length === 0
+                ) ? (
+                  <View py="$10" items="center" justify="center">
+                    <Spinner size="large" />
+                  </View>
+                ) : null}
+
+                {/* Status filter loading — hold the spinner while calendar data
+                is in-flight so we don't flash a wrong empty state. */}
+                {!isArchivedView && statusFilterLoading ? (
+                  <View py="$10" items="center" justify="center">
+                    <Spinner size="large" />
+                  </View>
+                ) : null}
+
+                {/* ── Archived view — restore per card, no drag. ── */}
+                {isArchivedView ? (
+                  archivedEmpty ? (
+                    <EmptyState>
+                      <EmptyState.IconSlot>
+                        <Text fontSize={28}>🗄️</Text>
+                      </EmptyState.IconSlot>
+                      <EmptyState.Title>No archived habits</EmptyState.Title>
+                      <EmptyState.Description>
+                        Archive a habit from its menu to tuck it away here
+                        without losing its history.
+                      </EmptyState.Description>
+                    </EmptyState>
+                  ) : (
+                    <YStack gap="$2">
+                      {archivedHabits.map((habit) => (
+                        <HabitCardRow
+                          key={habit.id}
+                          habit={habit}
+                          isArchived
+                          onEdit={() => setEditingHabit(habit)}
+                          onOpenDetail={() => openDetail(habit)}
+                          onUnarchive={() => restore(habit)}
+                        />
+                      ))}
+                    </YStack>
+                  )
+                ) : (
+                  <>
+                    {/* Empty — loaded, no active habits. */}
+                    {showEmpty ? (
+                      <EmptyState>
+                        <EmptyState.IconSlot>
+                          <Text fontSize={28}>◎</Text>
+                        </EmptyState.IconSlot>
+                        <EmptyState.Title>No habits yet</EmptyState.Title>
+                        <EmptyState.Description>
+                          Add a daily ritual you want to keep — a walk, a few
+                          pages, ten minutes of stillness.
+                        </EmptyState.Description>
+                      </EmptyState>
+                    ) : null}
+
+                    {/* Filtered empty — habits exist but none match the status
                     filter today. Message differs by filter direction. */}
-                {filteredEmpty ? (
-                  <EmptyState>
-                    <EmptyState.IconSlot>
-                      <Text fontSize={28}>
-                        {statusFilter === "todo" ? "✓" : "◎"}
-                      </Text>
-                    </EmptyState.IconSlot>
-                    <EmptyState.Title>
-                      {statusFilter === "todo"
-                        ? "All caught up"
-                        : "Nothing completed yet"}
-                    </EmptyState.Title>
-                    <EmptyState.Description>
-                      {statusFilter === "todo"
-                        ? "All your habits for today are done. Nice work."
-                        : "Check in on a habit to see it here."}
-                    </EmptyState.Description>
-                  </EmptyState>
-                ) : null}
+                    {filteredEmpty ? (
+                      <EmptyState>
+                        <EmptyState.IconSlot>
+                          <Text fontSize={28}>
+                            {statusFilter === "todo" ? "✓" : "◎"}
+                          </Text>
+                        </EmptyState.IconSlot>
+                        <EmptyState.Title>
+                          {statusFilter === "todo"
+                            ? "All caught up"
+                            : "Nothing completed yet"}
+                        </EmptyState.Title>
+                        <EmptyState.Description>
+                          {statusFilter === "todo"
+                            ? "All your habits for today are done. Nice work."
+                            : "Check in on a habit to see it here."}
+                        </EmptyState.Description>
+                      </EmptyState>
+                    ) : null}
 
-                {/* Active group with no habits (no status filter) — mirror the
+                    {/* Active group with no habits (no status filter) — mirror the
                     generic empty state so the screen never renders blank. */}
-                {groupEmpty ? (
-                  <EmptyState>
-                    <EmptyState.IconSlot>
-                      <Text fontSize={28}>◎</Text>
-                    </EmptyState.IconSlot>
-                    <EmptyState.Title>No habits in this group</EmptyState.Title>
-                    <EmptyState.Description>
-                      Tap the + button to add a habit here, or move an existing
-                      one into this group.
-                    </EmptyState.Description>
-                  </EmptyState>
-                ) : null}
+                    {groupEmpty ? (
+                      <EmptyState>
+                        <EmptyState.IconSlot>
+                          <Text fontSize={28}>◎</Text>
+                        </EmptyState.IconSlot>
+                        <EmptyState.Title>
+                          No habits in this group
+                        </EmptyState.Title>
+                        <EmptyState.Description>
+                          Tap the + button to add a habit here, or move an
+                          existing one into this group.
+                        </EmptyState.Description>
+                      </EmptyState>
+                    ) : null}
 
-                {/* Group-sectioned list. When a single group is the active
+                    {/* Group-sectioned list. When a single group is the active
                     filter, its header is hidden (the chip already names it). */}
-                {visibleSections.map((section) => (
-                  <HabitGroupSection
-                    key={section.id}
-                    name={section.name}
-                    color={section.color}
-                    icon={section.icon}
-                    habits={section.habits}
-                    groupId={section.groupId}
-                    hideHeader={
-                      !!activeChip &&
-                      activeChip !== ARCHIVED_CHIP &&
-                      visibleSections.length === 1
-                    }
-                    // Reordering re-indexes only the VISIBLE habits, which
-                    // would collide with filtered-out habits' orders — so drag
-                    // is disabled whenever a status filter is active (M5).
-                    reorderDisabled={statusFilter !== "all"}
-                    viewMode={viewMode}
-                    // Only pass a date when it's NOT today — today stays the
-                    // default (undefined) so the rows read the un-suffixed
-                    // "today" path (parity with the PWA section).
-                    selectedDate={isViewingToday ? undefined : selectedDate}
-                    onEdit={setEditingHabit}
-                    onOpenDetail={openDetail}
-                    onArchive={archive}
-                    onMoveToGroup={setMovingHabit}
-                  />
-                ))}
+                    {visibleSections.map((section) => (
+                      <HabitGroupSection
+                        key={section.id}
+                        name={section.name}
+                        color={section.color}
+                        icon={section.icon}
+                        habits={section.habits}
+                        groupId={section.groupId}
+                        hideHeader={
+                          !!activeChip &&
+                          activeChip !== ARCHIVED_CHIP &&
+                          visibleSections.length === 1
+                        }
+                        // Reordering re-indexes only the VISIBLE habits, which
+                        // would collide with filtered-out habits' orders — so drag
+                        // is disabled whenever a status filter is active (M5).
+                        reorderDisabled={statusFilter !== "all"}
+                        viewMode={viewMode}
+                        // Only pass a date when it's NOT today — today stays the
+                        // default (undefined) so the rows read the un-suffixed
+                        // "today" path (parity with the PWA section).
+                        selectedDate={isViewingToday ? undefined : selectedDate}
+                        onEdit={setEditingHabit}
+                        onOpenDetail={openDetail}
+                        onArchive={archive}
+                        onMoveToGroup={setMovingHabit}
+                      />
+                    ))}
+                  </>
+                )}
               </>
             )}
           </YStack>

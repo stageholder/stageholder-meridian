@@ -101,6 +101,48 @@ export function computeStreak(
   return streak;
 }
 
+// PERF: per-habit memo for computeStreak. The Today aggregate used to walk
+// ≤365 days per habit on EVERY render; React Query's structural sharing keeps
+// an unchanged habit's `entries` array referentially identical, so identity +
+// the local day (streaks change at midnight) + the schedule array are a
+// complete validity key. Bounded by habit count — no eviction needed.
+const streakCache = new Map<
+  string,
+  {
+    entries: HabitEntry[] | undefined;
+    todayKey: string;
+    scheduled: number[] | undefined;
+    value: number;
+  }
+>();
+
+/** `computeStreak` with an identity-keyed per-habit cache — use in render
+ *  paths that recompute across many habits (the Today dashboard). */
+export function computeStreakCached(
+  habitId: string,
+  entries: HabitEntry[] | undefined,
+  scheduledDays?: number[],
+): number {
+  const todayKey = localDateKey();
+  const hit = streakCache.get(habitId);
+  if (
+    hit &&
+    hit.entries === entries &&
+    hit.todayKey === todayKey &&
+    hit.scheduled === scheduledDays
+  ) {
+    return hit.value;
+  }
+  const value = computeStreak(entries, scheduledDays);
+  streakCache.set(habitId, {
+    entries,
+    todayKey,
+    scheduled: scheduledDays,
+    value,
+  });
+  return value;
+}
+
 /** Has the habit been completed today (any positive entry for `localDateKey()`)? */
 export function isCheckedToday(entries: HabitEntry[] | undefined): boolean {
   if (!entries) return false;

@@ -13,7 +13,9 @@
 // mutation — independent of the form's single Save PATCH.
 
 import { Alert } from "react-native";
-import { Button, FormSheet, Separator, toast } from "@stageholder/ui";
+import { Button, FormSheet, Separator, Sheet, toast } from "@stageholder/ui";
+
+import { FormSheetSkeleton } from "@/components/form-sheet-skeleton";
 import { Trash2 } from "@tamagui/lucide-icons-2";
 import { TodoForm, type TodoFormValues } from "@repo/features/todos";
 import type { Todo } from "@repo/core/types";
@@ -127,44 +129,51 @@ export function EditTodoDialog({
       // buttons, so hide the kit footer; we keep the kit FormSheet for its
       // keyboard-stretch handling + frame + title.
       hideFooter
+      // Form + growing SubtaskSection + delete button can exceed the screen —
+      // capped snap + scrolling fields (alpha.121), header/footer pinned.
+      scrollable
       open={open}
       onOpenChange={onOpenChange}
       title="Edit Todo"
       description="Update the title, details, priority, dates, and list."
     >
-      {/* Re-mount when switching between todos so each opens with its own
+      {/* Kit open choreography — see create-todo-dialog. Wraps the WHOLE
+          body (form + subtasks + delete) so the slide runs light. */}
+      <Sheet.LazyBody fallback={<FormSheetSkeleton rows={4} />}>
+        {/* Re-mount when switching between todos so each opens with its own
           values (the form seeds state from `initial` only on mount). */}
-      <TodoForm
-        key={todo.id}
-        initial={initial}
-        lists={lists}
-        submitLabel="Save"
-        submittingLabel="Saving…"
-        isSubmitting={updateTodo.isPending}
-        // Resolved hex — native can't parse the web `var(--ring-todo)` default.
-        accentColor={IGNITION.todo.base}
-        onSubmit={handleSubmit}
-        onCancel={() => onOpenChange(false)}
-      />
+        <TodoForm
+          key={todo.id}
+          initial={initial}
+          lists={lists}
+          submitLabel="Save"
+          submittingLabel="Saving…"
+          isSubmitting={updateTodo.isPending}
+          // Resolved hex — native can't parse the web `var(--ring-todo)` default.
+          accentColor={IGNITION.todo.base}
+          onSubmit={handleSubmit}
+          onCancel={() => onOpenChange(false)}
+        />
 
-      {/* Subtasks — instant-commit section (each action is its own mutation,
+        {/* Subtasks — instant-commit section (each action is its own mutation,
           like the PWA detail dialog), so it sits OUTSIDE the form's
           Save/Cancel lifecycle. Keyed per todo so state re-seeds. */}
-      <Separator />
-      <SubtaskSection key={`sub-${todo.id}`} todo={todo} />
+        <Separator />
+        <SubtaskSection key={`sub-${todo.id}`} todo={todo} />
 
-      {/* Delete — the reachable native delete affordance (row trash is
+        {/* Delete — the reachable native delete affordance (row trash is
           hover-only). Destructive, confirmed via Alert. */}
-      <Separator />
-      <Button
-        intent="destructive"
-        icon={<Trash2 size={14} />}
-        loading={deleteTodo.isPending}
-        loadingText="Deleting…"
-        onPress={confirmDelete}
-      >
-        Delete todo
-      </Button>
+        <Separator />
+        <Button
+          intent="destructive"
+          icon={<Trash2 size={14} />}
+          loading={deleteTodo.isPending}
+          loadingText="Deleting…"
+          onPress={confirmDelete}
+        >
+          Delete todo
+        </Button>
+      </Sheet.LazyBody>
     </FormSheet>
   );
 }

@@ -222,7 +222,12 @@ export function TodoForm({
             lists={listRefs}
             locale={smartLocale}
             parse={smartEnabled}
-            showChips={false}
+            // Web renders inline highlight pills INSIDE the field, so the
+            // separate chip row is redundant there. Native can't style spans
+            // in a TextInput — the removable preview chips ARE the feedback
+            // that typing "tomorrow !p1 #work" was understood; without them
+            // the parse ran invisibly and read as broken.
+            showChips={!isWeb}
             onParse={applyParse}
             onSubmit={() => handleSubmit()}
             placeholder="What needs to be done?"

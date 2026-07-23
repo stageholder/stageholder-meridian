@@ -159,7 +159,7 @@ function OnboardingPage() {
   return (
     <YStack minH={"100vh" as never} justify="center" py="$8">
       <OnboardingWizard
-        firstName={(sdk.user.name ?? "").split(" ")[0]}
+        firstName={(sdk.user.name ?? "").split(" ")[0] ?? ""}
         initialProfile={initialProfile}
         onComplete={handleComplete}
         onSkip={handleSkip}

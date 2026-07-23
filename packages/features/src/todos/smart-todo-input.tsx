@@ -109,7 +109,7 @@ function detectTrigger(value: string, caret: number): ActiveTrigger | null {
   const m = /(^|\s)([!#])(\S*)$/.exec(upto);
   if (!m) return null;
   const char = m[2] as "!" | "#";
-  const query = m[3];
+  const query = m[3] ?? "";
   const start = caret - query.length - 1;
   return { char, start, query };
 }
@@ -256,7 +256,8 @@ export const SmartTodoInput = forwardRef<
       }
       if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
-        applyMenuItem(menuItems[activeIndex].insert);
+        const item = menuItems[activeIndex];
+        if (item) applyMenuItem(item.insert);
         return;
       }
       if (e.key === "Escape") {
@@ -282,7 +283,9 @@ export const SmartTodoInput = forwardRef<
   );
 
   return (
-    <View width="100%" color="$color">
+    // color is not a View style prop under the strict v2 types; the backdrop
+    // spans set their own colors and the textarea inherits via FIELD_METRICS.
+    <View width="100%">
       {/* FIELD — position:relative so the textarea overlays the backdrop ONLY
           (the preview chips live OUTSIDE this, below the underline). */}
       <View
@@ -436,8 +439,9 @@ export const SmartTodoInput = forwardRef<
                 } as object)}
               >
                 {trigger.char === "!" ? (
-                  // Priority — its own swatch (matches the app's priority flags).
-                  <Flag size={14} color={item.color} />
+                  // Priority — its own swatch (matches the app's priority
+                  // flags). Raw hex rides `as never` past the token-only type.
+                  <Flag size={14} color={item.color as never} />
                 ) : item.isDefault ? (
                   // Default list — the Inbox glyph (muted), app standard.
                   <Inbox size={14} color="$mutedForeground" />
@@ -488,7 +492,12 @@ export const SmartTodoInput = forwardRef<
           {result.priority ? (
             <PreviewChip
               tint={hexTint(PRIORITY_COLOR[result.priority])}
-              icon={<Flag size={11} color={PRIORITY_COLOR[result.priority]} />}
+              icon={
+                <Flag
+                  size={11}
+                  color={PRIORITY_COLOR[result.priority] as never}
+                />
+              }
               label={labelFor(result.tokens, "priority")}
               onRemove={() => removeTokensOfKind("priority")}
             />

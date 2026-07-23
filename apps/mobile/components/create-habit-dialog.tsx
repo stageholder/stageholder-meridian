@@ -9,7 +9,9 @@
 // accentColor: the PWA passes the `--ring-habit` CSS var; on native CSS vars
 // don't resolve in style objects, so the resolved IGNITION hex is passed.
 
-import { FormSheet, toast } from "@stageholder/ui";
+import { FormSheet, Sheet, toast } from "@stageholder/ui";
+
+import { FormSheetSkeleton } from "@/components/form-sheet-skeleton";
 import {
   HabitForm,
   HABIT_FORM_DEFAULTS,
@@ -76,21 +78,31 @@ export function CreateHabitDialog({
       // buttons, so hide the kit footer; we keep the kit FormSheet for its
       // keyboard-stretch handling + frame + title.
       hideFooter
+      // Default mountChildren ('open') — see create-todo-dialog for why
+      // `first-open` was reverted.
+      // HabitForm is the app's tallest form (icon+name, frequency, schedule,
+      // target, unit, color, group…) — cap the sheet and scroll the fields
+      // with pinned header/footer instead of growing past the status bar.
+      scrollable
       open={open}
       onOpenChange={onOpenChange}
       title="New Habit"
     >
-      <HabitForm
-        key={openEpoch}
-        initial={{ ...HABIT_FORM_DEFAULTS, groupId: groupId ?? null }}
-        groups={groupOptions}
-        submitLabel="Create"
-        submittingLabel="Creating…"
-        isSubmitting={createHabit.isPending}
-        accentColor={IGNITION.habit.base}
-        onSubmit={handleSubmit}
-        onCancel={() => onOpenChange(false)}
-      />
+      {/* Kit open choreography — slide immediately, form fades in on settle
+          (see create-todo-dialog). Safe with `scrollable` (constant snap). */}
+      <Sheet.LazyBody fallback={<FormSheetSkeleton rows={4} />}>
+        <HabitForm
+          key={openEpoch}
+          initial={{ ...HABIT_FORM_DEFAULTS, groupId: groupId ?? null }}
+          groups={groupOptions}
+          submitLabel="Create"
+          submittingLabel="Creating…"
+          isSubmitting={createHabit.isPending}
+          accentColor={IGNITION.habit.base}
+          onSubmit={handleSubmit}
+          onCancel={() => onOpenChange(false)}
+        />
+      </Sheet.LazyBody>
     </FormSheet>
   );
 }

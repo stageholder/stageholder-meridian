@@ -19,9 +19,8 @@
 import { Celebration, toast } from "@stageholder/ui";
 import { HabitCard } from "@repo/features/habits";
 import type { Habit } from "@repo/core/types";
-import { format, subDays } from "date-fns";
 
-import { useDeleteHabit, useHabitEntries } from "@/lib/api";
+import { useDeleteHabit, useSharedHabitEntries } from "@/lib/api";
 import { useHabitDayActions } from "@/lib/hooks/use-habit-day-actions";
 import { IGNITION } from "@/lib/ignition-palette";
 import { localDateKey } from "@/lib/streak";
@@ -56,15 +55,11 @@ export function HabitCardRow({
 }: HabitCardRowProps) {
   const today = localDateKey();
   const activeDate = selectedDate ?? today;
-  // Bound the fetch to the last 90 days (PWA parity — the no-range path returns
-  // ALL entries unbounded). 90 days covers the streak + current-week quota math.
-  // Widen the window to include `activeDate` when the date-nav jumps past 90
-  // days back or into the future, so an existing entry there isn't misread as
-  // un-acted → duplicate 409.
-  const ninetyDaysAgo = format(subDays(new Date(), 90), "yyyy-MM-dd");
-  const startDate = activeDate < ninetyDaysAgo ? activeDate : ninetyDaysAgo;
-  const endDate = activeDate > today ? activeDate : today;
-  const entriesQuery = useHabitEntries(habit.id, { startDate, endDate });
+  // THE canonical shared 90-day window (habitEntriesWindow) — one cache entry
+  // + one network fetch per habit, shared with the compact check-in row and
+  // the Today aggregate. Widens automatically when the date-nav jumps past 90
+  // days back or into the future.
+  const entriesQuery = useSharedHabitEntries(habit.id, selectedDate);
   const deleteHabit = useDeleteHabit();
 
   const entries = entriesQuery.data;

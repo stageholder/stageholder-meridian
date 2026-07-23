@@ -121,7 +121,7 @@ export function TodoListReorderSheet({
               <Text
                 fontSize="$3"
                 color="$mutedForeground"
-                textAlign="center"
+                text="center"
                 py="$6"
               >
                 No custom lists yet. Tap "+ New" to create one.

@@ -49,8 +49,8 @@ import {
 import { JourneyLightChart } from "@repo/features/charts";
 import { LIGHT_TIERS, type UserLight } from "@repo/core/types/light";
 import { ChevronLeft } from "@tamagui/lucide-icons-2";
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -73,6 +73,18 @@ export default function JourneyScreen() {
 
   const [feedLimit, setFeedLimit] = useState(FEED_INITIAL);
   const eventsQuery = useLightEvents(feedLimit, 0);
+
+  // PERF: the StarVisual pulse is a 1.5s setInterval — the app's only
+  // recurring timer. freezeOnBlur suspends the RENDER of a blurred tab but
+  // not its timers, so gate `animate` on focus: blurred → interval unmounts
+  // (the star's effect cleans it up), focused → pulse resumes.
+  const [focused, setFocused] = useState(true);
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      return () => setFocused(false);
+    }, []),
+  );
   const lightTrend = useLightTrend();
   // Array.isArray (not just ?? []): the query cache is PERSISTED to
   // AsyncStorage, so a stale entry written by an older hook version can
@@ -128,7 +140,11 @@ export default function JourneyScreen() {
                 enterStyle={{ opacity: 0, y: 12 }}
                 transition="medium"
               >
-                <StarVisual tier={userLight.currentTier} size="xl" />
+                <StarVisual
+                  tier={userLight.currentTier}
+                  size="xl"
+                  animate={focused}
+                />
                 <Text
                   mt="$3"
                   fontSize="$8"
@@ -182,6 +198,7 @@ export default function JourneyScreen() {
                 <JourneyTierMap
                   currentTier={userLight.currentTier}
                   totalLight={userLight.totalLight}
+                  animateStars={focused}
                 />
               </YStack>
 

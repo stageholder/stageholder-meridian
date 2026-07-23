@@ -24,7 +24,6 @@ import {
   Button,
   EmptyState,
   Pill,
-  PullToRefresh,
   Separator,
   SwipeableRow,
   Text,
@@ -32,16 +31,24 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
+import { FlashList, type ListRenderItemInfo } from "@shopify/flash-list";
 import { TodoItem, TodoListSkeleton } from "@repo/features/todos";
 import {
   formatUpcomingLabel,
   groupUpcomingByDate,
 } from "@repo/core/todos/upcoming";
 import type { Todo, TodoList } from "@repo/core/types";
-import { ListOrdered, Pencil, Plus, Trash2 } from "@tamagui/lucide-icons-2";
+import {
+  Check,
+  ListOrdered,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Trash2,
+} from "@tamagui/lucide-icons-2";
 import { format, subDays } from "date-fns";
 import { memo, useCallback, useMemo, useState } from "react";
-import { ScrollView as RNScrollView } from "react-native";
+import { RefreshControl, ScrollView as RNScrollView } from "react-native";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -99,6 +106,29 @@ const UPCOMING_PRESETS: { label: string; days: number }[] = [
 ];
 
 /**
+ * Flat, typed row model for the virtualized list. The screen's date-bucketed
+ * sections (Overdue/Today/Upcoming/Someday + Completed), the Upcoming range
+ * presets, and the empty/loading/error surfaces all become FlashList rows so
+ * only the visible slice mounts — previously EVERY todo mounted at once
+ * inside a plain ScrollView.
+ */
+type ListRow =
+  | { key: string; type: "banner" }
+  | { key: string; type: "skeleton" }
+  | { key: string; type: "empty"; variant: "all" | "filtered" }
+  | {
+      key: string;
+      type: "sectionHeader";
+      label: string;
+      count: number;
+      destructive?: boolean;
+    }
+  | { key: string; type: "presets" }
+  | { key: string; type: "windowEmpty" }
+  | { key: string; type: "dateLabel"; date: string }
+  | { key: string; type: "todo"; todo: Todo };
+
+/**
  * One todo row — reused by the flat buckets, the grouped Upcoming view, and
  * the Completed section. Swipe LEFT reveals a Delete panel (iOS-Mail style:
  * a long swipe deletes immediately via autoCommit) — the mobile-reachable
@@ -127,8 +157,25 @@ const TodoRow = memo(function TodoRow({
   onDeleteTodo: (id: string) => void;
   onOpenEdit: (todo: Todo) => void;
 }) {
+  const isDone = todo.status === "done";
   return (
     <SwipeableRow
+      // Swipe RIGHT — the quick action: complete an open todo (or reopen a
+      // done one) in one gesture, iOS-Mail style. A long swipe commits
+      // immediately via autoCommit; a short swipe reveals the tappable panel.
+      leftActions={[
+        {
+          label: isDone ? "Reopen" : "Done",
+          color: isDone ? "#6b7280" : "#16a34a",
+          icon: isDone ? (
+            <RotateCcw size={18} color="#ffffff" />
+          ) : (
+            <Check size={18} color="#ffffff" />
+          ),
+          onPress: () => onToggleTodo(todo),
+          autoCommit: true,
+        },
+      ]}
       rightActions={[
         {
           label: "Delete",
@@ -180,14 +227,17 @@ export default function TodosScreen() {
   // Upcoming range window (days ahead; 0 = All). Mirrors the PWA's preset row.
   const [upcomingRange, setUpcomingRange] = useState(7);
 
-  async function handleRefresh() {
+  // Stable — feeds RefreshControl and the memoized renderRow.
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
       await Promise.all([todosQuery.refetch(), listsQuery.refetch()]);
     } finally {
       setRefreshing(false);
     }
-  }
+    // refetch fns are referentially stable in RQ v5.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todosQuery.refetch, listsQuery.refetch]);
 
   const lists = listsQuery.data ?? [];
   const listMap = useMemo(() => new Map(lists.map((l) => [l.id, l])), [lists]);
@@ -263,6 +313,12 @@ export default function TodosScreen() {
   function renderTodo(todo: Todo) {
     return (
       <TodoRow
+        // The per-todo key is CORRECTNESS, not style: FlashList recycles cell
+        // component instances, and ReanimatedSwipeable keeps its swipe offset
+        // in internal shared values — without the key a half-swiped row would
+        // be recycled into a DIFFERENT todo with its panel already open. The
+        // key forces a remount when the cell is reused (a deliberate trade of
+        // some recycling efficiency for correct swipe state).
         key={todo.id}
         todo={todo}
         listName={showListBadge ? listMap.get(todo.listId)?.name : undefined}
@@ -295,6 +351,222 @@ export default function TodosScreen() {
     !todosQuery.isLoading &&
     ((statusFilter === "todo" && openCount === 0) ||
       (statusFilter === "done" && done.length === 0));
+
+  // Flatten the bucketed view into the FlashList row model. Recomputes only
+  // when the underlying data/filters change — scrolling never rebuilds it.
+  const rows = useMemo<ListRow[]>(() => {
+    const out: ListRow[] = [];
+    if (todosQuery.error) out.push({ key: "banner", type: "banner" });
+    if (todosQuery.isLoading && todos.length === 0) {
+      out.push({ key: "skeleton", type: "skeleton" });
+      return out;
+    }
+    if (isEmpty) {
+      out.push({ key: "empty", type: "empty", variant: "all" });
+      return out;
+    }
+    if (filteredEmpty) {
+      out.push({ key: "filtered-empty", type: "empty", variant: "filtered" });
+    }
+    if (showOpen) {
+      for (const bucket of BUCKET_ORDER) {
+        if (buckets[bucket].length === 0) continue;
+        if (bucket === "upcoming") {
+          out.push({
+            key: "h-upcoming",
+            type: "sectionHeader",
+            label: "Upcoming",
+            count: upcomingShown,
+          });
+          out.push({ key: "presets", type: "presets" });
+          if (upcomingGroups.length === 0) {
+            out.push({ key: "window-empty", type: "windowEmpty" });
+          } else {
+            for (const group of upcomingGroups) {
+              out.push({
+                key: `d-${group.date}`,
+                type: "dateLabel",
+                date: group.date,
+              });
+              for (const todo of group.todos) {
+                out.push({ key: todo.id, type: "todo", todo });
+              }
+            }
+          }
+          continue;
+        }
+        out.push({
+          key: `h-${bucket}`,
+          type: "sectionHeader",
+          label: BUCKET_LABEL[bucket],
+          count: buckets[bucket].length,
+          destructive: bucket === "overdue",
+        });
+        for (const todo of buckets[bucket]) {
+          out.push({ key: todo.id, type: "todo", todo });
+        }
+      }
+    }
+    if (showDone && done.length > 0) {
+      out.push({
+        key: "h-done",
+        type: "sectionHeader",
+        label: "Completed",
+        count: done.length,
+      });
+      for (const todo of done) {
+        out.push({ key: todo.id, type: "todo", todo });
+      }
+    }
+    return out;
+  }, [
+    todosQuery.error,
+    todosQuery.isLoading,
+    todos.length,
+    isEmpty,
+    filteredEmpty,
+    showOpen,
+    showDone,
+    buckets,
+    upcomingGroups,
+    upcomingShown,
+    done,
+  ]);
+
+  const rowKey = useCallback((r: ListRow) => r.key, []);
+  const rowType = useCallback((r: ListRow) => r.type, []);
+
+  const renderRow = useCallback(
+    ({ item }: ListRenderItemInfo<ListRow>) => {
+      switch (item.type) {
+        case "banner":
+          return (
+            <View pb="$2">
+              <Banner intent="danger">
+                <Banner.Body>
+                  <Banner.Title>Couldn&apos;t load todos</Banner.Title>
+                  <Banner.Description>
+                    {(todosQuery.error as Error | null)?.message ??
+                      "Network error."}
+                  </Banner.Description>
+                  <Banner.Action self="flex-end" mt="$2">
+                    <Button
+                      intent="secondary"
+                      size="sm"
+                      onPress={handleRefresh}
+                    >
+                      Try again
+                    </Button>
+                  </Banner.Action>
+                </Banner.Body>
+              </Banner>
+            </View>
+          );
+        case "skeleton":
+          // Row-shaped shimmer (shared with the PWA) — first paint already
+          // has the list's silhouette.
+          return <TodoListSkeleton />;
+        case "empty":
+          return item.variant === "all" ? (
+            <EmptyState>
+              <EmptyState.IconSlot>
+                <Text fontSize={28}>✓</Text>
+              </EmptyState.IconSlot>
+              <EmptyState.Title>Nothing to do</EmptyState.Title>
+              <EmptyState.Description>
+                Tap the + button to capture your first todo — title, priority,
+                and dates.
+              </EmptyState.Description>
+            </EmptyState>
+          ) : (
+            <EmptyState>
+              <EmptyState.IconSlot>
+                <Text fontSize={28}>{statusFilter === "done" ? "◎" : "✓"}</Text>
+              </EmptyState.IconSlot>
+              <EmptyState.Title>
+                {statusFilter === "done"
+                  ? "Nothing completed yet"
+                  : "All caught up"}
+              </EmptyState.Title>
+              <EmptyState.Description>
+                {statusFilter === "done"
+                  ? "Completed todos will show up here."
+                  : "No open todos — nice work."}
+              </EmptyState.Description>
+            </EmptyState>
+          );
+        case "sectionHeader":
+          return (
+            <XStack items="center" gap="$2" px="$2.5" pt="$3" pb="$2">
+              <Text
+                fontSize="$1"
+                fontWeight="600"
+                color={item.destructive ? "$destructive" : "$mutedForeground"}
+                letterSpacing={0.6}
+                textTransform="uppercase"
+              >
+                {item.label} · {item.count}
+              </Text>
+              <View flex={1}>
+                <Separator />
+              </View>
+            </XStack>
+          );
+        case "presets":
+          // Range presets — 7 / 14 / 30 days / All.
+          return (
+            <XStack gap="$1.5" flexWrap="wrap" px="$1" pb="$2">
+              {UPCOMING_PRESETS.map((p) => (
+                <Pill
+                  key={p.days}
+                  size="sm"
+                  selected={upcomingRange === p.days}
+                  onPress={() => setUpcomingRange(p.days)}
+                >
+                  {p.label}
+                </Pill>
+              ))}
+            </XStack>
+          );
+        case "windowEmpty":
+          return (
+            <Text fontSize="$2" color="$mutedForeground" px="$2.5" py="$1">
+              Nothing in this window — try a wider range.
+            </Text>
+          );
+        case "dateLabel":
+          return (
+            <Text
+              fontSize="$2"
+              fontWeight="600"
+              color="$color"
+              px="$2.5"
+              pt="$1"
+              pb="$1.5"
+            >
+              {formatUpcomingLabel(item.date, today)}
+            </Text>
+          );
+        case "todo":
+          return <View pb="$2">{renderTodo(item.todo)}</View>;
+      }
+    },
+    // renderTodo closes over stable handlers + listMap/showListBadge; the
+    // memoized TodoRow bails per-row when nothing it reads changed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      todosQuery.error,
+      handleRefresh,
+      statusFilter,
+      upcomingRange,
+      today,
+      showListBadge,
+      listMap,
+      handleToggleTodo,
+      handleDeleteTodo,
+      handleOpenEdit,
+    ],
+  );
 
   return (
     <YStack flex={1} bg="$background">
@@ -381,198 +653,29 @@ export default function TodosScreen() {
           ) : null}
         </RNScrollView>
 
-        {/* PullToRefresh.native is the scroller — its child is the padded
-            content column, not a nested ScrollView. */}
-        <PullToRefresh refreshing={refreshing} onRefresh={handleRefresh}>
-          {/* Bottom padding = clearance for the floating BottomNav capsule
-              (PWA shell parity). Lives on the content column — kit
-              PullToRefresh (alpha.29) no longer accepts
-              contentContainerStyle. */}
-          <YStack
-            gap="$2"
-            px="$4"
-            pt="$3"
-            pb={BOTTOM_NAV_CLEARANCE + insets.bottom}
-          >
-            {/* Error */}
-            {todosQuery.error ? (
-              <Banner intent="danger">
-                <Banner.Body>
-                  <Banner.Title>Couldn&apos;t load todos</Banner.Title>
-                  <Banner.Description>
-                    {(todosQuery.error as Error).message ?? "Network error."}
-                  </Banner.Description>
-                  <Banner.Action self="flex-end" mt="$2">
-                    <Button
-                      intent="secondary"
-                      size="sm"
-                      onPress={handleRefresh}
-                    >
-                      Try again
-                    </Button>
-                  </Banner.Action>
-                </Banner.Body>
-              </Banner>
-            ) : null}
-
-            {/* Loading — row-shaped shimmer (shared with the PWA) instead of
-                a centered spinner, so the first paint already has the list's
-                silhouette. */}
-            {todosQuery.isLoading && todos.length === 0 ? (
-              <TodoListSkeleton />
-            ) : null}
-
-            {/* Empty */}
-            {isEmpty ? (
-              <EmptyState>
-                <EmptyState.IconSlot>
-                  <Text fontSize={28}>✓</Text>
-                </EmptyState.IconSlot>
-                <EmptyState.Title>Nothing to do</EmptyState.Title>
-                <EmptyState.Description>
-                  Tap the + button to capture your first todo — title, priority,
-                  and dates.
-                </EmptyState.Description>
-              </EmptyState>
-            ) : null}
-
-            {/* Filtered-empty — todos exist but none match the active filter. */}
-            {filteredEmpty ? (
-              <EmptyState>
-                <EmptyState.IconSlot>
-                  <Text fontSize={28}>
-                    {statusFilter === "done" ? "◎" : "✓"}
-                  </Text>
-                </EmptyState.IconSlot>
-                <EmptyState.Title>
-                  {statusFilter === "done"
-                    ? "Nothing completed yet"
-                    : "All caught up"}
-                </EmptyState.Title>
-                <EmptyState.Description>
-                  {statusFilter === "done"
-                    ? "Completed todos will show up here."
-                    : "No open todos — nice work."}
-                </EmptyState.Description>
-              </EmptyState>
-            ) : null}
-
-            {/* Open todos — date-bucketed sections (PWA today/upcoming/inbox
-                views, stacked). A section renders only when non-empty;
-                Overdue's header reads destructive. */}
-            {showOpen &&
-              BUCKET_ORDER.map((bucket) => {
-                if (buckets[bucket].length === 0) return null;
-
-                // Upcoming: a range-preset row + date-grouped sub-sections
-                // (Tomorrow / weekday headers), mirroring the PWA upcoming view.
-                if (bucket === "upcoming") {
-                  return (
-                    <YStack key={bucket} gap="$2" pt="$1">
-                      <XStack items="center" gap="$2" px="$2.5">
-                        <Text
-                          fontSize="$1"
-                          fontWeight="600"
-                          color="$mutedForeground"
-                          letterSpacing={0.6}
-                          textTransform="uppercase"
-                        >
-                          Upcoming · {upcomingShown}
-                        </Text>
-                        <View flex={1}>
-                          <Separator />
-                        </View>
-                      </XStack>
-
-                      {/* Range presets — 7 / 14 / 30 days / All. */}
-                      <XStack gap="$1.5" flexWrap="wrap" px="$1">
-                        {UPCOMING_PRESETS.map((p) => (
-                          <Pill
-                            key={p.days}
-                            size="sm"
-                            selected={upcomingRange === p.days}
-                            onPress={() => setUpcomingRange(p.days)}
-                          >
-                            {p.label}
-                          </Pill>
-                        ))}
-                      </XStack>
-
-                      {upcomingGroups.length === 0 ? (
-                        <Text
-                          fontSize="$2"
-                          color="$mutedForeground"
-                          px="$2.5"
-                          py="$1"
-                        >
-                          Nothing in this window — try a wider range.
-                        </Text>
-                      ) : (
-                        upcomingGroups.map((group) => (
-                          <YStack key={group.date} gap="$1.5" pt="$1">
-                            <Text
-                              fontSize="$2"
-                              fontWeight="600"
-                              color="$color"
-                              px="$2.5"
-                            >
-                              {formatUpcomingLabel(group.date, today)}
-                            </Text>
-                            {group.todos.map((todo) => renderTodo(todo))}
-                          </YStack>
-                        ))
-                      )}
-                    </YStack>
-                  );
-                }
-
-                return (
-                  <YStack key={bucket} gap="$2" pt="$1">
-                    <XStack items="center" gap="$2" px="$2.5">
-                      <Text
-                        fontSize="$1"
-                        fontWeight="600"
-                        color={
-                          bucket === "overdue"
-                            ? "$destructive"
-                            : "$mutedForeground"
-                        }
-                        letterSpacing={0.6}
-                        textTransform="uppercase"
-                      >
-                        {BUCKET_LABEL[bucket]} · {buckets[bucket].length}
-                      </Text>
-                      <View flex={1}>
-                        <Separator />
-                      </View>
-                    </XStack>
-                    {buckets[bucket].map((todo) => renderTodo(todo))}
-                  </YStack>
-                );
-              })}
-
-            {/* Completed section */}
-            {showDone && done.length > 0 ? (
-              <YStack gap="$2" pt="$2">
-                <XStack items="center" gap="$2" px="$2.5">
-                  <Text
-                    fontSize="$1"
-                    fontWeight="600"
-                    color="$mutedForeground"
-                    letterSpacing={0.6}
-                    textTransform="uppercase"
-                  >
-                    Completed · {done.length}
-                  </Text>
-                  <View flex={1}>
-                    <Separator />
-                  </View>
-                </XStack>
-                {done.map((todo) => renderTodo(todo))}
-              </YStack>
-            ) : null}
-          </YStack>
-        </PullToRefresh>
+        {/* Virtualized list — FlashList mounts only the visible slice
+            (previously a plain ScrollView mounted EVERY SwipeableRow at
+            once). RefreshControl replaces the kit PullToRefresh scroller;
+            bottom padding = clearance for the floating BottomNav capsule. */}
+        <View flex={1}>
+          <FlashList
+            data={rows}
+            renderItem={renderRow}
+            keyExtractor={rowKey}
+            getItemType={rowType}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+              />
+            }
+            contentContainerStyle={{
+              paddingHorizontal: 16,
+              paddingTop: 12,
+              paddingBottom: BOTTOM_NAV_CLEARANCE + insets.bottom,
+            }}
+          />
+        </View>
       </SafeAreaView>
 
       {/* Full create — priority, due/do dates, list — in a bottom Sheet, the
