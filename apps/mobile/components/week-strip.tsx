@@ -36,7 +36,11 @@ import {
 
 const WEEKS_BACK = 13;
 const WEEKS_FORWARD = 2;
-const RING = { size: 34, thickness: 3, gap: 1 } as const;
+// Apple/PWA ring proportions — a ~13% band (thickness/size) so the three
+// concentric rings read as solid arcs, not spindly hairlines. The prior
+// thickness:3 on a 34px ring (~9%) was the "too thin" report; the shared
+// features preset (`sm`) uses the same slightly-thicker-at-small-sizes rule.
+const RING = { size: 38, thickness: 5, gap: 1.5 } as const;
 
 interface WeekStripProps {
   calendarData: CalendarData;

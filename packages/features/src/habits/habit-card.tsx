@@ -1,5 +1,4 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { isWeb } from "tamagui";
 import { format, subDays, startOfWeek, addDays } from "date-fns";
 import {
   Check,
@@ -310,12 +309,12 @@ export function HabitCard({
         bg="$card"
         p="$3"
         gap="$2.5"
-        // Card-root transition only serves the web-only completion keyframe;
-        // on native (Reanimated driver) it just made every card an idle
-        // animated node. Feedback animations live on the inner controls.
-        transition={isWeb ? "medium" : undefined}
+        // Same transition on web + native (Tamagui v2). The bespoke
+        // completion keyframe is web-only CSS (className below); native plays
+        // its equivalent via renderCompletionEffect (the ember Celebration).
+        transition="medium"
         // allowlist: habit-card-completing — bespoke completion keyframe (no token equivalent).
-        // Web-only; ignored on native (host can plug in a Reanimated alt via renderCompletionEffect).
+        // Web-only; ignored on native (host plugs in a Reanimated alt via renderCompletionEffect).
         className={completing ? "habit-card-completing" : undefined}
       >
         {/* Header — icon · name/desc · streak · menu */}
@@ -327,9 +326,8 @@ export function HabitCard({
             cursor="pointer"
             items="center"
             gap="$2.5"
-            // Hover fade is web-only; without a hover state the native
-            // transition was another idle animated node per card.
-            transition={isWeb ? "quick" : undefined}
+            // Hover/press fade — same on web + native (Tamagui v2).
+            transition="quick"
             hoverStyle={{ opacity: 0.8 }}
             role="button"
             aria-label={`Open ${habit.name}`}
@@ -479,11 +477,8 @@ export function HabitCard({
                   width={11}
                   height={11}
                   rounded={9999}
-                  // Web animates the dot's color flip; on native the
-                  // transition made 7 permanently-animated nodes PER CARD
-                  // (shared values + UI-thread bindings) to smooth an 11px
-                  // color change — snap it instead.
-                  transition={isWeb ? "quick" : undefined}
+                  // Dot color flip animates the same on web + native.
+                  transition="quick"
                   items="center"
                   justify="center"
                   // DOM `title` tooltip attr isn't in the kit View prop type

@@ -5,58 +5,113 @@
 // `targetCount` (not target), `frequency`, no inline checkIns. Per-day
 // state lives in HabitEntry rows fetched via useHabitEntries.
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 import { format, subDays } from "date-fns";
 import type { Habit, HabitEntry } from "@repo/core/types";
 
 import { apiClient } from "../client";
-import { writeHabitEntryToCalendar } from "../calendar-cache";
 import { habitKeys } from "../keys";
-import {
-  snapshotAndCancel,
-  rollback,
-  patchLists,
-  writeEntityToLists,
-  ENTRY_SCOPE,
-  type CacheSnapshot,
-} from "../optimistic";
 
-/** Replace whichever cached entry shares the server entry's day with the
- *  authoritative server record, across the base + windowed entries caches — so
- *  a check-in never needs to re-fetch (and briefly revert) the entries list. */
-function writeEntryByDate(
-  qc: ReturnType<typeof useQueryClient>,
-  habitId: string,
-  serverEntry: HabitEntry,
-) {
-  const day = serverEntry.date?.slice(0, 10);
-  patchLists<HabitEntry>(qc, [habitKeys.entries(habitId)], (list) => {
-    let replaced = false;
-    const next = list.map((e) => {
-      if (e.date?.slice(0, 10) === day) {
-        replaced = true;
-        return serverEntry;
-      }
-      return e;
-    });
-    return replaced ? next : [...next, serverEntry];
-  });
+// ─────────────────────────────────────────────────────────────────────────
+// DATA-LAYER CONTRACT (simplified 2026-07-23 — the old snapshot/rollback +
+// surgical-cache-write machinery in optimistic.ts / calendar-cache.ts was
+// offline-era ceremony; the smooth sibling apps run plain React Query):
+//
+//   • HOT taps (check-in / skip / fail / undo) get ONE optimistic
+//     setQueriesData write so the control flips on the tap frame.
+//   • Everything self-heals through STANDARD invalidation: onSettled
+//     refetches this habit's entries + the ONE affected calendar month.
+//     Errors need no bespoke rollback — the same refetch corrects the
+//     cache (409 races included).
+//   • Non-tap mutations (create / archive / reorder) are plain
+//     mutate → invalidate.
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Serializes entry writes so rapid repeat taps can't race into a duplicate
+ *  POST (409) or a stale-id PATCH — without disabling the control. */
+const ENTRY_SCOPE = { id: "habit-entry" };
+
+/** The day key an entry write targets (server defaults omitted dates). */
+function entryDay(date?: string): string {
+  return date ?? new Date().toISOString().slice(0, 10);
 }
 
-/**
- * Recover gracefully when a POST to /habits/:id/entries races another
- * client and lands on an active entry the API refuses to overwrite (409).
- * We refetch entries so the next render's smart handlers will PATCH the
- * fresh entry instead, and we surface a single human-readable error.
- *
- * Returns true if the error WAS a 409 (caller should suppress its own
- * generic error toast in favor of the more accurate "refreshed" message).
- */
-function isAxios409(err: unknown): boolean {
-  // axios attaches `response.status`; keep the shape check loose so this
-  // works whether axios, fetch, or a test mock surfaces the error.
-  const e = err as { response?: { status?: number }; status?: number };
-  return e?.response?.status === 409 || e?.status === 409;
+/** Optimistically create-or-update the day's entry across every cached
+ *  entries window (base + 90-day + detail windows share the key prefix). */
+function upsertDayEntry(
+  qc: QueryClient,
+  habitId: string,
+  day: string,
+  make: (existing: HabitEntry | undefined) => HabitEntry,
+) {
+  qc.setQueriesData<HabitEntry[]>(
+    { queryKey: habitKeys.entries(habitId) },
+    (list) => {
+      if (!Array.isArray(list)) return list;
+      const existing = list.find((e) => e.date?.slice(0, 10) === day);
+      const next = make(existing);
+      return existing
+        ? list.map((e) => (e.date?.slice(0, 10) === day ? next : e))
+        : [...list, next];
+    },
+  );
+}
+
+/** Placeholder row for a day with no entry yet — replaced by the settle
+ *  refetch moments later. */
+function optimisticEntry(
+  habitId: string,
+  day: string,
+  value: number,
+  type: HabitEntry["type"],
+  skipReason?: string,
+): HabitEntry {
+  return {
+    id: `optimistic-${type}-${day}`,
+    habitId,
+    userSub: "",
+    date: day,
+    value,
+    type,
+    skipReason,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  } as HabitEntry;
+}
+
+/** Write the server's authoritative entry into every cached entries window,
+ *  replacing the optimistic row (by day). CRITICAL: this swaps the
+ *  `optimistic-…` id for the real id, which clears the day-actions
+ *  `isPending` lock IMMEDIATELY — without it the control stays disabled until
+ *  a refetch round-trip lands (the "can't check / locked between taps" bug,
+ *  worst on multi-count habits). Standard RQ "update from mutation response". */
+function writeServerEntry(
+  qc: QueryClient,
+  habitId: string,
+  server: HabitEntry,
+) {
+  const day = server.date?.slice(0, 10);
+  qc.setQueriesData<HabitEntry[]>(
+    { queryKey: habitKeys.entries(habitId) },
+    (list) => {
+      if (!Array.isArray(list)) return list;
+      const has = list.some((e) => e.date?.slice(0, 10) === day);
+      return has
+        ? list.map((e) => (e.date?.slice(0, 10) === day ? server : e))
+        : [...list, server];
+    },
+  );
+}
+
+/** Refresh the ONE calendar month the day belongs to (the aggregation the
+ *  entries cache can't update). Never the whole ["calendar"] prefix. */
+function settleCalendarMonth(qc: QueryClient, day: string) {
+  void qc.invalidateQueries({ queryKey: ["calendar", day.slice(0, 7)] });
 }
 
 /* ------------------------------ Reads -------------------------------- */
@@ -165,16 +220,10 @@ export type CreateHabitInput = {
 
 export function useCreateHabit() {
   const qc = useQueryClient();
-  // Explicit generics: RQ v5.100's 4-arg callbacks infer TVariables/TContext
-  // across ALL handlers — per-handler param annotations (the old pattern
-  // here) poison that inference into `unknown` and fail the typecheck.
-  return useMutation<
-    Habit,
-    Error,
-    CreateHabitInput,
-    { previous: CacheSnapshot; tempId: string }
-  >({
-    mutationFn: async (input) => {
+  // Plain create → refetch. No temp-row theater: the create sheet closes on
+  // success and the list refetch lands in the same beat.
+  return useMutation({
+    mutationFn: async (input: CreateHabitInput) => {
       const { data } = await apiClient.post<Habit>("/habits", {
         frequency: "daily",
         targetCount: 1,
@@ -182,28 +231,7 @@ export function useCreateHabit() {
       });
       return data;
     },
-    // Optimistic temp row so a new habit shows the instant you submit.
-    onMutate: async (input) => {
-      const previous = await snapshotAndCancel(qc, [habitKeys.lists()]);
-      const tempId = `optimistic-${Date.now()}`;
-      const optimistic = {
-        id: tempId,
-        frequency: "daily",
-        targetCount: 1,
-        ...input,
-        order: Number.MAX_SAFE_INTEGER,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      } as unknown as Habit;
-      patchLists<Habit>(qc, [habitKeys.lists()], (l) => [...l, optimistic]);
-      return { previous, tempId };
-    },
-    onError: (_e, _v, ctx) => rollback(qc, ctx?.previous),
-    onSuccess: (server, _v, ctx) => {
-      if (ctx?.tempId)
-        writeEntityToLists(qc, [habitKeys.lists()], server, ctx.tempId);
-    },
-    onSettled: () => qc.invalidateQueries({ queryKey: habitKeys.lists() }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: habitKeys.lists() }),
   });
 }
 
@@ -248,23 +276,11 @@ export function useDeleteHabit() {
       await apiClient.delete(`/habits/${id}`);
       return id;
     },
-    onMutate: async (id) => {
-      await qc.cancelQueries({ queryKey: habitKeys.lists() });
-      const snapshots = qc.getQueriesData<Habit[]>({
-        queryKey: habitKeys.lists(),
-      });
-      for (const [key, prev] of snapshots) {
-        if (!prev) continue;
-        qc.setQueryData<Habit[]>(
-          key,
-          prev.filter((h) => h.id !== id),
-        );
-      }
-      return { snapshots };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (!ctx?.snapshots) return;
-      for (const [key, prev] of ctx.snapshots) qc.setQueryData(key, prev);
+    // Instant removal; the settle refetch restores it if the delete failed.
+    onMutate: (id) => {
+      qc.setQueriesData<Habit[]>({ queryKey: habitKeys.lists() }, (list) =>
+        Array.isArray(list) ? list.filter((h) => h.id !== id) : list,
+      );
     },
     onSettled: () => qc.invalidateQueries({ queryKey: habitKeys.lists() }),
   });
@@ -280,35 +296,31 @@ export function useDeleteHabit() {
 
 export function useReorderHabits() {
   const qc = useQueryClient();
-  // Explicit generics — see useCreateHabit for why (RQ v5.100 inference).
-  return useMutation<
-    void,
-    Error,
-    { items: { id: string; order: number; groupId?: string | null }[] },
-    { previous: CacheSnapshot }
-  >({
-    mutationFn: async (data) => {
+  return useMutation({
+    mutationFn: async (data: {
+      items: { id: string; order: number; groupId?: string | null }[];
+    }) => {
       await apiClient.post("/habits/reorder", data);
     },
-    // Optimistically apply the new order/group so a dropped habit holds its
-    // position instead of snapping back until the refetch lands.
-    onMutate: async ({ items }) => {
-      const previous = await snapshotAndCancel(qc, [habitKeys.lists()]);
+    // Hold the dropped position instead of snapping back; a failed save
+    // self-heals via the error refetch.
+    onMutate: ({ items }) => {
       const patchById = new Map(items.map((i) => [i.id, i]));
-      patchLists<Habit>(qc, [habitKeys.lists()], (l) =>
-        l.map((h) => {
-          const p = patchById.get(h.id);
-          if (!p) return h;
-          return {
-            ...h,
-            order: p.order,
-            ...(p.groupId !== undefined ? { groupId: p.groupId } : {}),
-          } as Habit;
-        }),
+      qc.setQueriesData<Habit[]>({ queryKey: habitKeys.lists() }, (list) =>
+        Array.isArray(list)
+          ? list.map((h) => {
+              const p = patchById.get(h.id);
+              if (!p) return h;
+              return {
+                ...h,
+                order: p.order,
+                ...(p.groupId !== undefined ? { groupId: p.groupId } : {}),
+              } as Habit;
+            })
+          : list,
       );
-      return { previous };
     },
-    onError: (_e, _v, ctx) => rollback(qc, ctx?.previous),
+    onError: () => qc.invalidateQueries({ queryKey: habitKeys.lists() }),
   });
 }
 
@@ -377,8 +389,6 @@ export type CheckInInput = {
 export function useCheckInHabit() {
   const qc = useQueryClient();
   return useMutation({
-    // Serialize per-habit-day entry writes so rapid taps can't race into a
-    // duplicate POST (409) or a stale-id PATCH — without disabling the control.
     scope: ENTRY_SCOPE,
     mutationFn: async (input: CheckInInput) => {
       const { data } = await apiClient.post<HabitEntry>(
@@ -387,106 +397,30 @@ export function useCheckInHabit() {
       );
       return data;
     },
-    onMutate: async (input) => {
-      // Prefix-match EVERY entries window (base + windowed, e.g. the habits
-      // screen's 90-day fetch and the calendar/agenda day windows) so the
-      // optimistic flip is instant on whichever surface is mounted — not just
-      // the un-windowed query. Mirrors writeEntryByDate's prefix write.
-      const previous = await snapshotAndCancel(qc, [
-        habitKeys.entries(input.habitId),
-      ]);
-      const day = input.date ?? new Date().toISOString().slice(0, 10);
+    // Instant checkbox: bump the day's entry in every cached window.
+    onMutate: (input) => {
+      const day = entryDay(input.date);
       const inc = input.value ?? 1;
-      patchLists<HabitEntry>(qc, [habitKeys.entries(input.habitId)], (list) => {
-        const existing = list.find((e) => e.date.slice(0, 10) === day);
-        if (existing) {
-          return list.map((e) =>
-            e.date.slice(0, 10) === day
-              ? { ...e, value: (e.value ?? 0) + inc }
-              : e,
-          );
-        }
-        return [
-          ...list,
-          {
-            id: `optimistic-${day}`,
-            habitId: input.habitId,
-            userSub: "",
-            date: day,
-            value: inc,
-            type: "completion" as const,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          } as HabitEntry,
-        ];
-      });
-      return { previous };
-    },
-    onError: (err, vars, ctx) => {
-      rollback(qc, ctx?.previous);
-      // 409 = another client raced us and created an entry first. Force a
-      // refetch so the next render's smart handlers PATCH the live entry.
-      if (isAxios409(err)) {
-        qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
-      }
-    },
-    // Write the server entry into the entries cache AND the one affected
-    // calendar month — no refetch anywhere. The old onSettled here broadly
-    // invalidated habitKeys.lists() (pure waste: Habit rows carry NO
-    // entry-derived fields — streaks are client-computed from entries) and
-    // ["calendar"] (refetched all ~7 cached months, whose new array
-    // identities defeated every row memo → whole-app re-render per tap).
-    onSuccess: (server, vars) => {
-      writeEntryByDate(qc, vars.habitId, server);
-      writeHabitEntryToCalendar(qc, server);
-    },
-  });
-}
-
-/**
- * Optimistic insert of a value-0 entry of the given type. Used by skip + fail
- * so the UI flips instantly. Returns the rollback context for onError.
- */
-function optimisticInsertNonCompletion(
-  qc: ReturnType<typeof useQueryClient>,
-  habitId: string,
-  date: string | undefined,
-  type: "skip" | "fail",
-  skipReason?: string,
-) {
-  const d = date ?? new Date().toISOString().slice(0, 10);
-  // Snapshot every entries window for rollback (the caller has already
-  // cancelled in-flight fetches on the same prefix).
-  const previous = qc.getQueriesData({
-    queryKey: habitKeys.entries(habitId),
-  }) as CacheSnapshot;
-  // Patch ALL windows (base + windowed) so the flip is instant on whichever
-  // surface is mounted — parity with the check-in path + writeEntryByDate.
-  patchLists<HabitEntry>(qc, [habitKeys.entries(habitId)], (list) => {
-    const existing = list.find((e) => e.date.slice(0, 10) === d);
-    if (existing) {
-      return list.map((e) =>
-        e.date.slice(0, 10) === d
-          ? ({ ...e, type, value: 0, skipReason } as HabitEntry)
-          : e,
+      upsertDayEntry(qc, input.habitId, day, (e) =>
+        e
+          ? ({
+              ...e,
+              type: "completion",
+              value: (e.value ?? 0) + inc,
+            } as HabitEntry)
+          : optimisticEntry(input.habitId, day, inc, "completion"),
       );
-    }
-    return [
-      ...list,
-      {
-        id: `optimistic-${type}-${d}`,
-        habitId,
-        userSub: "",
-        date: d,
-        value: 0,
-        type,
-        skipReason,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      } as HabitEntry,
-    ];
+      return { day };
+    },
+    // Swap the optimistic row for the server entry (real id → clears the
+    // isPending lock immediately, no refetch wait).
+    onSuccess: (server, vars) => writeServerEntry(qc, vars.habitId, server),
+    // A failed write self-heals by refetching entries.
+    onError: (_e, vars) =>
+      void qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) }),
+    onSettled: (_data, _err, vars, ctx) =>
+      settleCalendarMonth(qc, ctx?.day ?? entryDay(vars.date)),
   });
-  return { previous };
 }
 
 /** Mark a date as skipped (off-day, doesn't break streak). */
@@ -505,30 +439,25 @@ export function useSkipHabit() {
       );
       return data;
     },
-    onMutate: async (input) => {
-      await qc.cancelQueries({ queryKey: habitKeys.entries(input.habitId) });
-      return optimisticInsertNonCompletion(
-        qc,
-        input.habitId,
-        input.date,
-        "skip",
-        input.reason,
+    onMutate: (input) => {
+      const day = entryDay(input.date);
+      upsertDayEntry(qc, input.habitId, day, (e) =>
+        e
+          ? ({
+              ...e,
+              type: "skip",
+              value: 0,
+              skipReason: input.reason,
+            } as HabitEntry)
+          : optimisticEntry(input.habitId, day, 0, "skip", input.reason),
       );
+      return { day };
     },
-    onError: (err, vars, ctx) => {
-      rollback(qc, ctx?.previous);
-      // 409 = race with another client. Refetch so the next attempt sees
-      // the live entry and PATCHes it instead of POSTing again.
-      if (isAxios409(err)) {
-        qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
-      }
-    },
-    // Write the server entry into the entries cache AND the one affected
-    // calendar month — no refetch anywhere (see useCheckInHabit).
-    onSuccess: (server, vars) => {
-      writeEntryByDate(qc, vars.habitId, server);
-      writeHabitEntryToCalendar(qc, server);
-    },
+    onSuccess: (server, vars) => writeServerEntry(qc, vars.habitId, server),
+    onError: (_e, vars) =>
+      void qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) }),
+    onSettled: (_data, _err, vars, ctx) =>
+      settleCalendarMonth(qc, ctx?.day ?? entryDay(vars.date)),
   });
 }
 
@@ -548,29 +477,20 @@ export function useFailHabit() {
       );
       return data;
     },
-    onMutate: async (input) => {
-      await qc.cancelQueries({ queryKey: habitKeys.entries(input.habitId) });
-      return optimisticInsertNonCompletion(
-        qc,
-        input.habitId,
-        input.date,
-        "fail",
+    onMutate: (input) => {
+      const day = entryDay(input.date);
+      upsertDayEntry(qc, input.habitId, day, (e) =>
+        e
+          ? ({ ...e, type: "fail", value: 0 } as HabitEntry)
+          : optimisticEntry(input.habitId, day, 0, "fail"),
       );
+      return { day };
     },
-    onError: (err, vars, ctx) => {
-      rollback(qc, ctx?.previous);
-      // 409 = race with another client. Refetch so the next attempt sees
-      // the live entry and PATCHes it instead of POSTing again.
-      if (isAxios409(err)) {
-        qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
-      }
-    },
-    // Write the server entry into the entries cache AND the one affected
-    // calendar month — no refetch anywhere (see useCheckInHabit).
-    onSuccess: (server, vars) => {
-      writeEntryByDate(qc, vars.habitId, server);
-      writeHabitEntryToCalendar(qc, server);
-    },
+    onSuccess: (server, vars) => writeServerEntry(qc, vars.habitId, server),
+    onError: (_e, vars) =>
+      void qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) }),
+    onSettled: (_data, _err, vars, ctx) =>
+      settleCalendarMonth(qc, ctx?.day ?? entryDay(vars.date)),
   });
 }
 
@@ -597,33 +517,28 @@ export function useUpdateHabitEntry() {
       );
       return data;
     },
-    onMutate: async ({ habitId, entryId, patch }) => {
-      // Prefix-match every entries window so an Undo / clear / status change
-      // flips instantly on whichever surface is mounted.
-      const previous = await snapshotAndCancel(qc, [
-        habitKeys.entries(habitId),
-      ]);
-      patchLists<HabitEntry>(qc, [habitKeys.entries(habitId)], (list) =>
-        list.map((e) =>
-          e.id === entryId ? ({ ...e, ...patch } as HabitEntry) : e,
-        ),
+    // Instant flip (Undo / clear / status change) — patch the entry in
+    // every cached window; the settle refetch brings server truth.
+    onMutate: ({ habitId, entryId, patch }) => {
+      let day: string | undefined;
+      qc.setQueriesData<HabitEntry[]>(
+        { queryKey: habitKeys.entries(habitId) },
+        (list) =>
+          Array.isArray(list)
+            ? list.map((e) => {
+                if (e.id !== entryId) return e;
+                day = e.date?.slice(0, 10);
+                return { ...e, ...patch } as HabitEntry;
+              })
+            : list,
       );
-      return { previous };
+      return { day };
     },
-    onError: (err, vars, ctx) => {
-      rollback(qc, ctx?.previous);
-      // 409 = race with another client. Refetch so the next attempt sees
-      // the live entry and PATCHes it instead of POSTing again.
-      if (isAxios409(err)) {
-        qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
-      }
-    },
-    // Write the server entry into the entries cache AND the one affected
-    // calendar month — no refetch anywhere (see useCheckInHabit).
-    onSuccess: (server, vars) => {
-      writeEntryByDate(qc, vars.habitId, server);
-      writeHabitEntryToCalendar(qc, server);
-    },
+    onSuccess: (server, vars) => writeServerEntry(qc, vars.habitId, server),
+    onError: (_e, vars) =>
+      void qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) }),
+    onSettled: (_data, _err, vars, ctx) =>
+      settleCalendarMonth(qc, ctx?.day ?? entryDay()),
   });
 }
 
@@ -650,12 +565,10 @@ export function useDeleteHabitEntry() {
       return { habitId, entryId };
     },
     onSettled: (_data, _error, vars) => {
-      qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
-      qc.invalidateQueries({ queryKey: habitKeys.lists() });
-      // The habits screen's To-do/Done sectioning is derived from the calendar
-      // month query (useCalendarData), so refresh it too — otherwise a
-      // check-in flips the card but its section stays stale (H3).
-      qc.invalidateQueries({ queryKey: ["calendar"] });
+      // Cold path (explicit history delete) — entry day unknown post-delete,
+      // so refresh every cached month. Everything else stays scoped.
+      void qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
+      void qc.invalidateQueries({ queryKey: ["calendar"] });
     },
   });
 }

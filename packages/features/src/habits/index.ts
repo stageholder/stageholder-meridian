@@ -4,6 +4,7 @@
 // and the embedded delete-confirm dialog.
 
 export { HabitCard, type HabitCardProps } from "./habit-card";
+export { RadianceBurst } from "./radiance-burst";
 export {
   HabitCheckInRow,
   type HabitCheckInRowProps,

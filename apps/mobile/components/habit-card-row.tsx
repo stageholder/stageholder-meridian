@@ -16,8 +16,8 @@
 // Omitted → today. HabitCard is already date-aware (`selectedDate` prop), so we
 // just thread the same date into the entries window + the actions hook.
 
-import { Celebration, toast } from "@stageholder/ui";
-import { HabitCard } from "@repo/features/habits";
+import { toast } from "@stageholder/ui";
+import { HabitCard, RadianceBurst } from "@repo/features/habits";
 import type { Habit } from "@repo/core/types";
 
 import { useDeleteHabit, useSharedHabitEntries } from "@/lib/api";
@@ -79,14 +79,10 @@ export function HabitCardRow({
       // vars wouldn't resolve on native).
       accentColor={IGNITION.habit.base}
       accentTrackColor={IGNITION.habit.track}
-      // Completion celebration — fires once per completion, in habit-orange
-      // embers, only when a check-in actually MEETS the target.
+      // Sunburst ANCHORED to the check-in control (PWA RadianceBurst parity),
+      // fires once per completion — NOT the full-screen kit Celebration.
       renderCompletionEffect={(active) => (
-        <Celebration
-          trigger={active}
-          preset="ember-burst"
-          colors={["#f97316", "#fb923c", "#fdba74"]}
-        />
+        <RadianceBurst active={active} color={IGNITION.habit.base} />
       )}
       isPending={actions.isPending}
       // ── Entry actions — the shared create-or-update hook, date-scoped. ──

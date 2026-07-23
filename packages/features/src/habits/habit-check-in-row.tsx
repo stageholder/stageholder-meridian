@@ -17,7 +17,6 @@
 // the mobile `HabitCheckInRow` are thin wrappers over it.
 
 import { useState, type ReactNode } from "react";
-import { isWeb } from "tamagui";
 import {
   Button,
   IconButton,
@@ -74,6 +73,14 @@ export interface HabitCheckInRowProps {
   trailingSlot?: ReactNode;
   /** Overlay centered on the control (PWA RadianceBurst / a celebration). */
   controlOverlay?: ReactNode;
+  /**
+   * Completion celebration render-prop (mobile: an ember `Celebration`) —
+   * same contract as `HabitCard.renderCompletionEffect`. The row owns the
+   * false→true completion transition and calls this with `active`; the effect
+   * plays once when a check-in actually MEETS the target. Rendered centered on
+   * the status control.
+   */
+  renderCompletionEffect?: (active: boolean) => ReactNode;
   minHeight?: number;
   /**
    * Web-only escape hatch: a pointerdown handler for the ACTIONS container.
@@ -104,16 +111,28 @@ export function HabitCheckInRow({
   middleSlot,
   trailingSlot,
   controlOverlay,
+  renderCompletionEffect,
   minHeight = 56,
   onActionsPointerDown,
 }: HabitCheckInRowProps) {
   const isComplete = !isSkipped && !isFailed && value >= Math.max(1, target);
 
-  // A brief press-bounce on the status control for tactile feedback.
+  // Press-bounce + completion celebration on the status control (parity with
+  // the big HabitCard). The bounce pops the control on every check-in tap; the
+  // celebration fires only when THIS tap meets the target (we can predict it
+  // from the pre-tap value, so the ember burst plays on the same frame as the
+  // optimistic flip — no wait on the mutation round-trip).
   const [bouncing, setBouncing] = useState(false);
-  function bounce() {
+  const [completing, setCompleting] = useState(false);
+  function handleCheckIn() {
+    const willComplete = value + 1 >= Math.max(1, target);
     setBouncing(true);
-    setTimeout(() => setBouncing(false), 400);
+    setTimeout(() => setBouncing(false), 450);
+    if (willComplete) {
+      setCompleting(true);
+      setTimeout(() => setCompleting(false), 1200);
+    }
+    void onCheckIn();
   }
 
   return (
@@ -127,11 +146,8 @@ export function HabitCheckInRow({
       borderWidth={1}
       borderColor="$borderColor"
       bg="$card"
-      // Hover polish is web-only; the transition on native just made every
-      // compact row an idle Reanimated node (shared values per row) with no
-      // visible effect. Web keeps the animated border fade.
-      transition={isWeb ? "quick" : undefined}
-      // Web hover polish (parity with the PWA list row); no-op on native.
+      // Border fade on hover/press — same on web + native (Tamagui v2).
+      transition="quick"
       hoverStyle={{ borderColor: "$primary" }}
     >
       {/* Identity — icon + name (+ subtitle); tap to open the detail. */}
@@ -191,13 +207,14 @@ export function HabitCheckInRow({
           <>
             <View position="relative" items="center" justify="center">
               {controlOverlay}
+              {renderCompletionEffect?.(completing)}
               {isComplete ? (
                 <StatusPill
                   bg="$successMuted"
                   color="$success"
                   icon={<Check size={13} color={SUCCESS} />}
                   label="Done"
-                  scale={bouncing ? 1.08 : 1}
+                  scale={bouncing ? 1.12 : 1}
                 />
               ) : isSkipped ? (
                 <StatusPill
@@ -225,12 +242,9 @@ export function HabitCheckInRow({
                   }
                   // See StatusPill — transition makes the bounce animate.
                   transition="quick"
-                  scale={bouncing ? 1.08 : 1}
+                  scale={bouncing ? 1.12 : 1}
                   disabled={disabled}
-                  onPress={() => {
-                    bounce();
-                    void onCheckIn();
-                  }}
+                  onPress={handleCheckIn}
                 >
                   {target > 1 ? `${value + 1} / ${target}` : "Complete"}
                 </Button>

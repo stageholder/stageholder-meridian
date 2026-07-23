@@ -18,6 +18,8 @@
     "./settings/*": "./src/settings/*.tsx",
     "./activity-rings": "./src/activity-rings/index.ts",
     "./activity-rings/*": "./src/activity-rings/*.tsx",
+    "./calendar": "./src/calendar/index.ts",
+    "./calendar/*": "./src/calendar/*.tsx",
     "./encryption": "./src/encryption/index.ts",
     "./encryption/*": "./src/encryption/*.tsx",
     "./dashboard": "./src/dashboard/index.ts",

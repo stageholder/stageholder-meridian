@@ -11,7 +11,10 @@
 // The public API (habit, activeDate, onOpenDetail) is unchanged, so the calendar
 // / Today / habits-list callers keep working without edits.
 
-import { HabitCheckInRow as SharedHabitCheckInRow } from "@repo/features/habits";
+import {
+  HabitCheckInRow as SharedHabitCheckInRow,
+  RadianceBurst,
+} from "@repo/features/habits";
 import { resolveTargetCount } from "@repo/core/habits/entry-resolution";
 import type { Habit } from "@repo/core/types";
 
@@ -66,6 +69,13 @@ export function HabitCheckInRow({
       onFail={actions.fail}
       onUndo={actions.undo}
       onClearStatus={actions.clearStatus}
+      // Sunburst ANCHORED to the check-in control (parity with the PWA's
+      // RadianceBurst) — NOT the full-screen kit Celebration, which emitted
+      // particles in the middle of the screen. Rays + sparks fan out from
+      // the button itself.
+      renderCompletionEffect={(active) => (
+        <RadianceBurst active={active} color={IGNITION.habit.base} />
+      )}
       subtitle={
         target > 1 && !isSkipped && !isFailed
           ? `${value} / ${target}`

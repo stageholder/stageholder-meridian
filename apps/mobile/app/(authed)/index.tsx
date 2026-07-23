@@ -490,14 +490,9 @@ export default function TodayScreen() {
                       </View>
                     ) : (
                       <>
-                        <ActivityRings size={196} rings={rings}>
-                          {/* The flame at the heart of the ignition rings —
-                              the legend below carries the numbers, so the
-                              center stays a pure identity mark. */}
-                          <Text fontSize={40} lineHeight={48}>
-                            🔥
-                          </Text>
-                        </ActivityRings>
+                        {/* Hollow center (PWA parity) — the legend below
+                            carries the numbers; no glyph in the middle. */}
+                        <ActivityRings size={196} rings={rings} />
                         <XStack gap="$5" flexWrap="wrap" justify="center">
                           {rings.map((r) => (
                             <YStack
@@ -589,17 +584,14 @@ export default function TodayScreen() {
                   <TodayWidgetEmpty text="Nothing due today — nice work." />
                 ) : (
                   <YStack gap="$2">
-                    {/* PWA-parity animation: `animated` turns on the row
-                        enter/exit on native and AnimatePresence plays the
-                        exit when a checked todo leaves the widget. Safe
-                        here — the list is capped at WIDGET_CAP rows. */}
+                    {/* AnimatePresence plays the exit when a checked todo
+                        leaves the widget (same as the PWA dashboard). */}
                     <AnimatePresence>
                       {todayTodoList.slice(0, WIDGET_CAP).map((todo) => (
                         <TodoItem
                           key={todo.id}
                           todo={todo}
                           compact
-                          animated
                           onToggle={() => handleToggleTodo(todo)}
                           onDelete={() => deleteTodo.mutate(todo.id)}
                           onOpenDetail={() => openTodoEdit(todo)}

@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from "react";
 import { format, isToday as isTodayFn } from "date-fns";
-import { Plus, ChevronRight, ChevronDown } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { resolveTargetCount } from "@repo/core/habits/entry-resolution";
+import { CollapsibleGroup, splitHabitsByDay } from "@repo/features/calendar";
 import {
   ActivityRings,
   AnimatePresence,
@@ -89,57 +89,6 @@ function AddButton({
   );
 }
 
-/**
- * Collapsible "Completed / Done (n)" group, hidden by default — the /todos
- * page's CompletedSection pattern, generalised so todos AND habits can tuck
- * their finished items away and keep the day panel clean.
- */
-function CollapsibleGroup({
-  label,
-  count,
-  children,
-}: {
-  label: string;
-  count: number;
-  children: ReactNode;
-}) {
-  const [open, setOpen] = useState(false);
-  if (count === 0) return null;
-  return (
-    <YStack gap="$1">
-      <XStack
-        onPress={() => setOpen((v) => !v)}
-        cursor="pointer"
-        items="center"
-        gap="$1.5"
-        rounded="$md"
-        py="$1"
-        transition="quick"
-        hoverStyle={{ bg: "$accent" }}
-        role="button"
-        aria-expanded={open}
-      >
-        <Text color="$mutedForeground" lineHeight={0}>
-          {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        </Text>
-        <Text
-          fontSize="$1"
-          fontWeight="600"
-          color="$mutedForeground"
-          textTransform="uppercase"
-          letterSpacing={0.5}
-        >
-          {label}
-        </Text>
-        <Text fontSize="$1" color="$mutedForeground">
-          {count}
-        </Text>
-      </XStack>
-      {open ? <YStack gap="$2">{children}</YStack> : null}
-    </YStack>
-  );
-}
-
 interface DayAgendaProps {
   date: Date;
   dayData: CalendarDayData;
@@ -178,23 +127,13 @@ export function DayAgenda({
   const activeTodos = dayTodos.filter((t) => t.status !== "done");
   const completedTodos = dayTodos.filter((t) => t.status === "done");
 
-  // A habit is "resolved" for the day when its calendar entry is complete,
-  // skipped, or failed. Read from the day's entries so the panel doesn't need
-  // to re-fetch per habit (HabitListItem owns that; the calendar data stays in
-  // sync via the shared `["calendar"]` invalidation on check-in).
-  const habitResolved = (habit: Habit): boolean => {
-    const entry = dayData.habitEntries.find((e) => e.habitId === habit.id);
-    if (!entry) return false;
-    if (entry.type === "skip" || entry.type === "fail") return true;
-    const target =
-      resolveTargetCount(
-        { targetCountSnapshot: entry.targetCountSnapshot },
-        habit,
-      ) || 1;
-    return entry.value >= target;
-  };
-  const pendingHabits = scheduledHabits.filter((h) => !habitResolved(h));
-  const doneHabits = scheduledHabits.filter((h) => habitResolved(h));
+  // Pending (act on) vs. resolved (done/skipped/failed, collapsed) — the
+  // shared split rule (@repo/features/calendar), one source of truth with the
+  // native agenda.
+  const { pending: pendingHabits, done: doneHabits } = splitHabitsByDay(
+    scheduledHabits,
+    dayData.habitEntries,
+  );
 
   // Cold load — a skeleton mirroring the layout, so the panel never shows a
   // FAKE empty day (zero rings, "Nothing due", "No habits") before the real

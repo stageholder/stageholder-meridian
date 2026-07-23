@@ -213,7 +213,7 @@ export default function AuthedLayout() {
             // screen on the tap frame — the "switching tabs lags" bug. The
             // problem freeze was papering over (the broad invalidation
             // cascade re-rendering all five screens per mutation) is fixed at
-            // the source now (surgical calendar-cache writes + memoized
+            // the source now (scoped single-month invalidations + memoized
             // rows), so background re-renders are rare and cheap, and a tab
             // switch is back to a pure native visibility flip (zero JS work).
           }}

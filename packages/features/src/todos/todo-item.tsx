@@ -76,18 +76,10 @@ const SPARK = "#fb923c";
 const TODO_COLOR = RING_CATEGORY.todo.color;
 // Kept short so the row vanishes the instant the ignite + sparks finish.
 const BURN_MS = 440;
-// Native runs a TIGHTER burn: long enough for the ignite + sparks to read,
-// short enough that the row's move-to-Completed never feels gated. (440ms on
-// touch read as a dead checkbox — see handleToggle.)
-const BURN_MS_NATIVE = 260;
 
-// Row-level enter/exit cosmetics: always on web; on native only when the
-// host opts in via the `animated` prop. On the Reanimated driver every
-// `transition`/`enterStyle` prop turns the view into an animated node with
-// its own shared values — fine for a capped widget (Today's ≤5 rows, wrapped
-// in AnimatePresence for the exit), measurable scroll + mount cost across a
-// whole virtualized list. The burn/checkbox feedback animations stay on both
-// platforms regardless — those are user-triggered, one row at a time.
+// Row-level enter/exit cosmetics — Tamagui v2 runs these identically on web
+// (CSS driver) and native (Reanimated driver), so the row animates the SAME
+// on both platforms. Wrap list views in <AnimatePresence> for the exit to play.
 const ROW_ANIMATION_PROPS = {
   transition: { default: "quick", exit: "medium" },
   enterStyle: { opacity: 0, y: 6 },
@@ -204,13 +196,6 @@ export interface TodoItemProps {
    * vertical padding. Keeps the full checkbox + burn + actions experience.
    */
   compact?: boolean;
-  /**
-   * NATIVE row enter/exit animation opt-in (web always animates). Turn on
-   * for SMALL, capped lists (the Today widget, wrapped in AnimatePresence);
-   * leave off inside virtualized lists, where per-row animated nodes are
-   * measurable scroll cost.
-   */
-  animated?: boolean;
 }
 
 /**
@@ -236,7 +221,6 @@ export function TodoItem({
   renderActions,
   onContextMenu,
   compact,
-  animated,
 }: TodoItemProps) {
   const [burning, setBurning] = useState(false);
   const [gone, setGone] = useState(false);
@@ -283,24 +267,15 @@ export function TodoItem({
       return;
     }
     if (burning) return;
-    // Both platforms: the checkbox fills ember + the sparks rise on THIS
-    // frame (instant feedback), then the commit lands after the burn and the
-    // optimistic cache flip moves the row to Completed. Native runs the
-    // tighter 260ms burn: the original 440ms wait — combined with the old
-    // 20px tap target (now 44pt via hitSlop) — is what read as a dead
-    // checkbox on device. The completion animation stays; only the dead air
-    // went.
+    // Play the ignite + burn first, THEN commit — identically on web and
+    // native (the animation is pure Tamagui enterStyle/transition).
     setBurning(true);
-    setTimeout(
-      () => {
-        // Burn finished → drop the row immediately (don't wait on the
-        // mutation round-trip or a second exit animation), then commit in
-        // the background.
-        setGone(true);
-        onToggle();
-      },
-      isWeb ? BURN_MS : BURN_MS_NATIVE,
-    );
+    setTimeout(() => {
+      // Burn finished → drop the row immediately (don't wait on the mutation
+      // round-trip or a second exit animation), then commit in the background.
+      setGone(true);
+      onToggle();
+    }, BURN_MS);
   }
 
   function handleDelete(e?: { stopPropagation?: () => void }) {
@@ -356,9 +331,9 @@ export function TodoItem({
       bg={compact ? "$card" : undefined}
       position="relative"
       // Enter + exit (delete / un-complete) via AnimatePresence in the list
-      // views — web always, native when the host opts in (`animated`).
-      // Completion plays the burn below.
-      {...(isWeb || animated ? ROW_ANIMATION_PROPS : {})}
+      // views — SAME on web and native (Tamagui v2). Completion plays the
+      // burn below.
+      {...ROW_ANIMATION_PROPS}
       hoverStyle={burning ? undefined : { bg: "$accent" }}
       role="button"
       aria-label="Open todo details"

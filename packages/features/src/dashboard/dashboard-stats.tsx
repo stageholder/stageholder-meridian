@@ -1,4 +1,36 @@
+import { useRef } from "react";
 import { Skeleton, Stat, XStack, YStack } from "@stageholder/ui";
+
+/**
+ * RISE-ONLY count-up guard. The kit's count tween deliberately glides from
+ * the previously PAINTED value to the new one — great for live increments
+ * (20 → 21), but when a value DECREASES (a transient feed correction, or a
+ * daily metric that resets) the tile visibly counted DOWN from the old big
+ * number ("starts at 20, lands on 5" — the reported dashboard bug). KPI
+ * count-ups should only ever count UP: on a decrease this remounts the
+ * value (key bump), restarting the tween at 0 → new value. Increases keep
+ * the kit's smooth old→new glide.
+ */
+function RisingStatValue({
+  value,
+  compact,
+}: {
+  value: number;
+  compact?: boolean;
+}) {
+  const generation = useRef(0);
+  const prev = useRef(value);
+  if (value < prev.current) generation.current += 1;
+  prev.current = value;
+  return (
+    <Stat.Value
+      key={generation.current}
+      value={value}
+      animate
+      format={compact ? "compact" : undefined}
+    />
+  );
+}
 
 /** One KPI tile in the dashboard stat row. */
 export interface DashboardStatItem {
@@ -76,11 +108,7 @@ export function DashboardStats({
         <Stat key={s.key} flex={1} minW={minTileWidth} plain={plain}>
           <Stat.Label>{s.label}</Stat.Label>
           {s.value !== undefined ? (
-            <Stat.Value
-              value={s.value}
-              animate
-              format={s.compact ? "compact" : undefined}
-            />
+            <RisingStatValue value={s.value} compact={s.compact} />
           ) : (
             <Stat.Value>{s.display ?? "—"}</Stat.Value>
           )}

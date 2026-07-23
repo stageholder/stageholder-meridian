@@ -10,23 +10,35 @@
 //   - useDeleteTodo: instant row removal on swipe-to-delete
 // Rollback on error via snapshotted previous state.
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 import type { Todo, TodoList } from "@repo/core/types";
 
 import { apiClient } from "../client";
-import {
-  invalidateCalendarMonthsFor,
-  removeTodoFromCalendar,
-  writeTodoToCalendar,
-} from "../calendar-cache";
 import { todoKeys, todoListKeys } from "../keys";
-import {
-  snapshotAndCancel,
-  rollback,
-  patchLists,
-  writeEntityToLists,
-  type CacheSnapshot,
-} from "../optimistic";
+
+// DATA-LAYER CONTRACT — see hooks/habits.ts: one optimistic setQueriesData
+// write for the HOT taps (toggle / swipe-delete), standard invalidation for
+// everything else. A todo's calendar presence refreshes via its due/do-day
+// MONTHS only, never the whole ["calendar"] prefix.
+
+/** Invalidate only the month(s) a dated todo can appear in. Dateless todos
+ *  never appear on the calendar — zero invalidations. */
+function invalidateTodoMonths(
+  qc: QueryClient,
+  dates: Array<string | null | undefined>,
+) {
+  const months = new Set(
+    dates.filter((d): d is string => !!d).map((d) => d.slice(0, 7)),
+  );
+  for (const month of months) {
+    void qc.invalidateQueries({ queryKey: ["calendar", month] });
+  }
+}
 
 export type TodoStatus = Todo["status"];
 export type TodoPriority = Todo["priority"];
@@ -119,36 +131,33 @@ export function useDeleteTodoList() {
 
 export function useReorderTodoLists() {
   const qc = useQueryClient();
-  // Explicit generics: RQ v5.100's 4-arg callbacks infer TVariables/TContext
-  // across ALL handlers — per-handler param annotations poison the inference
-  // into `unknown` and fail the typecheck.
-  return useMutation<
-    void,
-    Error,
-    { items: { id: string; order: number }[] },
-    { previous: CacheSnapshot }
-  >({
-    mutationFn: async (data) => {
+  return useMutation({
+    mutationFn: async (data: { items: { id: string; order: number }[] }) => {
       await apiClient.post("/todo-lists/reorder", data);
     },
-    // Optimistically apply the new order so a dropped list holds its position
-    // instead of snapping back until the refetch lands.
-    onMutate: async ({ items }) => {
-      const previous = await snapshotAndCancel(qc, [todoListKeys.lists()]);
+    // Hold the dropped position instead of snapping back; a failed save
+    // self-heals via the error refetch.
+    onMutate: ({ items }) => {
       const orderById = new Map(items.map((i) => [i.id, i.order]));
-      patchLists<TodoList>(qc, [todoListKeys.lists()], (l) =>
-        [...l]
-          .map((x) =>
-            orderById.has(x.id) ? { ...x, order: orderById.get(x.id)! } : x,
-          )
-          .sort(
-            (a, b) =>
-              Number(b.isDefault) - Number(a.isDefault) || a.order - b.order,
-          ),
+      qc.setQueriesData<TodoList[]>(
+        { queryKey: todoListKeys.lists() },
+        (list) =>
+          Array.isArray(list)
+            ? [...list]
+                .map((x) =>
+                  orderById.has(x.id)
+                    ? { ...x, order: orderById.get(x.id)! }
+                    : x,
+                )
+                .sort(
+                  (a, b) =>
+                    Number(b.isDefault) - Number(a.isDefault) ||
+                    a.order - b.order,
+                )
+            : list,
       );
-      return { previous };
     },
-    onError: (_e, _v, ctx) => rollback(qc, ctx?.previous),
+    onError: () => qc.invalidateQueries({ queryKey: todoListKeys.lists() }),
   });
 }
 
@@ -167,45 +176,16 @@ export type CreateTodoInput = {
 
 export function useCreateTodo() {
   const qc = useQueryClient();
-  // Explicit generics — see useReorderTodoLists for why (RQ v5.100 inference).
-  return useMutation<
-    Todo,
-    Error,
-    CreateTodoInput,
-    { previous: CacheSnapshot; tempId: string }
-  >({
-    mutationFn: async (input) => {
+  // Plain create → refetch. No temp-row theater: the create sheet closes on
+  // success and the list refetch lands in the same beat.
+  return useMutation({
+    mutationFn: async (input: CreateTodoInput) => {
       const { data } = await apiClient.post<Todo>("/todos", input);
       return data;
     },
-    // Optimistic temp row so a newly-added todo appears the instant you submit.
-    onMutate: async (input) => {
-      const previous = await snapshotAndCancel(qc, [todoKeys.lists()]);
-      const tempId = `optimistic-${Date.now()}`;
-      const optimistic = {
-        id: tempId,
-        listId: input.listId,
-        title: input.title,
-        description: input.description ?? undefined,
-        status: "todo",
-        priority: input.priority ?? "none",
-        dueDate: input.dueDate ?? undefined,
-        doDate: input.doDate ?? undefined,
-        order: Number.MAX_SAFE_INTEGER,
-        subtasks: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      } as unknown as Todo;
-      patchLists<Todo>(qc, [todoKeys.lists()], (l) => [...l, optimistic]);
-      return { previous, tempId };
-    },
-    onError: (_e, _v, ctx) => rollback(qc, ctx?.previous),
-    onSuccess: (server, _v, ctx) => {
-      if (ctx?.tempId)
-        writeEntityToLists(qc, [todoKeys.lists()], server, ctx.tempId);
-      // A dated todo lands in its due/do-day calendar buckets — refresh only
-      // those months (a dateless todo never appears on the calendar at all).
-      invalidateCalendarMonthsFor(qc, [server.dueDate, server.doDate]);
+    onSuccess: (server) => {
+      void qc.invalidateQueries({ queryKey: todoKeys.lists() });
+      invalidateTodoMonths(qc, [server.dueDate, server.doDate]);
     },
   });
 }
@@ -227,63 +207,43 @@ export function useUpdateTodo() {
       const { data } = await apiClient.patch<Todo>(`/todos/${id}`, patch);
       return data;
     },
-    onMutate: async ({ id, patch }) => {
-      await qc.cancelQueries({ queryKey: todoKeys.lists() });
-      const snapshots = qc.getQueriesData<Todo[]>({
-        queryKey: todoKeys.lists(),
-      });
-      // The todo's PRE-edit dates — a date edit must also refresh the months
-      // it is moving OUT of, which the server response no longer carries.
-      const prevTodo = snapshots
-        .flatMap(([, list]) => (Array.isArray(list) ? list : []))
-        .find((t) => t.id === id);
-      const prevDates = [prevTodo?.dueDate, prevTodo?.doDate];
+    // Instant flip (toggle is THE hot tap): patch the todo in every cached
+    // list. The pre-edit dates ride the context so a date edit also
+    // refreshes the months the todo is moving OUT of.
+    onMutate: ({ id, patch }) => {
+      let prevDates: Array<string | undefined> = [];
       // `patch` allows `null` (clear a date/description); a Todo stores the
-      // cleared shape as `undefined`. Normalize null→undefined so the
-      // optimistic record matches what the server will return (mirrors the
-      // PWA's useUpdateTodo), rather than casting null into the Todo type.
+      // cleared shape as `undefined` — normalize so the optimistic record
+      // matches what the server will return.
       const normalized: Partial<Todo> = {};
       for (const [k, v] of Object.entries(patch)) {
         (normalized as Record<string, unknown>)[k] = v === null ? undefined : v;
       }
-      for (const [key, prev] of snapshots) {
-        if (!prev) continue;
-        qc.setQueryData<Todo[]>(
-          key,
-          prev.map((t) =>
-            t.id === id
-              ? { ...t, ...normalized, updatedAt: new Date().toISOString() }
-              : t,
-          ),
-        );
-      }
-      return { snapshots, prevDates };
+      qc.setQueriesData<Todo[]>({ queryKey: todoKeys.lists() }, (list) =>
+        Array.isArray(list)
+          ? list.map((t) => {
+              if (t.id !== id) return t;
+              prevDates = [t.dueDate, t.doDate];
+              return {
+                ...t,
+                ...normalized,
+                updatedAt: new Date().toISOString(),
+              };
+            })
+          : list,
+      );
+      return { prevDates };
     },
-    onError: (_err, _vars, ctx) => {
-      if (!ctx?.snapshots) return;
-      for (const [key, prev] of ctx.snapshots) qc.setQueryData(key, prev);
-    },
-    // Write the server's authoritative row into every list cache so we do NOT
-    // re-fetch (and briefly revert) the lists.
-    //
-    // Calendar: the toggle (status flip — THE hot interaction) patches the
-    // todo's summary fields in-place across cached months (no network, no
-    // identity churn beyond the touched months). A due/do-date edit moves the
-    // todo between day buckets, which an in-place patch can't express — those
-    // rare edits invalidate only the affected months. The old blanket
-    // ["calendar"] invalidation refetched all ~7 cached months per checkbox
-    // tap and re-rendered everything derived from them.
-    onSuccess: (server: Todo, vars, ctx) => {
-      writeEntityToLists(qc, [todoKeys.lists()], server);
-      if ("dueDate" in vars.patch || "doDate" in vars.patch) {
-        invalidateCalendarMonthsFor(qc, [
-          server.dueDate,
-          server.doDate,
-          ...(ctx?.prevDates ?? []),
-        ]);
-      } else {
-        writeTodoToCalendar(qc, server);
-      }
+    // Self-heal a failed write via refetch (replaces bespoke rollback).
+    onError: () => qc.invalidateQueries({ queryKey: todoKeys.lists() }),
+    // The todo's calendar-month buckets refresh scoped to its old + new
+    // dates; a dateless toggle costs zero calendar work.
+    onSuccess: (server: Todo, _vars, ctx) => {
+      invalidateTodoMonths(qc, [
+        server.dueDate,
+        server.doDate,
+        ...(ctx?.prevDates ?? []),
+      ]);
     },
   });
 }
@@ -322,29 +282,21 @@ export function useDeleteTodo() {
       await apiClient.delete(`/todos/${id}`);
       return id;
     },
-    onMutate: async (id) => {
-      await qc.cancelQueries({ queryKey: todoKeys.lists() });
-      const snapshots = qc.getQueriesData<Todo[]>({
-        queryKey: todoKeys.lists(),
+    // Instant removal (swipe-delete); pre-delete dates ride the context so
+    // only the affected months refresh.
+    onMutate: (id) => {
+      let prevDates: Array<string | undefined> = [];
+      qc.setQueriesData<Todo[]>({ queryKey: todoKeys.lists() }, (list) => {
+        if (!Array.isArray(list)) return list;
+        const gone = list.find((t) => t.id === id);
+        if (gone) prevDates = [gone.dueDate, gone.doDate];
+        return list.filter((t) => t.id !== id);
       });
-      for (const [key, prev] of snapshots) {
-        if (!prev) continue;
-        qc.setQueryData<Todo[]>(
-          key,
-          prev.filter((t) => t.id !== id),
-        );
-      }
-      return { snapshots };
+      return { prevDates };
     },
-    onError: (_err, _vars, ctx) => {
-      if (!ctx?.snapshots) return;
-      for (const [key, prev] of ctx.snapshots) qc.setQueryData(key, prev);
-    },
-    onSettled: (id) => {
+    onSettled: (_id, _err, _vars, ctx) => {
       void qc.invalidateQueries({ queryKey: todoKeys.lists() });
-      // Drop the deleted todo from cached months in place (previously it
-      // lingered until the next full calendar refetch).
-      if (id) removeTodoFromCalendar(qc, id);
+      invalidateTodoMonths(qc, ctx?.prevDates ?? []);
     },
   });
 }
@@ -366,20 +318,28 @@ export type UpdateSubtaskInput = {
 };
 export type DeleteSubtaskInput = { todoId: string; subtaskId: string };
 
+/** Optimistically patch one todo across every cached list. */
 function patchTodoInCaches(
-  qc: ReturnType<typeof useQueryClient>,
+  qc: QueryClient,
   todoId: string,
   apply: (t: Todo) => Todo,
 ) {
-  const snapshots = qc.getQueriesData<Todo[]>({ queryKey: todoKeys.lists() });
-  for (const [key, prev] of snapshots) {
-    if (!prev) continue;
-    qc.setQueryData<Todo[]>(
-      key,
-      prev.map((t) => (t.id === todoId ? apply(t) : t)),
-    );
-  }
-  return snapshots;
+  qc.setQueriesData<Todo[]>({ queryKey: todoKeys.lists() }, (list) =>
+    Array.isArray(list)
+      ? list.map((t) => (t.id === todoId ? apply(t) : t))
+      : list,
+  );
+}
+
+/** Write the server's authoritative todo into every cached list (used by the
+ *  subtask flows, which keep the edit sheet open — a scoped write beats
+ *  refetching the whole list per subtask toggle). */
+function writeTodo(qc: QueryClient, server: Todo) {
+  qc.setQueriesData<Todo[]>({ queryKey: todoKeys.lists() }, (list) =>
+    Array.isArray(list)
+      ? list.map((t) => (t.id === server.id ? server : t))
+      : list,
+  );
 }
 
 export function useAddSubtask() {
@@ -392,9 +352,9 @@ export function useAddSubtask() {
       );
       return data;
     },
-    onMutate: async (input) => {
-      await qc.cancelQueries({ queryKey: todoKeys.lists() });
-      const snapshots = patchTodoInCaches(qc, input.todoId, (t) => ({
+    // Instant row in the subtask list; a failed save self-heals via refetch.
+    onMutate: (input) => {
+      patchTodoInCaches(qc, input.todoId, (t) => ({
         ...t,
         subtasks: [
           ...(t.subtasks ?? []),
@@ -406,15 +366,10 @@ export function useAddSubtask() {
           } as Subtask,
         ],
       }));
-      return { snapshots };
     },
-    onError: (_err, _vars, ctx) => {
-      if (!ctx?.snapshots) return;
-      for (const [key, prev] of ctx.snapshots) qc.setQueryData(key, prev);
-    },
+    onError: () => qc.invalidateQueries({ queryKey: todoKeys.lists() }),
     // Server returns the updated parent Todo — write it back (no list refetch).
-    onSuccess: (server: Todo) =>
-      writeEntityToLists(qc, [todoKeys.lists()], server),
+    onSuccess: (server: Todo) => writeTodo(qc, server),
   });
 }
 
@@ -428,23 +383,18 @@ export function useUpdateSubtask() {
       );
       return data;
     },
-    onMutate: async (input) => {
-      await qc.cancelQueries({ queryKey: todoKeys.lists() });
-      const snapshots = patchTodoInCaches(qc, input.todoId, (t) => ({
+    // Instant flip; a failed save self-heals via refetch.
+    onMutate: (input) => {
+      patchTodoInCaches(qc, input.todoId, (t) => ({
         ...t,
         subtasks: (t.subtasks ?? []).map((s) =>
           s.id === input.subtaskId ? ({ ...s, ...input.patch } as Subtask) : s,
         ),
       }));
-      return { snapshots };
     },
-    onError: (_err, _vars, ctx) => {
-      if (!ctx?.snapshots) return;
-      for (const [key, prev] of ctx.snapshots) qc.setQueryData(key, prev);
-    },
+    onError: () => qc.invalidateQueries({ queryKey: todoKeys.lists() }),
     // Server returns the updated parent Todo — write it back (no list refetch).
-    onSuccess: (server: Todo) =>
-      writeEntityToLists(qc, [todoKeys.lists()], server),
+    onSuccess: (server: Todo) => writeTodo(qc, server),
   });
 }
 
@@ -457,17 +407,12 @@ export function useDeleteSubtask() {
       );
       return input;
     },
-    onMutate: async (input) => {
-      await qc.cancelQueries({ queryKey: todoKeys.lists() });
-      const snapshots = patchTodoInCaches(qc, input.todoId, (t) => ({
+    // Instant removal; the settle refetch restores it if the delete failed.
+    onMutate: (input) => {
+      patchTodoInCaches(qc, input.todoId, (t) => ({
         ...t,
         subtasks: (t.subtasks ?? []).filter((s) => s.id !== input.subtaskId),
       }));
-      return { snapshots };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (!ctx?.snapshots) return;
-      for (const [key, prev] of ctx.snapshots) qc.setQueryData(key, prev);
     },
     onSettled: () => qc.invalidateQueries({ queryKey: todoKeys.lists() }),
   });
