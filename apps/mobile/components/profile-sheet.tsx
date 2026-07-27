@@ -20,6 +20,7 @@
 // only). `fit` snap mode is fine: the rows are direct content, no ScrollView.
 
 import { useState } from "react";
+import { Platform } from "react-native";
 import { useStageholder, useUser } from "@stageholder/sdk/react-native";
 import {
   Avatar,
@@ -123,7 +124,19 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
       queryClient.clear();
       // Root layout's onSignedOut redirects to /sign-in once the session is
       // cleared — no manual navigation. The sheet unmounts with the tree.
-      await signOut();
+      //
+      // ANDROID ONLY — `endSession: true` (SDK alpha.64): Custom Tabs share
+      // Chrome's cookie jar, so without RP-initiated logout the Hub's SSO
+      // cookie survives signOut and the next sign-in silently re-authenticates
+      // as the same user with no login page. endSession opens the Hub's
+      // end_session_endpoint to clear that cookie; it's best-effort — local
+      // sign-out always completes first, so a browser failure or user cancel
+      // never blocks it. iOS is skipped on purpose: sign-in there uses an
+      // ephemeral ASWebAuthenticationSession (no persisted SSO cookie), so the
+      // hop would flash a pointless browser sheet on every logout.
+      await signOut(
+        Platform.OS === "android" ? { endSession: true } : undefined,
+      );
     } catch (err) {
       setSigningOut(false);
       toast.error("Couldn't sign out", {
