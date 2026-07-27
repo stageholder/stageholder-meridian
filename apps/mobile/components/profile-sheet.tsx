@@ -139,6 +139,11 @@ export function ProfileSheet({ open, onOpenChange }: ProfileSheetProps) {
       onOpenChange={onOpenChange}
       dismissOnSnapToBottom
       snapPointsMode="fit"
+      // idle (kit alpha.123): the account sheet is always mounted in the bottom
+      // nav and is a view (no seed-on-mount state), so warm-mount its rows in
+      // the background while closed — the first open slides instead of popping
+      // (fit-mode pre-measures the content ahead of the open commit).
+      mountChildren="idle"
       // Driven (controlled) sheet — the current kit requires transition on the
       // ROOT or the frame never slides on-screen (overlay-only symptom).
       transition="medium"

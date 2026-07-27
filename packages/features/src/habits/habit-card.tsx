@@ -468,7 +468,7 @@ export function HabitCard({
                 {/* One consistent dot per day — ALWAYS the same View (same
                     hook-affecting props, incl. `transition`) so toggling a
                     day's state never changes the hook order. Filled (habit
-                    color) = done, tinted = partial, red ring = fail, primary
+                    color) = done, tinted = partial, red ring = fail, accent
                     ring = today. A skipped day drops the border and renders a
                     skip glyph (▷|) CHILD so "deliberately skipped" reads
                     differently from "missed / not yet". A run of filled dots
@@ -504,7 +504,11 @@ export function HabitCard({
                           : 0.4
                   }
                   outlineWidth={day.isToday ? 2 : 0}
-                  outlineColor="$primary"
+                  // Today marker in the HABIT's accent (orange), not the kit's
+                  // brand-blue `$primary` — the blue ring read as a stray focus
+                  // ring against the app's warm identity. `as never`: the
+                  // strict color prop rejects the raw hex/rgba accent string.
+                  outlineColor={accentColor as never}
                   outlineStyle="solid"
                   outlineOffset={1}
                   // Color via the `bg` PROP, not an inline `style`. With the

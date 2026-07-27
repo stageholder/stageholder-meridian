@@ -2,14 +2,22 @@
 //
 // Native mirror of the PWA's CreateFab (apps/pwa/src/components/shared/
 // create-fab.tsx): the kit `FAB`, bottom-right, lifted above the floating
-// BottomNav capsule with the same 6rem clearance + home-indicator inset, and
-// optionally tinted in a feature color so the create affordance keeps its
-// per-feature identity (the PWA uses the `--ring-*` CSS vars; native passes
-// the resolved IGNITION hex — tokens/vars don't resolve in RN style objects).
+// BottomNav capsule, optionally tinted in a feature color so the create
+// affordance keeps its per-feature identity (the PWA uses the `--ring-*` CSS
+// vars; native passes the resolved IGNITION hex — vars don't resolve in RN
+// style objects).
+//
+// Positioning: the kit FAB is "purely a styled button — it does NOT manage its
+// own positioning" (kit docs); its `placement` shorthand injects a hardcoded
+// right:24/bottom:24 that the kit spreads AFTER consumer props, fighting any
+// r/b override. So we wrap it in an absolutely-positioned View and own the
+// offsets ourselves — exactly what the PWA does.
 
-import { FAB } from "@stageholder/ui";
+import { FAB, View } from "@stageholder/ui";
 import { Plus } from "@tamagui/lucide-icons-2";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
 
 export function CreateFab({
   onPress,
@@ -26,18 +34,22 @@ export function CreateFab({
 }) {
   const insets = useSafeAreaInsets();
   return (
-    <FAB
-      icon={<Plus size={24} color={iconColor as never} />}
-      placement="bottom-right"
-      // Standard Material/iOS edge margin.
-      r={16}
-      // Just above the floating BottomNav capsule (~64px + 12px lift) with a
-      // 16px gap, plus the home-indicator inset — anchored to the nav rather
-      // than floating mid-air. (PWA parity arithmetic, tightened.)
-      b={92 + insets.bottom}
-      onPress={onPress}
-      aria-label={label}
-      {...(tint ? { style: { backgroundColor: tint } } : {})}
-    />
+    <View
+      position="absolute"
+      // Tight to the right edge — the old `placement` shorthand forced ~24px.
+      r={12}
+      // Sit a comfortable gap ABOVE the floating nav: the content-clearance
+      // constant (capsule + breathing) PLUS a small lift, matching the PWA's
+      // 6rem (96px) offset. `- 12` earlier put it too close to the capsule.
+      // Home-indicator inset added on top so it never double-counts.
+      b={BOTTOM_NAV_CLEARANCE + 8 + insets.bottom}
+    >
+      <FAB
+        icon={<Plus size={24} color={iconColor as never} />}
+        onPress={onPress}
+        aria-label={label}
+        {...(tint ? { style: { backgroundColor: tint } } : {})}
+      />
+    </View>
   );
 }

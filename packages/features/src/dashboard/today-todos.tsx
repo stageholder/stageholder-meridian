@@ -104,6 +104,9 @@ export function TodayTodos({
                   cursor="pointer"
                   transition="quick"
                   hoverStyle={{ borderColor: "$primary" }}
+                  // No lingering blue focus ring after a tap (see todo-item).
+                  focusStyle={{ outlineWidth: 0 }}
+                  focusVisibleStyle={{ outlineWidth: 0 }}
                   role="checkbox"
                   aria-label="Mark as complete"
                 />

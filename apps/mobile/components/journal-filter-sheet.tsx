@@ -70,6 +70,10 @@ export function JournalFilterSheet({
   return (
     <FormSheet
       hideFooter
+      // idle (kit alpha.123): this sheet is always mounted on the journal
+      // screen and fully controlled (no seed-on-mount state), so warm-mount its
+      // pickers in the background while closed — the first open is a pure slide.
+      mountChildren="idle"
       open={open}
       onOpenChange={onOpenChange}
       title="Filters"

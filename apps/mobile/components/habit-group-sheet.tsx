@@ -111,6 +111,10 @@ export function HabitGroupSheet({
       // footer; we keep the kit FormSheet for its keyboard-stretch handling +
       // frame + title.
       hideFooter
+      // PINNED (kit alpha.123 default is now 'first-open'): edit mode keys on
+      // group.id and re-seeds only on mount, so it needs unmount-on-close —
+      // reopening the same group after Cancel must not keep abandoned edits.
+      mountChildren="open"
       open={open}
       onOpenChange={onOpenChange}
       title={isEdit ? "Edit Group" : "New Group"}

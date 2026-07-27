@@ -191,8 +191,15 @@ export function parseSmartTodo(
     ),
   );
 
-  let doDate: string | undefined;
-  let dueDate: string | undefined;
+  // Gather every date phrase (not overlapping a priority/list token), tagged
+  // do vs due by a preceding keyword, with the keyword folded in.
+  interface DateCandidate {
+    kind: "do" | "due";
+    start: number;
+    end: number;
+    date: string;
+  }
+  const dateCandidates: DateCandidate[] = [];
   for (const dm of parseDates(text, ctx.now, locale)) {
     const range: Range = { start: dm.start, end: dm.end };
     if (claimed.some((c) => overlaps(c, range))) continue;
@@ -203,23 +210,38 @@ export function parseSmartTodo(
     const trimmedBefore = text.slice(0, dm.start).replace(/\s+$/, "");
     const lastWord = /(\S+)$/.exec(trimmedBefore)?.[1] ?? "";
     const isDue = dueKeywords.has(lastWord.toLowerCase());
-    if (isDue && dueDate) continue;
-    if (!isDue && doDate) continue;
-
     // Fold the keyword into the token so "by friday" highlights as one.
     const start = isDue ? trimmedBefore.length - lastWord.length : dm.start;
-    const token: SmartToken = {
+    dateCandidates.push({
       kind: isDue ? "due" : "do",
       start,
       end: dm.end,
-      raw: text.slice(start, dm.end),
-      label: friendlyDateLabel(dm.date, ctx.now),
-      value: dm.date,
-    };
-    if (isDue) dueDate = dm.date;
-    else doDate = dm.date;
-    tokens.push(token);
-    claimed.push({ start, end: dm.end });
+      date: dm.date,
+    });
+  }
+
+  // The LATEST occurrence of each kind wins. As you type, the rightmost date is
+  // your current intent — "yesterday … tomorrow" makes tomorrow the do-date, and
+  // the earlier date word simply stays as plain title text (not lifted, not
+  // highlighted). (`parseDates` returns matches earliest-first, so a reversed
+  // find gives the last of each kind.)
+  let doDate: string | undefined;
+  let dueDate: string | undefined;
+  const lastDo = [...dateCandidates].reverse().find((c) => c.kind === "do");
+  const lastDue = [...dateCandidates].reverse().find((c) => c.kind === "due");
+  for (const c of [lastDo, lastDue]) {
+    if (!c) continue;
+    if (c.kind === "due") dueDate = c.date;
+    else doDate = c.date;
+    tokens.push({
+      kind: c.kind,
+      start: c.start,
+      end: c.end,
+      raw: text.slice(c.start, c.end),
+      label: friendlyDateLabel(c.date, ctx.now),
+      value: c.date,
+    });
+    claimed.push({ start: c.start, end: c.end });
   }
 
   tokens.sort((a, b) => a.start - b.start);

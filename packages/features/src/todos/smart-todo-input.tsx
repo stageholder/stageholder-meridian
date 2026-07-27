@@ -39,11 +39,9 @@ import type {
   SmartTodoInputProps,
 } from "./smart-todo-input.types";
 
-// Highlight tints follow the app's OWN colour language, not arbitrary hues:
-//  • dates    → the todo category colour via its ready-made theme-aware 20%
-//               track token (`--ring-todo-track`);
-//  • priority → the priority's own swatch;
-//  • list     → that list's own colour dot.
+// Priority swatches + tint helpers for the preview BADGE chips (the recognized
+// date/priority/list tokens render as removable rounded chips below the field —
+// the tag-input / combobox pattern).
 const DATE_TINT = "var(--ring-todo-track)";
 const PRIORITY_COLOR: Record<string, string> = {
   urgent: "#ef4444",
@@ -58,19 +56,9 @@ function hexTint(hex?: string): string {
   return hex && /^#[0-9a-f]{6}$/i.test(hex) ? `${hex}33` : MUTED_TINT;
 }
 
-/** The highlight tint for a token, from the app's palette. */
-function tintForToken(token: SmartToken, lists: SmartListOption[]): string {
-  if (token.kind === "do" || token.kind === "due") return DATE_TINT;
-  if (token.kind === "priority") return hexTint(PRIORITY_COLOR[token.value]);
-  return hexTint(lists.find((l) => l.id === token.value)?.color);
-}
-
-// Shared text metrics — MUST be identical on the textarea and the backdrop or
-// the highlight boxes drift from the characters. One object, applied to both.
+// Text metrics for the textarea.
 const FIELD_METRICS: CSSProperties = {
   margin: 0,
-  // Generous vertical padding so the pills (which extend ~2px via box-shadow)
-  // have real breathing room above/below instead of hugging the field edges.
   padding: "10px 0",
   border: 0,
   width: "100%",
@@ -277,14 +265,7 @@ export const SmartTodoInput = forwardRef<
     }
   }
 
-  const segments = useMemo(
-    () => buildSegments(value, result.tokens, lists),
-    [value, result.tokens, lists],
-  );
-
   return (
-    // color is not a View style prop under the strict v2 types; the backdrop
-    // spans set their own colors and the textarea inherits via FIELD_METRICS.
     <View width="100%">
       {/* FIELD — position:relative so the textarea overlays the backdrop ONLY
           (the preview chips live OUTSIDE this, below the underline). */}
@@ -294,46 +275,9 @@ export const SmartTodoInput = forwardRef<
         borderColor={focused ? "$primary" : "$borderColor"}
         transition="quick"
       >
-        {/* Backdrop: a plain block <div> (NOT a Tamagui View, which would force
-            flex-column and stretch each token span to full width). Its inline
-            <span>s flow as normal text; it DEFINES the field height. */}
-        <div
-          aria-hidden
-          style={{
-            ...FIELD_METRICS,
-            display: "block",
-            position: "relative",
-            minHeight: 24,
-            color: "transparent",
-            userSelect: "none",
-            pointerEvents: "none",
-          }}
-        >
-          {segments.map((seg, i) =>
-            seg.kind ? (
-              <span
-                key={i}
-                style={{
-                  backgroundColor: seg.tint,
-                  boxShadow: `0 0 0 2px ${seg.tint}`,
-                  borderRadius: 4,
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  WebkitBoxDecorationBreak: "clone" as any,
-                  boxDecorationBreak: "clone",
-                }}
-              >
-                {seg.text}
-              </span>
-            ) : (
-              <span key={i}>{seg.text}</span>
-            ),
-          )}
-          {/* Zero-width space keeps the last line's height when the value ends
-              exactly on a token (or is empty). */}
-          {"​"}
-        </div>
-
-        {/* The real, editable field (transparent bg, real text on top). */}
+        {/* Plain editable field. Recognized tokens show as removable rounded
+            BADGE chips below (tag-input / combobox pattern) — no in-field
+            highlight, so this is byte-simple and identical to native. */}
         <textarea
           ref={taRef}
           value={value}
@@ -369,21 +313,13 @@ export const SmartTodoInput = forwardRef<
           onBlur={() => setFocused(false)}
           style={{
             ...FIELD_METRICS,
-            // Overlay the backdrop exactly; the backdrop owns the height.
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
             display: "block",
+            width: "100%",
             resize: "none",
             outline: "none",
             background: "transparent",
-            // Inherit the theme foreground from the container's `color="$color"`.
             color: "inherit",
             caretColor: "var(--ring-todo)",
-            height: "100%",
-            overflow: "hidden",
           }}
         />
 
@@ -466,67 +402,68 @@ export const SmartTodoInput = forwardRef<
             ))}
           </View>
         ) : null}
-      </View>
-
-      {/* Resolved preview — what will actually be saved, each removable.
-          Lives OUTSIDE the field wrapper (below the underline). Suppressed when
-          the host renders its own controls (`showChips={false}`). */}
-      {showChips && result.tokens.length > 0 ? (
-        <XStack flexWrap="wrap" items="center" gap="$1.5" mt="$2">
-          {result.doDate ? (
-            <PreviewChip
-              tint={DATE_TINT}
-              icon={<Calendar size={11} color={"var(--ring-todo)" as never} />}
-              label={labelFor(result.tokens, "do")}
-              onRemove={() => removeTokensOfKind("do")}
-            />
-          ) : null}
-          {result.dueDate ? (
-            <PreviewChip
-              tint={DATE_TINT}
-              icon={<Flag size={11} color={"var(--ring-todo)" as never} />}
-              label={`Deadline · ${labelFor(result.tokens, "due")}`}
-              onRemove={() => removeTokensOfKind("due")}
-            />
-          ) : null}
-          {result.priority ? (
-            <PreviewChip
-              tint={hexTint(PRIORITY_COLOR[result.priority])}
-              icon={
-                <Flag
-                  size={11}
-                  color={PRIORITY_COLOR[result.priority] as never}
-                />
-              }
-              label={labelFor(result.tokens, "priority")}
-              onRemove={() => removeTokensOfKind("priority")}
-            />
-          ) : null}
-          {result.listId ? (
-            <PreviewChip
-              tint={hexTint(lists.find((l) => l.id === result.listId)?.color)}
-              icon={
-                lists.find((l) => l.id === result.listId)?.isDefault ? (
-                  <Inbox size={11} color="$mutedForeground" />
-                ) : (
-                  <View
-                    width={8}
-                    height={8}
-                    rounded={9999}
-                    style={{
-                      backgroundColor:
-                        lists.find((l) => l.id === result.listId)?.color ||
-                        "#6b7280",
-                    }}
+        {/* Recognized tokens → removable BADGE chips INSIDE the field
+            (tag-input / multi-select look), matching native. Suppressed when
+            the host renders its own controls (`showChips={false}`). */}
+        {showChips && result.tokens.length > 0 ? (
+          <XStack flexWrap="wrap" items="center" gap="$1.5" mt="$2">
+            {result.doDate ? (
+              <PreviewChip
+                tint={DATE_TINT}
+                icon={
+                  <Calendar size={11} color={"var(--ring-todo)" as never} />
+                }
+                label={labelFor(result.tokens, "do")}
+                onRemove={() => removeTokensOfKind("do")}
+              />
+            ) : null}
+            {result.dueDate ? (
+              <PreviewChip
+                tint={DATE_TINT}
+                icon={<Flag size={11} color={"var(--ring-todo)" as never} />}
+                label={`Deadline · ${labelFor(result.tokens, "due")}`}
+                onRemove={() => removeTokensOfKind("due")}
+              />
+            ) : null}
+            {result.priority ? (
+              <PreviewChip
+                tint={hexTint(PRIORITY_COLOR[result.priority])}
+                icon={
+                  <Flag
+                    size={11}
+                    color={PRIORITY_COLOR[result.priority] as never}
                   />
-                )
-              }
-              label={labelFor(result.tokens, "list")}
-              onRemove={() => removeTokensOfKind("list")}
-            />
-          ) : null}
-        </XStack>
-      ) : null}
+                }
+                label={labelFor(result.tokens, "priority")}
+                onRemove={() => removeTokensOfKind("priority")}
+              />
+            ) : null}
+            {result.listId ? (
+              <PreviewChip
+                tint={hexTint(lists.find((l) => l.id === result.listId)?.color)}
+                icon={
+                  lists.find((l) => l.id === result.listId)?.isDefault ? (
+                    <Inbox size={11} color="$mutedForeground" />
+                  ) : (
+                    <View
+                      width={8}
+                      height={8}
+                      rounded={9999}
+                      style={{
+                        backgroundColor:
+                          lists.find((l) => l.id === result.listId)?.color ||
+                          "#6b7280",
+                      }}
+                    />
+                  )
+                }
+                label={labelFor(result.tokens, "list")}
+                onRemove={() => removeTokensOfKind("list")}
+              />
+            ) : null}
+          </XStack>
+        ) : null}
+      </View>
     </View>
   );
 });
@@ -573,33 +510,4 @@ function PreviewChip({
       </Text>
     </XStack>
   );
-}
-
-interface Segment {
-  text: string;
-  kind?: SmartTokenKind;
-  tint?: string;
-}
-
-/** Split `value` into token / non-token segments for the backdrop. */
-function buildSegments(
-  value: string,
-  tokens: SmartToken[],
-  lists: SmartListOption[],
-): Segment[] {
-  if (!tokens.length) return [{ text: value }];
-  const sorted = [...tokens].sort((a, b) => a.start - b.start);
-  const segs: Segment[] = [];
-  let cursor = 0;
-  for (const t of sorted) {
-    if (t.start > cursor) segs.push({ text: value.slice(cursor, t.start) });
-    segs.push({
-      text: value.slice(t.start, t.end),
-      kind: t.kind,
-      tint: tintForToken(t, lists),
-    });
-    cursor = t.end;
-  }
-  if (cursor < value.length) segs.push({ text: value.slice(cursor) });
-  return segs;
 }

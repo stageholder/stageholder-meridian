@@ -358,18 +358,34 @@ export function TodoItem({
           rounded={9999}
           borderWidth={2}
           transition="quick"
-          borderColor="$mutedForeground"
-          bg="transparent"
-          // Checked → todo identity RED; burning → warm ember. Both ride the
-          // inline `style` prop (it wins over the base `bg`/`borderColor` and
-          // takes a CSS var / hex that the strict color props reject).
-          style={
-            burning
-              ? { borderColor: EMBER, backgroundColor: EMBER }
+          // Border color as a single PROP source (not the inline `style`): on
+          // native Tamagui expands the `borderColor` prop into per-side
+          // longhands that beat a `style` shorthand, so the red border set via
+          // `style` lost to the base `$mutedForeground` and the done circle
+          // kept a grey ring while its fill went red. `as never` carries the
+          // theme-aware var/hex the strict color prop rejects (same cast as
+          // `hoverStyle`).
+          borderColor={
+            (burning
+              ? EMBER
               : isDone
-                ? { borderColor: TODO_COLOR, backgroundColor: TODO_COLOR }
-                : undefined
+                ? TODO_COLOR
+                : "$mutedForeground") as never
           }
+          // The pressable itself stays STATIC (transparent) — the fill is a
+          // separate opacity-animated child below. Animating this View's own
+          // `bg` from "transparent" broke the feel on native:
+          // Reanimated interpolates "transparent" as rgba(0,0,0,0), so the
+          // fill faded through muddy grey-black instead of red, and animating
+          // the pressable risked swallowing quick taps.
+          bg="transparent"
+          // Native keeps a pressable focused after a tap (no pointer/keyboard
+          // `:focus-visible` gating and no tap-to-blur), so Tamagui's default
+          // focus ring — the theme's blue `$outlineColor` — lingers around the
+          // circle long after the toggle. Zero it: this control never needs a
+          // focus ring. Matches `timezone-select.native.tsx`.
+          focusStyle={{ outlineWidth: 0 }}
+          focusVisibleStyle={{ outlineWidth: 0 }}
           hoverStyle={
             !isDone && !burning
               ? { borderColor: TODO_COLOR as never }
@@ -379,10 +395,37 @@ export function TodoItem({
           aria-checked={isDone || burning}
           aria-label={isDone ? "Mark as incomplete" : "Mark as complete"}
         >
+          {/* Fill layer — the "check registered" feedback. A static-color disc
+              whose OPACITY (a first-class animatable prop) fades in: opacity
+              interpolation is artifact-free on both drivers, unlike animating
+              a background color from "transparent". pointerEvents="none" so
+              every tap lands on the pressable parent. Color itself never
+              animates (ember vs red just swaps), so it can ride `style`, which
+              accepts the theme-aware var/hex. */}
+          <View
+            position="absolute"
+            t={0}
+            l={0}
+            r={0}
+            b={0}
+            rounded={9999}
+            style={{ backgroundColor: burning ? EMBER : TODO_COLOR }}
+            opacity={isDone || burning ? 1 : 0}
+            transition="quick"
+            pointerEvents="none"
+          />
           {isDone || burning ? (
             <View
               transition="bouncy"
+              // Explicit base scale/opacity: the native Reanimated driver
+              // animates enterStyle → these concrete targets. Without them the
+              // enter sticks at `scale: 0` on native and the check never shows
+              // during the burn (web's CSS driver tolerates the missing base).
+              opacity={1}
+              scale={1}
               enterStyle={burning ? { scale: 0, opacity: 0 } : undefined}
+              // Taps on the icon must fall through to the pressable circle.
+              pointerEvents="none"
             >
               {/* lucide-icons-2 reads its own `color` (no CSS cascade). White
                   check on the red/ember fill. */}

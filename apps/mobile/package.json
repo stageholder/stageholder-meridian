@@ -45,7 +45,7 @@
     "@repo/features": "workspace:*",
     "@shopify/flash-list": "^2.3.1",
     "@stageholder/sdk": "^1.0.0-alpha.60",
-    "@stageholder/ui": "^0.3.0-alpha.121",
+    "@stageholder/ui": "^0.3.0-alpha.123",
     "@tamagui/config": "^2.3.2",
     "@tamagui/core": "^2.3.2",
     "@tamagui/lucide-icons-2": "^2.3.2",

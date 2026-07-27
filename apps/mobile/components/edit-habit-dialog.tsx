@@ -88,6 +88,10 @@ export function EditHabitDialog({
       // buttons, so hide the kit footer; we keep the kit FormSheet for its
       // keyboard-stretch handling + frame + title.
       hideFooter
+      // PINNED (kit alpha.123 default is now 'first-open'): this id-keyed form
+      // re-seeds from `initial` only on mount, so it relies on unmount-on-close
+      // to reset — reopening the same habit after Cancel must start clean.
+      mountChildren="open"
       // HabitForm is the app's tallest form — capped snap + scrolling fields
       // (alpha.121) instead of growing past the status bar.
       scrollable
@@ -98,9 +102,9 @@ export function EditHabitDialog({
       {/* Kit open choreography — see create-todo-dialog. */}
       <Sheet.LazyBody fallback={<FormSheetSkeleton rows={4} />}>
         <HabitForm
-          // Re-seed per habit (the kit Sheet unmounts content on close, so a
-          // fresh open re-seeds anyway; keying on `open` remounted the form
-          // mid-close-animation for nothing).
+          // Re-seed per habit: with mountChildren="open" (pinned above) the
+          // kit Sheet unmounts content on close, so a fresh open re-seeds
+          // anyway; keying on `open` remounted the form mid-close for nothing.
           key={habit.id}
           initial={initial}
           groups={groupOptions}

@@ -22,6 +22,11 @@ export {
   type TodoListChoice,
 } from "./todo-form";
 
+// Compact Todoist-style quick-add create sheet — native-only behavior; the web
+// build resolves the null stub (`.tsx`), RN resolves `.native.tsx`.
+export { QuickAddTodoSheet } from "./quick-add-todo-sheet";
+export type { QuickAddTodoSheetProps } from "./quick-add-todo-sheet.types";
+
 // Cross-platform smart quick-add field (web overlay pills / native chips) —
 // resolves `.tsx` on web and `.native.tsx` on RN via the bundler.
 export { SmartTodoInput } from "./smart-todo-input";

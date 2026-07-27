@@ -1,50 +1,49 @@
-// SmartTodoInput (NATIVE) — the React Native counterpart of the web overlay
-// composer. The same `parseSmartTodo` drives THREE visible surfaces:
+// SmartTodoInput (NATIVE) — 10tap/tentap implementation.
 //
-//   1. **in-field token highlighting** — recognized phrases ("tomorrow",
-//      "!p1", "#work") render tinted + bold INSIDE the field, on a soft pill
-//      fill, via styled nested <Text> children of the TextInput — the
-//      react-native-controlled-mentions pattern the kit's own chat composer
-//      uses (New-Architecture-proven). The fill is a square glyph-run
-//      background (native text can't round corners — the web pill's radius
-//      stays web-only) at the same 15% tint as the chips.
-//   2. a **trigger suggestion row** — typing `!` or `#` (mirroring the web
-//      caret menus) offers tappable priority / list chips that insert the
-//      token, so the feature is discoverable without knowing the grammar;
-//   3. the removable **preview-chip row** — every recognized token renders as
-//      a chip with an × to strip it from the title.
+// WHY a WebView editor: native RN cannot render a ROUNDED background on an inline
+// text run (react-native#10807 persists on Fabric) — the only way to get the
+// Todoist-style rounded inline highlight from the design is a browser, i.e. the
+// tentap (TipTap-in-WebView) editor the kit already depends on. A highlight then
+// becomes a CSS `<span>` with border-radius + padding + box-decoration-break.
 //
-// The field is a raw RN TextInput inside a kit-styled frame (not the kit
-// `Input`): highlighting requires child <Text> segments, which the kit Input
-// can't host. The frame mirrors the kit Input's outlined look (border, radius,
-// focus ring) so the form reads unchanged.
+// Phases (each a device screenshot checkpoint):
+//   • PHASE 1: bare editor — controlled value, text I/O, placeholder, height,
+//     focus, parser→pills (onParse). ✅
+//   • PHASE 2: rounded inline highlights — a custom editor bundle
+//     (`editor-web/`, passed as `customSource`) carries a ProseMirror decoration
+//     plugin; RN pushes the parser's token ranges + colours via `injectJS` →
+//     `window.__setSmartTokens`, and `.smart-token` CSS (injected below) paints
+//     them as rounded pills. ✅
+//   • PHASE 3 (next): the `!`/`#` picker (native menu via getSelection +
+//     insertText).
 //
-// The public contract (props, `onParse`, `onSubmit`) is identical to the web
-// file, so a host — notably the shared `TodoForm` — uses `<SmartTodoInput>`
-// with no per-platform branching.
-//
-// Caret tracking: the trigger detector needs the caret position, which RN
-// only exposes via `onSelectionChange`. Inserting a suggestion rewrites
-// `value`; RN then moves the caret to the end of the update, which matches
-// the type-at-the-end flow this composer is for.
+// The public contract (props, `onParse`, `onSubmit`, ref `focus`) is identical
+// to the web sibling, so the host `QuickAddTodoSheet` needs no changes. The web
+// file (`smart-todo-input.tsx`) is untouched — this `.native` split is the only
+// place the WebView editor loads.
 import {
   forwardRef,
   useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
-  useState,
   type ReactNode,
 } from "react";
-import { TextInput, Text as RNText } from "react-native";
 import { useTheme } from "tamagui";
-import { Calendar, Flag, Inbox } from "@tamagui/lucide-icons-2";
+import { Flag, Inbox } from "@tamagui/lucide-icons-2";
 import { Text, View, XStack, YStack } from "@stageholder/ui";
+import {
+  CoreBridge,
+  RichText,
+  TenTapStartKit,
+  useBridgeState,
+  useEditorBridge,
+  useEditorContent,
+} from "@10play/tentap-editor";
 import {
   parseSmartTodo,
   type SmartParseResult,
   type SmartToken,
-  type SmartTokenKind,
 } from "@repo/core/todos/smart-parse";
 import { resolveSmartLocale } from "@repo/core/todos/date-parse";
 import type {
@@ -52,38 +51,18 @@ import type {
   SmartTodoInputHandle,
   SmartTodoInputProps,
 } from "./smart-todo-input.types";
+import { QUICK_ADD_EDITOR_HTML } from "./quick-add-editor-html";
 
-// Native tints are plain hex-with-alpha (no CSS vars on RN). Dates use the todo
-// red; priority/list use their own swatch — same language as the web pills.
+// Todo-red caret, matching the web composer.
 const TODO_RED = "#ef4444";
+// Highlight fill per token kind (same language as the web pills / native chips).
 const PRIORITY_COLOR: Record<string, string> = {
   urgent: "#ef4444",
   high: "#f97316",
   medium: "#eab308",
   low: "#3b82f6",
 };
-function tint(hex?: string): string {
-  return hex && /^#[0-9a-f]{6}$/i.test(hex) ? `${hex}26` : "#8888881f";
-}
-
-// The `!` menu's options — the word form is inserted (reads better in the
-// title than `!p1`), but the P-code is matched too so typing `!p2` filters.
-const PRIORITY_OPTIONS = [
-  { value: "urgent", code: "p1", label: "Urgent" },
-  { value: "high", code: "p2", label: "High" },
-  { value: "medium", code: "p3", label: "Medium" },
-  { value: "low", code: "p4", label: "Low" },
-] as const;
-
-interface ActiveTrigger {
-  char: "!" | "#";
-  /** Index of the trigger char itself. */
-  start: number;
-  /** The query typed after the trigger (may be empty). */
-  query: string;
-}
-
-/** Highlight color for a recognized token — same palette as the web pills. */
+/** Solid fill for a recognized token — white pill text sits on it. */
 function tokenColor(token: SmartToken, lists: SmartListOption[]): string {
   switch (token.kind) {
     case "do":
@@ -96,43 +75,81 @@ function tokenColor(token: SmartToken, lists: SmartListOption[]): string {
   }
 }
 
-interface Segment {
-  text: string;
-  /** Highlight color; undefined = plain title text. */
-  color?: string;
+// `!` menu options — the WORD form is inserted (reads better in the title than
+// `!p1`), but the P-code is matched too so typing `!p2` filters.
+const PRIORITY_OPTIONS = [
+  { value: "urgent", code: "p1", label: "Urgent" },
+  { value: "high", code: "p2", label: "High" },
+  { value: "medium", code: "p3", label: "Medium" },
+  { value: "low", code: "p4", label: "Low" },
+] as const;
+
+/** 6-digit hex → ~15% alpha tint; anything else → a neutral tint. */
+function tint(hex?: string): string {
+  return hex && /^#[0-9a-f]{6}$/i.test(hex) ? `${hex}26` : "#8888881f";
 }
 
-/** Split `value` into plain / highlighted runs from the parser's token
- *  ranges (sorted, non-overlapping — the parser guarantees both). */
-function buildSegments(
-  value: string,
-  tokens: SmartToken[],
-  lists: SmartListOption[],
-): Segment[] {
-  const segs: Segment[] = [];
-  let cursor = 0;
-  for (const t of tokens) {
-    if (t.start > cursor) segs.push({ text: value.slice(cursor, t.start) });
-    segs.push({
-      text: value.slice(t.start, t.end),
-      color: tokenColor(t, lists),
-    });
-    cursor = t.end;
-  }
-  if (cursor < value.length) segs.push({ text: value.slice(cursor) });
-  return segs;
+interface ActiveTrigger {
+  char: "!" | "#";
+  /** Index of the trigger char in the text. */
+  start: number;
+  /** Query typed after the trigger (may be empty). */
+  query: string;
 }
 
-/** Detect an in-progress `!`/`#` trigger immediately left of the caret —
- *  same rule as the web variant (token must start the word). */
+/** Detect an in-progress `!`/`#` trigger immediately left of the caret — the
+ *  trigger char must start the word (string start or after whitespace). */
 function detectTrigger(value: string, caret: number): ActiveTrigger | null {
-  const upto = value.slice(0, caret);
-  const m = /(^|\s)([!#])(\S*)$/.exec(upto);
+  const m = /(^|\s)([!#])(\S*)$/.exec(value.slice(0, caret));
   if (!m) return null;
-  const char = m[2] as "!" | "#";
-  const query = m[3];
-  const start = caret - query.length - 1;
-  return { char, start, query };
+  const query = m[3] ?? "";
+  return { char: m[2] as "!" | "#", start: caret - query.length - 1, query };
+}
+// The WebView needs a DEFINITE height or it collapses to 0px inside a sheet (the
+// kit hit this with a flex-sized tentap field). Two lines' worth for a title;
+// content past it scrolls internally. Auto-grow is a later refinement.
+const FIELD_HEIGHT = 64;
+
+/** CSS injected into the editor WebView: compact single-field typography, a
+ *  transparent canvas, the empty placeholder, and the `.smart-token` pills. The
+ *  placeholder TEXT is painted literally here (not via `attr(data-placeholder)`)
+ *  because tentap's runtime `setPlaceholder` proved unreliable through the
+ *  customSource bridge — the empty-node's `is-editor-empty` class (added by the
+ *  StartKit Placeholder extension) is all we rely on. */
+function buildCss(
+  fg: string,
+  placeholderColor: string,
+  placeholderText: string,
+): string {
+  // Match the app's system font — a WebView defaults to serif (Times) otherwise.
+  const FONT_STACK =
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+  return `
+    html, body { background: transparent; margin: 0; padding: 0; }
+    .ProseMirror {
+      padding: 10px 12px; margin: 0;
+      font-family: ${FONT_STACK};
+      font-size: 16px; line-height: 22px;
+      color: ${fg}; caret-color: ${TODO_RED};
+      -webkit-user-select: text;
+    }
+    .ProseMirror:focus { outline: none; }
+    .ProseMirror p { margin: 0; }
+    .ProseMirror p.is-editor-empty:first-child::before {
+      content: ${JSON.stringify(placeholderText)};
+      color: ${placeholderColor};
+      float: left; height: 0; pointer-events: none;
+    }
+    /* Rounded inline highlight pill (background colour rides inline per token).
+       box-decoration-break:clone keeps the rounding intact when a phrase wraps. */
+    .smart-token {
+      color: #ffffff;
+      border-radius: 6px;
+      padding: 1px 5px;
+      -webkit-box-decoration-break: clone;
+      box-decoration-break: clone;
+    }
+  `;
 }
 
 export const SmartTodoInput = forwardRef<
@@ -145,57 +162,146 @@ export const SmartTodoInput = forwardRef<
     lists,
     now,
     locale,
-    onSubmit,
     placeholder,
     autoFocus,
     parse = true,
-    showChips = true,
     onParse,
   },
   ref,
 ) {
-  const inputRef = useRef<TextInput | null>(null);
-  useImperativeHandle(
-    ref,
-    () => ({ focus: () => inputRef.current?.focus?.() }),
-    [],
-  );
-
-  // Theme colors resolved to raw values — nested RNText children of a
-  // TextInput take plain RN styles, not Tamagui tokens.
   const theme = useTheme();
-  const baseColor = theme.color?.val ?? "#000";
+  const fg = theme.color?.val ?? "#000";
   const placeholderColor =
     theme.placeholderColor?.val ?? theme.mutedForeground?.val ?? "#888";
-  const [focused, setFocused] = useState(false);
 
-  // Caret position from the underlying TextInput — drives trigger detection.
-  // Structurally typed: only `selection.start` is read, and the narrow shape
-  // is assignable to RN's NativeSyntheticEvent handler contract.
-  const [caret, setCaret] = useState(0);
-  const handleSelectionChange = (e: {
-    nativeEvent: { selection: { start: number } };
-  }) => {
-    setCaret(e.nativeEvent.selection.start);
-  };
+  const css = useMemo(
+    () => buildCss(fg, placeholderColor, placeholder ?? ""),
+    [fg, placeholderColor, placeholder],
+  );
 
-  const result: SmartParseResult = parse
-    ? parseSmartTodo(value, {
-        lists,
-        now: now ?? new Date(),
-        locale: locale ?? resolveSmartLocale(),
-      })
-    : { title: value, tokens: [] };
+  // Captured ONCE. Passing the live `value` here re-seeds the document on every
+  // keystroke (clear-then-restore = a visible blink); external changes flow
+  // through the setContent effect below instead.
+  const initialContent = useRef(value || "").current;
+  // Stable extension list — an inline array would give `editor.bridgeExtensions`
+  // (and RichText's injected JS) a new identity every render.
+  const bridgeExtensions = useMemo(
+    () => [...TenTapStartKit, CoreBridge.configureCSS(css)],
+    [css],
+  );
+  const editor = useEditorBridge({
+    // Plain string is valid tentap `Content` — it becomes a single paragraph.
+    initialContent,
+    bridgeExtensions,
+    // Our custom web bundle: default tentap editor + the smart-highlight
+    // decoration plugin + the window.__setSmartTokens hook.
+    customSource: QUICK_ADD_EDITOR_HTML,
+    autofocus: autoFocus,
+    avoidIosKeyboard: true,
+  });
 
+  // Re-inject CSS on theme change (idempotent — same id replaces the prior one).
+  useEffect(() => {
+    editor.injectCSS(css, "smart-todo-theme");
+  }, [css, editor]);
+
+  useImperativeHandle(ref, () => ({ focus: () => editor.focus() }), [editor]);
+
+  // ── Controlled value round-trip (mirrors the kit's tentap pattern) ──
+  // `lastEmitted` distinguishes the editor's own typing echo from an EXTERNAL
+  // change (the sheet clearing the title on open), so we never call setContent
+  // mid-typing — which would reset the WebView caret.
+  const lastEmitted = useRef(value);
+
+  // Editor text → parent. tentap can append a trailing newline; strip it so the
+  // title stays clean.
+  const emitted = useEditorContent(editor, { type: "text" });
+  useEffect(() => {
+    if (emitted === undefined) return;
+    const t = (emitted as string).replace(/\n+$/, "");
+    lastEmitted.current = t;
+    if (t !== value) onValueChange(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emitted]);
+
+  // External `value` change (e.g. the sheet clearing the title on open) → push
+  // into the editor. Deps are `[value]` ONLY — deliberately NOT `editor`.
+  // `useEditorBridge` returns a NEW `editor` object every render, so including
+  // it would run this effect on every render; in the render where the debounced
+  // `emitted` advances, the emit effect above has already moved
+  // `lastEmitted.current` forward while THIS closure's `value` is still the old
+  // text — the guard would then fail and `setContent(oldText)` would revert the
+  // WebView (the "typing snaps back to former text" bug). Gating on `value`
+  // means we only push when the value truly changes (a real external reset);
+  // `editor.setContent` targets the stable webviewRef, so a closure editor is
+  // fine.
+  useEffect(() => {
+    if (value === lastEmitted.current) return;
+    editor.setContent(value || "");
+    lastEmitted.current = value;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  // ── Parse → onParse (the pills below stay in sync; unchanged behavior) ──
+  const nowValue = useMemo(() => now ?? new Date(), [now]);
+  const smartLoc = useMemo(() => locale ?? resolveSmartLocale(), [locale]);
+  const result: SmartParseResult = useMemo(
+    () =>
+      parse
+        ? parseSmartTodo(value, { lists, now: nowValue, locale: smartLoc })
+        : { title: value, tokens: [] },
+    [value, parse, lists, nowValue, smartLoc],
+  );
   const onParseRef = useRef(onParse);
   onParseRef.current = onParse;
   useEffect(() => {
     if (parse) onParseRef.current?.(result);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, parse]);
+  }, [result, parse]);
 
-  // ── `!` / `#` trigger menu (native mirror of the web caret menu). ──
-  const trigger = parse ? detectTrigger(value, caret) : null;
+  // ── Push highlight ranges into the WebView (Phase 2) ──
+  // The parser runs here; the WebView only renders. Each token → {start, end,
+  // color}; the decoration plugin maps offsets to positions and paints pills.
+  const smartTokens = useMemo(
+    () =>
+      parse
+        ? result.tokens.map((t) => ({
+            start: t.start,
+            end: t.end,
+            color: tokenColor(t, lists),
+          }))
+        : [],
+    [result.tokens, lists, parse],
+  );
+  // Latest tokens for the onLoad closure (which fires once, asynchronously).
+  const smartTokensRef = useRef(smartTokens);
+  smartTokensRef.current = smartTokens;
+  const editorReady = useRef(false);
+
+  const pushTokens = (tokens: typeof smartTokens) => {
+    // Guarded in-page: the hook may not exist for the first frame after load.
+    editor.injectJS(
+      `window.__setSmartTokens && window.__setSmartTokens(${JSON.stringify(tokens)});`,
+    );
+  };
+
+  useEffect(() => {
+    if (editorReady.current) pushTokens(smartTokens);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [smartTokens]);
+
+  // ── `!` / `#` trigger picker (Phase 3) ──
+  // The live caret comes from the bridge state; the text is `value`. Together
+  // they detect an in-progress `!…`/`#…` token and offer tappable chips.
+  //
+  // NOT gated on `bridgeState.isFocused`: our custom WebView bundle stubs
+  // `expo-constants`, which makes tentap's `isExpo()` return true → it swaps in
+  // an always-false focus shim, so `isFocused` is permanently false here. An
+  // active trigger token at the caret is a tight enough condition on its own
+  // (it clears the instant the token is completed, deleted, or the caret moves).
+  const bridgeState = useBridgeState(editor);
+  // PM position → text index (single paragraph: content starts at position 1).
+  const caretIndex = Math.max(0, (bridgeState.selection?.from ?? 1) - 1);
+  const trigger = parse ? detectTrigger(value, caretIndex) : null;
   const q = trigger?.query.toLowerCase() ?? "";
   const prioritySuggestions =
     trigger?.char === "!"
@@ -210,114 +316,37 @@ export const SmartTodoInput = forwardRef<
   const hasSuggestions =
     prioritySuggestions.length > 0 || listSuggestions.length > 0;
 
-  /** Replace the active trigger (`!que` / `#que`) with the picked token. */
+  /** Replace the active `!query`/`#query` with the picked token + a space, and
+   *  land the caret after it (done in the WebView via __replaceRange, since
+   *  tentap's default bridge has no insert-at-caret). */
   function applySuggestion(insert: string) {
     if (!trigger) return;
-    const before = value.slice(0, trigger.start);
-    const after = value.slice(caret);
-    const needsSpace = after.length === 0 || !after.startsWith(" ");
-    const next = before + insert + (needsSpace ? " " : "") + after;
-    onValueChange(next);
-    // The controlled update lands the caret at the end of the new text on RN;
-    // advance our mirror so the trigger clears immediately (onSelectionChange
-    // confirms a beat later).
-    setCaret(next.length);
-    inputRef.current?.focus?.();
+    const fromPM = trigger.start + 1;
+    const toPM = caretIndex + 1;
+    editor.injectJS(
+      `window.__replaceRange && window.__replaceRange(${fromPM}, ${toPM}, ${JSON.stringify(
+        `${insert} `,
+      )});`,
+    );
   }
 
-  function removeKind(kind: SmartTokenKind) {
-    const ranges = result.tokens.filter((t) => t.kind === kind);
-    if (!ranges.length) return;
-    let next = value;
-    for (const t of [...ranges].sort((a, b) => b.start - a.start)) {
-      next = next.slice(0, t.start) + next.slice(t.end);
-    }
-    onValueChange(next.replace(/\s{2,}/g, " ").trim());
-  }
-  const labelFor = (kind: SmartTokenKind) =>
-    result.tokens.find((t) => t.kind === kind)?.label ?? "";
-  const activeList = lists.find((l) => l.id === result.listId);
-
-  // In-field highlight segments — recognized tokens tint + bold inside the
-  // field (kit chat-composer pattern: styled <Text> children of a TextInput).
-  // Empty value → null children so the placeholder shows.
-  const segments = useMemo(
-    () =>
-      parse && value.length > 0
-        ? buildSegments(value, result.tokens, lists)
-        : null,
-    // result derives from value/lists/parse each render — keying on those
-    // keeps the memo honest without re-deriving on identity churn.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [value, parse, lists, result.tokens],
-  );
-
+  // Ghost field — no border/background; the editor sits directly on the sheet.
   return (
     <YStack gap="$2">
-      {/* Kit-Input-look frame around a raw TextInput (the kit Input can't
-          host the nested highlight <Text> children). */}
-      <View
-        height={40}
-        px="$3"
-        justify="center"
-        rounded="$4"
-        borderWidth={1}
-        borderColor={focused ? "$primary" : "$borderColor"}
-        bg="$background"
-      >
-        <TextInput
-          ref={inputRef}
-          onChangeText={onValueChange}
-          onSelectionChange={handleSelectionChange}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          placeholder={placeholder}
-          placeholderTextColor={placeholderColor}
-          autoFocus={autoFocus}
-          onSubmitEditing={() => onSubmit?.(result)}
-          style={{
-            fontSize: 16,
-            color: baseColor,
-            padding: 0,
-            margin: 0,
-            backgroundColor: "transparent",
+      <View height={FIELD_HEIGHT} overflow="hidden">
+        <RichText
+          editor={editor}
+          // Editor is ready here → flush the current highlight ranges.
+          onLoad={() => {
+            editorReady.current = true;
+            pushTokens(smartTokensRef.current);
           }}
-        >
-          {segments
-            ? segments.map((s, i) =>
-                s.color ? (
-                  <RNText
-                    key={i}
-                    style={{
-                      color: s.color,
-                      fontWeight: "600",
-                      // Soft pill fill behind the token — same 15% tint as the
-                      // chips. RN maps this to BackgroundColorSpan (Android) /
-                      // NSBackgroundColorAttributeName (iOS); it's a square
-                      // glyph-run fill (no rounding possible in a native text
-                      // field — the web pill's radius stays web-only). If QA
-                      // shows selection/emoji artifacts on some device, delete
-                      // just this backgroundColor line — color+bold carry the
-                      // highlight on their own.
-                      backgroundColor: tint(s.color),
-                    }}
-                  >
-                    {s.text}
-                  </RNText>
-                ) : (
-                  <RNText key={i} style={{ color: baseColor }}>
-                    {s.text}
-                  </RNText>
-                ),
-              )
-            : parse
-              ? null
-              : value || null}
-        </TextInput>
+          style={{ flex: 1, backgroundColor: "transparent" }}
+        />
       </View>
 
-      {/* Trigger suggestions — tap to insert. Shown while the caret sits in
-          an unfinished `!…`/`#…` token, mirroring the web dropdown. */}
+      {/* Trigger suggestions — tap to insert. Shown while the caret sits in an
+          unfinished `!…`/`#…` token. */}
       {hasSuggestions ? (
         <XStack flexWrap="wrap" items="center" gap="$1.5">
           {prioritySuggestions.map((p) => (
@@ -347,59 +376,11 @@ export const SmartTodoInput = forwardRef<
                 )
               }
               label={l.name}
-              // Insert the first word — the parser resolves it back to the
-              // full list by prefix, so multi-word names stay one token.
+              // Insert the first word — the parser resolves it back to the full
+              // list by prefix, so a multi-word name stays one token.
               onPress={() => applySuggestion(`#${l.name.split(/\s+/)[0]}`)}
             />
           ))}
-        </XStack>
-      ) : null}
-
-      {showChips && result.tokens.length > 0 ? (
-        <XStack flexWrap="wrap" items="center" gap="$1.5">
-          {result.doDate ? (
-            <Chip
-              tint={tint(TODO_RED)}
-              icon={<Calendar size={11} color={TODO_RED} />}
-              label={labelFor("do")}
-              onRemove={() => removeKind("do")}
-            />
-          ) : null}
-          {result.dueDate ? (
-            <Chip
-              tint={tint(TODO_RED)}
-              icon={<Flag size={11} color={TODO_RED} />}
-              label={`Deadline · ${labelFor("due")}`}
-              onRemove={() => removeKind("due")}
-            />
-          ) : null}
-          {result.priority ? (
-            <Chip
-              tint={tint(PRIORITY_COLOR[result.priority])}
-              icon={<Flag size={11} color={PRIORITY_COLOR[result.priority]} />}
-              label={labelFor("priority")}
-              onRemove={() => removeKind("priority")}
-            />
-          ) : null}
-          {result.listId ? (
-            <Chip
-              tint={tint(activeList?.color)}
-              icon={
-                activeList?.isDefault ? (
-                  <Inbox size={11} color="$mutedForeground" />
-                ) : (
-                  <View
-                    width={8}
-                    height={8}
-                    rounded={9999}
-                    style={{ backgroundColor: activeList?.color || "#6b7280" }}
-                  />
-                )
-              }
-              label={labelFor("list")}
-              onRemove={() => removeKind("list")}
-            />
-          ) : null}
         </XStack>
       ) : null}
     </YStack>
@@ -407,9 +388,9 @@ export const SmartTodoInput = forwardRef<
 });
 
 /** Tappable insert chip for the trigger menu — same pill language as the
- *  preview chips, plus a dim P-code hint for priorities. */
+ *  highlights, plus a dim P-code hint for priorities. */
 function SuggestionChip({
-  tint,
+  tint: bg,
   icon,
   label,
   hint,
@@ -428,7 +409,7 @@ function SuggestionChip({
       px="$2"
       py="$1"
       rounded={999}
-      style={{ backgroundColor: tint }}
+      style={{ backgroundColor: bg }}
       onPress={onPress}
       pressStyle={{ opacity: 0.7 }}
       role="button"
@@ -443,44 +424,6 @@ function SuggestionChip({
           {hint}
         </Text>
       ) : null}
-    </XStack>
-  );
-}
-
-function Chip({
-  tint,
-  icon,
-  label,
-  onRemove,
-}: {
-  tint: string;
-  icon?: ReactNode;
-  label: string;
-  onRemove: () => void;
-}) {
-  return (
-    <XStack
-      items="center"
-      gap="$1"
-      pl="$2"
-      pr="$1.5"
-      py="$0.5"
-      rounded={999}
-      style={{ backgroundColor: tint }}
-    >
-      {icon}
-      <Text fontSize="$1" fontWeight="600" color="$color">
-        {label}
-      </Text>
-      <Text
-        color="$mutedForeground"
-        fontSize="$2"
-        lineHeight={0}
-        onPress={onRemove}
-        aria-label={`Remove ${label}`}
-      >
-        ×
-      </Text>
     </XStack>
   );
 }

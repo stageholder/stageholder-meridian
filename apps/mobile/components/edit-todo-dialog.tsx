@@ -129,6 +129,11 @@ export function EditTodoDialog({
       // buttons, so hide the kit footer; we keep the kit FormSheet for its
       // keyboard-stretch handling + frame + title.
       hideFooter
+      // PINNED (kit alpha.123 default is now 'first-open'): this body is id-
+      // keyed and re-seeds from `initial` only on mount, so it needs unmount-
+      // on-close — otherwise reopening the SAME todo after Cancel keeps the
+      // abandoned edits (warm tree never re-seeds).
+      mountChildren="open"
       // Form + growing SubtaskSection + delete button can exceed the screen —
       // capped snap + scrolling fields (alpha.121), header/footer pinned.
       scrollable
