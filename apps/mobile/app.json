@@ -18,7 +18,7 @@
       }
     },
     "android": {
-      "package": "com.stageholder.meridian.mobile",
+      "package": "com.stageholder.meridian",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#001f3f"

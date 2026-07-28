@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { View } from "@stageholder/ui";
 
 // Warm amber/gold palette — resolved HEX so it renders on web AND native
-// (react-native-svg / RN styles can't resolve oklch or CSS vars). Same warm
-// "radiance" family as the PWA's web RadianceBurst.
+// (react-native-svg / RN styles can't resolve oklch or CSS vars). One palette,
+// both platforms.
 const RADIANCE_COLORS = [
   "#f5c542", // warm amber
   "#e0a020", // deep gold
@@ -12,6 +12,13 @@ const RADIANCE_COLORS = [
   "#fbeec1", // soft cream
   "#f0b83c", // golden light
 ];
+
+// Node counts — kept modest on purpose. Every ray/spark/glow is ONE animated
+// node; on native each becomes a Reanimated spring (see the tamagui config's
+// v5-reanimated driver), so the total count is the single biggest perf lever.
+// Reducing these thins the burst equally on web + native → parity holds.
+const RAY_COUNT = 8;
+const SPARK_COUNT = 10;
 
 interface Ray {
   angle: number;
@@ -30,18 +37,30 @@ interface Spark {
 
 /**
  * Habit-completion sunburst — warm light rays fan out + golden sparks drift
- * from the CENTER OF ITS PARENT (the check-in control), not the screen.
+ * OUTWARD from the CENTER OF ITS PARENT (the check-in control), not the screen.
+ *
+ * ONE cross-platform source of truth (PWA + native). The trick that makes a
+ * single file perform well on BOTH Tamagui drivers is discipline about WHICH
+ * properties animate:
+ *
+ *   • ONLY `opacity` + `transform` (scale / scaleY / x / y) are animated. These
+ *     are the two properties the browser compositor AND Reanimated's UI thread
+ *     accelerate OFF the main thread. The previous native version animated
+ *     `height` (a LAYOUT property) — cheap as a CSS transition, but expensive on
+ *     native because every frame re-runs layout. That was the core of the lag.
+ *   • Every node is a simple enter→base transition where the BASE state is the
+ *     "gone" state (opacity 0). On mount Tamagui applies `enterStyle` (visible)
+ *     then animates to the resting props (invisible) — so the burst flashes
+ *     outward and self-cleans to nothing, no exit-presence / AnimatePresence
+ *     needed (which is unreliable under the PWA's disableExtraction runtime CSS).
+ *   • The static rotation/position of each ray lives on an OUTER wrapper; only
+ *     the inner node carries animated transform props — so Tamagui never has to
+ *     reconcile a static `style.transform` array against animated shorthands.
  *
  * ANCHORED, not full-screen: renders `position:absolute` filling its relative
- * parent, so the host places it inside the control's `position:relative`
- * wrapper and the burst emanates from that button. (Contrast the kit
- * `Celebration`, a Dimensions-based full-VIEWPORT particle emitter meant for
- * big moments via the root provider — using it here is what put the burst in
- * the middle of the screen.)
- *
- * Cross-platform: pure Tamagui `View`s animated via `enterStyle`+`transition`
- * (CSS driver on web, Reanimated on native) — one component, both platforms,
- * mounting on `active` so each completion replays the burst.
+ * parent, so the host places it inside the control's `position:relative` wrapper
+ * and the burst emanates from that button. Mounts on `active` so each completion
+ * replays the burst.
  */
 export function RadianceBurst({
   active,
@@ -53,9 +72,9 @@ export function RadianceBurst({
 }) {
   const rays = useMemo<Ray[]>(
     () =>
-      Array.from({ length: 10 }, (_, i) => ({
-        angle: (360 / 10) * i + (Math.random() - 0.5) * 18,
-        length: 22 + Math.random() * 16,
+      Array.from({ length: RAY_COUNT }, (_, i) => ({
+        angle: (360 / RAY_COUNT) * i + (Math.random() - 0.5) * 18,
+        length: 24 + Math.random() * 18,
         width: 2 + Math.random() * 1.5,
         delay: Math.random() * 120,
         color: RADIANCE_COLORS[i % RADIANCE_COLORS.length]!,
@@ -64,12 +83,12 @@ export function RadianceBurst({
   );
   const sparks = useMemo<Spark[]>(
     () =>
-      Array.from({ length: 12 }, (_, i) => {
+      Array.from({ length: SPARK_COUNT }, (_, i) => {
         const a = Math.random() * Math.PI * 2;
-        const dist = 16 + Math.random() * 24;
+        const dist = 18 + Math.random() * 26;
         return {
           dx: Math.cos(a) * dist,
-          dy: Math.sin(a) * dist - 6, // slight upward bias
+          dy: Math.sin(a) * dist - 8, // slight upward bias
           size: 3 + Math.random() * 3,
           delay: 40 + Math.random() * 200,
           color: RADIANCE_COLORS[i % RADIANCE_COLORS.length]!,
@@ -93,42 +112,49 @@ export function RadianceBurst({
       aria-hidden
       style={{ overflow: "visible" }}
     >
-      {/* Center glow pulse. */}
+      {/* Center glow — expands + fades. enter(small, visible) → base(big, gone). */}
       <View
         position="absolute"
         width={56}
         height={56}
         rounded={9999}
         opacity={0}
-        scale={0.4}
+        scale={1.8}
         transition="medium"
-        enterStyle={{ opacity: 0.5, scale: 1.2 }}
+        enterStyle={{ opacity: 0.55, scale: 0.4 }}
         style={{ backgroundColor: `${color}55` }}
       />
 
-      {/* Light rays — thin bars growing outward from center. Each is
-          rotated around the shared center and its height animates 0→length. */}
+      {/* Light rays — thin bars that shoot outward + fade. The wrapper holds the
+          STATIC rotate + radial offset; the inner node animates scaleY+opacity
+          only, so growth composes inside the rotated frame with no layout work.
+          enter(short, bright) → base(full length, gone). */}
       {rays.map((r, i) => (
         <View
           key={`ray-${i}`}
           position="absolute"
-          width={r.width}
-          height={0}
-          rounded={r.width}
-          opacity={0}
-          transition={["medium", { delay: r.delay }] as never}
-          enterStyle={{ height: r.length, opacity: 0.9 }}
           style={{
-            backgroundColor: r.color,
             transform: [
               { rotate: `${r.angle}deg` },
               { translateY: -(r.length / 2 + 8) },
             ],
           }}
-        />
+        >
+          <View
+            width={r.width}
+            height={r.length}
+            rounded={r.width}
+            opacity={0}
+            scaleY={1}
+            transition={["medium", { delay: r.delay }] as never}
+            enterStyle={{ opacity: 0.9, scaleY: 0.3 }}
+            style={{ backgroundColor: r.color }}
+          />
+        </View>
       ))}
 
-      {/* Sparkle particles — small dots drifting outward + up. */}
+      {/* Sparkle particles — drift OUTWARD + up while shrinking + fading.
+          enter(center, full, bright) → base(offset, small, gone). */}
       {sparks.map((s, i) => (
         <View
           key={`spark-${i}`}
@@ -137,8 +163,11 @@ export function RadianceBurst({
           height={s.size}
           rounded={9999}
           opacity={0}
+          x={s.dx}
+          y={s.dy}
+          scale={0.2}
           transition={["slow", { delay: s.delay }] as never}
-          enterStyle={{ x: s.dx, y: s.dy, opacity: 1 }}
+          enterStyle={{ x: 0, y: 0, opacity: 1, scale: 1 }}
           style={{ backgroundColor: s.color }}
         />
       ))}

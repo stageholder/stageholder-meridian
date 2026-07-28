@@ -14,7 +14,9 @@ import {
   YStack,
   toast,
 } from "@stageholder/ui";
-import { HabitCheckInRow } from "@repo/features/habits";
+// Shared cross-platform components. `RadianceBurst` is transform/opacity-only so
+// the same source stays cheap on native's Reanimated driver AND the PWA's CSS one.
+import { HabitCheckInRow, RadianceBurst } from "@repo/features/habits";
 import type { Habit, HabitEntry } from "@repo/core/types";
 import {
   useCreateHabitEntry,
@@ -25,7 +27,6 @@ import {
   useDeleteHabit,
 } from "@/lib/api/habits";
 import { EditHabitSheet } from "./edit-habit-sheet";
-import { RadianceBurst } from "./radiance-burst";
 
 interface HabitListItemProps {
   habit: Habit;

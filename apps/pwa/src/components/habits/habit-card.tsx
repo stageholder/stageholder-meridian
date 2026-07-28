@@ -13,7 +13,9 @@ import {
   useDeleteHabit,
 } from "@/lib/api/habits";
 import { EditHabitSheet } from "./edit-habit-sheet";
-import { RadianceBurst } from "./radiance-burst";
+// Shared cross-platform burst (PWA + native, one source). Transform/opacity-only
+// so it stays cheap on native's Reanimated driver as well as the PWA's CSS driver.
+import { RadianceBurst } from "@repo/features/habits";
 
 interface HabitCardProps {
   habit: Habit;
@@ -41,8 +43,9 @@ interface HabitCardProps {
  *    but the wording is mutation-specific and lives next to the mutation).
  *  - The web-only `EditHabitSheet` (its own SDK-hook tangle, deferred to a
  *    later platform-suffix split).
- *  - The web-only `RadianceBurst` celebration effect (bespoke CSS keyframes;
- *    plugged in via the view's `renderCompletionEffect` render-prop).
+ *  - The shared `RadianceBurst` completion effect from `@repo/features/habits`
+ *    (one cross-platform source, transform/opacity-only so it's cheap on both
+ *    the CSS and Reanimated drivers), plugged into `renderCompletionEffect`.
  *  - The orange habit category color (CSS vars driven by the design
  *    tokens shared with activity-rings + calendar).
  */
