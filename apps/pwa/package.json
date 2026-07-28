@@ -23,7 +23,7 @@
     "@repo/crypto": "*",
     "@repo/features": "*",
     "@repo/ui": "*",
-    "@stageholder/sdk": "^1.0.0-alpha.64",
+    "@stageholder/sdk": "^1.0.0-alpha.65",
     "@stageholder/ui": "^0.3.0-alpha.123",
     "@tamagui/config": "2.3.2",
     "@tamagui/lucide-icons-2": "2.3.2",
