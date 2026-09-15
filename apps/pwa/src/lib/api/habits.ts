@@ -13,6 +13,7 @@
 // When the offline rebuild lands it will reintroduce caching BEHIND these same
 // hook names + signatures, so consumers should not need to change again.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { track } from "@/analytics/events";
 import type { Habit, HabitEntry } from "@repo/core/types";
 import { lightKeys } from "./light";
 import { habitsApi } from "./clients";
@@ -68,6 +69,7 @@ export function useCreateHabit() {
   >({
     mutationFn: (data) => habitsApi.create(data),
     onSuccess: () => {
+      track({ event: "habit_create" });
       void queryClient.invalidateQueries({ queryKey: ["habits"] });
     },
   });

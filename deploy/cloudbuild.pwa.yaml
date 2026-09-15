@@ -12,6 +12,7 @@ steps:
           --build-arg VITE_PUBLIC_APP_URL=$_VITE_PUBLIC_APP_URL \
           --build-arg VITE_IDENTITY_ISSUER_URL=$_VITE_IDENTITY_ISSUER_URL \
           --build-arg VITE_IDENTITY_CLIENT_ID=$_VITE_IDENTITY_CLIENT_ID \
+          --build-arg VITE_GTM_ID=$_VITE_GTM_ID \
           --build-arg GITHUB_PACKAGES_TOKEN=$_GITHUB_PACKAGES_TOKEN \
           -f apps/pwa/Dockerfile \
           .
@@ -44,6 +45,9 @@ substitutions:
   _VITE_PUBLIC_APP_URL: https://meridian.stageholder.com
   _VITE_IDENTITY_ISSUER_URL: https://id.stageholder.com/oidc
   _VITE_IDENTITY_CLIENT_ID: meridian-web
+  # Google Tag Manager container shared by every *.stageholder.com app
+  # (GTM-TWSWZXQK in production). Empty = analytics off.
+  _VITE_GTM_ID: ""
   # _GITHUB_PACKAGES_TOKEN must be set as a substitution on the Cloud Build
   # trigger (PAT with read:packages scope on the stageholder-identity repo).
   # Visible in build logs — keep build-log access restricted.

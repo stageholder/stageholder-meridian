@@ -15,6 +15,7 @@
 // When the offline rebuild lands it will reintroduce caching BEHIND these same
 // hook names + signatures, so consumers should not need to change again.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { track } from "@/analytics/events";
 import type { TodoList, Todo } from "@repo/core/types";
 import { lightKeys } from "./light";
 import { todosApi } from "./clients";
@@ -190,6 +191,7 @@ export function useCreateTodo() {
   >({
     mutationFn: ({ listId, data }) => todosApi.createTodo(listId, data),
     onSuccess: () => {
+      track({ event: "todo_create" });
       void queryClient.invalidateQueries({ queryKey: ["todos"] });
       void queryClient.invalidateQueries({ queryKey: ["allTodos"] });
       void queryClient.invalidateQueries({ queryKey: ["calendar"] });

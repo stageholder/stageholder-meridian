@@ -10,6 +10,7 @@ import {
   useSubscription,
 } from "@stageholder/sdk/spa";
 import { refreshEntitlement } from "@/lib/entitlement";
+import { track } from "@/analytics/events";
 import { tryGetCurrentUserSub } from "@/lib/current-user-sub";
 import { openURL } from "@repo/core/platform/linking";
 import {
@@ -146,6 +147,8 @@ function BillingSuccessPage() {
   // object on each render — capturing `mutateAsync` directly in deps
   // would re-enter the effect mid-flight.
   const refreshRef = useRef(refreshSessionMutation.mutateAsync);
+  // Guards `purchase` against this effect re-running while recovery is in flight.
+  const purchaseTrackedRef = useRef(false);
   refreshRef.current = refreshSessionMutation.mutateAsync;
 
   useEffect(() => {
@@ -225,6 +228,23 @@ function BillingSuccessPage() {
       }
       if (checkoutPhase === "polling" || checkoutPhase === "idle") return;
       if (checkoutPhase === "succeeded") {
+        if (checkoutId && !purchaseTrackedRef.current) {
+          purchaseTrackedRef.current = true;
+          const planSlug = checkout.data?.planSlug ?? "unknown";
+          track({
+            event: "purchase",
+            transaction_id: checkoutId,
+            items: [
+              {
+                item_id: `meridian:${planSlug}`,
+                item_name: `Meridian ${planSlug}`,
+                item_category: "meridian",
+                item_variant: checkout.data?.billingCycle ?? undefined,
+                quantity: 1,
+              },
+            ],
+          });
+        }
         setPhase("refreshing");
         await runRecovery(false);
         return;

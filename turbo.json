@@ -20,7 +20,8 @@
         "VITE_HUB_WEB_URL",
         "VITE_PUBLIC_APP_URL",
         "VITE_IDENTITY_ISSUER_URL",
-        "VITE_IDENTITY_CLIENT_ID"
+        "VITE_IDENTITY_CLIENT_ID",
+        "VITE_GTM_ID"
       ],
       "passThroughEnv": [
         "TAURI_SIGNING_PRIVATE_KEY",

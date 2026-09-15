@@ -5,7 +5,10 @@ import {
   Moon,
   RefreshCw,
   LogOut,
+  Cookie,
 } from "@tamagui/lucide-icons-2";
+import { isAnalyticsEnabled } from "@/analytics/config";
+import { openCookieSettings } from "@/analytics/consent";
 import { useStageholder } from "@stageholder/sdk/spa";
 import { isDesktop } from "@repo/core/platform";
 import { useAppTheme } from "@/lib/platform/theme";
@@ -57,6 +60,16 @@ export function useUserMenuItems(): UserMenuItem[] {
                   .getState()
                   .requestCheck({ showWhenUpToDate: true }),
               icon: <RefreshCw size={16} />,
+            } as UserMenuItem,
+          ]
+        : []),
+      // Only where the consent banner exists (hosted web build).
+      ...(isAnalyticsEnabled()
+        ? [
+            {
+              label: "Cookie settings",
+              onSelect: () => openCookieSettings(),
+              icon: <Cookie size={16} />,
             } as UserMenuItem,
           ]
         : []),

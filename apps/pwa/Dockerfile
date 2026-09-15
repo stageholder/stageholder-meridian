@@ -40,6 +40,9 @@ ARG VITE_API_URL=/api/v1
 ENV VITE_API_URL=$VITE_API_URL
 ARG VITE_HUB_WEB_URL
 ENV VITE_HUB_WEB_URL=$VITE_HUB_WEB_URL
+# Google Tag Manager container. Empty = analytics off.
+ARG VITE_GTM_ID
+ENV VITE_GTM_ID=$VITE_GTM_ID
 RUN turbo build --filter=pwa --no-daemon && \
     if [ ! -d "/app/apps/pwa/dist" ]; then \
       echo "ERROR: Vite build did not produce apps/pwa/dist/"; exit 1; \

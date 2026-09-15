@@ -123,4 +123,5 @@ jobs:
             VITE_PUBLIC_APP_URL=${{ vars.VITE_PUBLIC_APP_URL }}
             VITE_IDENTITY_ISSUER_URL=${{ vars.VITE_IDENTITY_ISSUER_URL }}
             VITE_IDENTITY_CLIENT_ID=${{ vars.VITE_IDENTITY_CLIENT_ID }}
+            VITE_GTM_ID=${{ vars.VITE_GTM_ID }}
             GITHUB_PACKAGES_TOKEN=${{ secrets.GITHUB_TOKEN }}
