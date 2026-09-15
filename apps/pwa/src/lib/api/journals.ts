@@ -28,6 +28,7 @@ import {
   useQuery,
 } from "@tanstack/react-query";
 import type { Journal, JournalContent, JournalStats } from "@repo/core/types";
+import { track } from "@/analytics/events";
 import type { PaginatedJournals } from "@repo/core/api/journals";
 import { tryGetCurrentUserSub } from "@/lib/current-user-sub";
 import { lightKeys } from "./light";
@@ -216,6 +217,8 @@ export function useCreateJournal() {
       }
     },
     onSettled: (data) => {
+      // onSettled also runs on failure, when there is no created journal.
+      if (data) track({ event: "journal_create" });
       void queryClient.invalidateQueries({ queryKey: ["journals"] });
       void queryClient.invalidateQueries({ queryKey: lightKeys.me });
       void queryClient.invalidateQueries({ queryKey: lightKeys.stats });

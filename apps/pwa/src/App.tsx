@@ -16,6 +16,10 @@ import { EncryptionStoreInitializer } from "@/components/providers/encryption-st
 import { LogProvider } from "@/components/shared/log-provider";
 import { queryClient } from "@/lib/query-client";
 import tamaguiConfig from "../tamagui.config";
+import { GoogleTagManager } from "@/analytics/gtm";
+import { isAnalyticsEnabled } from "@/analytics/config";
+import { AnalyticsIdentity } from "@/analytics/trackers";
+import { CookieConsentBanner } from "@/components/cookie-consent/cookie-consent-banner";
 
 function InnerApp() {
   const { user, isLoading: userLoading } = useUser();
@@ -163,6 +167,14 @@ export function App() {
             </EncryptionStoreInitializer>
           </PaywallListener>
           <Toaster />
+          {/* Hosted web app only — off in the desktop build and dev. */}
+          {isAnalyticsEnabled() && (
+            <>
+              <GoogleTagManager />
+              <AnalyticsIdentity />
+              <CookieConsentBanner />
+            </>
+          )}
         </StageholderSpaProvider>
       </QueryClientProvider>
     </TamaguiBridge>

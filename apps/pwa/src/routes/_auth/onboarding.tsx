@@ -5,6 +5,7 @@ import { Button, Text, View, XStack, YStack, toast } from "@stageholder/ui";
 import { useUser as useSdkUser } from "@stageholder/sdk/spa";
 import { useUser } from "@/hooks/use-user";
 import { apiClient } from "@/lib/api-client";
+import { track } from "@/analytics/events";
 import type { MeridianUserMeta } from "@/lib/me-query";
 import {
   WelcomeStep,
@@ -56,6 +57,7 @@ function OnboardingPage() {
   // back to onboarding. `invalidateQueries` then reconciles with the server.
   const completeAndEnter = useCallback(async () => {
     await postCompletion();
+    track({ event: "tutorial_complete" });
     const key = ["meridian-user-meta", sdk.user?.sub] as const;
     queryClient.setQueryData<MeridianUserMeta>(key, (old) => ({
       personalOrgId: old?.personalOrgId ?? "",

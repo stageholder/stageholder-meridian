@@ -5,6 +5,8 @@ import tailwindcss from "@tailwindcss/vite";
 import { TanStackRouterVite } from "@tanstack/router-vite-plugin";
 import { tamaguiPlugin, tamaguiAliases } from "@tamagui/vite-plugin";
 
+import { CONSENT_INIT_SCRIPT } from "./src/analytics/consent";
+
 export default defineConfig({
   // Anchor `root` and `envDir` to the directory of this config file so
   // Vite reads `.env*` from `apps/pwa/` regardless of where `bun dev`
@@ -22,6 +24,16 @@ export default defineConfig({
   // we're certain nothing reads a `TAMAGUI_*` env var.
   envPrefix: ["VITE_", "TAMAGUI_"],
   plugins: [
+    // Consent Mode v2 defaults must run before GTM or any bundle, so they are
+    // inlined at the very top of <head>. Source of truth:
+    // src/analytics/consent.ts. Harmless in the desktop build, which never
+    // loads GTM.
+    {
+      name: "stageholder-consent-init",
+      transformIndexHtml: () => [
+        { tag: "script", children: CONSENT_INIT_SCRIPT, injectTo: "head-prepend" as const },
+      ],
+    },
     // Must run BEFORE the React plugin so the route tree is generated
     // before React compilation picks it up.
     TanStackRouterVite({
