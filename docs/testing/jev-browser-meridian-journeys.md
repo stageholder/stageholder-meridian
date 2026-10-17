@@ -492,3 +492,43 @@ Full-suite run afterwards surfaced two unrelated PWA bugs (both FIXED):
   desktop paid journey green; `first-run` and the web paid journey green on
   their own reruns after the hardening (web needed its retry once: the trial
   button took > 15 s to render under latency, hence the last change).
+
+### 2026-10-17 — PRODUCTION Hub fixed via jevb (admin, user-authorised writes)
+
+Driven with `jevb` (session `hub-prod`) on `hub.stageholder.com/admin/products/meridian`,
+with the operator's explicit go-ahead for production writes (the usual rule is
+read-only). Every write was confirmed through the Hub admin API
+(`id.stageholder.com/api/admin/...`) afterwards, not from the form state.
+
+- Apps: **created `meridian-desktop`** (Native, first-party, PKCE public client;
+  grants authorization_code + refresh_token; all scopes; redirect URIs
+  `meridian://auth/callback` + `meridian-dev://auth/callback`; post-logout
+  `https://meridian.stageholder.com/goodbye`). `meridian-web` (the client the
+  web deploy uses — `deploy/cloudbuild.pwa.yaml` default) got the missing
+  post-logout `https://meridian.stageholder.com/goodbye`.
+- **Not fixable from the UI:** the legacy `meridian` SPA client has
+  `client_credentials` in its grant types; the editor shows "Grant
+  client_credentials is not allowed for a Single-Page App" with the checkbox
+  disabled, so Save never fires (no PATCH). It still only allows
+  `http://localhost:4001/auth/callback`. Nothing in production uses it; fix the
+  row in the identity repo/DB or archive it.
+- Overview → description set to Meridian's tagline (PATCH 200, "Saved just now").
+- Plans & Pricing → Import. **Prices were deliberately NOT taken from
+  `docs/billing/meridian-hub-catalog.json`** ($4.99/$49, Rp 19,000/199,000,
+  14-day trial): production sells Unlimited at $2.29/mo, $19/yr, Rp 39,999/mo,
+  Rp 149,999/yr with a 7-day trial, and the operator chose to keep that. A copy
+  with production prices + `trialDays: 7` was imported instead (POST
+  `/plans/import` 201). Free limits now 3 habits / 5 groups / 5 lists / 10 todos.
+- Features → deleted Team Members + Storage (bulk-delete 201). Catalog is
+  Habits / Habit groups / Todo lists / Active todos.
+- Preview & sync → "UPDATE 2" (Polar product names → "Meridian Unlimited —
+  Monthly/Yearly" + hub metadata; no create/archive, no price change) → Apply →
+  2 succeeded, `sync.status: in_sync`.
+- jevb notes: `element fill` APPENDS to a non-empty field and `keyboard press
+Meta+A` does not select-all — use `page eval` `el.select()` + `keyboard type`
+  (real key events; React state updates, scripted `value=` does not submit).
+  `network requests` captured nothing; a `window.fetch` wrapper installed via
+  `page eval` did. Auto-mode classifier: only pure `jevb …` commands pass the
+  `Bash(jevb *)` allow rule — no pipes, `grep`, `sleep`.
+- Follow-ups: rotate the Hub admin password (it was pasted into the chat);
+  the catalog file in `docs/billing/` still carries the $4.99 prices.
