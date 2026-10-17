@@ -48,15 +48,11 @@ import {
   useStageholder,
   useSubscription,
 } from "@stageholder/sdk/react-native";
-import { ChevronLeft, Download, ExternalLink } from "@tamagui/lucide-icons-2";
+import { Download, ExternalLink } from "@tamagui/lucide-icons-2";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Platform } from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
 
-import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
+import { ScreenScroll } from "@/components/screen-scroll";
 import {
   canManageBilling,
   fetchInvoiceUrl,
@@ -94,7 +90,6 @@ function statusIntent(
 }
 
 export default function BillingScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
 
   const sub = useSubscription();
@@ -138,253 +133,218 @@ export default function BillingScreen() {
 
   return (
     <YStack flex={1} bg="$background">
-      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-        {/* Header: back to settings · centered title (journal-editor chrome). */}
-        <XStack items="center" px="$2" py="$2" position="relative">
-          <IconButton
-            variant="ghost"
-            size="sm"
-            aria-label="Back to settings"
-            onPress={() => router.navigate("/settings")}
-          >
-            <ChevronLeft size={20} />
-          </IconButton>
-          <Text
-            position="absolute"
-            l={0}
-            r={0}
-            text="center"
-            pointerEvents="none"
-            fontSize="$5"
-            fontWeight="600"
-            color="$color"
-          >
-            Billing
-          </Text>
-        </XStack>
+      <ScreenScroll stackScreen showsVerticalScrollIndicator={false}>
+        <YStack gap="$5" px="$4" pt="$2" pb="$10">
+          <YStack gap="$1">
+            <Text
+              fontFamily="$mono"
+              fontSize={11}
+              textTransform="uppercase"
+              letterSpacing={3.5}
+              color="$mutedForeground"
+            >
+              Billing
+            </Text>
+            <Text fontSize="$8" fontWeight="700" color="$color">
+              Your subscription
+            </Text>
+            <Paragraph fontSize="$3" color="$mutedForeground">
+              Manage your plan, payment method, and invoices.
+            </Paragraph>
+          </YStack>
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            pb: BOTTOM_NAV_CLEARANCE + insets.bottom,
-          }}
-        >
-          <YStack gap="$5" px="$4" pt="$2" pb="$10">
-            <YStack gap="$1">
+          {/* ---- Current plan (the PWA hero, card-sized) ---- */}
+          <Card>
+            <Card.Body gap="$3">
               <Text
                 fontFamily="$mono"
                 fontSize={11}
                 textTransform="uppercase"
-                letterSpacing={3.5}
+                letterSpacing={2}
                 color="$mutedForeground"
               >
-                Billing
+                Current plan
               </Text>
-              <Text fontSize="$8" fontWeight="700" color="$color">
-                Your subscription
-              </Text>
-              <Paragraph fontSize="$3" color="$mutedForeground">
-                Manage your plan, payment method, and invoices.
-              </Paragraph>
-            </YStack>
-
-            {/* ---- Current plan (the PWA hero, card-sized) ---- */}
-            <Card>
-              <Card.Body gap="$3">
-                <Text
-                  fontFamily="$mono"
-                  fontSize={11}
-                  textTransform="uppercase"
-                  letterSpacing={2}
-                  color="$mutedForeground"
-                >
-                  Current plan
+              <XStack items="center" gap="$3" flexWrap="wrap">
+                <Text fontSize="$8" fontWeight="700" color="$color">
+                  {enterprise ? "Enterprise" : (sub?.planName ?? "Free")}
                 </Text>
-                <XStack items="center" gap="$3" flexWrap="wrap">
-                  <Text fontSize="$8" fontWeight="700" color="$color">
-                    {enterprise ? "Enterprise" : (sub?.planName ?? "Free")}
-                  </Text>
-                  {sub ? (
-                    <Badge intent={statusIntent(sub.status)}>
-                      {/* Badge's frame is a View — on native, text must go
+                {sub ? (
+                  <Badge intent={statusIntent(sub.status)}>
+                    {/* Badge's frame is a View — on native, text must go
                           through the Badge.Label Text child. */}
-                      <Badge.Label>
-                        {sub.status === "past_due"
-                          ? "Past due"
-                          : sub.status.charAt(0).toUpperCase() +
-                            sub.status.slice(1)}
-                      </Badge.Label>
-                    </Badge>
-                  ) : null}
-                </XStack>
+                    <Badge.Label>
+                      {sub.status === "past_due"
+                        ? "Past due"
+                        : sub.status.charAt(0).toUpperCase() +
+                          sub.status.slice(1)}
+                    </Badge.Label>
+                  </Badge>
+                ) : null}
+              </XStack>
 
-                {/* Mono metadata rows — trial end, renewal/lapse, seats. */}
-                {sub?.trialEndsAt ? (
-                  <Text fontSize="$3" color="$mutedForeground">
-                    Trial ends {formatDate(sub.trialEndsAt)}
-                  </Text>
-                ) : null}
-                {sub?.currentPeriodEnd ? (
-                  <Text fontSize="$3" color="$mutedForeground">
-                    {sub.cancelAtPeriodEnd ? "Ends" : "Renews"}{" "}
-                    {formatDate(sub.currentPeriodEnd)}
-                  </Text>
-                ) : null}
-                {sub?.pricingModel === "seat_based" && sub.seats != null ? (
-                  <Text fontSize="$3" color="$mutedForeground">
-                    {sub.seats}
-                    {sub.memberLimit != null
-                      ? ` of ${sub.memberLimit}`
-                      : ""}{" "}
-                    seats
-                  </Text>
-                ) : null}
-                {!sub && !enterprise ? (
-                  <Paragraph fontSize="$3" color="$mutedForeground">
-                    You&apos;re on the free plan.
-                  </Paragraph>
-                ) : null}
+              {/* Mono metadata rows — trial end, renewal/lapse, seats. */}
+              {sub?.trialEndsAt ? (
+                <Text fontSize="$3" color="$mutedForeground">
+                  Trial ends {formatDate(sub.trialEndsAt)}
+                </Text>
+              ) : null}
+              {sub?.currentPeriodEnd ? (
+                <Text fontSize="$3" color="$mutedForeground">
+                  {sub.cancelAtPeriodEnd ? "Ends" : "Renews"}{" "}
+                  {formatDate(sub.currentPeriodEnd)}
+                </Text>
+              ) : null}
+              {sub?.pricingModel === "seat_based" && sub.seats != null ? (
+                <Text fontSize="$3" color="$mutedForeground">
+                  {sub.seats}
+                  {sub.memberLimit != null ? ` of ${sub.memberLimit}` : ""}{" "}
+                  seats
+                </Text>
+              ) : null}
+              {!sub && !enterprise ? (
+                <Paragraph fontSize="$3" color="$mutedForeground">
+                  You&apos;re on the free plan.
+                </Paragraph>
+              ) : null}
 
-                {canManage && activeOrgId ? (
-                  storeBilled ? (
-                    // STORE-BILLED sub (provider app_store|play): bought via
-                    // StoreKit / Play Billing. Payment, cancel, and plan
-                    // changes live in the OS subscription settings — the Polar
-                    // portal can't touch these. On a store build we also offer
-                    // an in-app plan change through the store paywall.
-                    <YStack gap="$2">
-                      {storeBuild ? (
-                        <Button
-                          intent="primary"
-                          onPress={() => router.push("/upgrade")}
-                        >
-                          Change plan
-                        </Button>
-                      ) : null}
-                      <Button
-                        intent={storeBuild ? "outline" : "primary"}
-                        iconAfter={<ExternalLink size={14} opacity={0.7} />}
-                        onPress={() => openURL(storeManagementUrl())}
-                      >
-                        Manage in{" "}
-                        {Platform.OS === "ios" ? "App Store" : "Google Play"}
-                      </Button>
-                    </YStack>
-                  ) : storeBuild ? (
-                    // STORE BUILD, web-billed (Polar) or free plan. Guideline
-                    // 3.1.1 forbids external payment links here, so the Polar
-                    // portal button is hidden (contract §6). A free user (the
-                    // auto-provisioned free tier is an active "polar" claim, so
-                    // gate on !isFreeTier) can still upgrade in-app via the
-                    // store paywall; a PAID web-billed user is told where their
-                    // plan is managed.
-                    sub && !sub.isFreeTier ? (
-                      <Paragraph fontSize="$2" color="$mutedForeground">
-                        This plan is billed on the web. Manage your payment
-                        method and plan from the Meridian web app.
-                      </Paragraph>
-                    ) : (
+              {canManage && activeOrgId ? (
+                storeBilled ? (
+                  // STORE-BILLED sub (provider app_store|play): bought via
+                  // StoreKit / Play Billing. Payment, cancel, and plan
+                  // changes live in the OS subscription settings — the Polar
+                  // portal can't touch these. On a store build we also offer
+                  // an in-app plan change through the store paywall.
+                  <YStack gap="$2">
+                    {storeBuild ? (
                       <Button
                         intent="primary"
                         onPress={() => router.push("/upgrade")}
                       >
-                        Upgrade plan
+                        Change plan
                       </Button>
-                    )
+                    ) : null}
+                    <Button
+                      intent={storeBuild ? "outline" : "primary"}
+                      iconAfter={<ExternalLink size={14} opacity={0.7} />}
+                      onPress={() => openURL(storeManagementUrl())}
+                    >
+                      Manage in{" "}
+                      {Platform.OS === "ios" ? "App Store" : "Google Play"}
+                    </Button>
+                  </YStack>
+                ) : storeBuild ? (
+                  // STORE BUILD, web-billed (Polar) or free plan. Guideline
+                  // 3.1.1 forbids external payment links here, so the Polar
+                  // portal button is hidden (contract §6). A free user (the
+                  // auto-provisioned free tier is an active "polar" claim, so
+                  // gate on !isFreeTier) can still upgrade in-app via the
+                  // store paywall; a PAID web-billed user is told where their
+                  // plan is managed.
+                  sub && !sub.isFreeTier ? (
+                    <Paragraph fontSize="$2" color="$mutedForeground">
+                      This plan is billed on the web. Manage your payment method
+                      and plan from the Meridian web app.
+                    </Paragraph>
                   ) : (
-                    // NON-store build (dev / web-distributed): the Polar portal
-                    // owns payment method, cancel, and plan changes.
                     <Button
                       intent="primary"
-                      iconAfter={<ExternalLink size={14} opacity={0.7} />}
-                      loading={portal.isPending}
-                      loadingText="Opening…"
-                      onPress={openPortal}
+                      onPress={() => router.push("/upgrade")}
                     >
-                      Manage plan & payment
+                      Upgrade plan
                     </Button>
                   )
                 ) : (
-                  <Paragraph fontSize="$2" color="$mutedForeground">
-                    Only an organization owner or admin can change billing.
-                  </Paragraph>
-                )}
-              </Card.Body>
-            </Card>
-
-            {/* ---- Invoices (the PWA ledger) ---- */}
-            <YStack gap="$2">
-              <Text fontSize="$5" fontWeight="600" color="$color">
-                Invoices
-              </Text>
-
-              {!canManage ? (
-                <Paragraph fontSize="$3" color="$mutedForeground">
-                  Invoices are visible to organization owners and admins.
-                </Paragraph>
-              ) : invoicesQuery.isLoading ? (
-                <InvoiceListSkeleton />
-              ) : invoicesQuery.isError ? (
-                <Banner intent="danger">
-                  <Banner.Body>
-                    <Banner.Title>Couldn&apos;t load invoices</Banner.Title>
-                    <Banner.Description>
-                      {(invoicesQuery.error as Error)?.message ??
-                        "Network error."}
-                    </Banner.Description>
-                    <Banner.Action self="flex-end" mt="$2">
-                      <Button
-                        intent="secondary"
-                        size="sm"
-                        onPress={() => void invoicesQuery.refetch()}
-                      >
-                        Try again
-                      </Button>
-                    </Banner.Action>
-                  </Banner.Body>
-                </Banner>
-              ) : !invoicesQuery.data || invoicesQuery.data.length === 0 ? (
-                <Paragraph fontSize="$3" color="$mutedForeground">
-                  No invoices yet.
-                </Paragraph>
+                  // NON-store build (dev / web-distributed): the Polar portal
+                  // owns payment method, cancel, and plan changes.
+                  <Button
+                    intent="primary"
+                    iconAfter={<ExternalLink size={14} opacity={0.7} />}
+                    loading={portal.isPending}
+                    loadingText="Opening…"
+                    onPress={openPortal}
+                  >
+                    Manage plan & payment
+                  </Button>
+                )
               ) : (
-                <Card>
-                  <Card.Body gap="$0" p="$0">
-                    {invoicesQuery.data.map((inv, i) => (
-                      <YStack key={inv.id}>
-                        {i > 0 ? <Separator /> : null}
-                        <InvoiceRow
-                          invoice={inv}
-                          orgId={activeOrgId!}
-                          onError={() =>
-                            toast.error("Couldn't open the invoice")
-                          }
-                        />
-                      </YStack>
-                    ))}
-                  </Card.Body>
-                </Card>
+                <Paragraph fontSize="$2" color="$mutedForeground">
+                  Only an organization owner or admin can change billing.
+                </Paragraph>
               )}
-            </YStack>
+            </Card.Body>
+          </Card>
 
-            {/* Footer mark (PWA parity). */}
-            <XStack
-              items="center"
-              justify="space-between"
-              borderTopWidth={1}
-              borderColor="$borderColor"
-              pt="$4"
-            >
-              <Text fontSize="$1" color="$mutedForeground">
-                Meridian — personal productivity
-              </Text>
-              <Text fontSize="$1" color="$mutedForeground">
-                Powered by Stageholder
-              </Text>
-            </XStack>
+          {/* ---- Invoices (the PWA ledger) ---- */}
+          <YStack gap="$2">
+            <Text fontSize="$5" fontWeight="600" color="$color">
+              Invoices
+            </Text>
+
+            {!canManage ? (
+              <Paragraph fontSize="$3" color="$mutedForeground">
+                Invoices are visible to organization owners and admins.
+              </Paragraph>
+            ) : invoicesQuery.isLoading ? (
+              <InvoiceListSkeleton />
+            ) : invoicesQuery.isError ? (
+              <Banner intent="danger">
+                <Banner.Body>
+                  <Banner.Title>Couldn&apos;t load invoices</Banner.Title>
+                  <Banner.Description>
+                    {(invoicesQuery.error as Error)?.message ??
+                      "Network error."}
+                  </Banner.Description>
+                  <Banner.Action self="flex-end" mt="$2">
+                    <Button
+                      intent="secondary"
+                      size="sm"
+                      onPress={() => void invoicesQuery.refetch()}
+                    >
+                      Try again
+                    </Button>
+                  </Banner.Action>
+                </Banner.Body>
+              </Banner>
+            ) : !invoicesQuery.data || invoicesQuery.data.length === 0 ? (
+              <Paragraph fontSize="$3" color="$mutedForeground">
+                No invoices yet.
+              </Paragraph>
+            ) : (
+              <Card>
+                <Card.Body gap="$0" p="$0">
+                  {invoicesQuery.data.map((inv, i) => (
+                    <YStack key={inv.id}>
+                      {i > 0 ? <Separator /> : null}
+                      <InvoiceRow
+                        invoice={inv}
+                        orgId={activeOrgId!}
+                        onError={() => toast.error("Couldn't open the invoice")}
+                      />
+                    </YStack>
+                  ))}
+                </Card.Body>
+              </Card>
+            )}
           </YStack>
-        </ScrollView>
-      </SafeAreaView>
+
+          {/* Footer mark (PWA parity). */}
+          <XStack
+            items="center"
+            justify="space-between"
+            borderTopWidth={1}
+            borderColor="$borderColor"
+            pt="$4"
+          >
+            <Text fontSize="$1" color="$mutedForeground">
+              Meridian — personal productivity
+            </Text>
+            <Text fontSize="$1" color="$mutedForeground">
+              Powered by Stageholder
+            </Text>
+          </XStack>
+        </YStack>
+      </ScreenScroll>
     </YStack>
   );
 }

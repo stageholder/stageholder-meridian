@@ -110,24 +110,24 @@ export function EncryptionGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Not set up — show content + the floating setup banner.
-  if (!isSetup) {
-    return (
-      <>
-        {children}
-        <SetupBanner onSetup={() => setShowSetup(true)} />
-        <PassphraseSetupDialog
-          open={showSetup}
-          onComplete={() => setShowSetup(false)}
-          onSetup={(passphrase) => setupPassphrase(passphrase)}
-          onSetupError={() => toast.error("Failed to set up encryption")}
-        />
-      </>
-    );
-  }
-
-  // Unlocked — show content.
-  return <>{children}</>;
+  // Not set up — content + the floating setup banner. Unlocked — content.
+  // The setup dialog stays mounted at the SAME tree position in both states:
+  // `setupPassphrase` flips the store to set-up + unlocked the moment the key
+  // is created, BEFORE the dialog's recovery-codes step is dismissed.
+  // Rendering it only in the not-set-up branch unmounted it right then, so
+  // the user never saw their recovery codes.
+  return (
+    <>
+      {children}
+      {!isSetup ? <SetupBanner onSetup={() => setShowSetup(true)} /> : null}
+      <PassphraseSetupDialog
+        open={showSetup}
+        onComplete={() => setShowSetup(false)}
+        onSetup={(passphrase) => setupPassphrase(passphrase)}
+        onSetupError={() => toast.error("Failed to set up encryption")}
+      />
+    </>
+  );
 }
 
 /**

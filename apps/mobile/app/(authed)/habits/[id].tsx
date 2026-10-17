@@ -27,9 +27,7 @@
 import {
   Button,
   EventCalendar,
-  IconButton,
   MediaGlyph,
-  ScrollView,
   Skeleton,
   Stat,
   StreakBadge,
@@ -47,19 +45,7 @@ import {
   calculateWeeklyStreak,
   weeklyCompletions,
 } from "@repo/core/habits/entry-resolution";
-import {
-  Archive,
-  ArchiveRestore,
-  Check,
-  ChevronLeft,
-  FolderInput,
-  Minus,
-  Pencil,
-  SkipForward,
-  Trash2,
-  Undo2,
-  X,
-} from "@tamagui/lucide-icons-2";
+import { Check, Minus, SkipForward, Undo2, X } from "@tamagui/lucide-icons-2";
 import {
   format,
   getDay,
@@ -70,16 +56,14 @@ import {
   subWeeks,
 } from "date-fns";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Alert } from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
 
 import { EditHabitDialog } from "@/components/edit-habit-dialog";
 import { HabitMoveToGroupSheet } from "@/components/habit-move-to-group-sheet";
-import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
+import { HeaderActions } from "@/components/header-actions";
+import { ScreenScroll } from "@/components/screen-scroll";
 import { IGNITION } from "@/lib/ignition-palette";
 import {
   useArchiveHabit,
@@ -92,6 +76,7 @@ import {
   useUnarchiveHabit,
   useUpdateHabitEntry,
 } from "@/lib/api";
+import { habitKeys } from "@/lib/api/keys";
 
 function parseDateLocal(input: string): Date {
   const ymd = input.length >= 10 ? input.slice(0, 10) : input;
@@ -101,9 +86,20 @@ function parseDateLocal(input: string): Date {
 export default function HabitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   const { data: habit, isLoading } = useHabit(id);
+  // Pull-to-refresh: habit + every entries window live under its detail key.
+  const qc = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = useCallback(async () => {
+    if (!id) return;
+    setRefreshing(true);
+    try {
+      await qc.refetchQueries({ queryKey: habitKeys.detail(id) });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [qc, id]);
   const deleteHabit = useDeleteHabit();
   const archiveHabit = useArchiveHabit();
   const unarchiveHabit = useUnarchiveHabit();
@@ -541,7 +537,7 @@ export default function HabitDetailScreen() {
             deleteHabit.mutate(habit.id, {
               onSuccess: () => {
                 toast.success("Habit deleted");
-                router.navigate("/habits");
+                router.back();
               },
               onError: () => toast.error("Failed to delete habit"),
             }),
@@ -552,278 +548,244 @@ export default function HabitDetailScreen() {
 
   return (
     <YStack flex={1} bg="$background">
-      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-        {/* Back bar — chevron · centered title · edit/delete actions. */}
-        <XStack items="center" justify="space-between" px="$2" py="$2">
-          <IconButton
-            variant="ghost"
-            size="sm"
-            aria-label="Back to habits"
-            onPress={() => router.navigate("/habits")}
-          >
-            <ChevronLeft size={20} />
-          </IconButton>
-          <XStack items="center" gap="$1">
-            <IconButton
-              variant="ghost"
-              size="sm"
-              aria-label="Move to group"
-              onPress={() => setMoveToGroupOpen(true)}
-            >
-              <FolderInput size={18} />
-            </IconButton>
-            {habit?.archivedAt ? (
-              <IconButton
-                variant="ghost"
-                size="sm"
-                aria-label="Unarchive habit"
-                onPress={handleUnarchive}
-              >
-                <ArchiveRestore size={18} />
-              </IconButton>
+      <HeaderActions
+        primary={
+          habit
+            ? { label: "Edit", onPress: () => setEditOpen(true) }
+            : undefined
+        }
+        menu={
+          habit
+            ? [
+                {
+                  label: "Move to group",
+                  onPress: () => setMoveToGroupOpen(true),
+                },
+                habit.archivedAt
+                  ? {
+                      label: "Unarchive",
+                      onPress: handleUnarchive,
+                    }
+                  : {
+                      label: "Archive",
+                      onPress: handleArchive,
+                    },
+                {
+                  label: "Delete habit",
+                  destructive: true,
+                  onPress: confirmDelete,
+                },
+              ]
+            : []
+        }
+      />
+      <ScreenScroll
+        stackScreen
+        showsVerticalScrollIndicator={false}
+        refreshing={refreshing}
+        onRefresh={refresh}
+      >
+        {isLoading || !habit ? (
+          <YStack gap="$3" px="$4" pt="$2">
+            {isLoading ? (
+              <>
+                <Skeleton height={32} width={192} rounded="$3" />
+                <Skeleton height={16} width={128} rounded="$3" />
+              </>
             ) : (
-              <IconButton
-                variant="ghost"
-                size="sm"
-                aria-label="Archive habit"
-                onPress={handleArchive}
-              >
-                <Archive size={18} />
-              </IconButton>
+              <Text fontSize="$3" color="$mutedForeground">
+                Habit not found.
+              </Text>
             )}
-            <IconButton
-              variant="ghost"
-              size="sm"
-              aria-label="Edit habit"
-              onPress={() => setEditOpen(true)}
-            >
-              <Pencil size={18} />
-            </IconButton>
-            <IconButton
-              variant="ghost"
-              size="sm"
-              aria-label="Delete habit"
-              onPress={confirmDelete}
-            >
-              <Trash2 size={18} color="$destructive" />
-            </IconButton>
-          </XStack>
-        </XStack>
+          </YStack>
+        ) : (
+          <YStack gap="$5" px="$4" pt="$1" pb="$10">
+            {/* ---- Identity header ---- */}
+            <XStack items="center" gap="$3">
+              <View
+                items="center"
+                justify="center"
+                height={44}
+                width={44}
+                rounded="$4"
+                bg={IGNITION.habit.track}
+              >
+                <MediaGlyph
+                  value={parseMediaIcon(habit.icon)}
+                  size={24}
+                  fallback={
+                    <Text fontSize="$6">
+                      {habit.name.charAt(0).toUpperCase()}
+                    </Text>
+                  }
+                />
+              </View>
+              <YStack flex={1} minW={0}>
+                <Text
+                  fontSize="$7"
+                  fontWeight="700"
+                  color="$color"
+                  numberOfLines={1}
+                >
+                  {habit.name}
+                </Text>
+                {habit.description ? (
+                  <Text
+                    fontSize="$2"
+                    color="$mutedForeground"
+                    numberOfLines={2}
+                  >
+                    {habit.description}
+                  </Text>
+                ) : null}
+              </YStack>
+            </XStack>
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            pb: BOTTOM_NAV_CLEARANCE + insets.bottom,
-          }}
-        >
-          {isLoading || !habit ? (
-            <YStack gap="$3" px="$4" pt="$2">
-              {isLoading ? (
-                <>
-                  <Skeleton height={32} width={192} rounded="$3" />
-                  <Skeleton height={16} width={128} rounded="$3" />
-                </>
+            {isQuota ? (
+              <Text fontSize="$3" fontWeight="500" color="$mutedForeground">
+                This week:{" "}
+                <Text fontSize="$3" fontWeight="700" color="$color">
+                  {stats.weeklyProgress}/{habit.weeklyTarget}
+                </Text>
+              </Text>
+            ) : null}
+
+            {/* ---- Stats (2-up flexWrap, PWA parity) ---- */}
+            <XStack flexWrap="wrap" gap="$2.5">
+              <Stat
+                flex={1}
+                minW={140}
+                rounded="$6"
+                borderWidth={1}
+                borderColor="$borderColor"
+                bg="$card"
+                p="$3.5"
+              >
+                <Stat.Label color="$mutedForeground">
+                  {isQuota ? "Streak (weeks)" : "Current Streak"}
+                </Stat.Label>
+                <View mt="$1.5" items="flex-start">
+                  <StreakBadge
+                    count={stats.streak}
+                    size="$3"
+                    label={isQuota ? "wks" : "days"}
+                  />
+                </View>
+              </Stat>
+              <Stat
+                flex={1}
+                minW={140}
+                rounded="$6"
+                borderWidth={1}
+                borderColor="$borderColor"
+                bg="$card"
+                p="$3.5"
+              >
+                <Stat.Label color="$mutedForeground">Longest Streak</Stat.Label>
+                <Stat.Value color="$color">
+                  {stats.longestStreak} {isQuota ? "wks" : "days"}
+                </Stat.Value>
+              </Stat>
+              <Stat
+                flex={1}
+                minW={140}
+                rounded="$6"
+                borderWidth={1}
+                borderColor="$borderColor"
+                bg="$card"
+                p="$3.5"
+              >
+                <Stat.Label color="$mutedForeground">Completions</Stat.Label>
+                <Stat.Value color="$color">{stats.totalCompletions}</Stat.Value>
+              </Stat>
+              <Stat
+                flex={1}
+                minW={140}
+                rounded="$6"
+                borderWidth={1}
+                borderColor="$borderColor"
+                bg="$card"
+                p="$3.5"
+              >
+                <Stat.Label color="$mutedForeground">
+                  Completion Rate
+                </Stat.Label>
+                <Stat.Value color="$color">{stats.completionRate}%</Stat.Value>
+              </Stat>
+            </XStack>
+
+            {/* ---- Day editor ---- */}
+            <YStack gap="$3">
+              <Text fontSize="$3" fontWeight="600" color="$color">
+                Edit a day
+              </Text>
+              <EventCalendar
+                events={[]}
+                variant="month"
+                density="compact"
+                todayIndicator="none"
+                onDateClick={(date) =>
+                  setSelectedDate(format(date, "yyyy-MM-dd"))
+                }
+                renderDayCell={({ date, isToday }) => (
+                  <DayCell
+                    date={date}
+                    isToday={isToday}
+                    today={today}
+                    selectedDate={selectedDate}
+                    dayMap={dayMap}
+                    scheduledDays={habit.scheduledDays}
+                    isQuota={isQuota}
+                  />
+                )}
+              />
+
+              {selectedDate ? (
+                <DayActionPanel
+                  selectedDate={selectedDate}
+                  today={today}
+                  habit={habit}
+                  isQuota={isQuota}
+                  isMutating={isMutating}
+                  monthEntryMap={monthEntryMap}
+                  monthEntryObjMap={monthEntryObjMap}
+                  onCheckIn={handleDateCheckIn}
+                  onUndo={handleDateUndo}
+                  onSkip={handleDateSkip}
+                  onFail={handleDateFail}
+                  onClear={handleClearNonCompletion}
+                />
               ) : (
-                <Text fontSize="$3" color="$mutedForeground">
-                  Habit not found.
+                <Text fontSize="$1" color="$mutedForeground">
+                  Tap a day to record, skip, or fix it.
                 </Text>
               )}
             </YStack>
-          ) : (
-            <YStack gap="$5" px="$4" pt="$1" pb="$10">
-              {/* ---- Identity header ---- */}
-              <XStack items="center" gap="$3">
-                <View
-                  items="center"
-                  justify="center"
-                  height={44}
-                  width={44}
-                  rounded="$4"
-                  bg={IGNITION.habit.track}
-                >
-                  <MediaGlyph
-                    value={parseMediaIcon(habit.icon)}
-                    size={24}
-                    fallback={
-                      <Text fontSize="$6">
-                        {habit.name.charAt(0).toUpperCase()}
-                      </Text>
-                    }
-                  />
-                </View>
-                <YStack flex={1} minW={0}>
-                  <Text
-                    fontSize="$7"
-                    fontWeight="700"
-                    color="$color"
-                    numberOfLines={1}
-                  >
-                    {habit.name}
-                  </Text>
-                  {habit.description ? (
-                    <Text
-                      fontSize="$2"
-                      color="$mutedForeground"
-                      numberOfLines={2}
-                    >
-                      {habit.description}
-                    </Text>
-                  ) : null}
+
+            {/* ---- Recent entries ---- */}
+            <YStack gap="$3">
+              <Text fontSize="$3" fontWeight="600" color="$color">
+                Recent Entries
+              </Text>
+              {recentEntries.length === 0 ? (
+                <Text fontSize="$1" color="$mutedForeground">
+                  No entries yet.
+                </Text>
+              ) : (
+                <YStack gap="$1.5">
+                  {recentEntries.map((entry) => (
+                    <RecentEntryRow
+                      key={entry.id}
+                      entry={entry}
+                      habit={habit}
+                    />
+                  ))}
                 </YStack>
-              </XStack>
-
-              {isQuota ? (
-                <Text fontSize="$3" fontWeight="500" color="$mutedForeground">
-                  This week:{" "}
-                  <Text fontSize="$3" fontWeight="700" color="$color">
-                    {stats.weeklyProgress}/{habit.weeklyTarget}
-                  </Text>
-                </Text>
-              ) : null}
-
-              {/* ---- Stats (2-up flexWrap, PWA parity) ---- */}
-              <XStack flexWrap="wrap" gap="$2.5">
-                <Stat
-                  flex={1}
-                  minW={140}
-                  rounded="$6"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  bg="$card"
-                  p="$3.5"
-                >
-                  <Stat.Label color="$mutedForeground">
-                    {isQuota ? "Streak (weeks)" : "Current Streak"}
-                  </Stat.Label>
-                  <View mt="$1.5" items="flex-start">
-                    <StreakBadge
-                      count={stats.streak}
-                      size="$3"
-                      label={isQuota ? "wks" : "days"}
-                    />
-                  </View>
-                </Stat>
-                <Stat
-                  flex={1}
-                  minW={140}
-                  rounded="$6"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  bg="$card"
-                  p="$3.5"
-                >
-                  <Stat.Label color="$mutedForeground">
-                    Longest Streak
-                  </Stat.Label>
-                  <Stat.Value color="$color">
-                    {stats.longestStreak} {isQuota ? "wks" : "days"}
-                  </Stat.Value>
-                </Stat>
-                <Stat
-                  flex={1}
-                  minW={140}
-                  rounded="$6"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  bg="$card"
-                  p="$3.5"
-                >
-                  <Stat.Label color="$mutedForeground">Completions</Stat.Label>
-                  <Stat.Value color="$color">
-                    {stats.totalCompletions}
-                  </Stat.Value>
-                </Stat>
-                <Stat
-                  flex={1}
-                  minW={140}
-                  rounded="$6"
-                  borderWidth={1}
-                  borderColor="$borderColor"
-                  bg="$card"
-                  p="$3.5"
-                >
-                  <Stat.Label color="$mutedForeground">
-                    Completion Rate
-                  </Stat.Label>
-                  <Stat.Value color="$color">
-                    {stats.completionRate}%
-                  </Stat.Value>
-                </Stat>
-              </XStack>
-
-              {/* ---- Day editor ---- */}
-              <YStack gap="$3">
-                <Text fontSize="$3" fontWeight="600" color="$color">
-                  Edit a day
-                </Text>
-                <EventCalendar
-                  events={[]}
-                  variant="month"
-                  density="compact"
-                  todayIndicator="none"
-                  onDateClick={(date) =>
-                    setSelectedDate(format(date, "yyyy-MM-dd"))
-                  }
-                  renderDayCell={({ date, isToday }) => (
-                    <DayCell
-                      date={date}
-                      isToday={isToday}
-                      today={today}
-                      selectedDate={selectedDate}
-                      dayMap={dayMap}
-                      scheduledDays={habit.scheduledDays}
-                      isQuota={isQuota}
-                    />
-                  )}
-                />
-
-                {selectedDate ? (
-                  <DayActionPanel
-                    selectedDate={selectedDate}
-                    today={today}
-                    habit={habit}
-                    isQuota={isQuota}
-                    isMutating={isMutating}
-                    monthEntryMap={monthEntryMap}
-                    monthEntryObjMap={monthEntryObjMap}
-                    onCheckIn={handleDateCheckIn}
-                    onUndo={handleDateUndo}
-                    onSkip={handleDateSkip}
-                    onFail={handleDateFail}
-                    onClear={handleClearNonCompletion}
-                  />
-                ) : (
-                  <Text fontSize="$1" color="$mutedForeground">
-                    Tap a day to record, skip, or fix it.
-                  </Text>
-                )}
-              </YStack>
-
-              {/* ---- Recent entries ---- */}
-              <YStack gap="$3">
-                <Text fontSize="$3" fontWeight="600" color="$color">
-                  Recent Entries
-                </Text>
-                {recentEntries.length === 0 ? (
-                  <Text fontSize="$1" color="$mutedForeground">
-                    No entries yet.
-                  </Text>
-                ) : (
-                  <YStack gap="$1.5">
-                    {recentEntries.map((entry) => (
-                      <RecentEntryRow
-                        key={entry.id}
-                        entry={entry}
-                        habit={habit}
-                      />
-                    ))}
-                  </YStack>
-                )}
-              </YStack>
+              )}
             </YStack>
-          )}
-        </ScrollView>
-      </SafeAreaView>
+          </YStack>
+        )}
+      </ScreenScroll>
 
       {habit && editOpen ? (
         <EditHabitDialog

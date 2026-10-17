@@ -25,3 +25,5 @@ node_modules/
 
 expo-env.d.ts
 # @end expo-cli
+# Maestro E2E run artifacts (screenshots, logs)
+e2e/.output/

@@ -95,6 +95,7 @@ export function HabitDateNav({
       <IconButton
         variant="ghost"
         size="sm"
+        hitSlop={8}
         aria-label="Previous day"
         onPress={() => shift(-1)}
       >
@@ -112,6 +113,7 @@ export function HabitDateNav({
       <IconButton
         variant="ghost"
         size="sm"
+        hitSlop={8}
         aria-label="Next day"
         disabled={atToday}
         onPress={() => shift(1)}

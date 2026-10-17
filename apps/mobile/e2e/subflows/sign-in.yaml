@@ -1,0 +1,74 @@
+# Hub sign-in through the system auth session (ASWebAuthenticationSession on
+# iOS, Custom Tabs on Android). Credentials come from --env; never logged.
+appId: com.stageholder.meridian
+---
+- tapOn: "Sign in with Stageholder"
+# iOS asks before handing the auth session to the browser sheet.
+- runFlow:
+    when:
+      visible: "Continue"
+      platform: iOS
+    commands:
+      - tapOn: "Continue"
+# A freshly cleared Chrome shows its first-run screens before the Custom Tab.
+- runFlow:
+    when:
+      platform: Android
+      visible: "(?i)(stay signed out|accept & continue|use without an account|no thanks)"
+    commands:
+      - repeat:
+          times: 3
+          commands:
+            - runFlow:
+                when:
+                  visible: "(?i)(stay signed out|accept & continue|use without an account|no thanks)"
+                commands:
+                  - tapOn: "(?i)(stay signed out|accept & continue|use without an account|no thanks)"
+                  - waitForAnimationToEnd
+# A still-valid Hub session (SSO cookie) skips the login page entirely.
+- extendedWaitUntil:
+    visible: "Email address|Today"
+    timeout: 45000
+# Android Custom Tabs expose the inputs by their HTML id; iOS Safari exposes
+# the placeholder text.
+- runFlow:
+    when:
+      platform: Android
+      visible: "Email address"
+    commands:
+      # A loaded emulator's keyboard can double keystrokes ("jejevb+…"):
+      # check the typed email, and redo the whole entry until the Hub accepts
+      # it (the login page goes away).
+      - retry:
+          maxRetries: 3
+          commands:
+            - tapOn:
+                id: "email"
+            - eraseText: 80
+            - inputText: ${E2E_EMAIL}
+            - assertVisible: ${E2E_EMAIL}
+            - tapOn:
+                id: "password"
+            - eraseText: 80
+            - inputText: ${E2E_PASSWORD}
+            - pressKey: Enter
+            - extendedWaitUntil:
+                notVisible: "Email address"
+                timeout: 30000
+- runFlow:
+    when:
+      platform: iOS
+      visible: "Email address"
+    commands:
+      - tapOn: "you@example.com"
+      - inputText: ${E2E_EMAIL}
+      - tapOn: "Enter your password"
+      - inputText: ${E2E_PASSWORD}
+      # Submit with Enter — the page shows "Sign in" twice (heading + button).
+      - pressKey: Enter
+# First sign-in on a fresh Hub may show an OIDC consent screen.
+- runFlow:
+    when:
+      visible: "(?i)^(allow|authorize|accept)$"
+    commands:
+      - tapOn: "(?i)^(allow|authorize|accept)$"

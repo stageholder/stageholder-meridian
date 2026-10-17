@@ -37,6 +37,12 @@ export const habitKeys = {
   details: () => [...habitKeys.all, "detail"] as const,
   detail: (id: string) => [...habitKeys.details(), id] as const,
   entries: (id: string) => [...habitKeys.detail(id), "entries"] as const,
+  // The habits-list-with-embedded-entries aggregate (GET /habits?withEntries),
+  // windowed by day count. Lives UNDER `list()` so it shares the list-invalidation
+  // umbrella; the extra segments keep it distinct from the plain list cache.
+  // Consumed by useHabitsWithEntries (Phase 4c) and patched optimistically here.
+  withEntries: (windowDays: number) =>
+    [...habitKeys.list(), "withEntries", windowDays] as const,
   // Archived habits live in their own cache so the default list stays lean —
   // the server filters them out of /habits and surfaces them via ?archivedOnly.
   archived: () => [...habitKeys.all, "archived"] as const,
@@ -64,4 +70,16 @@ export const journalKeys = {
   // separate from `stats()` so the year-long window never bloats the 30-day
   // cache the Journal Growth chart + ring share.
   heatmap: (days: number) => [...journalKeys.stats(), "heatmap", days] as const,
+};
+
+// Single-request Today dashboard aggregate (GET /dashboard/today?today=). One
+// cache entry per local day, shaped through the shared today-selector — see
+// hooks/dashboard.ts. Replaces the per-habit entries fan-out the dashboard
+// used to drive its rings/stats from.
+export const dashboardKeys = {
+  all: ["dashboard"] as const,
+  /** Prefix matching EVERY cached day. Use for setQueriesData/invalidateQueries
+   *  — never hand-roll the literal `["dashboard","today"]` (it drifts). */
+  todayAll: () => [...dashboardKeys.all, "today"] as const,
+  today: (day: string) => [...dashboardKeys.todayAll(), day] as const,
 };

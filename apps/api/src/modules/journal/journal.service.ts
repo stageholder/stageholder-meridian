@@ -15,6 +15,7 @@ import {
   DEFAULT_LIMIT,
   MAX_LIMIT,
 } from "../../shared";
+import { todayKey } from "../../common/request-timezone";
 
 @Injectable()
 export class JournalService {
@@ -133,7 +134,7 @@ export class JournalService {
     const todayStr =
       clientToday && /^\d{4}-\d{2}-\d{2}$/.test(clientToday)
         ? clientToday
-        : new Date().toISOString().slice(0, 10);
+        : todayKey();
     // Window length in days. Defaults to 30 (the Journal Growth chart + ring
     // denominator). The dashboard writing-activity heatmap requests a full
     // GitHub-style year (~371 days). Clamp to a sane range so a bad query

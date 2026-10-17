@@ -45,7 +45,10 @@
         "IDENTITY_CLIENT_ID",
         "IDENTITY_CLIENT_SECRET",
         "IDENTITY_TOKEN_AUDIENCE",
-        "MERIDIAN_API_URL"
+        "MERIDIAN_API_URL",
+        "STAGEHOLDER_WEBHOOK_SECRET",
+        "MERIDIAN_UPGRADE_PLAN_SLUG",
+        "MERIDIAN_UPGRADE_PLAN_NAME"
       ]
     },
     "check": {

@@ -22,6 +22,10 @@ import {
   YStack,
 } from "@stageholder/ui";
 
+/** After checkout: re-rotate the token until the new plan lands (~30 s). */
+const PLAN_SETTLE_ATTEMPTS = 15;
+const PLAN_SETTLE_INTERVAL_MS = 2_000;
+
 /** Hard cap on Polar polling — beyond this we run recovery optimistically. */
 const MAX_POLL_DURATION_MS = 15_000;
 
@@ -82,9 +86,17 @@ function BillingSuccessPage() {
   // below to skip polling and go straight to refresh+bust.
   const isChangePlan = search.changed === "1";
   const refreshSessionMutation = useRefreshSession();
-  const { signOut } = useStageholder();
+  const { signOut, refreshSession: rotateSession } = useStageholder();
   const queryClient = useQueryClient();
   const sub = useSubscription();
+  // The plan this page started on, and the live subscription for the
+  // recovery loop below (which runs across awaits, so it reads refs).
+  const startPlanRef = useRef<string | undefined>(sub?.plan);
+  if (startPlanRef.current === undefined && sub?.plan) {
+    startPlanRef.current = sub.plan;
+  }
+  const subRef = useRef(sub);
+  subRef.current = sub;
   // Skip the polling phase for plan-change mode — there's no Polar checkout
   // to wait on, the row was updated server-side before we got redirected.
   const [phase, setPhase] = useState<Phase>(
@@ -145,8 +157,15 @@ function BillingSuccessPage() {
   // hook re-renders. `useRefreshSession()` returns a fresh mutation
   // object on each render — capturing `mutateAsync` directly in deps
   // would re-enter the effect mid-flight.
-  const refreshRef = useRef(refreshSessionMutation.mutateAsync);
-  refreshRef.current = refreshSessionMutation.mutateAsync;
+  // ROTATE the token, then flush the SDK's cached reads. `useRefreshSession()`
+  // alone only invalidates queries — it never re-mints the access token, so
+  // the plan claim (and every limit) stayed on the pre-purchase plan until
+  // the token expired on its own (~1 h after paying).
+  const refreshRef = useRef(async () => {});
+  refreshRef.current = async () => {
+    await rotateSession();
+    await refreshSessionMutation.mutateAsync();
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -192,9 +211,33 @@ function BillingSuccessPage() {
     async function runRecovery(timeoutMode: boolean) {
       try {
         await Promise.all([refreshRef.current(), bustCaches()]);
-        if (!cancelled) setPhase(timeoutMode ? "timeout" : "ready");
+        // Polar reports the checkout "succeeded" BEFORE its webhook has
+        // updated the Hub's subscription row, so the first rotated token can
+        // still carry the old plan ("You're on Free." right after paying).
+        // Keep rotating until the plan moves off the one we started on.
+        let waited = false;
+        for (
+          let attempt = 0;
+          attempt < PLAN_SETTLE_ATTEMPTS &&
+          !cancelled &&
+          !!startPlanRef.current &&
+          subRef.current?.plan === startPlanRef.current;
+          attempt++
+        ) {
+          waited = true;
+          await new Promise((r) => setTimeout(r, PLAN_SETTLE_INTERVAL_MS));
+          if (!cancelled) await refreshRef.current();
+        }
+        if (waited) await bustCaches();
+        // No starting plan known (session still loading at mount): fall back
+        // to the checkout poll's verdict.
+        const settled = startPlanRef.current
+          ? subRef.current?.plan !== startPlanRef.current
+          : !timeoutMode;
+        // The plan itself is the source of truth: once it has moved, the
+        // purchase landed — even if Polar's checkout-status poll timed out.
+        if (!cancelled) setPhase(settled ? "ready" : "timeout");
       } catch (err) {
-        // eslint-disable-next-line no-console
         console.error("[meridian/billing/success] recovery failed:", err);
         // Still bust the local caches even if Hub-side refresh failed —
         // the next /auth/me poll will pick up new claims, and the entitlement

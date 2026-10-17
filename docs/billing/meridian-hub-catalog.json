@@ -1,0 +1,147 @@
+{
+  "version": 3,
+  "product": {
+    "slug": "meridian",
+    "pricingModel": "fixed",
+    "currencies": ["USD", "IDR"]
+  },
+  "features": [
+    {
+      "slug": "max_habits",
+      "displayName": "Habits",
+      "description": null,
+      "valueType": "number",
+      "unit": "habits",
+      "category": null,
+      "sortOrder": 0
+    },
+    {
+      "slug": "max_habit_groups",
+      "description": null,
+      "valueType": "number",
+      "category": null,
+      "displayName": "Habit groups",
+      "unit": "groups",
+      "sortOrder": 1
+    },
+    {
+      "slug": "max_todo_lists",
+      "displayName": "Todo lists",
+      "description": null,
+      "valueType": "number",
+      "unit": "lists",
+      "category": null,
+      "sortOrder": 2
+    },
+    {
+      "slug": "max_active_todos",
+      "displayName": "Active todos",
+      "description": null,
+      "valueType": "number",
+      "unit": "todos",
+      "category": null,
+      "sortOrder": 3
+    },
+    {
+      "slug": "max_members",
+      "displayName": "Team Members",
+      "description": null,
+      "valueType": "number",
+      "unit": "seats",
+      "category": "Core",
+      "sortOrder": 0
+    },
+    {
+      "slug": "storage_gb",
+      "displayName": "Storage",
+      "description": null,
+      "valueType": "number",
+      "unit": "GB",
+      "category": "Core",
+      "sortOrder": 1
+    }
+  ],
+  "plans": [
+    {
+      "slug": "free",
+      "displayName": "Free",
+      "description": "Everything you need to build the habit.",
+      "salesModel": "free",
+      "isFeatured": false,
+      "memberLimit": null,
+      "sortOrder": 0,
+      "isPublic": true,
+      "trialDays": null,
+      "highlightedFeatures": [
+        "3 habits and 5 habit groups",
+        "5 todo lists, 10 active todos",
+        "End-to-end encrypted journal",
+        "Daily rings, streaks and Light"
+      ],
+      "features": {
+        "max_active_todos": 10,
+        "max_habits": 3,
+        "max_todo_lists": 5,
+        "max_members": 3,
+        "storage_gb": 1,
+        "max_habit_groups": 5
+      }
+    },
+    {
+      "slug": "unlimited",
+      "displayName": "Unlimited",
+      "description": "No caps on habits, todos or lists.",
+      "salesModel": "self_serve",
+      "isFeatured": true,
+      "memberLimit": null,
+      "sortOrder": 1,
+      "isPublic": true,
+      "trialDays": 14,
+      "highlightedFeatures": [
+        "Unlimited habits and habit groups",
+        "Unlimited todos and todo lists",
+        "End-to-end encrypted journal",
+        "Everything in Free, with no caps"
+      ],
+      "features": {
+        "max_active_todos": -1,
+        "max_habits": -1,
+        "max_todo_lists": -1,
+        "max_members": -1,
+        "storage_gb": -1,
+        "max_habit_groups": -1
+      }
+    }
+  ],
+  "modules": [],
+  "priceComponents": [
+    {
+      "plan": "unlimited",
+      "type": "base",
+      "interval": "month",
+      "currency": "IDR",
+      "amount": 1900000
+    },
+    {
+      "plan": "unlimited",
+      "type": "base",
+      "interval": "month",
+      "currency": "USD",
+      "amount": 499
+    },
+    {
+      "plan": "unlimited",
+      "type": "base",
+      "interval": "year",
+      "currency": "IDR",
+      "amount": 19900000
+    },
+    {
+      "plan": "unlimited",
+      "type": "base",
+      "interval": "year",
+      "currency": "USD",
+      "amount": 4900
+    }
+  ]
+}

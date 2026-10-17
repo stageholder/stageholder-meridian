@@ -12,6 +12,7 @@
 // `@repo/core/platform/clipboard` — web clipboard API on web,
 // `expo-clipboard` on native.
 
+import { passphraseInputProps } from "./passphrase-input-props";
 import { useState } from "react";
 import { Button, Input, Label, Text, XStack, YStack } from "@stageholder/ui";
 // Form isn't re-exported by the kit yet; pull it from the shared tamagui dep.
@@ -145,6 +146,11 @@ export function PassphraseSetupForm({
             value={passphrase}
             onChangeText={setPassphrase}
             placeholder="Enter a strong passphrase"
+            {...passphraseInputProps({
+              kind: "new",
+              last: false,
+              onSubmit: () => void handleSetup(),
+            })}
           />
         </YStack>
         <YStack gap="$2">
@@ -157,6 +163,11 @@ export function PassphraseSetupForm({
             value={confirm}
             onChangeText={setConfirm}
             placeholder="Confirm your passphrase"
+            {...passphraseInputProps({
+              kind: "new",
+              last: true,
+              onSubmit: () => void handleSetup(),
+            })}
           />
         </YStack>
         {error ? (

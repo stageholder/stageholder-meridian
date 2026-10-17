@@ -20,7 +20,6 @@ import {
   Banner,
   Button,
   Card,
-  IconButton,
   Paragraph,
   ScrollView,
   Spinner,
@@ -35,15 +34,10 @@ import {
   useSubscription,
   useUser,
 } from "@stageholder/sdk/react-native";
-import { ChevronLeft } from "@tamagui/lucide-icons-2";
-import { useRouter } from "expo-router";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { Stack, useRouter } from "expo-router";
 
 import { openURL } from "@repo/core/platform/linking";
-import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
+import { ScreenScroll } from "@/components/screen-scroll";
 import { PlanComparison } from "@/components/plan-comparison";
 import { useHubPricing } from "@/lib/api/hub";
 import {
@@ -75,7 +69,6 @@ function periodLabel(pkg: IapPackage): string {
 }
 
 export default function UpgradeScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useUser();
   const { refreshSession } = useStageholder();
@@ -144,7 +137,9 @@ export default function UpgradeScreen() {
       toast.success("Purchase complete", {
         description: "Your plan is activating — this can take a moment.",
       });
-      router.navigate("/billing");
+      // Dismiss the paywall back to wherever it was opened from.
+      if (router.canGoBack()) router.back();
+      else router.replace("/billing");
     } catch {
       toast.error("Purchase failed");
     } finally {
@@ -155,11 +150,17 @@ export default function UpgradeScreen() {
   async function handleRestore() {
     setRestoring(true);
     try {
-      await restorePurchases();
-      void reconcileEntitlement(refreshSession);
-      toast.success("Purchases restored");
+      const restored = await restorePurchases();
+      if (restored) {
+        void reconcileEntitlement(refreshSession);
+        toast.success("Purchases restored");
+      } else {
+        toast.info("No purchases to restore", {
+          description: "This store account has no active Meridian plan.",
+        });
+      }
     } catch {
-      toast.info("Nothing to restore");
+      toast.error("Couldn't reach the store. Try again.");
     } finally {
       setRestoring(false);
     }
@@ -167,191 +168,184 @@ export default function UpgradeScreen() {
 
   return (
     <YStack flex={1} bg="$background">
-      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-        <XStack items="center" px="$2" py="$2" position="relative">
-          <IconButton
-            variant="ghost"
-            size="sm"
-            aria-label="Back to billing"
-            onPress={() => router.navigate("/billing")}
-          >
-            <ChevronLeft size={20} />
-          </IconButton>
-          <Text
-            position="absolute"
-            l={0}
-            r={0}
-            text="center"
-            pointerEvents="none"
-            fontSize="$5"
-            fontWeight="600"
-            color="$color"
-          >
-            Upgrade
-          </Text>
-        </XStack>
+      {/* Modal sheet: swipe down OR this button dismisses it. */}
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <Button
+              intent="ghost"
+              size="sm"
+              onPress={() =>
+                router.canGoBack() ? router.back() : router.replace("/")
+              }
+            >
+              Close
+            </Button>
+          ),
+        }}
+      />
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            pb: BOTTOM_NAV_CLEARANCE + insets.bottom,
-          }}
-        >
-          <YStack gap="$5" px="$4" pt="$2" pb="$10">
-            <YStack gap="$1">
-              <Text
-                fontFamily="$mono"
-                fontSize={11}
-                textTransform="uppercase"
-                letterSpacing={3.5}
-                color="$mutedForeground"
-              >
-                Plans
-              </Text>
-              <Text fontSize="$8" fontWeight="700" color="$color">
-                Choose your plan
-              </Text>
-              <Paragraph fontSize="$3" color="$mutedForeground">
-                Billed through your app store account.
-              </Paragraph>
-            </YStack>
-
-            {polarManaged ? (
-              // Active plan is web-billed (Polar) — don't sell a second,
-              // store-billed subscription on top of it (contract §4).
-              <Banner intent="info">
-                <Banner.Body>
-                  <Banner.Title>Your plan is managed on the web</Banner.Title>
-                  <Banner.Description>
-                    Your current subscription is billed through the Meridian web
-                    app. Manage or change it there — buying here would start a
-                    separate in-app subscription.
-                  </Banner.Description>
-                </Banner.Body>
-              </Banner>
-            ) : !enabled ? (
-              // Pre-store-launch builds: keys not configured yet.
-              <Banner intent="info">
-                <Banner.Body>
-                  <Banner.Title>Purchases aren&apos;t live yet</Banner.Title>
-                  <Banner.Description>
-                    In-app upgrades arrive with the store release. Until then,
-                    plans can be managed from the web app.
-                  </Banner.Description>
-                </Banner.Body>
-              </Banner>
-            ) : loadError ? (
-              <Banner intent="danger">
-                <Banner.Body>
-                  <Banner.Title>Couldn&apos;t load plans</Banner.Title>
-                  <Banner.Description>
-                    The store didn&apos;t return any offerings. Check your
-                    connection and try again.
-                  </Banner.Description>
-                  <Banner.Action self="flex-end" mt="$2">
-                    <Button
-                      intent="secondary"
-                      size="sm"
-                      onPress={() => void load()}
-                    >
-                      Try again
-                    </Button>
-                  </Banner.Action>
-                </Banner.Body>
-              </Banner>
-            ) : packages === null ? (
-              <View py="$8" items="center">
-                <Spinner size="large" />
-              </View>
-            ) : packages.length === 0 ? (
-              <Paragraph fontSize="$3" color="$mutedForeground">
-                No plans are available right now.
-              </Paragraph>
-            ) : (
-              <YStack gap="$3">
-                {packages.map((pkg) => (
-                  <Card key={pkg.identifier}>
-                    <Card.Body gap="$2">
-                      <Text fontSize="$5" fontWeight="600" color="$color">
-                        {pkg.product.title}
-                      </Text>
-                      {pkg.product.description ? (
-                        <Paragraph fontSize="$3" color="$mutedForeground">
-                          {pkg.product.description}
-                        </Paragraph>
-                      ) : null}
-                      <XStack items="baseline" gap="$2">
-                        <Text fontSize="$7" fontWeight="700" color="$color">
-                          {pkg.product.priceString}
-                        </Text>
-                        <Text fontSize="$2" color="$mutedForeground">
-                          {periodLabel(pkg)}
-                        </Text>
-                      </XStack>
-                      <Button
-                        intent="primary"
-                        mt="$2"
-                        loading={busyId === pkg.identifier}
-                        loadingText="Purchasing…"
-                        disabled={busyId !== null}
-                        onPress={() => void handlePurchase(pkg)}
-                      >
-                        Continue
-                      </Button>
-                    </Card.Body>
-                  </Card>
-                ))}
-
-                <Button
-                  intent="ghost"
-                  loading={restoring}
-                  loadingText="Restoring…"
-                  onPress={() => void handleRestore()}
-                >
-                  Restore purchases
-                </Button>
-
-                {/* Apple-required auto-renew disclosure. */}
-                <Paragraph fontSize="$1" color="$mutedForeground">
-                  Subscriptions renew automatically unless cancelled at least 24
-                  hours before the end of the current period. Manage or cancel
-                  anytime in your app store account settings.
-                </Paragraph>
-
-                {/* Required legal links (App Store guideline 3.1.2 + Play). */}
-                <XStack gap="$4" mt="$1">
-                  <Text
-                    fontSize="$1"
-                    color="$mutedForeground"
-                    textDecorationLine="underline"
-                    onPress={() => openURL(TERMS_OF_USE_URL)}
-                  >
-                    Terms of Use
-                  </Text>
-                  <Text
-                    fontSize="$1"
-                    color="$mutedForeground"
-                    textDecorationLine="underline"
-                    onPress={() => openURL(PRIVACY_POLICY_URL)}
-                  >
-                    Privacy Policy
-                  </Text>
-                </XStack>
-              </YStack>
-            )}
-
-            {/* ---- Feature comparison (PWA ComparisonSheet parity) ---- */}
-            {pricingQuery.data ? (
-              <View mt="$4">
-                <PlanComparison
-                  plans={pricingQuery.data.plans}
-                  features={pricingQuery.data.features}
-                />
-              </View>
-            ) : null}
+      <ScreenScroll stackScreen showsVerticalScrollIndicator={false}>
+        <YStack gap="$5" px="$4" pt="$2" pb="$10">
+          <YStack gap="$1">
+            <Text
+              fontFamily="$mono"
+              fontSize={11}
+              textTransform="uppercase"
+              letterSpacing={3.5}
+              color="$mutedForeground"
+            >
+              Plans
+            </Text>
+            <Text fontSize="$8" fontWeight="700" color="$color">
+              Choose your plan
+            </Text>
+            <Paragraph fontSize="$3" color="$mutedForeground">
+              Billed through your app store account.
+            </Paragraph>
           </YStack>
-        </ScrollView>
-      </SafeAreaView>
+
+          {polarManaged ? (
+            // Active plan is web-billed (Polar) — don't sell a second,
+            // store-billed subscription on top of it (contract §4).
+            <Banner intent="info">
+              <Banner.Body>
+                <Banner.Title>Your plan is managed on the web</Banner.Title>
+                <Banner.Description>
+                  Your current subscription is billed through the Meridian web
+                  app. Manage or change it there — buying here would start a
+                  separate in-app subscription.
+                </Banner.Description>
+              </Banner.Body>
+            </Banner>
+          ) : !enabled ? (
+            // Pre-store-launch builds: keys not configured yet.
+            <Banner intent="info">
+              <Banner.Body>
+                <Banner.Title>Purchases aren&apos;t live yet</Banner.Title>
+                <Banner.Description>
+                  In-app upgrades arrive with the store release. Until then,
+                  plans can be managed from the web app.
+                </Banner.Description>
+              </Banner.Body>
+            </Banner>
+          ) : loadError ? (
+            <Banner intent="danger">
+              <Banner.Body>
+                <Banner.Title>Couldn&apos;t load plans</Banner.Title>
+                <Banner.Description>
+                  The store didn&apos;t return any offerings. Check your
+                  connection and try again.
+                </Banner.Description>
+                <Banner.Action self="flex-end" mt="$2">
+                  <Button
+                    intent="secondary"
+                    size="sm"
+                    onPress={() => void load()}
+                  >
+                    Try again
+                  </Button>
+                </Banner.Action>
+              </Banner.Body>
+            </Banner>
+          ) : packages === null ? (
+            <View py="$8" items="center">
+              <Spinner size="large" />
+            </View>
+          ) : packages.length === 0 ? (
+            <Paragraph fontSize="$3" color="$mutedForeground">
+              No plans are available right now.
+            </Paragraph>
+          ) : (
+            <YStack gap="$3">
+              {packages.map((pkg) => (
+                <Card key={pkg.identifier}>
+                  <Card.Body gap="$2">
+                    <Text fontSize="$5" fontWeight="600" color="$color">
+                      {pkg.product.title}
+                    </Text>
+                    {pkg.product.description ? (
+                      <Paragraph fontSize="$3" color="$mutedForeground">
+                        {pkg.product.description}
+                      </Paragraph>
+                    ) : null}
+                    <XStack items="baseline" gap="$2">
+                      <Text fontSize="$7" fontWeight="700" color="$color">
+                        {pkg.product.priceString}
+                      </Text>
+                      <Text fontSize="$2" color="$mutedForeground">
+                        {periodLabel(pkg)}
+                      </Text>
+                    </XStack>
+                    <Button
+                      intent="primary"
+                      mt="$2"
+                      loading={busyId === pkg.identifier}
+                      loadingText="Purchasing…"
+                      disabled={busyId !== null}
+                      onPress={() => void handlePurchase(pkg)}
+                    >
+                      Continue
+                    </Button>
+                  </Card.Body>
+                </Card>
+              ))}
+
+              {/* Apple-required auto-renew disclosure. */}
+              <Paragraph fontSize="$1" color="$mutedForeground">
+                Subscriptions renew automatically unless cancelled at least 24
+                hours before the end of the current period. Manage or cancel
+                anytime in your app store account settings.
+              </Paragraph>
+
+              {/* Required legal links (App Store guideline 3.1.2 + Play). */}
+              <XStack gap="$4" mt="$1">
+                <Text
+                  fontSize="$1"
+                  color="$mutedForeground"
+                  textDecorationLine="underline"
+                  onPress={() => openURL(TERMS_OF_USE_URL)}
+                >
+                  Terms of Use
+                </Text>
+                <Text
+                  fontSize="$1"
+                  color="$mutedForeground"
+                  textDecorationLine="underline"
+                  onPress={() => openURL(PRIVACY_POLICY_URL)}
+                >
+                  Privacy Policy
+                </Text>
+              </XStack>
+            </YStack>
+          )}
+
+          {/* Restore is reachable whenever store purchases are live — not
+                only once offerings load: a reinstalling subscriber whose
+                offerings fetch failed must still be able to restore
+                (App Review 3.1.1). */}
+          {enabled && !polarManaged ? (
+            <Button
+              intent="ghost"
+              loading={restoring}
+              loadingText="Restoring…"
+              onPress={() => void handleRestore()}
+            >
+              Restore purchases
+            </Button>
+          ) : null}
+
+          {/* ---- Feature comparison (PWA ComparisonSheet parity) ---- */}
+          {pricingQuery.data ? (
+            <View mt="$4">
+              <PlanComparison
+                plans={pricingQuery.data.plans}
+                features={pricingQuery.data.features}
+              />
+            </View>
+          ) : null}
+        </YStack>
+      </ScreenScroll>
     </YStack>
   );
 }

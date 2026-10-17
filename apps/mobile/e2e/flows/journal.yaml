@@ -1,0 +1,38 @@
+# Unlock the encrypted journal, write an entry, "Done" waits for the save,
+# the entry is in the list.
+appId: com.stageholder.meridian
+name: journal
+---
+- runFlow: ../subflows/launch-signed-in.yaml
+- evalScript: ${output.words = 'JEVB E2E entry ' + String(Date.now()).slice(-8)}
+- runFlow:
+    file: ../subflows/tab.yaml
+    env:
+      TAB_LABEL: "Journal"
+      TAB_ID: "tab-journal"
+- runFlow: ../subflows/unlock-journal.yaml
+# Unlock decrypts the list — wait until it has rendered (the account is
+# reset per run, so it's the empty state) before using the FAB.
+- extendedWaitUntil:
+    visible: "No entries yet|.*JEVB E2E.*"
+    timeout: 60000
+- tapOn:
+    id: "fab-new-journal"
+- assertVisible: "New entry"
+- waitForAnimationToEnd
+# The editor body is a WebView (its placeholder isn't in the native
+# accessibility tree) — tap into the writing area below the chips.
+- tapOn:
+    point: "50%,30%"
+- inputText: ${output.words}
+# Autosave = encrypt + POST; give slow emulators room.
+- extendedWaitUntil:
+    visible: "Saved"
+    timeout: 60000
+- tapOn: "Done"
+# Back on the list with the new entry (decrypted) in it.
+- extendedWaitUntil:
+    visible: ".*${output.words}.*"
+    timeout: 30000
+- assertVisible:
+    id: "fab-new-journal"

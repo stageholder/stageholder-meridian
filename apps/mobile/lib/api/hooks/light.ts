@@ -14,6 +14,7 @@ import type { LightStats, UserLight } from "@repo/core/types";
 import { createLightApi } from "@repo/core/api/light";
 
 import { apiClient } from "../client";
+import { invalidateDashboardToday } from "../dashboard-cache";
 
 // The SAME framework-agnostic factory the PWA instantiates in its
 // lib/api/clients.ts — owns paths AND response unwrapping (e.g. /light/events
@@ -83,6 +84,8 @@ export function useUpdateTargets() {
       // Server-authoritative; replace the cached UserLight directly so
       // the rest of the app sees the new targets immediately.
       qc.setQueryData(lightKeys.me(), data);
+      // The Today rings read their maxes from the aggregate's `light` copy.
+      invalidateDashboardToday(qc);
     },
   });
 }

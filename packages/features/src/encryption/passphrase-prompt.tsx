@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { passphraseInputProps } from "./passphrase-input-props";
 import { Button, H2, Input, Text, View, XStack, YStack } from "@stageholder/ui";
 // Form isn't re-exported by the kit yet; pull it from the shared tamagui dep.
 import { Form } from "tamagui";
@@ -89,6 +90,11 @@ export function PassphrasePrompt({
             value={passphrase}
             onChangeText={setPassphrase}
             placeholder="Encryption passphrase"
+            {...passphraseInputProps({
+              kind: "current",
+              last: true,
+              onSubmit: () => void handleUnlock(),
+            })}
             autoFocus
           />
           {error ? (

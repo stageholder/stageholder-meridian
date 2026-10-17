@@ -27,7 +27,16 @@ function RisingStatValue({
       key={generation.current}
       value={value}
       animate
-      format={compact ? "compact" : undefined}
+      // The count tween formats every in-between frame with Intl's default of
+      // up to 3 fraction digits, so a whole-number KPI flickered through
+      // "7.314" on its way to 12. Integers tween as integers.
+      format={
+        compact
+          ? "compact"
+          : Number.isInteger(value)
+            ? { decimals: 0 }
+            : undefined
+      }
     />
   );
 }

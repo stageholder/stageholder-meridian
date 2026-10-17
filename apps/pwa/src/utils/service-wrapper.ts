@@ -1,6 +1,7 @@
 import { createAuthenticatedFetch } from "@stageholder/sdk/spa";
 import { openURL } from "@repo/core/platform/linking";
 import { MERIDIAN_PAYWALL_EVENT } from "@/components/paywall-listener";
+import { deviceTimeZone } from "@repo/core/utils/timezone";
 
 interface Api402Body {
   code: string;
@@ -117,6 +118,9 @@ export class ServiceWrapper {
     }
 
     const headers = new Headers({ "Content-Type": "application/json" });
+    // Server computes "today" (Light, streak days) in the user's zone.
+    const tz = deviceTimeZone();
+    if (tz) headers.set("X-Timezone", tz);
     const init: RequestInit = { method, signal: config.signal, headers };
     if (body !== undefined && method !== "GET" && method !== "HEAD") {
       init.body = JSON.stringify(body);

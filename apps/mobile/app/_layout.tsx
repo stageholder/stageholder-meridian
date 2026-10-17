@@ -33,12 +33,23 @@ import {
   Theme,
   Toaster,
 } from "@stageholder/ui";
-import { TamaguiProvider } from "tamagui";
+import { TamaguiProvider, useTheme } from "tamagui";
 import Constants from "expo-constants";
-import { SplashScreen, Stack, useRouter } from "expo-router";
+// SDK 56: expo-router vendors react-navigation and re-exports the theming
+// surface directly — importing from "@react-navigation/native" no longer
+// resolves (and installing it separately would create a SECOND copy whose
+// contexts expo-router's vendored copy never writes to).
+import {
+  DarkTheme as NavDarkTheme,
+  DefaultTheme as NavDefaultTheme,
+  SplashScreen,
+  Stack,
+  ThemeProvider as NavThemeProvider,
+  useRouter,
+} from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as WebBrowser from "expo-web-browser";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -83,12 +94,52 @@ const CLIENT_ID =
  * previous user's DEK nor any of their decrypted/cached journal data. (The
  * on-disk cache purge is gone with cache persistence itself — nothing is
  * written to disk anymore; see lib/api/query-client.ts.) Idempotent — safe
- * to run from more than one path (profile-sheet also calls this pre-signOut,
+ * to run from more than one path (lib/hooks/use-sign-out also calls this pre-signOut,
  * and onSignedOut/onAuthError may both fire around a teardown).
  */
 function purgeSessionState(): void {
   lockJournal();
   queryClient.clear();
+}
+
+/**
+ * The router stack, themed for React Navigation.
+ *
+ * React Navigation's scene / card containers default to ITS OWN theme's
+ * `colors.background` — white in the light `DefaultTheme` — not the Tamagui
+ * theme. Expo Router never set a nav theme here, so in dark mode that white
+ * container flashed through during every tab switch and screen mount, for the
+ * frame before each screen's own `bg="$background"` painted over it (the
+ * journal "blink to light" — but it affected every route). Feeding React
+ * Navigation the SAME background token Tamagui uses makes the container dark
+ * from the first frame, so nothing flashes. Lives in its own component so it
+ * can read the live Tamagui theme via `useTheme()` (only valid below
+ * TamaguiProvider). `contentStyle` covers the native-stack scenes; the nav
+ * theme's `colors.background`/`card` cover the nested Tabs navigator's scene
+ * container (see (authed)/_layout.tsx, which also pins `sceneStyle`).
+ */
+function ThemedStack({ resolvedTheme }: { resolvedTheme: "light" | "dark" }) {
+  const theme = useTheme();
+  const bg =
+    theme.background?.val ?? (resolvedTheme === "dark" ? "#000000" : "#ffffff");
+  const navTheme = useMemo(() => {
+    const base = resolvedTheme === "dark" ? NavDarkTheme : NavDefaultTheme;
+    return { ...base, colors: { ...base.colors, background: bg, card: bg } };
+  }, [resolvedTheme, bg]);
+
+  return (
+    <NavThemeProvider value={navTheme}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: bg },
+        }}
+      >
+        <Stack.Screen name="sign-in" />
+        <Stack.Screen name="(authed)" />
+      </Stack>
+    </NavThemeProvider>
+  );
 }
 
 export default function RootLayout() {
@@ -252,10 +303,7 @@ export default function RootLayout() {
                       <StatusBar
                         style={resolvedTheme === "dark" ? "light" : "dark"}
                       />
-                      <Stack screenOptions={{ headerShown: false }}>
-                        <Stack.Screen name="sign-in" />
-                        <Stack.Screen name="(authed)" />
-                      </Stack>
+                      <ThemedStack resolvedTheme={resolvedTheme} />
                       {/* Server-driven paywall — listens for the API's 402
                           limit_reached event and slides up the upgrade sheet
                           over whatever screen the user is on. */}

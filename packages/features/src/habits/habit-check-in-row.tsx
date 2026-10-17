@@ -28,6 +28,7 @@ import {
 } from "@stageholder/ui";
 import {
   Check,
+  MoreHorizontal,
   RotateCcw,
   SkipForward,
   Target,
@@ -65,6 +66,13 @@ export interface HabitCheckInRowProps {
   onFail: () => void | Promise<void>;
   onUndo: () => void | Promise<void>;
   onClearStatus: () => void | Promise<void>;
+  /**
+   * When set, the open-day Skip + Fail icon pair collapses into ONE "More"
+   * button that calls this (native hosts open a platform action sheet).
+   * A bare X next to Skip read as "dismiss", and one stray tap failed the
+   * day. Omit to keep the inline pair (PWA).
+   */
+  onShowMoreActions?: () => void;
   /** Optional second line under the name (mobile: "2 / 3"; PWA: description). */
   subtitle?: ReactNode;
   /** Between identity and the status control (PWA week-dot strip). */
@@ -107,6 +115,7 @@ export function HabitCheckInRow({
   onFail,
   onUndo,
   onClearStatus,
+  onShowMoreActions,
   subtitle,
   middleSlot,
   trailingSlot,
@@ -146,8 +155,9 @@ export function HabitCheckInRow({
       borderWidth={1}
       borderColor="$borderColor"
       bg="$card"
-      // Border fade on hover/press — same on web + native (Tamagui v2).
-      transition="quick"
+      // Web hover border fade only — no `transition` (it added an always-on
+      // Reanimated spring hook per row on native, for a hover effect native
+      // can't show; the smooth sibling apps animate zero row props).
       hoverStyle={{ borderColor: "$primary" }}
     >
       {/* Identity — icon + name (+ subtitle); tap to open the detail. */}
@@ -258,6 +268,7 @@ export function HabitCheckInRow({
                 size="sm"
                 disabled={disabled}
                 aria-label="Clear status"
+                hitSlop={6}
                 onPress={() => void onClearStatus()}
               >
                 <RotateCcw size={14} />
@@ -268,9 +279,21 @@ export function HabitCheckInRow({
                 size="sm"
                 disabled={disabled}
                 aria-label="Undo last check-in"
+                hitSlop={6}
                 onPress={() => void onUndo()}
               >
                 <RotateCcw size={14} />
+              </IconButton>
+            ) : onShowMoreActions ? (
+              <IconButton
+                variant="outline"
+                size="sm"
+                hitSlop={6}
+                disabled={disabled}
+                aria-label="More actions: skip or mark failed"
+                onPress={onShowMoreActions}
+              >
+                <MoreHorizontal size={14} />
               </IconButton>
             ) : (
               <>

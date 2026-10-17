@@ -25,18 +25,10 @@
 // Deliberately NOT ported: the Today activity rings (the Today tab already
 // renders them one tap away).
 //
-// Reached from the Today dashboard's level-progress card (tap), not a tab —
-// registered with `href: null`, back chevron returns to Today.
+// Pushed (native stack) from the Today level card / Settings; the stack
+// header owns title + back, so Back returns wherever the user came from.
 
-import {
-  IconButton,
-  ScrollView,
-  Spinner,
-  Text,
-  View,
-  XStack,
-  YStack,
-} from "@stageholder/ui";
+import { Button, Spinner, Text, View, XStack, YStack } from "@stageholder/ui";
 import {
   JourneyFeed,
   JourneyStats,
@@ -48,15 +40,10 @@ import {
 } from "@repo/features/light";
 import { JourneyLightChart } from "@repo/features/charts";
 import { LIGHT_TIERS, type UserLight } from "@repo/core/types/light";
-import { ChevronLeft } from "@tamagui/lucide-icons-2";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
 
-import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
+import { ScreenScroll } from "@/components/screen-scroll";
 import { useLightEvents, useUserLight } from "@/lib/api";
 import { useLevelUp } from "@/lib/use-level-up";
 import { useLightTrend } from "@/lib/use-light-trend";
@@ -65,8 +52,6 @@ const FEED_INITIAL = 10;
 const FEED_STEP = 20;
 
 export default function JourneyScreen() {
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
   const lightQuery = useUserLight();
   const userLight = lightQuery.data;
   const { levelUpTier, dismiss } = useLevelUp(userLight);
@@ -92,134 +77,133 @@ export default function JourneyScreen() {
   // Never hand the feed anything but a real array.
   const events = Array.isArray(eventsQuery.data) ? eventsQuery.data : [];
 
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([lightQuery.refetch(), eventsQuery.refetch()]);
+    } finally {
+      setRefreshing(false);
+    }
+    // refetch fns are referentially stable in RQ v5.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lightQuery.refetch, eventsQuery.refetch]);
+
   return (
     <YStack flex={1} bg="$background">
-      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-        {/* Header: back to Today · centered title. */}
-        <XStack items="center" px="$2" py="$2" position="relative">
-          <IconButton
-            variant="ghost"
-            size="sm"
-            aria-label="Back to today"
-            onPress={() => router.navigate("/")}
-          >
-            <ChevronLeft size={20} />
-          </IconButton>
-          <Text
-            position="absolute"
-            l={0}
-            r={0}
-            text="center"
-            pointerEvents="none"
-            fontSize="$5"
-            fontWeight="600"
-            color="$color"
-          >
-            Journey
-          </Text>
-        </XStack>
-
-        {userLight ? (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{
-              pb: BOTTOM_NAV_CLEARANCE + insets.bottom,
-            }}
-          >
-            <YStack gap="$5" px="$4" pt="$2" pb="$10">
-              {/* ---- Hero — star · title · total Light · progress ---- */}
-              <YStack
-                items="center"
-                rounded="$6"
-                borderWidth={1}
-                borderColor="rgba(245, 158, 11, 0.22)"
-                bg="rgba(245, 158, 11, 0.05)"
-                px="$5"
-                pt="$6"
-                pb="$5"
-                enterStyle={{ opacity: 0, y: 12 }}
-                transition="medium"
-              >
-                <StarVisual
-                  tier={userLight.currentTier}
-                  size="xl"
-                  animate={focused}
-                />
-                <Text
-                  mt="$3"
-                  fontSize="$8"
-                  fontWeight="700"
-                  letterSpacing={-0.5}
-                  color="$color"
-                >
-                  {userLight.currentTitle}
-                </Text>
-                <Text mt="$0.5" fontSize="$3" color="$mutedForeground">
-                  {userLight.totalLight.toLocaleString()} Light earned
-                </Text>
-                <View mt="$5" width="100%">
-                  <LevelProgress userLight={userLight} />
-                </View>
-              </YStack>
-
-              {/* ---- Quick stats ---- */}
-              <JourneyStats userLight={userLight} />
-
-              {/* ---- Current tier's long description ---- */}
+      {userLight ? (
+        <ScreenScroll
+          stackScreen
+          showsVerticalScrollIndicator={false}
+          refreshing={refreshing}
+          onRefresh={refresh}
+        >
+          <YStack gap="$5" px="$4" pt="$2" pb="$10">
+            {/* ---- Hero — star · title · total Light · progress ---- */}
+            <YStack
+              items="center"
+              rounded="$6"
+              borderWidth={1}
+              borderColor="rgba(245, 158, 11, 0.22)"
+              bg="rgba(245, 158, 11, 0.05)"
+              px="$5"
+              pt="$6"
+              pb="$5"
+              enterStyle={{ opacity: 0, y: 12 }}
+              transition="medium"
+            >
+              <StarVisual
+                tier={userLight.currentTier}
+                size="xl"
+                animate={focused}
+              />
               <Text
-                fontSize="$3"
-                color="$mutedForeground"
-                text="center"
-                px="$2"
-                lineHeight={20}
+                mt="$3"
+                fontSize="$8"
+                fontWeight="700"
+                letterSpacing={-0.5}
+                color="$color"
               >
-                {LIGHT_TIERS[userLight.currentTier - 1]?.description}
+                {userLight.currentTitle}
               </Text>
-
-              {/* ---- Streaks ---- */}
-              <YStack gap="$3">
-                <SectionLabel>Streaks</SectionLabel>
-                <JourneyStreaks userLight={userLight} />
-              </YStack>
-
-              {/* ---- Light earned (14-day cumulative trend) — the shared
-                   chart view over the kit's cross-platform AreaChart. ---- */}
-              <YStack gap="$3">
-                <SectionLabel>Light Earned</SectionLabel>
-                <JourneyLightChart
-                  data={lightTrend.data}
-                  isLoading={lightTrend.isLoading}
-                />
-              </YStack>
-
-              {/* ---- The path (redesigned vertical tier map) ---- */}
-              <YStack gap="$3">
-                <SectionLabel>The Path</SectionLabel>
-                <JourneyTierMap
-                  currentTier={userLight.currentTier}
-                  totalLight={userLight.totalLight}
-                  animateStars={focused}
-                />
-              </YStack>
-
-              {/* ---- Recent Light feed ---- */}
-              <YStack gap="$3">
-                <SectionLabel>Recent Light</SectionLabel>
-                <JourneyFeed
-                  events={events}
-                  isLoading={eventsQuery.isLoading}
-                  canLoadMore={events.length >= feedLimit}
-                  onLoadMore={() => setFeedLimit((l) => l + FEED_STEP)}
-                />
-              </YStack>
+              <Text mt="$0.5" fontSize="$3" color="$mutedForeground">
+                {userLight.totalLight.toLocaleString()} Light earned
+              </Text>
+              <View mt="$5" width="100%">
+                <LevelProgress userLight={userLight} />
+              </View>
             </YStack>
-          </ScrollView>
-        ) : (
-          <View flex={1} items="center" justify="center">
-            <Spinner size="large" />
-          </View>
-        )}
-      </SafeAreaView>
+
+            {/* ---- Quick stats ---- */}
+            <JourneyStats userLight={userLight} />
+
+            {/* ---- Current tier's long description ---- */}
+            <Text
+              fontSize="$3"
+              color="$mutedForeground"
+              text="center"
+              px="$2"
+              lineHeight={20}
+            >
+              {LIGHT_TIERS[userLight.currentTier - 1]?.description}
+            </Text>
+
+            {/* ---- Streaks ---- */}
+            <YStack gap="$3">
+              <SectionLabel>Streaks</SectionLabel>
+              <JourneyStreaks userLight={userLight} />
+            </YStack>
+
+            {/* ---- Light earned (14-day cumulative trend) — the shared
+                   chart view over the kit's cross-platform AreaChart. ---- */}
+            <YStack gap="$3">
+              <SectionLabel>Light Earned</SectionLabel>
+              <JourneyLightChart
+                data={lightTrend.data}
+                isLoading={lightTrend.isLoading}
+              />
+            </YStack>
+
+            {/* ---- The path (redesigned vertical tier map) ---- */}
+            <YStack gap="$3">
+              <SectionLabel>The Path</SectionLabel>
+              <JourneyTierMap
+                currentTier={userLight.currentTier}
+                totalLight={userLight.totalLight}
+                animateStars={focused}
+              />
+            </YStack>
+
+            {/* ---- Recent Light feed ---- */}
+            <YStack gap="$3">
+              <SectionLabel>Recent Light</SectionLabel>
+              <JourneyFeed
+                events={events}
+                isLoading={eventsQuery.isLoading}
+                canLoadMore={events.length >= feedLimit}
+                onLoadMore={() => setFeedLimit((l) => l + FEED_STEP)}
+              />
+            </YStack>
+          </YStack>
+        </ScreenScroll>
+      ) : lightQuery.isError ? (
+        <YStack flex={1} items="center" justify="center" gap="$3" p="$6">
+          <Text fontSize="$4" color="$color" text="center">
+            Couldn&apos;t load your journey.
+          </Text>
+          <Button
+            size="sm"
+            variant="outlined"
+            onPress={() => void lightQuery.refetch()}
+          >
+            Try again
+          </Button>
+        </YStack>
+      ) : (
+        <View flex={1} items="center" justify="center">
+          <Spinner size="large" />
+        </View>
+      )}
 
       {levelUpTier ? (
         <LevelUpCelebration tier={levelUpTier} onDismiss={dismiss} />

@@ -41,6 +41,8 @@ export class HabitController {
     @Query("updatedSince") updatedSince?: string,
     @Query("includeSoftDeleted") includeSoftDeleted?: string,
     @Query("archivedOnly") archivedOnly?: string,
+    @Query("withEntries") withEntries?: string,
+    @Query("today") today?: string,
   ) {
     if (updatedSince) {
       return this.service.findUpdatedSince(
@@ -51,6 +53,25 @@ export class HabitController {
     }
     if (archivedOnly === "true") {
       return this.service.listArchived(req.user.sub);
+    }
+    // Aggregation: `?withEntries=90d` (or `?withEntries=90`) collapses the
+    // per-habit entries fan-out into one bulk query. Additive — omitting the
+    // param keeps the existing paginated response byte-identical.
+    if (withEntries) {
+      const parsed = parseInt(withEntries, 10);
+      // Clamp to [1, 366]: default 90 when absent/invalid; cap so a bogus
+      // `?withEntries=1000000` can't turn one call into a full entry-history scan.
+      const days =
+        Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 366) : 90;
+      // Client-local `today` (yyyy-mm-dd) anchors the window on the caller's day
+      // rather than the server's UTC day; ignored unless well-formed.
+      const clientToday =
+        today && /^\d{4}-\d{2}-\d{2}$/.test(today) ? today : undefined;
+      return this.service.listByUserWithEntries(
+        req.user.sub,
+        days,
+        clientToday,
+      );
     }
     return this.service.listByUser(
       req.user.sub,

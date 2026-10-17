@@ -110,6 +110,19 @@ export class HabitEntryService {
     return this.repository.findByHabit(userSub, habitId);
   }
 
+  /** All of a user's entries across ALL habits within a date window — one
+   *  query. Powers the aggregation endpoints (dashboard/today, habits
+   *  ?withEntries) so screens fetch entries once instead of fanning out one
+   *  request per habit. Decrypt/mapping is identical to `listByHabit` — both
+   *  just delegate to the repository, which already decrypts in `toDomain()`. */
+  async listByUserAndDateRange(
+    userSub: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<HabitEntry[]> {
+    return this.repository.findByUserAndDateRange(userSub, startDate, endDate);
+  }
+
   async listByHabitPaginated(
     userSub: string,
     habitId: string,

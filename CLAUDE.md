@@ -175,6 +175,12 @@ Any string works as a custom agent type.
 npm run build && npm test
 ```
 
+## Browser testing with Jev (`jevb`)
+
+UI verification against the running local stack is done with the `jevb` CLI (jev-browser-cli, TypeSafe Jev), installed and authenticated per machine, not per repo (`bun add -g jev-browser-cli`, `jevb auth status`). Plan, conventions, journeys and run log: `docs/testing/jev-browser-meridian-journeys.md`. Agent conventions: `.claude/skills/jev-browser/SKILL.md`. `jev-browser.json` at the repo root opens a visible Chrome window (`"headed": true`), so run `jevb` from the root. Stack: PWA `:4001`, API `:4000`, Hub `:4828`/`:4829`. The operator starts the servers; the agent only drives the browser. Covers the PWA/desktop only, not the Expo native app. Test data is prefixed `JEVB `.
+
+**Regression suite:** the reproducible half of that work is the Playwright suite in `apps/pwa/e2e/` (README there). After changing a feature, with the stack running: `cd apps/pwa && bun run e2e` (~2-3 min, all journeys in a visible Chromium window; `bun run e2e:watch` slows it down, `bun run e2e:headless` hides it). It uses a dedicated `jevb+meridian-owner@e2e.stageholder.com` account whose credentials live only in the gitignored `apps/pwa/e2e/.env.e2e`, and wipes that account's data around each spec so every run starts the same.
+
 ## CLI Quick Reference
 
 ```bash

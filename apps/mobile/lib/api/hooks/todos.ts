@@ -10,6 +10,7 @@
 //   - useDeleteTodo: instant row removal on swipe-to-delete
 // Rollback on error via snapshotted previous state.
 
+import { useCallback } from "react";
 import {
   useMutation,
   useQuery,
@@ -20,6 +21,14 @@ import type { Todo, TodoList } from "@repo/core/types";
 
 import { apiClient } from "../client";
 import { todoKeys, todoListKeys } from "../keys";
+import {
+  invalidateDashboardToday,
+  invalidateDebounced,
+  patchDashboardTodo,
+  removeDashboardTodo,
+  settleDerivedAggregates,
+  writeDashboardTodo,
+} from "../dashboard-cache";
 
 // DATA-LAYER CONTRACT — see hooks/habits.ts: one optimistic setQueriesData
 // write for the HOT taps (toggle / swipe-delete), standard invalidation for
@@ -36,7 +45,8 @@ function invalidateTodoMonths(
     dates.filter((d): d is string => !!d).map((d) => d.slice(0, 7)),
   );
   for (const month of months) {
-    void qc.invalidateQueries({ queryKey: ["calendar", month] });
+    // Debounced per month — see habits.ts settleCalendarMonth.
+    invalidateDebounced(qc, ["calendar", month], 1000);
   }
 }
 
@@ -45,17 +55,26 @@ export type TodoPriority = Todo["priority"];
 
 /* ------------------------------ Reads -------------------------------- */
 
+// The API pages /todos (DEFAULT_LIMIT 20, MAX_LIMIT 500). Without an explicit
+// limit only the 20 newest todos ever reached the Todos tab and the calendar
+// agenda. Walk full pages until a short one, same as the PWA's useAllTodos.
+const TODOS_PAGE_SIZE = 500;
+
 export function useTodos(filters?: { listId?: string }) {
   return useQuery({
     queryKey: todoKeys.list(filters),
     queryFn: async () => {
-      const { data } = await apiClient.get<{ data: Todo[] } | Todo[]>(
-        "/todos",
-        {
-          params: filters,
-        },
-      );
-      return Array.isArray(data) ? data : data.data;
+      const all: Todo[] = [];
+      for (let page = 1; ; page++) {
+        const { data } = await apiClient.get<{ data: Todo[] } | Todo[]>(
+          "/todos",
+          { params: { ...filters, limit: TODOS_PAGE_SIZE, page } },
+        );
+        const batch = Array.isArray(data) ? data : data.data;
+        all.push(...batch);
+        if (batch.length < TODOS_PAGE_SIZE) break;
+      }
+      return all;
     },
   });
 }
@@ -125,6 +144,9 @@ export function useDeleteTodoList() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: todoListKeys.all });
       void qc.invalidateQueries({ queryKey: todoKeys.all });
+      // Deleting a list cascades to its todos server-side, so Today's rows can
+      // change wholesale.
+      invalidateDashboardToday(qc);
     },
   });
 }
@@ -186,6 +208,10 @@ export function useCreateTodo() {
     onSuccess: (server) => {
       void qc.invalidateQueries({ queryKey: todoKeys.lists() });
       invalidateTodoMonths(qc, [server.dueDate, server.doDate]);
+      // A todo dated today belongs in the Today widget + the todo ring's
+      // denominator. Write the server row straight in rather than refetching
+      // the whole aggregate — we already hold the authoritative record.
+      writeDashboardTodo(qc, server);
     },
   });
 }
@@ -219,23 +245,43 @@ export function useUpdateTodo() {
       for (const [k, v] of Object.entries(patch)) {
         (normalized as Record<string, unknown>)[k] = v === null ? undefined : v;
       }
+      const now = new Date().toISOString();
+      // Mirror the server's completedAt bookkeeping so Today's "done today"
+      // count (keyed on completedAt) flips on the tap frame, not after the
+      // response lands.
+      const completion: Partial<Todo> =
+        patch.status === "done"
+          ? { completedAt: now }
+          : patch.status !== undefined
+            ? { completedAt: undefined }
+            : {};
+      const applyPatch = (t: Todo): Todo => ({
+        ...t,
+        ...normalized,
+        ...completion,
+        updatedAt: now,
+      });
       qc.setQueriesData<Todo[]>({ queryKey: todoKeys.lists() }, (list) =>
         Array.isArray(list)
           ? list.map((t) => {
               if (t.id !== id) return t;
               prevDates = [t.dueDate, t.doDate];
-              return {
-                ...t,
-                ...normalized,
-                updatedAt: new Date().toISOString(),
-              };
+              return applyPatch(t);
             })
           : list,
       );
+      // Mirror into /dashboard/today so a checkbox tap IN the Today widget
+      // flips on the tap frame. Without this the aggregate has no edge from
+      // todo mutations at all and the widget never updates (Today is a tab
+      // root, so it never unmounts and never refetches on its own).
+      patchDashboardTodo(qc, id, applyPatch);
       return { prevDates };
     },
     // Self-heal a failed write via refetch (replaces bespoke rollback).
-    onError: () => qc.invalidateQueries({ queryKey: todoKeys.lists() }),
+    onError: () => {
+      void qc.invalidateQueries({ queryKey: todoKeys.lists() });
+      invalidateDashboardToday(qc);
+    },
     // The todo's calendar-month buckets refresh scoped to its old + new
     // dates; a dateless toggle costs zero calendar work.
     onSuccess: (server: Todo, _vars, ctx) => {
@@ -244,6 +290,12 @@ export function useUpdateTodo() {
         server.doDate,
         ...(ctx?.prevDates ?? []),
       ]);
+      // Swap the optimistic row for the authoritative one (e.g. the server's
+      // `completedAt`/`updatedAt`) without refetching the aggregate. A date
+      // edit can also move a todo INTO today's window, so this inserts too.
+      writeDashboardTodo(qc, server);
+      // Completing a todo earns Light / moves the todo-ring streak.
+      settleDerivedAggregates(qc, { dashboard: false });
     },
   });
 }
@@ -260,18 +312,28 @@ export function useToggleTodo() {
   const update = useUpdateTodo();
   type Vars = Pick<Todo, "id" | "status">;
   type Options = Parameters<typeof update.mutate>[1];
-  const flip = (todo: Vars) => ({
+  // STABLE callbacks: `update.mutate` is referentially stable across renders
+  // (React Query binds it once), so these are too. Fresh arrows here used to
+  // bust every `useCallback([toggle.mutate])` downstream → memo(TodoRow) never
+  // bailed and FlashList re-rendered every visible row on any screen render.
+  const { mutate: baseMutate, mutateAsync: baseMutateAsync } = update;
+  const mutate = useCallback(
+    (todo: Vars, options?: Options) => baseMutate(flipTodo(todo), options),
+    [baseMutate],
+  );
+  const mutateAsync = useCallback(
+    (todo: Vars, options?: Options) => baseMutateAsync(flipTodo(todo), options),
+    [baseMutateAsync],
+  );
+  return { ...update, mutate, mutateAsync };
+}
+
+function flipTodo(todo: Pick<Todo, "id" | "status">) {
+  return {
     id: todo.id,
     patch: {
       status: todo.status === "done" ? ("todo" as const) : ("done" as const),
     },
-  });
-  return {
-    ...update,
-    mutate: (todo: Vars, options?: Options) =>
-      update.mutate(flip(todo), options),
-    mutateAsync: (todo: Vars, options?: Options) =>
-      update.mutateAsync(flip(todo), options),
   };
 }
 
@@ -292,11 +354,19 @@ export function useDeleteTodo() {
         if (gone) prevDates = [gone.dueDate, gone.doDate];
         return list.filter((t) => t.id !== id);
       });
+      // Instant removal from the Today widget too.
+      removeDashboardTodo(qc, id);
       return { prevDates };
     },
-    onSettled: (_id, _err, _vars, ctx) => {
+    onSettled: (_id, err, _vars, ctx) => {
       void qc.invalidateQueries({ queryKey: todoKeys.lists() });
       invalidateTodoMonths(qc, ctx?.prevDates ?? []);
+      // ONLY on failure — the optimistic removal above is already correct for
+      // the happy path, so invalidating unconditionally would cost an extra
+      // aggregate refetch on every swipe-delete. On error the row must come
+      // back, and a refetch is the cheapest way to restore it.
+      if (err) invalidateDashboardToday(qc);
+      else settleDerivedAggregates(qc, { dashboard: false });
     },
   });
 }
@@ -318,7 +388,8 @@ export type UpdateSubtaskInput = {
 };
 export type DeleteSubtaskInput = { todoId: string; subtaskId: string };
 
-/** Optimistically patch one todo across every cached list. */
+/** Optimistically patch one todo across every cached list — plus the
+ *  /dashboard/today aggregate, which renders the same todo rows. */
 function patchTodoInCaches(
   qc: QueryClient,
   todoId: string,
@@ -329,6 +400,7 @@ function patchTodoInCaches(
       ? list.map((t) => (t.id === todoId ? apply(t) : t))
       : list,
   );
+  patchDashboardTodo(qc, todoId, apply);
 }
 
 /** Write the server's authoritative todo into every cached list (used by the
@@ -340,6 +412,7 @@ function writeTodo(qc: QueryClient, server: Todo) {
       ? list.map((t) => (t.id === server.id ? server : t))
       : list,
   );
+  writeDashboardTodo(qc, server);
 }
 
 export function useAddSubtask() {

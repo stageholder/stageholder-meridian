@@ -388,6 +388,12 @@ export function QuickAddHabitSheet({
                 value={name}
                 onChangeText={setName}
                 placeholder="e.g. Read for 30 minutes"
+                // Return creates the habit (Todoist-style quick capture) —
+                // the keyboard's own action key is the most reachable submit
+                // while typing, wherever the sheet sits.
+                returnKeyType="done"
+                submitBehavior="blurAndSubmit"
+                onSubmitEditing={handleSubmit}
               />
             </XStack>
             {noteOpen ? (

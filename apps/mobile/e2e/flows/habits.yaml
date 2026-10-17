@@ -1,0 +1,51 @@
+# Create a habit, check it in, undo, open its detail, come back.
+appId: com.stageholder.meridian
+name: habits
+---
+- runFlow: ../subflows/launch-signed-in.yaml
+- evalScript: ${output.habit = 'JEVB E2E Habit ' + String(Date.now()).slice(-8)}
+- runFlow:
+    file: ../subflows/tab.yaml
+    env:
+      TAB_LABEL: "Habits"
+      TAB_ID: "tab-habits"
+- tapOn:
+    id: "fab-new-habit"
+- extendedWaitUntil:
+    visible: "e.g. Read for 30 minutes"
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn: "e.g. Read for 30 minutes"
+- inputText: ${output.habit}
+- waitForAnimationToEnd
+- tapOn: "Create New Habit"
+# The sheet closes on success — wait for the row in the list, not the text
+# still sitting in the sheet's input.
+- extendedWaitUntil:
+    notVisible: "e.g. Read for 30 minutes"
+    timeout: 15000
+- extendedWaitUntil:
+    visible: ${output.habit}
+    timeout: 15000
+# Check in → the row flips to its undo state
+- tapOn:
+    text: "Check In|Complete"
+    index: 0
+- extendedWaitUntil:
+    visible: "Undo last check-in|Undo"
+    timeout: 10000
+# Persisted: survives a relaunch
+- runFlow: ../subflows/launch-signed-in.yaml
+- runFlow:
+    file: ../subflows/tab.yaml
+    env:
+      TAB_LABEL: "Habits"
+      TAB_ID: "tab-habits"
+- assertVisible: ${output.habit}
+- assertVisible: "Undo last check-in|Undo"
+# Detail is a pushed screen with a native header
+- tapOn: ${output.habit}
+- assertVisible: "Edit"
+- runFlow: ../subflows/go-back.yaml
+- assertVisible:
+    id: "fab-new-habit"

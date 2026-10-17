@@ -196,6 +196,12 @@ export interface TodoItemProps {
    * vertical padding. Keeps the full checkbox + burn + actions experience.
    */
   compact?: boolean;
+  /**
+   * Play the row's enter animation on mount (default true). Virtualized hosts
+   * (FlashList) pass `false`: cells mount as they scroll in, so every row
+   * would replay the fade/slide while the user scrolls — visible jank.
+   */
+  animateEnter?: boolean;
 }
 
 /**
@@ -221,6 +227,7 @@ export function TodoItem({
   renderActions,
   onContextMenu,
   compact,
+  animateEnter = true,
 }: TodoItemProps) {
   const [burning, setBurning] = useState(false);
   const [gone, setGone] = useState(false);
@@ -333,8 +340,11 @@ export function TodoItem({
       // Enter + exit (delete / un-complete) via AnimatePresence in the list
       // views — SAME on web and native (Tamagui v2). Completion plays the
       // burn below.
-      {...ROW_ANIMATION_PROPS}
+      {...(animateEnter ? ROW_ANIMATION_PROPS : {})}
       hoverStyle={burning ? undefined : { bg: "$accent" }}
+      // Touch feedback — a tappable row with no pressed state reads as dead
+      // on a phone (hover never fires there).
+      pressStyle={burning ? undefined : { bg: "$accent" }}
       role="button"
       aria-label="Open todo details"
       // Web-only right-click → host's actions menu. Passed through to the DOM

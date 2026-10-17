@@ -43,6 +43,12 @@ import { countWordsFromContent, isJsonContent } from "@repo/core/utils/text";
 import type { Journal, JournalContent } from "@repo/core/types";
 
 import { apiClient } from "./api/client";
+// Cache eviction on lock (see `lockJournal`). Both modules are leaves —
+// `query-client` only builds the QueryClient and `keys` only builds key
+// tuples — so importing them here introduces no cycle with the hooks that
+// import this file.
+import { queryClient } from "./api/query-client";
+import { dashboardKeys, journalKeys } from "./api/keys";
 
 /* ------------------------------ Store state -------------------------------- */
 
@@ -63,6 +69,19 @@ let dek: PortableKey | null = null;
 // master key and unwrap without a second round-trip.
 let wrappedDek: string | null = null;
 let salt: string | null = null;
+
+// Bumped on EVERY transition that changes what `getJournalDek()` returns
+// (unlock/lock/setup/change/recover, plus the cross-account re-lock branch in
+// `checkJournalStatus`). Folded into the journal query keys (hooks/journal.ts)
+// so a cached PLAINTEXT query result from one lock-state can never be served
+// after the DEK changes — closes the PWA parity gap where a lock/unlock could
+// otherwise leave stale decrypted content in the React Query cache.
+let dekEpoch = 0;
+
+/** Current DEK-identity epoch. Fold into journal query keys. */
+export function journalDekEpoch(): number {
+  return dekEpoch;
+}
 
 let snapshot: JournalCryptoSnapshot = {
   isSetup: false,
@@ -118,7 +137,16 @@ export async function checkJournalStatus(): Promise<void> {
     // the new account's entries with the previous account's key = data loss).
     if (dek !== null && (nextWrappedDek !== wrappedDek || nextSalt !== salt)) {
       dek = null;
+      dekEpoch += 1;
       commit({ isUnlocked: false });
+      // Evict the previous account's DECRYPTED journals along with its DEK —
+      // this is the one re-lock path where the cached plaintext belongs to a
+      // DIFFERENT USER, so leaving it readable in the cache is strictly worse
+      // than the ordinary lock. Same eviction `lockJournal` performs.
+      queryClient.removeQueries({ queryKey: journalKeys.all });
+      void queryClient.invalidateQueries({
+        queryKey: dashboardKeys.todayAll(),
+      });
     }
     wrappedDek = nextWrappedDek;
     salt = nextSalt;
@@ -152,6 +180,7 @@ export async function unlockJournal(passphrase: string): Promise<void> {
   // unwrapDEK throws if the master key is wrong (bad AES-KW integrity check) —
   // that's our wrong-passphrase signal.
   dek = await unwrapDEK(wrappedDek, masterKey);
+  dekEpoch += 1;
   commit({ isUnlocked: true });
 }
 
@@ -198,6 +227,7 @@ export async function setupJournalPassphrase(
   dek = newDek;
   wrappedDek = passphraseWrappedDek;
   salt = passphraseSalt;
+  dekEpoch += 1;
   commit({ isSetup: true, isUnlocked: true });
 
   return recoveryCodes;
@@ -241,6 +271,7 @@ export async function changeJournalPassphrase(
   dek = currentDek;
   wrappedDek = newWrappedDek;
   salt = newSaltStr;
+  dekEpoch += 1;
   commit({ isUnlocked: true });
 }
 
@@ -294,6 +325,7 @@ export async function recoverJournalWithCodes(
   dek = recoveredDek;
   wrappedDek = newPassphraseWrappedDek;
   salt = newSaltStr;
+  dekEpoch += 1;
   commit({ isSetup: true, isUnlocked: true });
 
   return newCodes;
@@ -312,10 +344,41 @@ export async function recoverJournalWithCodes(
  * previous-account key material survives in module state.
  */
 export function lockJournal(): void {
-  dek = null;
   wrappedDek = null;
   salt = null;
-  commit({ isSetup: false, isUnlocked: false });
+  commit({ isSetup: false });
+  relockJournal();
+}
+
+/**
+ * In-session re-lock (app-lock timeout): drop the DEK + every decrypted cache,
+ * but KEEP the account's "encryption is set up" answer and its wrapped-DEK +
+ * salt. Using the full `lockJournal()` scrub here opened a window where
+ * `isSetup` read false until `checkJournalStatus()` re-resolved — and the
+ * create/update guard (`!dek && isJournalEncryptionSetup()`) is exactly what
+ * stops an editor's unmount flush from PATCHing PLAINTEXT over an encrypted
+ * entry. With the flag kept, a locked write is refused instead.
+ */
+export function relockJournal(): void {
+  dek = null;
+  dekEpoch += 1;
+  commit({ isUnlocked: false });
+  // Evict the DECRYPTED journal data from the query cache (PWA parity — see
+  // encryption-store.ts `lock()`). The epoch bump alone only stops the old
+  // plaintext from being SERVED under the new key; it leaves it sitting in
+  // memory until gcTime, and `useJournal`'s placeholderData deliberately
+  // prefix-matches `journalKeys.lists()` ACROSS epochs, so it can still reach
+  // in. Leaving readable plaintext cached for a locked session defeats at-rest
+  // locking. `removeQueries` (not invalidate) so it's gone now rather than
+  // refetched and re-cached while still locked. `journalKeys.all` covers both
+  // `lists()` (flat + paginated) and `details()`.
+  queryClient.removeQueries({ queryKey: journalKeys.all });
+  // The Today aggregate carries today's journals DECRYPTED in its payload too
+  // (hooks/dashboard.ts decrypts in the queryFn), so it's the same at-rest
+  // exposure and has to go with them. Invalidate rather than remove: the rest
+  // of that payload (habits/todos/light) is not sensitive and the Today screen
+  // is mounted, so it just refetches — and comes back with ciphertext journals.
+  void queryClient.invalidateQueries({ queryKey: dashboardKeys.todayAll() });
 }
 
 /** Current in-memory DEK, or null when locked. */

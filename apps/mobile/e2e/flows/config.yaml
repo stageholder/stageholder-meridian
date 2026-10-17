@@ -1,0 +1,12 @@
+# Journey order: smoke first (stack + every tab renders), then features.
+flows:
+  - "*"
+executionOrder:
+  continueOnFailure: true
+  flowsOrder:
+    - smoke
+    - navigation
+    - habits
+    - todos
+    - journal
+    - settings

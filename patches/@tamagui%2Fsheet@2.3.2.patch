@@ -1,0 +1,66 @@
+diff --git a/dist/cjs/SheetImplementationCustom.native.js b/dist/cjs/SheetImplementationCustom.native.js
+--- a/dist/cjs/SheetImplementationCustom.native.js
++++ b/dist/cjs/SheetImplementationCustom.native.js
+@@ -61,9 +61,16 @@
+ var import_useSheetOpenState = require("./useSheetOpenState.native.js");
+ var import_useSheetProviderProps = require("./useSheetProviderProps.native.js");
+ var hiddenSize = 10000.1;
++// [meridian patch] Android: inside the absolutely-positioned portal wrapper,
++// height: "100%" on the gesture root resolved to 0, so the open sheet measured
++// screenSize 0 and never animated on screen (invisible frame + an overlay that
++// swallowed every tap). Pin the open root to the wrapper's edges instead.
+ var rnghRootStyleOpen = {
+-  width: "100%",
+-  height: "100%"
++  position: "absolute",
++  top: 0,
++  left: 0,
++  right: 0,
++  bottom: 0
+ };
+ var rnghRootStyleClosed = {
+   width: "100%",
+diff --git a/dist/esm/SheetImplementationCustom.native.js b/dist/esm/SheetImplementationCustom.native.js
+--- a/dist/esm/SheetImplementationCustom.native.js
++++ b/dist/esm/SheetImplementationCustom.native.js
+@@ -21,9 +21,16 @@
+ import { useSheetOpenState } from "./useSheetOpenState.native.js";
+ import { useSheetProviderProps } from "./useSheetProviderProps.native.js";
+ var hiddenSize = 10000.1;
++// [meridian patch] Android: inside the absolutely-positioned portal wrapper,
++// height: "100%" on the gesture root resolved to 0, so the open sheet measured
++// screenSize 0 and never animated on screen (invisible frame + an overlay that
++// swallowed every tap). Pin the open root to the wrapper's edges instead.
+ var rnghRootStyleOpen = {
+-  width: "100%",
+-  height: "100%"
++  position: "absolute",
++  top: 0,
++  left: 0,
++  right: 0,
++  bottom: 0
+ };
+ var rnghRootStyleClosed = {
+   width: "100%",
+diff --git a/dist/jsx/SheetImplementationCustom.native.js b/dist/jsx/SheetImplementationCustom.native.js
+--- a/dist/jsx/SheetImplementationCustom.native.js
++++ b/dist/jsx/SheetImplementationCustom.native.js
+@@ -61,9 +61,16 @@
+ var import_useSheetOpenState = require("./useSheetOpenState.native.js");
+ var import_useSheetProviderProps = require("./useSheetProviderProps.native.js");
+ var hiddenSize = 10000.1;
++// [meridian patch] Android: inside the absolutely-positioned portal wrapper,
++// height: "100%" on the gesture root resolved to 0, so the open sheet measured
++// screenSize 0 and never animated on screen (invisible frame + an overlay that
++// swallowed every tap). Pin the open root to the wrapper's edges instead.
+ var rnghRootStyleOpen = {
+-  width: "100%",
+-  height: "100%"
++  position: "absolute",
++  top: 0,
++  left: 0,
++  right: 0,
++  bottom: 0
+ };
+ var rnghRootStyleClosed = {
+   width: "100%",

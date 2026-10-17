@@ -6,6 +6,7 @@
 // unwrap's AES-KW integrity failure is the wrong-passphrase signal on both
 // platforms.
 
+import { passphraseInputProps } from "./passphrase-input-props";
 import { useState } from "react";
 import { Button, Input, Label, Text, XStack, YStack } from "@stageholder/ui";
 // Form isn't re-exported by the kit yet; pull it from the shared tamagui dep.
@@ -85,6 +86,11 @@ export function PassphraseChangeForm({
           value={current}
           onChangeText={setCurrent}
           placeholder="Your current passphrase"
+          {...passphraseInputProps({
+            kind: "current",
+            last: false,
+            onSubmit: () => void handleSubmit(),
+          })}
         />
       </YStack>
       <YStack gap="$2">
@@ -96,6 +102,11 @@ export function PassphraseChangeForm({
           value={next}
           onChangeText={setNext}
           placeholder="At least 8 characters"
+          {...passphraseInputProps({
+            kind: "new",
+            last: false,
+            onSubmit: () => void handleSubmit(),
+          })}
         />
       </YStack>
       <YStack gap="$2">
@@ -107,6 +118,11 @@ export function PassphraseChangeForm({
           value={confirm}
           onChangeText={setConfirm}
           placeholder="Repeat the new passphrase"
+          {...passphraseInputProps({
+            kind: "new",
+            last: true,
+            onSubmit: () => void handleSubmit(),
+          })}
         />
       </YStack>
       {error ? (

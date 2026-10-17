@@ -1,0 +1,20 @@
+# Tap a bottom-tab item. Screens repeat tab names ("Todos" is also a Today
+# ring label), so scope the match to the tab bar itself:
+#   Android — the Material navigation-bar item label;
+#   iOS     — the tab item's testID (tab-<route>).
+# env: TAB_LABEL (e.g. "Todos"), TAB_ID (e.g. "tab-todos")
+appId: com.stageholder.meridian
+---
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          text: ${TAB_LABEL}
+          id: ".*navigation_bar_item.*label.*"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          id: ${TAB_ID}

@@ -13,36 +13,40 @@
 //   DAY AGENDA — the selected day's todos / habits / journal below the grid
 //                (components/calendar-day-agenda.tsx).
 //
-// Reached from the Today header's calendar icon; hidden tab (href null).
+// Pushed (native stack) from the Today header's calendar icon; the stack
+// header owns the title + back. Popping unmounts it, which also releases its
+// month-window queries.
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
-  IconButton,
-  ScrollView,
+  Button,
   Separator,
   Spinner,
   Text,
   XStack,
   YStack,
 } from "@stageholder/ui";
-import { ChevronLeft } from "@tamagui/lucide-icons-2";
+import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { useRouter } from "expo-router";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
 
 import { CalendarDayAgenda } from "@/components/calendar-day-agenda";
 import { CreateTodoDialog } from "@/components/create-todo-dialog";
-import { BOTTOM_NAV_CLEARANCE } from "@/components/mobile-bottom-nav";
+import { ScreenScroll } from "@/components/screen-scroll";
 import { WeekStrip } from "@/components/week-strip";
 import { EMPTY_DAY, useCalendarRange } from "@/lib/api/hooks/calendar";
 import { useHabits } from "@/lib/api";
 
 export default function CalendarScreen() {
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const qc = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await qc.refetchQueries({ queryKey: ["calendar"], type: "active" });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [qc]);
 
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [createTodoOpen, setCreateTodoOpen] = useState(false);
@@ -66,79 +70,57 @@ export default function CalendarScreen() {
 
   return (
     <YStack flex={1} bg="$background">
-      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-        <XStack items="center" px="$2" py="$2" position="relative">
-          <IconButton
-            variant="ghost"
-            size="sm"
-            aria-label="Back to today"
-            onPress={() => router.navigate("/")}
-          >
-            <ChevronLeft size={20} />
-          </IconButton>
-          <Text
-            position="absolute"
-            l={0}
-            r={0}
-            text="center"
-            pointerEvents="none"
-            fontSize="$5"
-            fontWeight="600"
-            color="$color"
-          >
-            Calendar
-          </Text>
-        </XStack>
-
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            pb: BOTTOM_NAV_CLEARANCE + insets.bottom,
-          }}
-        >
-          <YStack gap="$4" px="$4" pt="$1" pb="$10">
-            {isError ? (
-              <XStack height={120} items="center" justify="center">
-                <Text fontSize="$3" color="$destructive">
-                  Failed to load the calendar. Pull back and retry.
-                </Text>
-              </XStack>
-            ) : isLoading && Object.keys(calendarData).length === 0 ? (
-              <XStack height={120} items="center" justify="center">
-                <Spinner size="large" />
-              </XStack>
-            ) : (
-              <YStack gap="$2">
-                {/* Month label follows the selected day. */}
-                <Text fontSize="$5" fontWeight="600" color="$color" px="$1">
-                  {format(selectedDate, "MMMM yyyy")}
-                </Text>
-                {/* Apple-Fitness weekly strip (PWA Apple-redesign parity):
+      <ScreenScroll
+        stackScreen
+        refreshing={refreshing}
+        onRefresh={refresh}
+        showsVerticalScrollIndicator={false}
+      >
+        <YStack gap="$4" px="$4" pt="$1" pb="$10">
+          {isError ? (
+            <YStack height={140} items="center" justify="center" gap="$3">
+              <Text fontSize="$3" color="$destructive">
+                Couldn&apos;t load the calendar.
+              </Text>
+              <Button size="sm" variant="outlined" onPress={refresh}>
+                Try again
+              </Button>
+            </YStack>
+          ) : isLoading && Object.keys(calendarData).length === 0 ? (
+            <XStack height={120} items="center" justify="center">
+              <Spinner size="large" />
+            </XStack>
+          ) : (
+            <YStack gap="$2">
+              {/* Month label follows the selected day. */}
+              <Text fontSize="$5" fontWeight="600" color="$color" px="$1">
+                {format(selectedDate, "MMMM yyyy")}
+              </Text>
+              {/* Apple-Fitness weekly strip (PWA Apple-redesign parity):
                     date-on-top, hollow static rings, no grid borders, paged
                     horizontal week scrolling. Replaces the kit EventCalendar
                     month grid, whose bordered cells + date-in-hole cells
                     diverged from the PWA design. */}
-                <WeekStrip
-                  calendarData={calendarData}
-                  habits={habitsList}
-                  quotaIds={quotaIds}
-                  selectedKey={format(selectedDate, "yyyy-MM-dd")}
-                  onSelectDay={setSelectedDate}
-                />
-              </YStack>
-            )}
+              <WeekStrip
+                calendarData={calendarData}
+                habits={habitsList}
+                quotaIds={quotaIds}
+                selectedKey={format(selectedDate, "yyyy-MM-dd")}
+                onSelectDay={setSelectedDate}
+              />
+            </YStack>
+          )}
 
-            <Separator />
+          <Separator />
 
-            <CalendarDayAgenda
-              date={selectedDate}
-              dayData={selectedDayData}
-              habits={habitsList}
-              onAddTodo={() => setCreateTodoOpen(true)}
-            />
-          </YStack>
-        </ScrollView>
-      </SafeAreaView>
+          <CalendarDayAgenda
+            date={selectedDate}
+            dayData={selectedDayData}
+            habits={habitsList}
+            onAddTodo={() => setCreateTodoOpen(true)}
+          />
+        </YStack>
+      </ScreenScroll>
 
       {/* Pre-fill the tapped day's date so a todo added from the calendar is
           actually DUE that day (PWA agenda parity) — the field stays editable. */}

@@ -4,6 +4,7 @@ import { HubWebhookHandlers } from "./hub-webhook.handlers";
 import { JournalModule } from "../journal/journal.module";
 import { HabitModule } from "../habit/habit.module";
 import { HabitEntryModule } from "../habit-entry/habit-entry.module";
+import { HabitGroupModule } from "../habit-group/habit-group.module";
 import { TodoListModule } from "../todo-list/todo-list.module";
 import { TodoModule } from "../todo/todo.module";
 import { TagModule } from "../tag/tag.module";
@@ -34,6 +35,7 @@ import { UserModule } from "../user/user.module";
     JournalModule,
     HabitModule,
     HabitEntryModule,
+    HabitGroupModule,
     TodoListModule,
     TodoModule,
     TagModule,

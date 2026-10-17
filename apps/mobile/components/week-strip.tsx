@@ -33,6 +33,7 @@ import {
   countScheduledHabits,
   type CalendarData,
 } from "@/lib/api/hooks/calendar";
+import { useLocalDayKey } from "@/lib/hooks/use-local-day";
 
 const WEEKS_BACK = 13;
 const WEEKS_FORWARD = 2;
@@ -62,17 +63,20 @@ export function WeekStrip({
   // column, so pages must match the CONTAINER, not the window (pagingEnabled
   // pages by the list's own viewport width).
   const [width, setWidth] = useState(0);
-  const todayKey = format(new Date(), "yyyy-MM-dd");
+  // Live day key — this strip lives on a never-unmounting tab root.
+  const todayKey = useLocalDayKey();
 
   // Week-start anchors, oldest → newest; index WEEKS_BACK = current week.
   const weeks = useMemo(() => {
-    const current = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const current = startOfWeek(new Date(todayKey + "T00:00:00"), {
+      weekStartsOn: 1,
+    });
     const out: Date[] = [];
     for (let i = -WEEKS_BACK; i <= WEEKS_FORWARD; i++) {
       out.push(addDays(current, i * 7));
     }
     return out;
-  }, []);
+  }, [todayKey]);
 
   const renderWeek = useCallback(
     ({ item: weekStart }: { item: Date }) => (

@@ -53,6 +53,13 @@ export class HabitRepository {
   async findByUser(userSub: string): Promise<Habit[]> {
     const docs = await this.model
       .find({ userSub, deleted_at: null, archived_at: null })
+      // Deterministic, user-meaningful order. This used to be unsorted, which
+      // left it to Mongo's natural order — fine when the only consumers
+      // re-sorted client-side, but the aggregation endpoints (/dashboard/today
+      // and /habits?withEntries) now serve rows that ARE rendered in payload
+      // order (the Today widget), so the order has to be stable here.
+      // Matches findByGroup: manual `order` first, newest as the tiebreak.
+      .sort({ order: 1, created_at: -1 })
       .lean();
     return docs.map((doc) => this.toDomain(doc));
   }

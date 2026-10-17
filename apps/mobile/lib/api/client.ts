@@ -25,6 +25,7 @@ import Constants from "expo-constants";
 import { DeviceEventEmitter } from "react-native";
 
 import { getAccessToken } from "./auth";
+import { deviceTimeZone } from "@repo/core/utils/timezone";
 
 /** Resolve the API base URL — env first, then app.json extra fallback. */
 function resolveBaseUrl(): string {
@@ -80,6 +81,9 @@ export function createMeridianClient(): ApiClient {
       if (token) {
         config.headers.set("Authorization", `Bearer ${token}`);
       }
+      // Server computes "today" (Light, streak days) in the user's zone.
+      const tz = deviceTimeZone();
+      if (tz) config.headers.set("X-Timezone", tz);
       return config;
     },
   );

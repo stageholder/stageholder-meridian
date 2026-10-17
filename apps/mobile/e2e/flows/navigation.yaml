@@ -1,0 +1,40 @@
+# Detail screens are PUSHED on a native stack: header title, back gesture /
+# Android Back returns to the screen the user came from (not always Today).
+appId: com.stageholder.meridian
+name: navigation
+---
+- runFlow: ../subflows/launch-signed-in.yaml
+# Today → Calendar → back to Today
+- tapOn: "Open calendar"
+- assertVisible: "Calendar"
+- runFlow: ../subflows/go-back.yaml
+- assertVisible:
+    id: "today-greeting"
+# Settings → Plans & billing → back to SETTINGS (used to jump to a fixed route)
+- runFlow:
+    file: ../subflows/tab.yaml
+    env:
+      TAB_LABEL: "Settings"
+      TAB_ID: "tab-settings"
+- tapOn:
+    id: "settings-plan"
+- assertVisible: "Plans & billing"
+- runFlow: ../subflows/go-back.yaml
+- assertVisible:
+    id: "settings-plan"
+# Settings → Journey → back to Settings
+- scrollUntilVisible:
+    element: "Your journey"
+    direction: DOWN
+- tapOn: "Your journey"
+- assertVisible: "Journey"
+- runFlow: ../subflows/go-back.yaml
+- assertVisible: "Your journey"
+# Re-tapping the active tab keeps the user on its root (and scrolls to top).
+- runFlow:
+    file: ../subflows/tab.yaml
+    env:
+      TAB_LABEL: "Settings"
+      TAB_ID: "tab-settings"
+- assertVisible:
+    id: "settings-plan"

@@ -16,9 +16,15 @@ type CreateFeedbackDto = z.infer<typeof CreateFeedbackDto>;
 export class FeedbackController {
   constructor(private readonly service: FeedbackService) {}
 
+  /** The caller's OWN feedback only (it used to list every user's). */
   @Get()
-  async list(@Query("page") page?: string, @Query("limit") limit?: string) {
+  async list(
+    @Req() req: StageholderRequest,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+  ) {
     return this.service.list(
+      req.user.sub,
       page ? +page : undefined,
       limit ? +limit : undefined,
     );

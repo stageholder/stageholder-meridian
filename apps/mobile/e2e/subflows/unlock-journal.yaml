@@ -1,0 +1,24 @@
+# On the Journal tab: unlock with the account passphrase if it's locked.
+# Retried: on a loaded Android emulator Maestro's fast typing can drop a
+# keystroke, which the app (correctly) rejects as a wrong passphrase.
+appId: com.stageholder.meridian
+---
+- runFlow:
+    when:
+      visible: "Journal Locked"
+    commands:
+      - retry:
+          maxRetries: 2
+          commands:
+            - tapOn: "Encryption passphrase"
+            # Let the field take focus before typing — keystrokes sent
+            # during the focus animation were being dropped.
+            - waitForAnimationToEnd
+            - eraseText
+            - inputText: ${E2E_JOURNAL_PASSPHRASE}
+            # Return submits the field (keeps Unlock clear of the keyboard).
+            - pressKey: Enter
+            # Key derivation is deliberately slow (brute-force resistance).
+            - extendedWaitUntil:
+                notVisible: "Journal Locked"
+                timeout: 60000

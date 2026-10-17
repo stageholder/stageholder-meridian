@@ -1,31 +1,18 @@
 // apps/mobile/components/status-filter-tabs.tsx
 //
-// Shared "All / To do / Done" status filter, rendered as horizontal underline
-// tabs with a leading icon per tab — the same presentation Settings uses for
-// its Profile/Targets/Account sections (kit Tabs variant="underline").
+// Shared "All / To do / Done" status filter for the habits + todos screens.
+// Rendered as the kit SegmentedControl, whose native build is the PLATFORM
+// segmented control (UISegmentedControl / Material segmented buttons via
+// @expo/ui) — the system idiom for filtering one list. It replaced web-style
+// underline tabs with icons, which read like page navigation on a phone.
 //
-// Uses the kit Tabs API as designed: the icon goes through the `icon` PROP
-// (the kit auto-tints it to the active/inactive state + sizes it to the tab
-// density) and the LABEL is a plain string child (wrapped in the kit's
-// state-colored TabLabel with numberOfLines=1). Passing a composed
-// non-string child instead makes the kit wrap it with lineHeight=0 → the
-// label collapses to invisible, and putting `flex`/`width` on Tabs.Tab lands
-// on the inner frame, not the layout wrapper (kit's documented limitation) —
-// both were the cause of the earlier text-less, oddly-spaced strip.
-//
-// Controlled: drives the habits + todos screens' status filter state.
+// Items must stay plain string children: that's what lets the kit hand them
+// to the native control (an icon/count falls back to the Tamagui build).
 
-import { Tabs } from "@stageholder/ui";
-import { Circle, CircleCheck, LayoutList } from "@tamagui/lucide-icons-2";
+import { SegmentedControl } from "@stageholder/ui";
 
 /** "all" shows everything; "todo"/"done" filter by completion state. */
 export type StatusFilter = "all" | "todo" | "done";
-
-const TABS = [
-  { id: "all", label: "All", icon: <LayoutList /> },
-  { id: "todo", label: "To do", icon: <Circle /> },
-  { id: "done", label: "Done", icon: <CircleCheck /> },
-] as const;
 
 interface StatusFilterTabsProps {
   value: StatusFilter;
@@ -37,19 +24,13 @@ export function StatusFilterTabs({
   onValueChange,
 }: StatusFilterTabsProps) {
   return (
-    <Tabs
+    <SegmentedControl
       value={value}
       onValueChange={(v) => onValueChange(v as StatusFilter)}
-      orientation="horizontal"
-      variant="underline"
     >
-      <Tabs.List width="100%" gap="$2">
-        {TABS.map((tab) => (
-          <Tabs.Tab key={tab.id} value={tab.id} icon={tab.icon}>
-            {tab.label}
-          </Tabs.Tab>
-        ))}
-      </Tabs.List>
-    </Tabs>
+      <SegmentedControl.Item value="all">All</SegmentedControl.Item>
+      <SegmentedControl.Item value="todo">To do</SegmentedControl.Item>
+      <SegmentedControl.Item value="done">Done</SegmentedControl.Item>
+    </SegmentedControl>
   );
 }

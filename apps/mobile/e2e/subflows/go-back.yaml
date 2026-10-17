@@ -1,0 +1,17 @@
+# Platform back: iOS edge swipe (the native-stack gesture under test),
+# Android system Back.
+appId: com.stageholder.meridian
+---
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - swipe:
+          start: 1%, 50%
+          end: 85%, 50%
+          duration: 400
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back

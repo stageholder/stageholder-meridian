@@ -29,12 +29,17 @@ export class FeedbackService {
   }
 
   async list(
+    userSub: string,
     page?: number,
     limit?: number,
   ): Promise<PaginatedResult<ReturnType<Feedback["toObject"]>>> {
     const p = Math.max(page || DEFAULT_PAGE, 1);
     const l = Math.min(Math.max(limit || DEFAULT_LIMIT, 1), MAX_LIMIT);
-    const { docs, total } = await this.repository.findAllPaginated(p, l);
+    const { docs, total } = await this.repository.findAllPaginated(
+      userSub,
+      p,
+      l,
+    );
     return {
       data: docs.map((d) => d.toObject()),
       meta: buildPaginationMeta(total, p, l),

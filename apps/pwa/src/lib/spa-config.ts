@@ -1,6 +1,11 @@
 import type { StageholderSpaConfig } from "@stageholder/sdk/spa";
 import { ConfigError } from "@stageholder/sdk/spa";
 import { createTauriStoreStorage, isTauri } from "@stageholder/sdk/tauri";
+import {
+  desktopNavigate,
+  desktopRedirectUri,
+  usesSystemBrowserAuth,
+} from "./desktop-auth";
 
 function readEnv(key: string): string {
   const value = import.meta.env[key];
@@ -16,21 +21,15 @@ const issuerUrl = readEnv("VITE_IDENTITY_ISSUER_URL");
 const clientId = readEnv("VITE_IDENTITY_CLIENT_ID");
 const appUrl = readEnv("VITE_PUBLIC_APP_URL");
 
-// On desktop, the OIDC flow runs INSIDE the Tauri webview — clicking
-// sign-in navigates the webview itself to Hub's login page, the user
-// authenticates, Hub redirects back to `${origin}/auth/callback?code=...`,
-// and the SDK provider's cold-start completes the exchange.
+// Packaged desktop builds sign in through the SYSTEM browser and come back on
+// the `meridian://auth/callback` deep link (see `lib/desktop-auth.ts`). Their
+// client id (`VITE_IDENTITY_CLIENT_ID` of the desktop build) is the Hub's
+// native `meridian-desktop` client, which registers that deep link plus
+// `${VITE_PUBLIC_APP_URL}/goodbye` — the post-logout page opens in the
+// browser too, so it must be a real web page.
 //
-// `window.location.origin` matches whatever URL the webview was loaded
-// from — `http://localhost:4001` in dev (vite) and the Tauri custom
-// protocol in prod (`tauri://localhost` on macOS/Linux,
-// `http://tauri.localhost` on Windows). All three must be registered as
-// redirect_uris on the meridian-web OIDC client at Hub.
-//
-// (Meridian uses first-party auth only — Hub's email/password. Federated
-// IdPs that refuse embedded webviews aren't in scope for desktop, so the
-// older loopback-server + system-browser dance was unnecessary and gave
-// a jarring out-of-app UX.)
+// `tauri dev` (unbundled, can't receive deep links) keeps the in-webview flow
+// against the dev server origin, `http://localhost:4001`, like the web app.
 const redirectOrigin = isTauri() ? window.location.origin : appUrl;
 
 // On desktop, persist session via tauri-plugin-store so tokens survive
@@ -45,8 +44,16 @@ const redirectOrigin = isTauri() ? window.location.origin : appUrl;
 export const spaConfig: StageholderSpaConfig = {
   issuerUrl,
   clientId,
-  redirectUri: `${redirectOrigin}/auth/callback`,
-  postLogoutRedirectUri: `${redirectOrigin}/goodbye`,
+  ...(usesSystemBrowserAuth
+    ? {
+        redirectUri: desktopRedirectUri,
+        postLogoutRedirectUri: `${appUrl}/goodbye`,
+        navigate: desktopNavigate,
+      }
+    : {
+        redirectUri: `${redirectOrigin}/auth/callback`,
+        postLogoutRedirectUri: `${redirectOrigin}/goodbye`,
+      }),
   ...(isTauri()
     ? {
         storage: createTauriStoreStorage({

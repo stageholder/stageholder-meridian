@@ -26,6 +26,8 @@ export function EncryptionStoreInitializer({
       init(user.sub);
     } else {
       setCurrentUserSub(null);
+      // Signed out / session lost: drop the DEK + decrypted journal cache.
+      init(null);
     }
   }, [user?.sub, init]);
 

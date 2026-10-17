@@ -15,6 +15,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { format, subDays } from "date-fns";
 import type { Habit, HabitEntry } from "@repo/core/types";
 import { lightKeys } from "./light";
 import { habitsApi } from "./clients";
@@ -35,6 +36,73 @@ export function useHabits() {
     // so request all of it (server MAX_LIMIT=500). Archived habits are excluded
     // server-side.
     queryFn: () => habitsApi.list({ limit: "500" }),
+    // Keep the last list on screen during a background refetch so the page
+    // never blanks/flickers when an aggregate invalidation fires.
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * THE habits-list-with-embedded-entries aggregate (GET /habits?withEntries=90d).
+ * ONE request returns every active habit already carrying its 90-day entries
+ * window, so the `/habits` page's rows (`HabitListItem` / `HabitCard`) don't
+ * each self-fetch their own entries — the uncapped per-habit fan-out this
+ * replaces (N habits → N requests). Rows are `Habit & { entries }`, a superset
+ * of `Habit`, so the page's existing sectioning/filtering/grouping keeps
+ * working unchanged.
+ *
+ * Query-key strategy: `["habits", "withEntries", windowDays]` — a KEY UNDER
+ * the `["habits"]` prefix (not a separate top-level key) so this cache rides
+ * along with every existing `["habits"]`-scoped operation for free:
+ *   - `useCreateHabit` / `useUpdateHabit` / `useDeleteHabit` / `useArchiveHabit`
+ *     / `useUnarchiveHabit` all patch via `patchLists`/`removeFromLists`/
+ *     `writeEntityToLists`, which call `qc.getQueriesData({queryKey:["habits"]})`
+ *     — a PREFIX match that already includes this longer key, so their
+ *     optimistic writes land here too, not just on the plain `useHabits()` list.
+ *   - `useCreateHabit`'s `onSettled` `invalidateQueries({queryKey:["habits"]})`
+ *     is also a prefix match, so a straggler create refetches this aggregate.
+ *   - `useReorderHabits` is patched below to use the same prefix-matching
+ *     helpers (it previously read/wrote the literal `["habits"]` key only,
+ *     which would have left a drag-reorder invisible on this aggregate).
+ */
+export function useHabitsWithEntries() {
+  const queryClient = useQueryClient();
+  return useQuery<Array<Habit & { entries: HabitEntry[] }>>({
+    // The window is FIXED at 90 days — the canonical span HabitListItem/HabitCard
+    // read. It is NOT a parameter: the seed below (and the rows) always key on
+    // the 90-day window, so any other span would seed data the rows never read.
+    queryKey: ["habits", "withEntries", 90],
+    queryFn: async () => {
+      // Pass the client's LOCAL today so the server's 90-day data window is
+      // anchored on the same day as the client-local seed/read window, not the
+      // server's UTC day. habitsApi.list forwards arbitrary string params.
+      const today = format(new Date(), "yyyy-MM-dd");
+      const startDate = format(subDays(new Date(), 90), "yyyy-MM-dd");
+      // Stamped BEFORE the request so the seed below can tell whether a
+      // per-habit cache was written while it was in flight.
+      const requestStartedAt = Date.now();
+      const data = (await habitsApi.list({
+        withEntries: "90d",
+        today,
+      })) as unknown as Array<Habit & { entries: HabitEntry[] }>;
+      // Seed each habit's canonical entries window with the EXACT key shape
+      // HabitListItem / HabitCard read for the today view:
+      // ["habitEntries", habitId, { startDate, endDate }] — same startDate/
+      // endDate computation. A structural mismatch means rows miss the cache.
+      //
+      // DON'T STOMP NEWER WRITES: this response reflects server state as of
+      // when the request left, so a background refetch can resolve with data
+      // older than an optimistic check-in made while it was in flight. Seeding
+      // over that would visibly revert the row. A cold cache has no
+      // `dataUpdatedAt` and always seeds — which is the case this exists for.
+      for (const h of data) {
+        const key = ["habitEntries", h.id, { startDate, endDate: today }];
+        const updatedAt = queryClient.getQueryState(key)?.dataUpdatedAt;
+        if (updatedAt && updatedAt > requestStartedAt) continue;
+        queryClient.setQueryData(key, h.entries ?? []);
+      }
+      return data;
+    },
     // Keep the last list on screen during a background refetch so the page
     // never blanks/flickers when an aggregate invalidation fires.
     placeholderData: keepPreviousData,
@@ -71,8 +139,18 @@ const ENTRY_SCOPE = { id: "habit-entry" };
 // A habit-entry write changes the day's status (shown from ["habitEntries"]),
 // and derived surfaces we can't recompute locally. We write the server entry
 // back into ["habitEntries", habitId] ourselves, so invalidate only these.
+//
+// NOTE: ["habits"] is DELIBERATELY absent. The habit list carries no
+// entry-derived field (streaks/status are computed from the separate
+// ["habitEntries", id] cache), so an entry write never needs to refresh it.
+// Critically, `useHabitsWithEntries`' key is ["habits","withEntries",n] — a
+// PREFIX match for ["habits"] — so invalidating ["habits"] here would refetch
+// the whole /habits?withEntries aggregate and re-seed every per-habit cache on
+// EVERY check-in, re-rendering the entire list (the exact cascade this refactor
+// removes). Mirrors the mobile contract (entry mutations settle calendar+light
+// only). Habit list-shape mutations (create/archive/reorder) invalidate
+// ["habits"] themselves, which correctly covers the aggregate.
 const HABIT_ENTRY_AGGREGATES = [
-  ["habits"],
   ["calendar"],
   lightKeys.me,
   lightKeys.stats,
@@ -410,35 +488,32 @@ export function useReorderHabits() {
     void,
     Error,
     { items: { id: string; order: number; groupId?: string | null }[] },
-    { previous: Habit[] | undefined }
+    { previous: CacheSnapshot }
   >({
     mutationFn: (data) => habitsApi.reorder(data),
     // Optimistically apply the new order/group so the grouped list holds the
     // dropped position instead of snapping back until the refetch lands.
+    // Uses the shared prefix-matching helpers (not a literal ["habits"] get/set)
+    // so the drag order lands on EVERY cached ["habits", ...] variant —
+    // including `useHabitsWithEntries`'s `["habits", "withEntries", n]` — not
+    // just the plain `useHabits()` list.
     onMutate: async ({ items }) => {
-      await queryClient.cancelQueries({ queryKey: ["habits"] });
-      const previous = queryClient.getQueryData<Habit[]>(["habits"]);
-      if (Array.isArray(previous)) {
-        const patchById = new Map(items.map((i) => [i.id, i]));
-        queryClient.setQueryData<Habit[]>(
-          ["habits"],
-          previous.map((h) => {
-            const p = patchById.get(h.id);
-            if (!p) return h;
-            return {
-              ...h,
-              order: p.order,
-              ...(p.groupId !== undefined ? { groupId: p.groupId } : {}),
-            };
-          }),
-        );
-      }
+      const previous = await snapshotAndCancel(queryClient, [["habits"]]);
+      const patchById = new Map(items.map((i) => [i.id, i]));
+      patchLists<Habit>(queryClient, [["habits"]], (list) =>
+        list.map((h) => {
+          const p = patchById.get(h.id);
+          if (!p) return h;
+          return {
+            ...h,
+            order: p.order,
+            ...(p.groupId !== undefined ? { groupId: p.groupId } : {}),
+          };
+        }),
+      );
       return { previous };
     },
-    onError: (_err, _vars, context) => {
-      if (context?.previous)
-        queryClient.setQueryData(["habits"], context.previous);
-    },
+    onError: (_err, _vars, context) => rollback(queryClient, context?.previous),
     // No settle-refetch: the optimistic order already matches the server's.
   });
 }

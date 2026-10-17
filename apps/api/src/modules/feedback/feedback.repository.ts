@@ -31,10 +31,11 @@ export class FeedbackRepository {
   }
 
   async findAllPaginated(
+    userSub: string,
     page: number,
     limit: number,
   ): Promise<{ docs: Feedback[]; total: number }> {
-    const filter = { deleted_at: null };
+    const filter = { userSub, deleted_at: null };
     const total = await this.model.countDocuments(filter);
     const docs = await this.model
       .find(filter)

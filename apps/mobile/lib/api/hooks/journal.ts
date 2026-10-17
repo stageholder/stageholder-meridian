@@ -12,15 +12,32 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type QueryClient,
 } from "@tanstack/react-query";
 import type { Journal, JournalContent, JournalStats } from "@repo/core/types";
 
 import { apiClient } from "../client";
 import { journalKeys } from "../keys";
 import {
+  invalidateDashboardToday,
+  invalidateDebounced,
+  settleDerivedAggregates,
+  writeDashboardJournal,
+} from "../dashboard-cache";
+
+// The calendar month aggregate shows journals (agenda rows, journal ring,
+// weekly activity) — same month-scoped edge the PWA invalidates.
+function invalidateJournalMonth(qc: QueryClient, date?: string) {
+  if (date)
+    void qc.invalidateQueries({ queryKey: ["calendar", date.slice(0, 7)] });
+}
+import {
+  decryptJournalEntry,
+  decryptJournalList,
   encryptJournalPayload,
   getJournalDek,
   isJournalEncryptionSetup,
+  journalDekEpoch,
   type EncryptedJournalPayload,
 } from "@/lib/journal-crypto";
 
@@ -39,14 +56,17 @@ export function useJournals(
   },
   options?: { enabled?: boolean },
 ) {
+  const epoch = journalDekEpoch();
   return useQuery({
-    queryKey: journalKeys.list(filters),
+    queryKey: [...journalKeys.list(filters), epoch] as const,
     queryFn: async () => {
       const { data } = await apiClient.get<{ data: Journal[] } | Journal[]>(
         "/journals",
         { params: filters },
       );
-      return Array.isArray(data) ? data : data.data;
+      const raw = Array.isArray(data) ? data : data.data;
+      const dek = getJournalDek();
+      return dek ? await decryptJournalList(raw, dek) : raw;
     },
     enabled: options?.enabled !== false,
   });
@@ -56,8 +76,9 @@ export function useJournals(
  * Full pagination envelope from `GET /journals?page=&limit=` — same endpoint
  * as `useJournals`, but keeping the `{ data, meta }` wrapper so the journal
  * tab can drive an infinite "Load more" list (PWA `useJournalsPaginated`
- * parity). Raw/possibly-encrypted journals — the screen decrypts (mobile
- * decrypts at the screen level, unlike the PWA's in-hook decrypt).
+ * parity). Decrypted IN the queryFn (PWA parity) — off the render path —
+ * so the resolved page data is already plaintext by the time the screen
+ * reads it.
  */
 export type PaginatedJournals = {
   data: Journal[];
@@ -65,13 +86,18 @@ export type PaginatedJournals = {
 };
 
 export function useJournalsPaginated(limit = 20) {
+  const epoch = journalDekEpoch();
   return useInfiniteQuery<PaginatedJournals>({
-    queryKey: journalKeys.paginated(),
+    queryKey: [...journalKeys.paginated(), epoch] as const,
     queryFn: async ({ pageParam }) => {
       const { data } = await apiClient.get<PaginatedJournals>("/journals", {
         params: { page: pageParam as number, limit },
       });
-      return data;
+      const dek = getJournalDek();
+      const decrypted = dek
+        ? await decryptJournalList(data.data, dek)
+        : data.data;
+      return { ...data, data: decrypted };
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
@@ -82,13 +108,60 @@ export function useJournalsPaginated(limit = 20) {
 }
 
 export function useJournal(id: string | null | undefined) {
+  const qc = useQueryClient();
+  const epoch = journalDekEpoch();
   return useQuery({
-    queryKey: id ? journalKeys.detail(id) : journalKeys.detail("disabled"),
+    queryKey: [
+      ...(id ? journalKeys.detail(id) : journalKeys.detail("disabled")),
+      epoch,
+    ] as const,
     queryFn: async () => {
       const { data } = await apiClient.get<Journal>(`/journals/${id}`);
-      return data;
+      const dek = getJournalDek();
+      return dek ? await decryptJournalEntry(data, dek) : data;
     },
     enabled: !!id,
+    // Open instantly from the list caches the journal tab already loaded
+    // (the paginated infinite list + any date-filtered flat list) instead of
+    // spinning through a SECOND network round-trip for an entry we already
+    // hold. List queryFns now decrypt too (Change 2 above), so the cached
+    // list row is ALREADY plaintext — the seed below is safe to feed straight
+    // into this (also-decrypting) detail query without a second decrypt pass.
+    // A background refetch still runs to reconcile; we return the cached
+    // object BY REFERENCE (never a copy) so the value stays referentially
+    // stable. Deep-linked entries not present in any list cache fall back to
+    // the network fetch (spinner).
+    //
+    // Prefix match: `journalKeys.lists()` is `[...all, "list"]`, and both
+    // `journalKeys.list(filters)` and `journalKeys.paginated()` extend that
+    // (`[...lists(), filters]` / `[...lists(), "paginated"]`) — appending the
+    // trailing `epoch` element to each doesn't change their shared prefix, so
+    // `getQueriesData({queryKey: journalKeys.lists()})` still matches every
+    // list cache regardless of which epoch is baked into its key.
+    placeholderData: () => {
+      if (!id) return undefined;
+      // Flat filtered lists cache Journal[]; the paginated cache (also under
+      // lists()) is InfiniteData — the Array.isArray guard skips it here, and
+      // it's searched separately below.
+      const flat = qc.getQueriesData<Journal[]>({
+        queryKey: journalKeys.lists(),
+      });
+      for (const [, list] of flat) {
+        if (!Array.isArray(list)) continue;
+        const hit = list.find((j) => j.id === id);
+        if (hit) return hit;
+      }
+      const paged = qc.getQueriesData<{ pages: PaginatedJournals[] }>({
+        queryKey: journalKeys.paginated(),
+      });
+      for (const [, data] of paged) {
+        for (const page of data?.pages ?? []) {
+          const hit = page?.data?.find((j) => j.id === id);
+          if (hit) return hit;
+        }
+      }
+      return undefined;
+    },
   });
 }
 
@@ -183,7 +256,14 @@ export function useCreateJournal() {
       const { data } = await apiClient.post<Journal>("/journals", body);
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: journalKeys.lists() }),
+    onSuccess: (server) => {
+      void qc.invalidateQueries({ queryKey: journalKeys.lists() });
+      void qc.invalidateQueries({ queryKey: journalKeys.stats() });
+      invalidateJournalMonth(qc, server?.date);
+      // A new entry dated today changes the journal ring's word count.
+      invalidateDashboardToday(qc);
+      settleDerivedAggregates(qc, { dashboard: false });
+    },
   });
 }
 
@@ -277,10 +357,22 @@ export function useUpdateJournal() {
     },
     // Write the server entry into the caches instead of invalidating — autosave
     // must NEVER refetch ["journal", id] (journalKeys.detail): that would reload
-    // the entry the user is actively typing in and can clobber the buffer. The
-    // server response is exactly what we just saved, so writing it is safe.
-    onSuccess: (server, vars) => {
-      qc.setQueryData(journalKeys.detail(vars.id), server);
+    // the entry the user is actively typing in and can clobber the buffer.
+    //
+    // SECURITY: `server` is the RAW PATCH response — for an encrypted entry
+    // that's still ciphertext (the server echoes back what it persisted). Now
+    // that list/detail caches are decrypted-by-contract (queryFn decrypts on
+    // fetch), writing `server` straight in would plant ciphertext where the
+    // screen expects plaintext. Decrypt it first with the SAME in-memory DEK
+    // used for the PATCH, then write the plaintext into the epoch-suffixed
+    // detail key (matching the active useJournal query) and the list caches.
+    onSuccess: async (server, vars) => {
+      const dek = getJournalDek();
+      const decryptedEntry = dek
+        ? await decryptJournalEntry(server, dek)
+        : server;
+      const epoch = journalDekEpoch();
+      qc.setQueryData([...journalKeys.detail(vars.id), epoch], decryptedEntry);
       const lists = qc.getQueriesData<Journal[]>({
         queryKey: journalKeys.lists(),
       });
@@ -288,9 +380,48 @@ export function useUpdateJournal() {
         if (!Array.isArray(list)) continue;
         qc.setQueryData<Journal[]>(
           key,
-          list.map((j) => (j.id === server.id ? server : j)),
+          list.map((j) => (j.id === decryptedEntry.id ? decryptedEntry : j)),
         );
       }
+      // The PAGINATED cache is InfiniteData ({pages}), so the Array.isArray
+      // loop above skips it — patch it explicitly here. It used to be left for
+      // "the onSettled invalidate" (see onMutate's comment) that never existed
+      // on this mutation, which left the paginated list permanently showing
+      // pre-edit rows. That stale row is what `useJournal`'s placeholderData
+      // seeds the editor from, and since EntryEditor seeds its state via
+      // useState initializers (no re-seed on refetch), the next keystroke would
+      // autosave the STALE body back over the newer server copy — data loss.
+      qc.setQueriesData<{ pages: PaginatedJournals[] }>(
+        { queryKey: journalKeys.paginated() },
+        (prev) => {
+          if (!prev?.pages) return prev;
+          return {
+            ...prev,
+            pages: prev.pages.map((page) =>
+              Array.isArray(page?.data)
+                ? {
+                    ...page,
+                    data: page.data.map((j) =>
+                      j.id === decryptedEntry.id ? decryptedEntry : j,
+                    ),
+                  }
+                : page,
+            ),
+          };
+        },
+      );
+      // Journal words feed the Today ring; patch rather than invalidate —
+      // autosave fires continuously while typing and a refetch per
+      // keystroke-batch would hammer the aggregate.
+      writeDashboardJournal(qc, decryptedEntry);
+      // Autosave fires every ~1s while typing: the stats charts (Today's
+      // growth + heatmap, both mounted) and the calendar month refetch ONCE
+      // after typing pauses, not per save.
+      invalidateDebounced(qc, journalKeys.stats());
+      if (server?.date) {
+        invalidateDebounced(qc, ["calendar", server.date.slice(0, 7)]);
+      }
+      settleDerivedAggregates(qc, { dashboard: false });
     },
   });
 }
@@ -307,20 +438,31 @@ export function useDeleteJournal() {
       const snapshots = qc.getQueriesData<Journal[]>({
         queryKey: journalKeys.lists(),
       });
+      let date: string | undefined;
       for (const [key, prev] of snapshots) {
         // Skip the paginated InfiniteData cache — see useUpdateJournal.
         if (!Array.isArray(prev)) continue;
+        date ??= prev.find((j) => j.id === id)?.date;
         qc.setQueryData<Journal[]>(
           key,
           prev.filter((j) => j.id !== id),
         );
       }
-      return { snapshots };
+      date ??= qc.getQueryData<Journal>(journalKeys.detail(id))?.date;
+      return { snapshots, date };
     },
     onError: (_err, _vars, ctx) => {
       if (!ctx?.snapshots) return;
       for (const [key, prev] of ctx.snapshots) qc.setQueryData(key, prev);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: journalKeys.lists() }),
+    onSettled: (_id, _err, _vars, ctx) => {
+      void qc.invalidateQueries({ queryKey: journalKeys.lists() });
+      void qc.invalidateQueries({ queryKey: journalKeys.stats() });
+      // Date unknown (entry only in the paged cache) → refresh every month.
+      if (ctx?.date) invalidateJournalMonth(qc, ctx.date);
+      else void qc.invalidateQueries({ queryKey: ["calendar"] });
+      invalidateDashboardToday(qc);
+      settleDerivedAggregates(qc, { dashboard: false });
+    },
   });
 }

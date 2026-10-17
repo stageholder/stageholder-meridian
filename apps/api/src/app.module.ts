@@ -28,6 +28,7 @@ import { HabitEntryModule } from "./modules/habit-entry/habit-entry.module";
 import { ActivityModule } from "./modules/activity/activity.module";
 import { NotificationModule } from "./modules/notification/notification.module";
 import { CalendarModule } from "./modules/calendar/calendar.module";
+import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { LightModule } from "./modules/light/light.module";
 import { FeedbackModule } from "./modules/feedback/feedback.module";
 import { HealthModule } from "./modules/health/health.module";
@@ -113,6 +114,7 @@ import { HubWebhookModule } from "./modules/hub-webhook/hub-webhook.module";
     ActivityModule,
     NotificationModule,
     CalendarModule,
+    DashboardModule,
     LightModule,
     FeedbackModule,
     HealthModule,

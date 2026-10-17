@@ -128,17 +128,17 @@ export const HabitGroupSection = memo(function HabitGroupSection({
               <HabitCheckInRow
                 habit={habit}
                 activeDate={activeDate}
-                onOpenDetail={() => onOpenDetail(habit)}
+                onOpenDetail={onOpenDetail}
               />
             ) : (
               <HabitCardRow
                 habit={habit}
                 selectedDate={selectedDate}
                 isArchived={false}
-                onEdit={() => onEdit(habit)}
-                onOpenDetail={() => onOpenDetail(habit)}
-                onArchive={() => onArchive(habit)}
-                onMoveToGroup={() => onMoveToGroup(habit)}
+                onEdit={onEdit}
+                onOpenDetail={onOpenDetail}
+                onArchive={onArchive}
+                onMoveToGroup={onMoveToGroup}
               />
             )}
           </View>

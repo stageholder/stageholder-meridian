@@ -1,0 +1,47 @@
+# Signed-in launch lands on Today, and every tab renders its screen.
+appId: com.stageholder.meridian
+name: smoke
+---
+- runFlow: ../subflows/launch-signed-in.yaml
+- assertVisible:
+    id: "today-greeting"
+- runFlow:
+    file: ../subflows/tab.yaml
+    env:
+      TAB_LABEL: "Todos"
+      TAB_ID: "tab-todos"
+- assertVisible: "All"
+- assertVisible:
+    id: "fab-new-todo"
+- runFlow:
+    file: ../subflows/tab.yaml
+    env:
+      TAB_LABEL: "Habits"
+      TAB_ID: "tab-habits"
+- assertVisible:
+    id: "fab-new-habit"
+- runFlow:
+    file: ../subflows/tab.yaml
+    env:
+      TAB_LABEL: "Journal"
+      TAB_ID: "tab-journal"
+- extendedWaitUntil:
+    visible: "Journal Locked|Journal"
+    timeout: 15000
+- runFlow:
+    file: ../subflows/tab.yaml
+    env:
+      TAB_LABEL: "Settings"
+      TAB_ID: "tab-settings"
+- assertVisible: "Daily goals|DAILY GOALS"
+- scrollUntilVisible:
+    element:
+      id: "settings-sign-out"
+    direction: DOWN
+- runFlow:
+    file: ../subflows/tab.yaml
+    env:
+      TAB_LABEL: "Today"
+      TAB_ID: "tab-index"
+- assertVisible:
+    id: "today-greeting"

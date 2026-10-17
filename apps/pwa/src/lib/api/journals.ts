@@ -84,10 +84,14 @@ export function useJournals(
 ) {
   const dek = useEncryptionStore((s) => s.dek);
   const isSetup = useEncryptionStore((s) => s.isSetup);
+  const dekEpoch = useEncryptionStore((s) => s.dekEpoch);
   const isLocked = isSetup && !dek;
 
   return useQuery<Journal[]>({
-    queryKey: ["journals", params],
+    // dekEpoch as the LAST segment: a lock/unlock (or account switch) bumps the
+    // epoch, so a cache entry decrypted under a prior DEK is never served under
+    // the new lock-state — it's a cache miss under the new key instead.
+    queryKey: ["journals", params, dekEpoch],
     // Decrypt the whole page right after the GET — plaintext only ever lives in
     // the react-query cache, never the wire.
     queryFn: async () => {
@@ -102,10 +106,11 @@ export function useJournals(
 export function useJournalsPaginated(limit = 20) {
   const dek = useEncryptionStore((s) => s.dek);
   const isSetup = useEncryptionStore((s) => s.isSetup);
+  const dekEpoch = useEncryptionStore((s) => s.dekEpoch);
   const isLocked = isSetup && !dek;
 
   return useInfiniteQuery<PaginatedJournals>({
-    queryKey: ["journals", "paginated"],
+    queryKey: ["journals", "paginated", dekEpoch],
     queryFn: async ({ pageParam }) => {
       const page = await journalsApi.listPaginated({
         page: pageParam as number,
@@ -133,10 +138,11 @@ export function useJournalsPaginated(limit = 20) {
 export function useJournal(id: string) {
   const dek = useEncryptionStore((s) => s.dek);
   const isSetup = useEncryptionStore((s) => s.isSetup);
+  const dekEpoch = useEncryptionStore((s) => s.dekEpoch);
   const isLocked = isSetup && !dek;
 
   return useQuery<Journal>({
-    queryKey: ["journal", id],
+    queryKey: ["journal", id, dekEpoch],
     // Decrypt the single entry right after the GET.
     queryFn: async () => {
       const journal = await journalsApi.get(id);
@@ -262,6 +268,8 @@ export function useUpdateJournal() {
       return journal;
     },
     onMutate: async ({ id, data }) => {
+      // "journals"/"journal" prefix-match every dekEpoch-suffixed key (fuzzy
+      // filter matching), so cancelQueries/getQueriesData below need no change.
       await queryClient.cancelQueries({ queryKey: ["journals"] });
       await queryClient.cancelQueries({ queryKey: ["journal", id] });
 
@@ -270,7 +278,13 @@ export function useUpdateJournal() {
         exact: false,
       });
 
-      const previousDetail = queryClient.getQueryData<Journal>(["journal", id]);
+      // getQueryData/setQueryData use an EXACT key hash — they do NOT
+      // prefix-match — so they must target the same epoch'd key the active
+      // useJournal query is registered under, or this optimistic write silently
+      // misses it.
+      const dekEpoch = useEncryptionStore.getState().dekEpoch;
+      const detailKey = ["journal", id, dekEpoch];
+      const previousDetail = queryClient.getQueryData<Journal>(detailKey);
 
       for (const [queryKey, old] of previousQueries) {
         if (Array.isArray(old)) {
@@ -285,11 +299,11 @@ export function useUpdateJournal() {
         }
       }
 
-      queryClient.setQueryData<Journal>(["journal", id], (old) =>
+      queryClient.setQueryData<Journal>(detailKey, (old) =>
         old ? { ...old, ...data, updatedAt: new Date().toISOString() } : old,
       );
 
-      return { previousQueries, previousDetail };
+      return { previousQueries, previousDetail, dekEpoch };
     },
     onError: (_err, variables, context) => {
       if (context?.previousQueries) {
@@ -299,7 +313,7 @@ export function useUpdateJournal() {
       }
       if (context?.previousDetail) {
         queryClient.setQueryData(
-          ["journal", variables.id],
+          ["journal", variables.id, context.dekEpoch],
           context.previousDetail,
         );
       }
@@ -309,8 +323,19 @@ export function useUpdateJournal() {
     // that would refetch the entry the user is actively typing in and can
     // clobber the buffer / jump the cursor. The server response is exactly what
     // we just saved, so writing it is safe.
+    //
+    // `serverJournal` is already PLAINTEXT here — the mutationFn above runs
+    // `decryptJournalResponse` on the server's response before resolving, so no
+    // second decrypt pass is needed. Read the CURRENT epoch at write time
+    // (rather than closing over the render-time `dek`/`isSetup` selectors
+    // above) so this lands on the epoch'd key the active useJournal query is
+    // actually registered under, even if the epoch changed since onMutate.
     onSuccess: (serverJournal, variables) => {
-      queryClient.setQueryData(["journal", variables.id], serverJournal);
+      const dekEpoch = useEncryptionStore.getState().dekEpoch;
+      queryClient.setQueryData(
+        ["journal", variables.id, dekEpoch],
+        serverJournal,
+      );
       writeEntityToLists(queryClient, [["journals"]], serverJournal);
     },
     onSettled: (data) => {

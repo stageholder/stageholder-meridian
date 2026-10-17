@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { Module, forwardRef } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { UserLightModel, UserLightSchema } from "./user-light.schema";
 import { LightEventModel, LightEventSchema } from "./light-event.schema";
@@ -20,7 +20,10 @@ import { NotificationModule } from "../notification/notification.module";
       { name: LightEventModel.name, schema: LightEventSchema },
       { name: HabitEntryModel.name, schema: HabitEntrySchema },
     ]),
-    HabitModule,
+    // Deferred for the same reason as habit-entry.module.ts: this module sits
+    // on the Light → Habit → HabitEntry → Light cycle, so the reference must
+    // not be read during module evaluation.
+    forwardRef(() => HabitModule),
     NotificationModule,
   ],
   controllers: [LightController],

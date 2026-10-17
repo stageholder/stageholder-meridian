@@ -13,6 +13,8 @@
 // editor mid-typing all the same.
 
 import { useRef, useEffect, useCallback, useState } from "react";
+import { AppState } from "react-native";
+import { toast } from "@stageholder/ui";
 import type { JournalContent } from "@repo/core/types";
 
 import { useCreateJournal, useUpdateJournal } from "@/lib/api";
@@ -54,6 +56,8 @@ export function useAutosave({
   // skip a redundant write when nothing changed since.
   const savedDataRef = useRef<AutosaveData | null>(null);
   const isSavingRef = useRef(false);
+  // The running save loop, so `flush()` can await it.
+  const inflightRef = useRef<Promise<void> | null>(null);
   const journalIdRef = useRef(journalId);
   const onCreatedRef = useRef(onCreated);
   const createRef = useRef(createJournal);
@@ -82,13 +86,19 @@ export function useAutosave({
   // it when it finishes. The running save drains `pending` in a loop, so a
   // burst of edits during one network round-trip collapses to a single trailing
   // save with the latest data instead of being lost.
-  const doSave = useCallback(async (data: AutosaveData) => {
+  const doSave = useCallback((data: AutosaveData): Promise<void> => {
     if (isSavingRef.current) {
       pendingDataRef.current = data;
-      return;
+      return inflightRef.current ?? Promise.resolve();
     }
     isSavingRef.current = true;
+    const run = runSaveLoop(data);
+    inflightRef.current = run;
+    return run;
+  }, []); // stable — no deps
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const runSaveLoop = async (data: AutosaveData) => {
     let current: AutosaveData | null = data;
     try {
       while (current) {
@@ -137,8 +147,9 @@ export function useAutosave({
       }
     } finally {
       isSavingRef.current = false;
+      inflightRef.current = null;
     }
-  }, []); // stable — no deps
+  };
 
   // scheduleSave is also stable
   const scheduleSave = useCallback(
@@ -155,12 +166,56 @@ export function useAutosave({
     [doSave, debounceMs],
   );
 
-  // Flush on unmount — UNCONDITIONALLY (C3). The old guard skipped the flush
-  // while a save was in flight, dropping any edit typed after the debounce
-  // fired. Now we always flush the newest un-persisted data: if a save is
-  // running, doSave queues it as `pending` and the running save drains it.
-  // Skip only when the newest data was already persisted (savedDataRef), to
-  // avoid a no-op write.
+  /** Persist everything typed so far, NOW. Resolves `true` once the newest
+   *  data is on the server (or there was nothing to save), `false` if the
+   *  write failed — "Done" awaits this instead of navigating away from an
+   *  unsaved draft. */
+  const flush = useCallback(async (): Promise<boolean> => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    const latest = latestDataRef.current;
+    if (latest && latest !== savedDataRef.current) await doSave(latest);
+    // A save may still be draining a queued edit.
+    while (inflightRef.current) await inflightRef.current;
+    return latestDataRef.current === savedDataRef.current;
+  }, [doSave]);
+
+  /** Abandon the draft: cancel pending/queued saves (so the unmount flush
+   *  can't re-save it), wait out a save already on the wire, and return the
+   *  entry id it ended up with (null if it was never created) for deletion. */
+  const discard = useCallback(async (): Promise<string | null> => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    latestDataRef.current = null;
+    pendingDataRef.current = null;
+    while (inflightRef.current) await inflightRef.current;
+    latestDataRef.current = null;
+    return journalIdRef.current;
+  }, []);
+
+  /** True when there's typed data the server hasn't confirmed yet. */
+  const hasUnsaved = useCallback(
+    () =>
+      !!latestDataRef.current && latestDataRef.current !== savedDataRef.current,
+    [],
+  );
+
+  // Backgrounding is the last reliable moment before the OS may kill the
+  // app — don't let the last second of typing ride on the debounce timer.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next === "background" || next === "inactive") void flush();
+    });
+    return () => sub.remove();
+  }, [flush]);
+
+  // Flush on unmount — UNCONDITIONALLY (C3): back-swipe / hardware Back leave
+  // without pressing Done. If that final write fails the screen is already
+  // gone, so surface it as a toast instead of losing the text silently.
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -168,10 +223,17 @@ export function useAutosave({
         latestDataRef.current &&
         latestDataRef.current !== savedDataRef.current
       ) {
-        void doSave(latestDataRef.current);
+        const latest = latestDataRef.current;
+        void doSave(latest).then(() => {
+          if (savedDataRef.current !== latest) {
+            toast.error("Your last journal changes weren't saved", {
+              description: "Check your connection, then reopen the entry.",
+            });
+          }
+        });
       }
     };
   }, [doSave]);
 
-  return { scheduleSave, status, journalId };
+  return { scheduleSave, flush, discard, hasUnsaved, status, journalId };
 }

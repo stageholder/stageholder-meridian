@@ -27,7 +27,6 @@
 
 import {
   Button,
-  IconButton,
   MoodPicker,
   MOOD_DEFAULT_OPTIONS,
   QuickDatePicker,
@@ -42,7 +41,8 @@ import {
 import { JournalEditor } from "@repo/features/journal";
 import type { RichTextEditorContent } from "@stageholder/ui";
 import { countWordsFromContent } from "@repo/core/utils/text";
-import { ChevronLeft, SmilePlus } from "@tamagui/lucide-icons-2";
+import { SmilePlus } from "@tamagui/lucide-icons-2";
+import { Alert } from "react-native";
 // Bare tamagui Input for the title — no kit Frame chrome, matching the PWA's
 // bare title field (kit Input wraps a bordered Frame whose focus ring can't be
 // zeroed from call-site props).
@@ -50,13 +50,13 @@ import { Input as BareInput } from "tamagui";
 import { KeyboardController } from "react-native-keyboard-controller";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   JournalTargetCelebration,
   JournalTargetProgress,
 } from "@/components/journal-progress";
-import { useJournals, useUserLight } from "@/lib/api";
+import { JournalEditorHeader } from "@/components/journal-editor-header";
+import { useDeleteJournal, useJournals, useUserLight } from "@/lib/api";
 import { useAutosave } from "@/lib/use-autosave";
 import { checkJournalStatus, useJournalCrypto } from "@/lib/journal-crypto";
 
@@ -129,7 +129,27 @@ export default function NewJournalScreen() {
   // editing in place so the 10tap editor never blurs mid-typing.
   // `journalId` (set after the first save) excludes this draft from the
   // other-words-today sum below, so autosave doesn't double-count us.
-  const { scheduleSave, status, journalId } = useAutosave({});
+  const { scheduleSave, flush, discard, status, journalId } = useAutosave({});
+  const deleteJournal = useDeleteJournal();
+
+  // Discard: a new draft is auto-POSTed after the first keystroke, so backing
+  // out alone would keep it. This removes it (if it was created) and leaves.
+  function confirmDiscard() {
+    Alert.alert("Discard this entry?", "What you've written will be deleted.", [
+      { text: "Keep writing", style: "cancel" },
+      {
+        text: "Discard",
+        style: "destructive",
+        onPress: () => {
+          void discard().then((id) => {
+            if (id) deleteJournal.mutate(id);
+          });
+          if (router.canGoBack()) router.back();
+          else router.replace("/journal");
+        },
+      },
+    ]);
+  }
 
   // Daily word target + words already written in OTHER entries today — feeds
   // the shared editor's progress strip and target-crossing celebration.
@@ -194,16 +214,8 @@ export default function NewJournalScreen() {
   // account (C5). ----
   if (isLoading) {
     return (
-      <YStack flex={1} bg="$background">
-        <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-          <BackBar
-            onBack={() => router.navigate("/journal")}
-            title="New Entry"
-          />
-          <YStack flex={1} items="center" justify="center">
-            <Spinner size="large" />
-          </YStack>
-        </SafeAreaView>
+      <YStack flex={1} bg="$background" items="center" justify="center">
+        <Spinner size="large" />
       </YStack>
     );
   }
@@ -212,95 +224,62 @@ export default function NewJournalScreen() {
   if (locked) {
     return (
       <YStack flex={1} bg="$background">
-        <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-          <BackBar
-            onBack={() => router.navigate("/journal")}
-            title="New Entry"
-          />
-          <YStack flex={1} items="center" justify="center" gap="$3" px="$6">
-            <Text fontSize="$5" fontWeight="600" color="$color">
-              Journal locked
-            </Text>
-            <Text fontSize="$3" color="$mutedForeground" text="center">
-              Unlock your journal first, then come back to write a new entry.
-            </Text>
-            <Button intent="primary" onPress={() => router.replace("/journal")}>
-              Go to journal
-            </Button>
-          </YStack>
-        </SafeAreaView>
+        <YStack flex={1} items="center" justify="center" gap="$3" px="$6">
+          <Text fontSize="$5" fontWeight="600" color="$color">
+            Journal locked
+          </Text>
+          <Text fontSize="$3" color="$mutedForeground" text="center">
+            Unlock your journal first, then come back to write a new entry.
+          </Text>
+          <Button
+            intent="primary"
+            onPress={() =>
+              router.canGoBack() ? router.back() : router.replace("/journal")
+            }
+          >
+            Go to journal
+          </Button>
+        </YStack>
       </YStack>
     );
   }
 
   return (
     <YStack flex={1} bg="$background">
-      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-        {/* Header: icon back (left) · centered title · Done (right). The
-            title is absolutely centered so it sits at the true screen center
-            regardless of the differing left/right control widths; it's
-            pointer-transparent so it never intercepts a tap meant for a
-            button. Done just returns to the list — autosave owns
-            persistence (the save-status badge lives in the editor toolbar). */}
-        <XStack
-          items="center"
-          justify="space-between"
-          px="$2"
-          py="$2"
-          position="relative"
-        >
-          <IconButton
-            variant="ghost"
-            size="sm"
-            aria-label="Back to journal"
-            onPress={() => router.navigate("/journal")}
-          >
-            <ChevronLeft size={20} />
-          </IconButton>
-          <Text
-            position="absolute"
-            l={0}
-            r={0}
-            text="center"
-            pointerEvents="none"
-            fontSize="$5"
-            fontWeight="600"
-            color="$color"
-          >
-            New Entry
-          </Text>
-          <Button
-            intent="primary"
-            size="sm"
-            mr="$2"
-            onPress={() => router.navigate("/journal")}
-          >
-            Done
-          </Button>
-        </XStack>
-
-        <YStack shrink={0} px="$4" pt="$2">
-          {/* Bare title — raw tamagui Input, no kit Frame chrome. Placeholder is
+      <JournalEditorHeader
+        title="New entry"
+        status={status}
+        flush={flush}
+        menu={[
+          {
+            label: "Discard entry",
+            destructive: true,
+            onPress: confirmDiscard,
+          },
+        ]}
+      />
+      <YStack shrink={0} px="$4" pt="$2">
+        {/* Bare title — raw tamagui Input, no kit Frame chrome. Placeholder is
               the date label (the PWA uses the date as the default title). */}
-          <BareInput
-            value={title}
-            onChangeText={setTitle}
-            placeholder={formatDefaultTitle(date)}
-            width="100%"
-            mb="$3"
-            px={0}
-            bg="transparent"
-            borderWidth={0}
-            outlineWidth={0}
-            fontSize={24}
-            fontWeight="700"
-            color="$color"
-            placeholderTextColor="$mutedForeground"
-            focusStyle={{ borderWidth: 0, outlineWidth: 0 }}
-            focusVisibleStyle={{ outlineWidth: 0 }}
-          />
+        <BareInput
+          value={title}
+          onChangeText={setTitle}
+          placeholder={formatDefaultTitle(date)}
+          width="100%"
+          mb="$3"
+          px={0}
+          bg="transparent"
+          borderWidth={0}
+          outlineWidth={0}
+          fontSize={24}
+          fontWeight="700"
+          color="$color"
+          placeholderTextColor="$mutedForeground"
+          focusStyle={{ borderWidth: 0, outlineWidth: 0 }}
+          focusVisibleStyle={{ outlineWidth: 0 }}
+        />
 
-          {/* Metadata chips — date · mood · tags. All `size="sm"` so the row
+        {/* Metadata chips — date · mood · tags. All `size="sm"` so the row
               reads as one consistent set of chips.
 
               onTouchStart dismisses the EDITOR's keyboard the moment the user
@@ -310,72 +289,71 @@ export default function NewJournalScreen() {
               still up. `KeyboardController.dismiss()` resigns the native first
               responder (incl. the webview), and as a bonus it frees focus so
               the inline Tag field can take the keyboard when it expands. */}
-          <XStack
-            mb="$4"
-            flexWrap="wrap"
-            items="center"
-            gap="$2"
-            onTouchStart={() => {
-              void KeyboardController.dismiss();
+        <XStack
+          mb="$4"
+          flexWrap="wrap"
+          items="center"
+          gap="$2"
+          onTouchStart={() => {
+            void KeyboardController.dismiss();
+          }}
+        >
+          <QuickDatePicker
+            size="sm"
+            value={parseDateLocal(date)}
+            onChange={(d) => {
+              if (d) setDate(localDateKey(d));
             }}
-          >
-            <QuickDatePicker
-              size="sm"
-              value={parseDateLocal(date)}
-              onChange={(d) => {
-                if (d) setDate(localDateKey(d));
-              }}
-              clearable={false}
-            />
+            clearable={false}
+          />
 
-            {/* Mood — a small chip that opens a bottom Sheet with the kit
+          {/* Mood — a small chip that opens a bottom Sheet with the kit
                 MoodPicker. The MoodPicker's bubbles are a fixed 48px; in a
                 cramped popover they overflowed, so we give them a full-width
                 sheet (consistent with the date picker's sheet on native). */}
-            <Button
-              intent="outline"
-              size="sm"
-              rounded={9999}
-              gap="$1.5"
-              onPress={() => setMoodOpen(true)}
-              icon={
-                currentMood ? (
-                  <Text fontSize="$3">{currentMood.emoji}</Text>
-                ) : (
-                  <SmilePlus size={14} color="$mutedForeground" />
-                )
-              }
-            >
-              <Text fontSize="$2" color="$mutedForeground">
-                {currentMood?.label ?? "Mood"}
-              </Text>
-            </Button>
+          <Button
+            intent="outline"
+            size="sm"
+            rounded={9999}
+            gap="$1.5"
+            onPress={() => setMoodOpen(true)}
+            icon={
+              currentMood ? (
+                <Text fontSize="$3">{currentMood.emoji}</Text>
+              ) : (
+                <SmilePlus size={14} color="$mutedForeground" />
+              )
+            }
+          >
+            <Text fontSize="$2" color="$mutedForeground">
+              {currentMood?.label ?? "Mood"}
+            </Text>
+          </Button>
 
-            {/* Tags — kit TagInput inline (chips + a "+ Tag" pill). */}
-            <TagInput value={tags} onChange={setTags} inline addLabel="Tag" />
-          </XStack>
-        </YStack>
+          {/* Tags — kit TagInput inline (chips + a "+ Tag" pill). */}
+          <TagInput value={tags} onChange={setTags} inline addLabel="Tag" />
+        </XStack>
+      </YStack>
 
-        {/* Editor fills the rest. Same shared view the PWA renders; it owns the
+      {/* Editor fills the rest. Same shared view the PWA renders; it owns the
             kit RichTextEditor (10tap), word count, and target-crossing. The
             web-only progress bar / celebration / dead-zone handler are omitted
             (those render-props are optional). */}
-        <View flex={1}>
-          <JournalEditor
-            initialContent={content}
-            onChange={setContent}
-            placeholder="What's on your mind?"
-            autoFocus
-            saveStatus={status}
-            target={wordTarget}
-            otherWordsToday={otherWordsToday}
-            renderProgress={(state) => <JournalTargetProgress {...state} />}
-            renderCelebration={(trigger) => (
-              <JournalTargetCelebration trigger={trigger} />
-            )}
-          />
-        </View>
-      </SafeAreaView>
+      <View flex={1}>
+        <JournalEditor
+          initialContent={content}
+          onChange={setContent}
+          placeholder="What's on your mind?"
+          autoFocus
+          saveStatus={status}
+          target={wordTarget}
+          otherWordsToday={otherWordsToday}
+          renderProgress={(state) => <JournalTargetProgress {...state} />}
+          renderCelebration={(trigger) => (
+            <JournalTargetCelebration trigger={trigger} />
+          )}
+        />
+      </View>
 
       {/* Mood picker — bottom sheet so the kit MoodPicker's fixed-48px bubbles
           get a full-width row to sit in (a popover cramped them). Content-hug
@@ -410,34 +388,5 @@ export default function NewJournalScreen() {
         </Sheet.Frame>
       </Sheet>
     </YStack>
-  );
-}
-
-/* ------------------------------- Back bar ---------------------------------- */
-
-function BackBar({ onBack, title }: { onBack: () => void; title: string }) {
-  return (
-    <XStack items="center" px="$2" py="$2" position="relative">
-      <IconButton
-        variant="ghost"
-        size="sm"
-        aria-label="Back to journal"
-        onPress={onBack}
-      >
-        <ChevronLeft size={20} />
-      </IconButton>
-      <Text
-        position="absolute"
-        l={0}
-        r={0}
-        text="center"
-        pointerEvents="none"
-        fontSize="$5"
-        fontWeight="600"
-        color="$color"
-      >
-        {title}
-      </Text>
-    </XStack>
   );
 }

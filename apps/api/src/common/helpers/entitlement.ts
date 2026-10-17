@@ -23,8 +23,8 @@ export type MeridianFeatureSlug =
  * these are strictly last-resort defaults that match the public pricing.
  */
 const FREE_TIER_DEFAULTS: Record<MeridianFeatureSlug, number> = {
-  max_habits: 5,
-  max_todo_lists: 3,
+  max_habits: 3,
+  max_todo_lists: 5,
   max_active_todos: 10,
   max_habit_groups: 5,
 };
@@ -50,8 +50,11 @@ export function getMeridianLimit(
   }
 
   const value = sub.features[feature];
-  if (typeof value !== "number") return FREE_TIER_DEFAULTS[feature];
-  return value; // -1 for unlimited, otherwise a positive cap
+  if (typeof value === "number") return value; // -1 unlimited, else a cap
+  // The plan carries no value for this feature (e.g. `max_habit_groups`
+  // before it existed in the Hub catalog). On Free, keep the free cap; on a
+  // PAID plan, never silently apply free-tier limits to a paying customer.
+  return sub.plan === "free" ? FREE_TIER_DEFAULTS[feature] : -1;
 }
 
 /**
@@ -61,11 +64,11 @@ export function getMeridianLimit(
  * for the meridian product. Set via env so deployments can point at
  * `meridian-unlimited`, `meridian-pro`, etc. without code changes.
  *
- * Default `"meridian-unlimited"` matches the canonical paid tier; override
+ * Default `"unlimited"` matches the Hub's paid Meridian plan slug; override
  * if your Hub uses a different slug.
  */
 const SUGGESTED_PLAN_SLUG =
-  process.env.MERIDIAN_UPGRADE_PLAN_SLUG ?? "meridian-unlimited";
+  process.env.MERIDIAN_UPGRADE_PLAN_SLUG ?? "unlimited";
 
 /**
  * Display name for the suggested plan. Surfaced in the 402 body as

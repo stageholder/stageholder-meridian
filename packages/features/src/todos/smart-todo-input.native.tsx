@@ -43,7 +43,6 @@ import {
 import {
   parseSmartTodo,
   type SmartParseResult,
-  type SmartToken,
 } from "@repo/core/todos/smart-parse";
 import { resolveSmartLocale } from "@repo/core/todos/date-parse";
 import type {
@@ -62,18 +61,8 @@ const PRIORITY_COLOR: Record<string, string> = {
   medium: "#eab308",
   low: "#3b82f6",
 };
-/** Solid fill for a recognized token — white pill text sits on it. */
-function tokenColor(token: SmartToken, lists: SmartListOption[]): string {
-  switch (token.kind) {
-    case "do":
-    case "due":
-      return TODO_RED;
-    case "priority":
-      return PRIORITY_COLOR[token.value] ?? TODO_RED;
-    case "list":
-      return lists.find((l) => l.id === token.value)?.color || "#6b7280";
-  }
-}
+// (Token→colour mapping moved INTO the WebView bundle — editor-web/entry.ts —
+// now that the parser runs there; RN no longer colours per-keystroke tokens.)
 
 // `!` menu options — the WORD form is inserted (reads better in the title than
 // `!p1`), but the P-code is matched too so typing `!p2` filters.
@@ -258,36 +247,39 @@ export const SmartTodoInput = forwardRef<
     if (parse) onParseRef.current?.(result);
   }, [result, parse]);
 
-  // ── Push highlight ranges into the WebView (Phase 2) ──
-  // The parser runs here; the WebView only renders. Each token → {start, end,
-  // color}; the decoration plugin maps offsets to positions and paints pills.
-  const smartTokens = useMemo(
-    () =>
-      parse
-        ? result.tokens.map((t) => ({
-            start: t.start,
-            end: t.end,
-            color: tokenColor(t, lists),
-          }))
-        : [],
-    [result.tokens, lists, parse],
+  // ── Push the parse CONFIG into the WebView (lists / now / locale) ──
+  // The parser now runs INSIDE the WebView (editor-web/entry.ts) so the pill
+  // paints on the SAME frame as the keystroke — no per-keystroke WebView↔RN
+  // round-trip (the old `__setSmartTokens` push, which lagged the highlight
+  // behind the caret, is gone). RN pushes only this config, which changes
+  // rarely (the list set, a locale switch), NOT on every keystroke. `result`
+  // above is still parsed here for the pills row + the saved due/do/priority/
+  // list fields — that side may lag harmlessly; the highlight no longer waits.
+  const smartConfig = useMemo(
+    () => ({
+      enabled: parse,
+      nowIso: nowValue.toISOString(),
+      locale: smartLoc,
+      lists: lists.map((l) => ({ id: l.id, name: l.name, color: l.color })),
+    }),
+    [parse, nowValue, smartLoc, lists],
   );
-  // Latest tokens for the onLoad closure (which fires once, asynchronously).
-  const smartTokensRef = useRef(smartTokens);
-  smartTokensRef.current = smartTokens;
+  // Latest config for the onLoad closure (which fires once, asynchronously).
+  const smartConfigRef = useRef(smartConfig);
+  smartConfigRef.current = smartConfig;
   const editorReady = useRef(false);
 
-  const pushTokens = (tokens: typeof smartTokens) => {
+  const pushConfig = (config: typeof smartConfig) => {
     // Guarded in-page: the hook may not exist for the first frame after load.
     editor.injectJS(
-      `window.__setSmartTokens && window.__setSmartTokens(${JSON.stringify(tokens)});`,
+      `window.__setSmartConfig && window.__setSmartConfig(${JSON.stringify(config)});`,
     );
   };
 
   useEffect(() => {
-    if (editorReady.current) pushTokens(smartTokens);
+    if (editorReady.current) pushConfig(smartConfig);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [smartTokens]);
+  }, [smartConfig]);
 
   // ── `!` / `#` trigger picker (Phase 3) ──
   // The live caret comes from the bridge state; the text is `value`. Together
@@ -339,7 +331,7 @@ export const SmartTodoInput = forwardRef<
           // Editor is ready here → flush the current highlight ranges.
           onLoad={() => {
             editorReady.current = true;
-            pushTokens(smartTokensRef.current);
+            pushConfig(smartConfigRef.current);
           }}
           style={{ flex: 1, backgroundColor: "transparent" }}
         />

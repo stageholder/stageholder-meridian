@@ -20,7 +20,8 @@
     "./platform/linking": "./src/platform/linking.ts",
     "./utils/*": "./src/utils/*.ts",
     "./habits/*": "./src/habits/*.ts",
-    "./todos/*": "./src/todos/*.ts"
+    "./todos/*": "./src/todos/*.ts",
+    "./dashboard/*": "./src/dashboard/*.ts"
   },
   "peerDependencies": {
     "react": "^19.0.0"

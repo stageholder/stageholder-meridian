@@ -1,0 +1,70 @@
+# Launch the app and make sure the test account is signed in and on Today.
+# Keeps app state between flows (no clearState) so the session from the first
+# flow is reused; signs in through the Hub only when needed.
+appId: com.stageholder.meridian
+---
+- launchApp:
+    appId: com.stageholder.meridian
+    stopApp: true
+# A loaded emulator can raise an OS "isn't responding" dialog — wait it out.
+- runFlow:
+    when:
+      visible: ".*isn't responding"
+    commands:
+      - tapOn: "Wait"
+# Wait for ANY known first screen before branching (a `when:` check right
+# after launch runs before anything has rendered).
+- extendedWaitUntil:
+    visible:
+      text: "Development Build|This is the developer menu.*|Sign in with Stageholder|Today|.*isn't responding"
+    # A cold dev-client launch on a busy machine can take well over 45s.
+    timeout: 120000
+- runFlow:
+    when:
+      visible: ".*isn't responding"
+    commands:
+      - tapOn: "Wait"
+# A cold-launched dev build opens Expo's launcher: connect to the local Metro.
+- runFlow:
+    when:
+      visible: "Development Build"
+    commands:
+      - tapOn: "http://localhost:8081"
+      - extendedWaitUntil:
+          visible:
+            text: "This is the developer menu.*|Sign in with Stageholder|Today"
+          timeout: 90000
+# Dev builds show Expo's developer-menu intro once per install…
+- runFlow:
+    when:
+      visible: "This is the developer menu.*"
+    commands:
+      - tapOn: "Continue"
+# …which leaves the developer menu itself open — close it.
+- runFlow:
+    when:
+      visible: "Toggle performance monitor"
+    commands:
+      - runFlow:
+          when:
+            platform: Android
+          commands:
+            - back
+      - runFlow:
+          when:
+            platform: iOS
+          commands:
+            - swipe:
+                direction: DOWN
+- extendedWaitUntil:
+    visible:
+      text: "Sign in with Stageholder|Today"
+    timeout: 45000
+- runFlow:
+    when:
+      visible: "Sign in with Stageholder"
+    file: sign-in.yaml
+- extendedWaitUntil:
+    visible:
+      id: "today-greeting"
+    timeout: 60000

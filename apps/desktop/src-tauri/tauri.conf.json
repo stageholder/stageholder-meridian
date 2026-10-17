@@ -30,6 +30,11 @@
     "updater": {
       "endpoints": ["https://releases.meridian.stageholder.com/latest.json"],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEI5RkNDRkM0RjAzMjg1QkYKUldTL2hUTHd4TS84dVo1M0ZtTE1tays3VmtnU1N4eEFmWHpJd2ltR3l0c1ZneVl6R0c4ekNMeUkK"
+    },
+    "deep-link": {
+      "desktop": {
+        "schemes": ["meridian"]
+      }
     }
   },
   "bundle": {

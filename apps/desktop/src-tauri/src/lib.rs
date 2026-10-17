@@ -6,9 +6,10 @@ use log::LevelFilter;
 pub fn run() {
     tauri::Builder::default()
         // Must be registered first so a second launch focuses the existing
-        // window — the OAuth loopback callback relies on this to deliver
-        // the authorization code to the original webview instead of opening
-        // a duplicate one.
+        // window instead of opening a duplicate one. With the `deep-link`
+        // feature it also forwards a `meridian://auth/callback?...` launch
+        // (Windows/Linux deliver deep links as a second process) to the
+        // running instance; macOS delivers them to it natively.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.unminimize();
@@ -16,6 +17,10 @@ pub fn run() {
                 let _ = window.set_focus();
             }
         }))
+        // Sign-in runs in the SYSTEM browser (RFC 8252); Hub redirects back to
+        // `meridian://auth/callback`, which the webview picks up via the JS
+        // `onOpenUrl`/`getCurrent` API (`apps/pwa/src/lib/desktop-auth.ts`).
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(
             tauri_plugin_log::Builder::new()

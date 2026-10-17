@@ -45,8 +45,10 @@ export function TrialPill({
   return (
     <XStack
       role="button"
-      aria-label={`${label} in trial — manage subscription`}
+      aria-label={`${label} in trial — see plans`}
       height={28}
+      // 28pt pill — extend the touch area to the 44pt minimum.
+      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
       items="center"
       gap="$1.5"
       rounded={9999}

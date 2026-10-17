@@ -13,28 +13,18 @@
 //    duplicate, killing Metro before it binds 8081. Forcing the origin path
 //    to a file inside this project makes Metro always pick the project-local
 //    copy.
-// 5. withTamagui wraps the config — Tamagui's officially recommended Metro
-//    integration. It loads tamagui.config.ts, watches it for changes, and
-//    enables compile-time optimizations on production builds. We apply it
-//    LAST so our dedupe + workspace path setup runs first.
+// 5. NO withTamagui / @tamagui/metro-plugin. The Tamagui compiler is OPTIONAL
+//    on native — its static extraction mainly benefits web; on native the win
+//    is modest — and the two sibling apps (atlas/almanac), same kit + Tamagui
+//    v2 + Expo stack, run PLAIN Metro and are smooth. Dropped here while
+//    chasing app-wide interaction jank so meridian matches the proven-smooth
+//    siblings (one less build-time transform over every @stageholder/ui
+//    component). Re-add only if a measured native win justifies it.
 
 const { getDefaultConfig } = require("expo/metro-config");
 const path = require("node:path");
 
-// Soft-require so Metro doesn't crash if the plugin isn't installed yet.
-// Once `bun install` runs, this picks up the real plugin and the wrap
-// below activates. Until then, we ship a no-op identity wrapper — the
-// app still bundles, you just don't get the compile-time CSS extraction
-// optimization (which is irrelevant during dev anyway).
-let withTamagui = (config) => config;
-try {
-  withTamagui = require("@tamagui/metro-plugin").withTamagui;
-} catch {
-  console.warn(
-    "[meridian] @tamagui/metro-plugin not installed — skipping Tamagui Metro " +
-      "optimization. Run `bun install` from the repo root to enable it.",
-  );
-}
+// (No @tamagui/metro-plugin / withTamagui wrapper — see header note 5.)
 
 const projectRoot = __dirname;
 const monorepoRoot = path.resolve(projectRoot, "../..");
@@ -48,7 +38,8 @@ config.resolver.nodeModulesPaths = [
 ];
 config.resolver.disableHierarchicalLookup = false;
 config.resolver.unstable_enablePackageExports = true;
-config.resolver.unstable_enableSymlinks = true;
+// (unstable_enableSymlinks removed — symlink resolution is Metro's default on
+// SDK 56 and expo-doctor flags the now-removed override.)
 
 // Prefer `import` / `module` conditions over `require` when resolving
 // conditional package exports.
@@ -206,18 +197,9 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return context.resolveRequest(context, moduleName, platform);
 };
 
-// Tamagui's Metro plugin — wraps our config to add compile-time optimization
-// + config-file watching. Per the v2 docs:
-//   https://tamagui.dev/docs/guides/metro
-//
-// `components: ["tamagui", "@stageholder/ui"]` tells the plugin which
-// packages to scan for components when extracting CSS at build time —
-// listing both means our design-system primitives benefit from the
-// optimization too, not just direct `tamagui` imports.
-//
-// `config: "./tamagui.config.ts"` is explicit (the plugin can auto-detect
-// from `tamagui.build.ts` but we don't have that file).
-module.exports = withTamagui(config, {
-  components: ["tamagui", "@stageholder/ui"],
-  config: "./tamagui.config.ts",
-});
+// Plain Metro config — NO withTamagui wrapper (see header note 5). The Tamagui
+// compiler is optional on native and the smooth sibling apps (atlas/almanac)
+// don't use it; dropping it removes a build-time transform over the kit while
+// chasing app-wide interaction jank. Re-add `withTamagui(config, {...})` here
+// only if a measured native win justifies it.
+module.exports = config;

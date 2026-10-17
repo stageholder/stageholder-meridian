@@ -16,9 +16,10 @@
 // Omitted → today. HabitCard is already date-aware (`selectedDate` prop), so we
 // just thread the same date into the entries window + the actions hook.
 
+import { memo, useMemo } from "react";
 import { toast } from "@stageholder/ui";
 import { HabitCard, RadianceBurst } from "@repo/features/habits";
-import type { Habit } from "@repo/core/types";
+import type { Habit, HabitEntry } from "@repo/core/types";
 
 import { useDeleteHabit, useSharedHabitEntries } from "@/lib/api";
 import { useHabitDayActions } from "@/lib/hooks/use-habit-day-actions";
@@ -29,23 +30,33 @@ export interface HabitCardRowProps {
   habit: Habit;
   /** The day this card acts on (yyyy-mm-dd). Omit → today. */
   selectedDate?: string;
+  /** When provided, the card uses these entries and does NOT self-fetch — the
+   *  host already has them from an aggregate cache (/habits?withEntries). Omit
+   *  to keep the per-card self-fetch. */
+  entries?: HabitEntry[];
+  // Handlers receive the habit so a host can pass ONE stable function for
+  // every row — fresh per-row closures defeated the memo below.
   /** Opens the native edit sheet for this habit (per-card Edit action). */
-  onEdit: () => void;
+  onEdit: (habit: Habit) => void;
   /** Opens the native habit detail screen (card body tap). */
-  onOpenDetail: () => void;
+  onOpenDetail: (habit: Habit) => void;
   /** Whether this row is in the Archived view — drives the menu label. */
   isArchived?: boolean;
   /** Archive this habit (active view). */
-  onArchive?: () => void;
+  onArchive?: (habit: Habit) => void;
   /** Restore this habit (archived view). */
-  onUnarchive?: () => void;
+  onUnarchive?: (habit: Habit) => void;
   /** Open the move-to-group picker for this habit. */
-  onMoveToGroup?: () => void;
+  onMoveToGroup?: (habit: Habit) => void;
 }
 
-export function HabitCardRow({
+// PERF: memoized — the Habits screen re-renders on every filter / sheet /
+// date-nav change; each card carries several mutation observers, a query
+// observer and its menus, so it must only re-render when ITS props change.
+export const HabitCardRow = memo(function HabitCardRow({
   habit,
   selectedDate,
+  entries,
   onEdit,
   onOpenDetail,
   isArchived,
@@ -53,27 +64,44 @@ export function HabitCardRow({
   onUnarchive,
   onMoveToGroup,
 }: HabitCardRowProps) {
+  const bound = useMemo(
+    () => ({
+      edit: () => onEdit(habit),
+      openDetail: () => onOpenDetail(habit),
+      archive: onArchive ? () => onArchive(habit) : undefined,
+      unarchive: onUnarchive ? () => onUnarchive(habit) : undefined,
+      moveToGroup: onMoveToGroup ? () => onMoveToGroup(habit) : undefined,
+    }),
+    [habit, onEdit, onOpenDetail, onArchive, onUnarchive, onMoveToGroup],
+  );
   const today = localDateKey();
   const activeDate = selectedDate ?? today;
   // THE canonical shared 90-day window (habitEntriesWindow) — one cache entry
   // + one network fetch per habit, shared with the compact check-in row and
   // the Today aggregate. Widens automatically when the date-nav jumps past 90
-  // days back or into the future.
-  const entriesQuery = useSharedHabitEntries(habit.id, selectedDate);
+  // days back or into the future. Rules-of-hooks safe: the query still RUNS;
+  // `enabled` only gates the network when the host handed us `entries`.
+  const entriesQuery = useSharedHabitEntries(habit.id, selectedDate, {
+    enabled: entries === undefined,
+  });
   const deleteHabit = useDeleteHabit();
 
-  const entries = entriesQuery.data;
-  const actions = useHabitDayActions(habit.id, activeDate, entries);
+  const effectiveEntries = entries ?? entriesQuery.data;
+  const actions = useHabitDayActions(habit.id, activeDate, effectiveEntries);
 
   return (
     <HabitCard
       habit={habit}
-      entries={entries}
+      entries={effectiveEntries}
       // Date-scoped — HabitCard computes activeDate = selectedDate || today.
       selectedDate={selectedDate}
       // COLD load only — a background refetch keeps `entries` populated. Gates
       // the status/action slot on a skeleton instead of flashing "Check In".
-      entriesLoading={entriesQuery.isLoading && entries === undefined}
+      entriesLoading={
+        entries === undefined &&
+        entriesQuery.isLoading &&
+        effectiveEntries === undefined
+      }
       // Resolved hex (IGNITION.habit) — HabitCard applies these via the style
       // hatch (`backgroundColor`), so raw colors are required (tokens / CSS
       // vars wouldn't resolve on native).
@@ -91,8 +119,8 @@ export function HabitCardRow({
       onFail={actions.fail}
       onUndo={actions.undo}
       onClearStatus={actions.clearStatus}
-      onEdit={onEdit}
-      onOpenDetail={onOpenDetail}
+      onEdit={bound.edit}
+      onOpenDetail={bound.openDetail}
       // Delete IS wired — the card's own AlertDialog confirms first. On failure
       // the optimistic removal rolls back, so surface a toast (L10a).
       onDelete={() =>
@@ -102,9 +130,9 @@ export function HabitCardRow({
       }
       // Group + archive affordances — present only when the host wires them.
       isArchived={isArchived}
-      onArchive={onArchive}
-      onUnarchive={onUnarchive}
-      onMoveToGroup={onMoveToGroup}
+      onArchive={bound.archive}
+      onUnarchive={bound.unarchive}
+      onMoveToGroup={bound.moveToGroup}
     />
   );
-}
+});

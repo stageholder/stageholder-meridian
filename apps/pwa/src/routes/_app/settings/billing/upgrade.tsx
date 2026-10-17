@@ -3,11 +3,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { Anchor } from "tamagui";
 import {
-  usePricing,
+  useOrg,
   useSubscription,
   type PricingPlan,
 } from "@stageholder/sdk/spa";
 import { CycleToggle } from "@/components/billing/cycle-toggle";
+import { useOrgPricing } from "@/lib/org-pricing";
 import { PlanTierCard } from "@/components/billing/plan-tier-card";
 import { ComparisonSheet } from "@/components/billing/comparison-sheet";
 import {
@@ -34,7 +35,10 @@ export const Route = createFileRoute("/_app/settings/billing/upgrade")({
 
 function UpgradePage() {
   const sub = useSubscription();
-  const { data: pricing, isLoading } = usePricing("meridian");
+  // Prices in the org's BILLING currency (what Polar charges), not the
+  // visitor's geo-guessed one — see lib/org-pricing.ts.
+  const { org } = useOrg();
+  const { data: pricing, isLoading } = useOrgPricing(org?.id);
   const plans = pricing?.plans;
   const features = pricing?.features;
   const [cycle, setCycle] = useState<"monthly" | "yearly">("monthly");

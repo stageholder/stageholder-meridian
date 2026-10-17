@@ -28,9 +28,12 @@ import {
   YStack,
 } from "@stageholder/ui";
 import { UserPlus } from "@tamagui/lucide-icons-2";
+import { openURL } from "@repo/core/platform/linking";
 import { Redirect } from "expo-router";
 import { Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+import { hubOrigin } from "@/lib/api/hub";
 
 // Meridian's own brand mark — Stageholder is the identity provider we sign in
 // *through*, so the app's logo owns the header and the Stageholder mark stays
@@ -118,10 +121,18 @@ export default function SignInScreen() {
               Sign up
             </Button>
             <XStack justify="center">
+              {/* Straight to the Hub's reset page — it used to start the
+                  same sign-in flow as the button above. */}
               <Button
                 intent="ghost"
                 disabled={isLoading}
-                onPress={() => handleAuth()}
+                onPress={() => {
+                  try {
+                    openURL(`${hubOrigin()}/auth/forgot-password`);
+                  } catch {
+                    handleAuth();
+                  }
+                }}
               >
                 Forgot password?
               </Button>

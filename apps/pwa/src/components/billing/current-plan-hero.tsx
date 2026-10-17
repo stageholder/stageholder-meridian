@@ -1,4 +1,5 @@
 import {
+  isBillingError,
   useBillingPortal,
   useCanManageBilling,
   useOrg,
@@ -7,6 +8,10 @@ import {
 } from "@stageholder/sdk/spa";
 import { useNavigate } from "@tanstack/react-router";
 import { billingReturnUrl, openBillingURL } from "@/lib/billing-return";
+import {
+  useHubOrgSubscription,
+  type HubOrgSubscription,
+} from "@/lib/org-pricing";
 import { ArrowUpRight, ExternalLink } from "lucide-react";
 import { OrbitIllustration } from "./orbit-illustration";
 import {
@@ -17,6 +22,7 @@ import {
   View,
   XStack,
   YStack,
+  toast,
 } from "@stageholder/ui";
 
 /**
@@ -43,6 +49,7 @@ export function CurrentPlanHero({
   const { canManage } = useCanManageBilling();
   const billingPortal = useBillingPortal();
   const portalPending = billingPortal.isPending;
+  const { data: hubSub } = useHubOrgSubscription(org?.id);
 
   if (state.status !== "authenticated") {
     return <HeroSkeleton />;
@@ -137,6 +144,17 @@ export function CurrentPlanHero({
             >
               {planName}
             </H1>
+            {!isFree && hubSub?.currentPeriodEnd ? (
+              <Text
+                mt="$2"
+                fontSize="$2"
+                color={
+                  hubSub.cancelAtPeriodEnd ? "$warning" : "$mutedForeground"
+                }
+              >
+                {periodLine(planName, status, hubSub)}
+              </Text>
+            ) : null}
           </YStack>
 
           <XStack
@@ -190,10 +208,17 @@ export function CurrentPlanHero({
                     .then(({ url }) => {
                       openBillingURL(url);
                     })
-                    .catch((err) =>
-                      // eslint-disable-next-line no-console
-                      console.error("[meridian] portal failed:", err),
-                    );
+                    .catch((err: unknown) => {
+                      console.error("[meridian] portal failed:", err);
+                      // Used to fail silently. Hub reports a portal it can't
+                      // open as BILLING_PORTAL_UNAVAILABLE (SDK alpha.70).
+                      toast.error(
+                        isBillingError(err) &&
+                          err.code === "BILLING_PORTAL_UNAVAILABLE"
+                          ? "The billing portal isn't available for this subscription. Please contact support."
+                          : "Couldn't open the billing portal. Please try again.",
+                      );
+                    });
                 }}
               >
                 {portalPending ? "Opening…" : "Manage payment"}
@@ -268,6 +293,25 @@ export function CurrentPlanHero({
       </XStack>
     </View>
   );
+}
+
+/** "Renews Oct 25, 2026" / trial end / pending cancellation. */
+function periodLine(
+  planName: string,
+  status: string,
+  hubSub: HubOrgSubscription,
+): string {
+  const day = new Date(hubSub.currentPeriodEnd!).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  if (hubSub.cancelAtPeriodEnd) {
+    return `Cancelled: ${planName} ends ${day}, then you move to Free.`;
+  }
+  return status === "trialing"
+    ? `Trial ends ${day}, then your first payment.`
+    : `Renews ${day}.`;
 }
 
 function StatusPill({ status }: { status: string }) {

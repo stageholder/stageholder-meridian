@@ -47,18 +47,27 @@ export class CalendarService {
     startDate: string,
     endDate: string,
   ): Promise<Record<string, CalendarDayData>> {
-    const [todos, journals, habitEntries, habits] = await Promise.all([
-      this.todoRepository.findByUserAndDateRange(userSub, startDate, endDate),
-      this.journalRepository.findByDateRange(userSub, startDate, endDate),
-      this.habitEntryRepository.findByUserAndDateRange(
-        userSub,
-        startDate,
-        endDate,
-      ),
-      this.habitRepository.findByUser(userSub),
-    ]);
+    const [todos, journals, habitEntries, habits, archivedHabits] =
+      await Promise.all([
+        this.todoRepository.findByUserAndDateRange(userSub, startDate, endDate),
+        this.journalRepository.findByDateRange(userSub, startDate, endDate),
+        this.habitEntryRepository.findByUserAndDateRange(
+          userSub,
+          startDate,
+          endDate,
+        ),
+        this.habitRepository.findByUser(userSub),
+        this.habitRepository.findArchivedByUser(userSub),
+      ]);
 
-    const habitMap = new Map(habits.map((h) => [h.id, h.name]));
+    // Names for every NON-deleted habit — archived ones included, so their
+    // past check-ins keep their real name instead of "Unknown". Entries whose
+    // habit was DELETED are dropped below: they used to inflate the day's
+    // "N habit check-ins" count (and the rings) with rows the user can no
+    // longer see or act on.
+    const habitMap = new Map(
+      [...habits, ...archivedHabits].map((h) => [h.id, h.name]),
+    );
     const result: Record<string, CalendarDayData> = {};
 
     const getDay = (date: string) => {
@@ -110,11 +119,13 @@ export class CalendarService {
 
     for (const entry of habitEntries) {
       const obj = entry.toObject();
+      const habitName = habitMap.get(obj.habitId);
+      if (habitName === undefined) continue;
       const day = obj.date.split("T")[0] || obj.date;
       getDay(day).habitEntries.push({
         id: obj.id,
         habitId: obj.habitId,
-        habitName: habitMap.get(obj.habitId) || "Unknown",
+        habitName,
         value: obj.value,
         type: obj.type || "completion",
         date: obj.date,

@@ -12,7 +12,7 @@ import {
   YStack,
 } from "@stageholder/ui";
 import { parseMediaIcon } from "@repo/features/habits";
-import { useHabits } from "@/lib/api/habits";
+import { useHabitsWithEntries } from "@/lib/api/habits";
 import { useHabitGroups } from "@/lib/api/habit-groups";
 import { CreateHabitDialog } from "@/components/habits/create-habit-dialog";
 import { MoveToGroupDialog } from "@/components/habits/move-to-group-dialog";
@@ -37,7 +37,7 @@ export const Route = createFileRoute("/_app/habits/group/$groupId")({
  */
 function HabitGroupPage() {
   const { groupId } = Route.useParams();
-  const { data: habits, isLoading: habitsLoading } = useHabits();
+  const { data: habits, isLoading: habitsLoading } = useHabitsWithEntries();
   const { data: groups, isLoading: groupsLoading } = useHabitGroups();
   const isLoading = habitsLoading || groupsLoading;
   const [showCreateDialog, setShowCreateDialog] = useState(false);

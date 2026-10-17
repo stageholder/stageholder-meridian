@@ -6,6 +6,7 @@
 // state lives in HabitEntry rows fetched via useHabitEntries.
 
 import {
+  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
@@ -16,6 +17,13 @@ import type { Habit, HabitEntry } from "@repo/core/types";
 
 import { apiClient } from "../client";
 import { habitKeys } from "../keys";
+import {
+  invalidateDashboardToday,
+  invalidateDebounced,
+  patchDashboardEntry,
+  patchDashboardHabits,
+  settleDerivedAggregates,
+} from "../dashboard-cache";
 
 // ─────────────────────────────────────────────────────────────────────────
 // DATA-LAYER CONTRACT (simplified 2026-07-23 — the old snapshot/rollback +
@@ -36,13 +44,36 @@ import { habitKeys } from "../keys";
  *  POST (409) or a stale-id PATCH — without disabling the control. */
 const ENTRY_SCOPE = { id: "habit-entry" };
 
-/** The day key an entry write targets (server defaults omitted dates). */
+/** The day key an entry write targets (server defaults omitted dates).
+ *  LOCAL date — `toISOString()` is UTC and names yesterday east of UTC
+ *  before local midnight's UTC offset has passed. */
 function entryDay(date?: string): string {
-  return date ?? new Date().toISOString().slice(0, 10);
+  return date ?? format(new Date(), "yyyy-MM-dd");
 }
 
+/** Insert-or-replace the day's entry in an entries array (one per habit/day). */
+function upsertEntryArray(
+  list: HabitEntry[],
+  day: string,
+  make: (existing: HabitEntry | undefined) => HabitEntry,
+): HabitEntry[] {
+  const existing = list.find((e) => e.date?.slice(0, 10) === day);
+  const next = make(existing);
+  return existing
+    ? list.map((e) => (e.date?.slice(0, 10) === day ? next : e))
+    : [...list, next];
+}
+
+// `patchDashboardEntry` (the /dashboard/today write edge for entry taps) now
+// lives in ../dashboard-cache alongside the todo/journal edges, so every
+// aggregate write goes through ONE typed module keyed off `dashboardKeys`.
+
 /** Optimistically create-or-update the day's entry across every cached
- *  entries window (base + 90-day + detail windows share the key prefix). */
+ *  entries window (base + 90-day + detail windows share the key prefix). The
+ *  Habits screen's rows read these per-habit windows directly (seeded by
+ *  useHabitsWithEntries), so this ONE write flips the tapped row without ever
+ *  touching the /habits?withEntries list array — no whole-list re-render
+ *  cascade. Also patches /dashboard/today so the Today widget flips too. */
 function upsertDayEntry(
   qc: QueryClient,
   habitId: string,
@@ -51,15 +82,9 @@ function upsertDayEntry(
 ) {
   qc.setQueriesData<HabitEntry[]>(
     { queryKey: habitKeys.entries(habitId) },
-    (list) => {
-      if (!Array.isArray(list)) return list;
-      const existing = list.find((e) => e.date?.slice(0, 10) === day);
-      const next = make(existing);
-      return existing
-        ? list.map((e) => (e.date?.slice(0, 10) === day ? next : e))
-        : [...list, next];
-    },
+    (list) => (Array.isArray(list) ? upsertEntryArray(list, day, make) : list),
   );
+  patchDashboardEntry(qc, habitId, day, make);
 }
 
 /** Placeholder row for a day with no entry yet — replaced by the settle
@@ -106,12 +131,24 @@ function writeServerEntry(
         : [...list, server];
     },
   );
+  // Mirror the authoritative row into the Today dashboard cache so it swaps
+  // the optimistic row for the real id in the same beat (clears the isPending
+  // lock without a refetch round-trip). The Habits rows read the per-habit
+  // window written above, so no separate list-cache mirror is needed.
+  if (day) {
+    patchDashboardEntry(qc, habitId, day, () => server);
+  }
 }
 
 /** Refresh the ONE calendar month the day belongs to (the aggregation the
  *  entries cache can't update). Never the whole ["calendar"] prefix. */
 function settleCalendarMonth(qc: QueryClient, day: string) {
-  void qc.invalidateQueries({ queryKey: ["calendar", day.slice(0, 7)] });
+  // Debounced: Today keeps live observers on this month (activity counts,
+  // weekly chart), so a per-tap refetch re-rendered Today on every check-in.
+  invalidateDebounced(qc, ["calendar", day.slice(0, 7)], 1000);
+  // Light/tier/perfect-day streak + the aggregate's server-side
+  // `currentStreak` can only come from the server — debounced per burst.
+  settleDerivedAggregates(qc);
 }
 
 /* ------------------------------ Reads -------------------------------- */
@@ -133,6 +170,69 @@ export function useHabits() {
   });
 }
 
+/**
+ * THE habits-list-with-embedded-entries aggregate (GET /habits?withEntries=90d).
+ * ONE request returns every active habit already carrying its 90-day entries
+ * window. Instead of threading entries as props, the queryFn SEEDS each habit's
+ * canonical per-habit entries cache (the same key `useSharedHabitEntries` reads)
+ * so every card resolves from a fresh cache with NO network — killing the
+ * per-card fan-out (N+1 requests) while keeping check-in writes SURGICAL: a tap
+ * patches only that one habit's entries cache, never this list array, so the
+ * list never re-renders as a whole (avoids the cascade). Rows are
+ * `Habit & { entries }`, a superset of the plain `Habit`, so the screen's
+ * existing sectioning / filtering / grouping keeps working unchanged.
+ * `keepPreviousData` holds the last list on the screen while a refetch resolves.
+ */
+export function useHabitsWithEntries() {
+  const qc = useQueryClient();
+  return useQuery({
+    // The window is FIXED at 90 days — the canonical window every row reads via
+    // `habitEntriesWindow()`. It is NOT a parameter: the seed below (and the
+    // rows) always key on the 90-day window, so fetching any other span would
+    // seed data the rows never read (and miss data they do).
+    queryKey: habitKeys.withEntries(90),
+    queryFn: async () => {
+      // Pass the client's LOCAL today so the server's 90-day data window is
+      // anchored on the same day as the client-local seed/read window (the
+      // endDate of `habitEntriesWindow()`), not the server's UTC day.
+      const clientToday = format(new Date(), "yyyy-MM-dd");
+      // Stamped BEFORE the request so we can tell, once it resolves, whether a
+      // per-habit cache was written while it was in flight — see the seed below.
+      const requestStartedAt = Date.now();
+      const { data } = await apiClient.get<
+        Array<Habit & { entries: HabitEntry[] }>
+      >("/habits", { params: { withEntries: "90d", today: clientToday } });
+      // SEED each habit's canonical entries window (the SAME key
+      // useSharedHabitEntries(id, undefined) reads) so every HabitCardRow /
+      // HabitCheckInRow resolves from a fresh cache with NO network + NO
+      // per-card fan-out. Crucially, because the rows now read their OWN
+      // per-habit cache (not this list array), a later check-in patches only
+      // that ONE habit's entries cache — the list array is never touched by a
+      // tap, so sectioning / rendering stays stable (surgical writes, the
+      // proven perf pattern that avoids the whole-list re-render cascade).
+      //
+      // DON'T STOMP NEWER WRITES. This response reflects server state as of
+      // when the request LEFT. A background refetch can therefore resolve with
+      // data older than an optimistic check-in the user made while it was in
+      // flight — blind-seeding would overwrite that optimistic entry and
+      // visibly revert the tapped row. Skipping any per-habit window written
+      // after `requestStartedAt` covers both the optimistic write and the
+      // authoritative `writeServerEntry` that follows it. A cold cache (first
+      // load — the case this seeding exists for) has no `dataUpdatedAt`, so it
+      // always seeds.
+      const window = habitEntriesWindow();
+      for (const h of data) {
+        const key = [...habitKeys.entries(h.id), window];
+        const updatedAt = qc.getQueryState(key)?.dataUpdatedAt;
+        if (updatedAt && updatedAt > requestStartedAt) continue;
+        qc.setQueryData(key, h.entries);
+      }
+      return data;
+    },
+    placeholderData: keepPreviousData,
+  });
+}
+
 export function useHabit(id: string | null | undefined) {
   return useQuery({
     queryKey: id ? habitKeys.detail(id) : habitKeys.detail("disabled"),
@@ -150,6 +250,10 @@ export function useHabitEntries(
    *  startDate/endDate (the PWA's detail page depends on this). Omitted →
    *  the server default window, exactly as before. */
   range?: { startDate?: string; endDate?: string },
+  /** `enabled: false` lets a caller that ALREADY has this habit's entries (from
+   *  an aggregate cache — Today / Habits) skip the network without breaking the
+   *  rules of hooks: the hook still runs, only the query is disabled. */
+  options?: { enabled?: boolean },
 ) {
   const baseKey = habitId
     ? habitKeys.entries(habitId)
@@ -165,7 +269,7 @@ export function useHabitEntries(
       >(`/habits/${habitId}/entries`, { params: range });
       return Array.isArray(data) ? data : data.data;
     },
-    enabled: !!habitId,
+    enabled: (options?.enabled ?? true) && !!habitId,
   });
 }
 
@@ -199,8 +303,9 @@ export function habitEntriesWindow(activeDate?: string): {
 export function useSharedHabitEntries(
   habitId: string | null | undefined,
   activeDate?: string,
+  options?: { enabled?: boolean },
 ) {
-  return useHabitEntries(habitId, habitEntriesWindow(activeDate));
+  return useHabitEntries(habitId, habitEntriesWindow(activeDate), options);
 }
 
 /* ---------------------------- Mutations ------------------------------ */
@@ -231,7 +336,12 @@ export function useCreateHabit() {
       });
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: habitKeys.lists() }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: habitKeys.lists() });
+      // A new habit can be scheduled today → the Today widget's rows and the
+      // habit ring's denominator both change. ONE refetch of the aggregate.
+      invalidateDashboardToday(qc);
+    },
   });
 }
 
@@ -265,6 +375,8 @@ export function useUpdateHabit() {
     onSettled: (_, __, vars) => {
       qc.invalidateQueries({ queryKey: habitKeys.lists() });
       if (vars) qc.invalidateQueries({ queryKey: habitKeys.detail(vars.id) });
+      // Renaming / recolouring / rescheduling all change what Today renders.
+      invalidateDashboardToday(qc);
     },
   });
 }
@@ -282,7 +394,10 @@ export function useDeleteHabit() {
         Array.isArray(list) ? list.filter((h) => h.id !== id) : list,
       );
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: habitKeys.lists() }),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: habitKeys.lists() });
+      invalidateDashboardToday(qc);
+    },
   });
 }
 
@@ -306,21 +421,30 @@ export function useReorderHabits() {
     // self-heals via the error refetch.
     onMutate: ({ items }) => {
       const patchById = new Map(items.map((i) => [i.id, i]));
+      const reorder = <T extends Habit>(list: T[]): T[] =>
+        list.map((h) => {
+          const p = patchById.get(h.id);
+          if (!p) return h;
+          return {
+            ...h,
+            order: p.order,
+            ...(p.groupId !== undefined ? { groupId: p.groupId } : {}),
+          } as T;
+        });
       qc.setQueriesData<Habit[]>({ queryKey: habitKeys.lists() }, (list) =>
-        Array.isArray(list)
-          ? list.map((h) => {
-              const p = patchById.get(h.id);
-              if (!p) return h;
-              return {
-                ...h,
-                order: p.order,
-                ...(p.groupId !== undefined ? { groupId: p.groupId } : {}),
-              } as Habit;
-            })
-          : list,
+        Array.isArray(list) ? reorder(list) : list,
+      );
+      // Keep the Today widget's row order in step (the server now returns
+      // habits sorted by `order`, so a drag must be mirrored here or Today
+      // would show the pre-drag order until the next aggregate fetch).
+      patchDashboardHabits(qc, (habits) =>
+        [...reorder(habits)].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
       );
     },
-    onError: () => qc.invalidateQueries({ queryKey: habitKeys.lists() }),
+    onError: () => {
+      void qc.invalidateQueries({ queryKey: habitKeys.lists() });
+      invalidateDashboardToday(qc);
+    },
   });
 }
 
@@ -334,6 +458,8 @@ export function useArchiveHabit() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: habitKeys.lists() });
       void qc.invalidateQueries({ queryKey: habitKeys.archived() });
+      // Archiving removes the habit from Today's rows + the ring denominator.
+      invalidateDashboardToday(qc);
     },
   });
 }
@@ -351,6 +477,8 @@ export function useUnarchiveHabit() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: habitKeys.lists() });
       void qc.invalidateQueries({ queryKey: habitKeys.archived() });
+      // Unarchiving puts the habit back on Today.
+      invalidateDashboardToday(qc);
     },
   });
 }
@@ -532,6 +660,17 @@ export function useUpdateHabitEntry() {
               })
             : list,
       );
+      // Mirror the same patch into the Today dashboard cache so an inline flip
+      // (Undo / clear / skip↔fail on an existing entry) shows there too. Only
+      // touches the matched day; the helper no-ops when the entry isn't present.
+      // The Habits rows read the per-habit entries window patched above.
+      if (day) {
+        const applyPatch = (e: HabitEntry | undefined): HabitEntry =>
+          e
+            ? ({ ...e, ...patch } as HabitEntry)
+            : ({ id: entryId, habitId, date: day, ...patch } as HabitEntry);
+        patchDashboardEntry(qc, habitId, day, applyPatch);
+      }
       return { day };
     },
     onSuccess: (server, vars) => writeServerEntry(qc, vars.habitId, server),
@@ -569,6 +708,7 @@ export function useDeleteHabitEntry() {
       // so refresh every cached month. Everything else stays scoped.
       void qc.invalidateQueries({ queryKey: habitKeys.entries(vars.habitId) });
       void qc.invalidateQueries({ queryKey: ["calendar"] });
+      settleDerivedAggregates(qc);
     },
   });
 }

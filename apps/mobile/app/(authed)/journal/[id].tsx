@@ -1,10 +1,12 @@
 // apps/mobile/app/(authed)/journal/[id].tsx
 //
 // Journal entry detail — a FULL EDITOR (parity with the PWA's $id route).
-// Fetches the entry, decrypts it with the in-memory DEK, then seeds the shared
-// rich-text JournalEditor (10tap on native) so the entry can be re-read AND
-// edited. Save encrypts title/content/tags before the PATCH (see
-// useUpdateJournal) — the same end-to-end boundary as creation.
+// Fetches the entry via `useJournal(id)`, which now decrypts it with the
+// in-memory DEK INSIDE its queryFn (Phase 4d, PWA parity — off the render
+// path), then seeds the shared rich-text JournalEditor (10tap on native) so
+// the entry can be re-read AND edited. Save encrypts title/content/tags
+// before the PATCH (see useUpdateJournal) — the same end-to-end boundary as
+// creation.
 //
 // Editing mirrors journal/new.tsx: debounced AUTOSAVE (PWA parity) — every
 // settled change PATCHes via use-autosave; the header's Done just returns to
@@ -15,10 +17,10 @@
 // Hidden from the tab bar via `href: null` in (authed)/_layout.tsx. If the
 // journal is locked (no DEK) we bounce the reader to the list to unlock.
 
+import { useStagedMount } from "@/lib/hooks/use-staged-mount";
 import {
   Banner,
   Button,
-  IconButton,
   MoodPicker,
   MOOD_DEFAULT_OPTIONS,
   QuickDatePicker,
@@ -34,13 +36,12 @@ import {
 import type { RichTextEditorContent } from "@stageholder/ui";
 import { JournalEditor } from "@repo/features/journal";
 import type { Journal, JournalContent } from "@repo/core/types";
-import { ChevronLeft, SmilePlus, Trash2 } from "@tamagui/lucide-icons-2";
+import { SmilePlus } from "@tamagui/lucide-icons-2";
 import { Input as BareInput } from "tamagui";
 import { Alert } from "react-native";
 import { KeyboardController } from "react-native-keyboard-controller";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   JournalTargetCelebration,
@@ -52,12 +53,9 @@ import {
   useJournals,
   useUserLight,
 } from "@/lib/api";
+import { JournalEditorHeader } from "@/components/journal-editor-header";
 import { useAutosave } from "@/lib/use-autosave";
-import {
-  decryptJournalEntry,
-  getJournalDek,
-  useJournalCrypto,
-} from "@/lib/journal-crypto";
+import { useJournalCrypto } from "@/lib/journal-crypto";
 
 function parseDateLocal(input: string): Date {
   const ymd = input.length >= 10 ? input.slice(0, 10) : input;
@@ -82,47 +80,16 @@ export default function JournalDetailScreen() {
   const journalQuery = useJournal(id);
   const { isUnlocked } = useJournalCrypto();
 
-  // `entry` is the decrypted journal (or the raw one when unencrypted). We
-  // decrypt in an effect because decryption is async + depends on the DEK.
-  const [entry, setEntry] = useState<Journal | null>(null);
-  const [decryptError, setDecryptError] = useState(false);
-
+  // `raw` is ALREADY DECRYPTED by the time it reaches this screen — useJournal
+  // decrypts inside its queryFn (Phase 4d, PWA parity — off the render path).
+  // A decrypt failure now throws INSIDE the queryFn, so it surfaces as
+  // `journalQuery.error` below instead of a separate decrypt-error state.
   const raw = journalQuery.data;
-
-  useEffect(() => {
-    let cancelled = false;
-    setDecryptError(false);
-    if (!raw) {
-      setEntry(null);
-      return;
-    }
-    if (!raw.encrypted) {
-      setEntry(raw);
-      return;
-    }
-    const dek = getJournalDek();
-    if (!dek) {
-      setEntry(null);
-      return;
-    }
-    decryptJournalEntry(raw, dek)
-      .then((e) => {
-        if (!cancelled) setEntry(e);
-      })
-      .catch(() => {
-        if (!cancelled) setDecryptError(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // isUnlocked in deps so a mid-screen unlock re-runs decryption.
-  }, [raw, isUnlocked]);
 
   // ---- Loading ----
   if (journalQuery.isLoading) {
     return (
       <Scaffold>
-        <BackBar onBack={() => router.navigate("/journal")} title="Entry" />
         <Centered>
           <Spinner size="large" />
         </Centered>
@@ -130,21 +97,27 @@ export default function JournalDetailScreen() {
     );
   }
 
-  // ---- Error (fetch or decrypt) ----
-  if (journalQuery.error || decryptError) {
+  // ---- Error (fetch or decrypt — decrypt failures throw inside the hook's
+  // queryFn now, so both land here as journalQuery.error). ----
+  if (journalQuery.error) {
     return (
       <Scaffold>
-        <BackBar onBack={() => router.navigate("/journal")} title="Entry" />
         <YStack px="$4" pt="$2">
           <Banner intent="danger">
             <Banner.Body>
               <Banner.Title>Couldn&apos;t open this entry</Banner.Title>
               <Banner.Description>
-                {decryptError
-                  ? "This entry couldn't be decrypted with the current key."
-                  : ((journalQuery.error as Error)?.message ??
-                    "Network error.")}
+                {(journalQuery.error as Error)?.message ?? "Network error."}
               </Banner.Description>
+              <Banner.Action self="flex-end" mt="$2">
+                <Button
+                  intent="secondary"
+                  size="sm"
+                  onPress={() => void journalQuery.refetch()}
+                >
+                  Try again
+                </Button>
+              </Banner.Action>
             </Banner.Body>
           </Banner>
         </YStack>
@@ -152,11 +125,16 @@ export default function JournalDetailScreen() {
     );
   }
 
-  // ---- Locked: encrypted but no DEK → unlock on the list ----
-  if (raw?.encrypted && !entry) {
+  // ---- Locked: entry is encrypted-at-rest and the DEK isn't in memory ----
+  // `raw.encrypted` stays `true` even on a successfully decrypted entry (the
+  // decrypt helper doesn't flip the flag), so "still locked" can't be read off
+  // the entry itself anymore — gate on the crypto store's `isUnlocked`
+  // instead. While locked, `raw` (if present from a placeholder/list seed) is
+  // still ciphertext, so it's never handed to the editor below.
+  const locked = !!raw?.encrypted && !isUnlocked;
+  if (locked) {
     return (
       <Scaffold>
-        <BackBar onBack={() => router.navigate("/journal")} title="Entry" />
         <YStack px="$4" pt="$2" gap="$3">
           <Banner intent="neutral">
             <Banner.Body>
@@ -168,7 +146,11 @@ export default function JournalDetailScreen() {
                 <Button
                   intent="secondary"
                   size="sm"
-                  onPress={() => router.navigate("/journal")}
+                  onPress={() =>
+                    router.canGoBack()
+                      ? router.back()
+                      : router.replace("/journal")
+                  }
                 >
                   Go to journal
                 </Button>
@@ -180,10 +162,9 @@ export default function JournalDetailScreen() {
     );
   }
 
-  if (!entry) {
+  if (!raw) {
     return (
       <Scaffold>
-        <BackBar onBack={() => router.navigate("/journal")} title="Entry" />
         <Centered>
           <Spinner size="large" />
         </Centered>
@@ -191,8 +172,25 @@ export default function JournalDetailScreen() {
     );
   }
 
-  // Decrypted + ready → the editor mounts seeded from this entry.
-  return <EntryEditor entry={entry} />;
+  // Decrypted (or plaintext-account) + ready → the editor mounts seeded from
+  // this entry.
+  //
+  // KEYED ON PROVISIONAL-vs-AUTHORITATIVE. `useJournal` seeds `placeholderData`
+  // from the list caches so the entry opens instantly — but a list row can be
+  // STALE (notably the paginated InfiniteData cache). EntryEditor seeds every
+  // field through `useState` initializers, which never re-run, so without a key
+  // the editor would hold the stale body and the next keystroke would autosave
+  // it back over the newer server copy — silent data loss.
+  //
+  // The key must NOT include `updatedAt`: autosave writes the server entry into
+  // the detail cache, so an `updatedAt` key would remount the editor on every
+  // save and drop the user's buffer. `isPlaceholderData` flips exactly once
+  // (provisional → authoritative) and then stays false for the life of the
+  // screen, so the editor re-seeds when the real entry lands and never again.
+  const seedKey = journalQuery.isPlaceholderData
+    ? `provisional-${raw.updatedAt}`
+    : `entry-${raw.id}`;
+  return <EntryEditor key={seedKey} entry={raw} />;
 }
 
 /* ------------------------------- Editor ------------------------------------ */
@@ -200,6 +198,11 @@ export default function JournalDetailScreen() {
 function EntryEditor({ entry }: { entry: Journal }) {
   const router = useRouter();
   const deleteJournal = useDeleteJournal();
+  // Defer the heavy 10tap WebView editor one beat so opening an entry paints the
+  // header/title/chips + a body skeleton on the tap frame instead of blocking on
+  // the WebView boot (the "wait long until the detail shows up"). The editor
+  // mounts ~60ms later — see use-staged-mount.
+  const editorReady = useStagedMount();
 
   // Platform-native destructive confirm (PWA parity: its $id page deletes
   // behind a web AlertDialog). Navigates straight back on success — there's
@@ -211,13 +214,18 @@ function EntryEditor({ entry }: { entry: Journal }) {
         text: "Delete",
         style: "destructive",
         onPress: () =>
-          deleteJournal.mutate(entry.id, {
-            onSuccess: () => {
-              toast.success("Entry deleted");
-              router.navigate("/journal");
-            },
-            onError: () => toast.error("Couldn't delete entry"),
-          }),
+          // Stop autosave first so the unmount flush can't PATCH the entry
+          // we're deleting.
+          void discard().then(() =>
+            deleteJournal.mutate(entry.id, {
+              onSuccess: () => {
+                toast.success("Entry deleted");
+                if (router.canGoBack()) router.back();
+                else router.replace("/journal");
+              },
+              onError: () => toast.error("Couldn't delete entry"),
+            }),
+          ),
       },
     ]);
   }
@@ -240,7 +248,9 @@ function EntryEditor({ entry }: { entry: Journal }) {
 
   // Debounced autosave (PWA parity) — always PATCHes this entry's id. The
   // baseline seeds from the entry so the mount tick never fires a no-op save.
-  const { scheduleSave, status } = useAutosave({ journalId: entry.id });
+  const { scheduleSave, flush, discard, status } = useAutosave({
+    journalId: entry.id,
+  });
 
   // Daily word target + words in OTHER entries today (this entry excluded —
   // its live count comes from the editor). `wordCount` stays plaintext on
@@ -290,125 +300,86 @@ function EntryEditor({ entry }: { entry: Journal }) {
 
   return (
     <YStack flex={1} bg="$background">
-      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-        {/* Header: icon back · centered title · delete · Done. Done just
-            returns to the list — autosave owns persistence (status badge in
-            the editor toolbar). Delete confirms via the platform Alert (the
-            PWA's $id page has the same action behind its web AlertDialog). */}
-        <XStack
-          items="center"
-          justify="space-between"
-          px="$2"
-          py="$2"
-          position="relative"
-        >
-          <IconButton
-            variant="ghost"
-            size="sm"
-            aria-label="Back to journal"
-            onPress={() => router.navigate("/journal")}
-          >
-            <ChevronLeft size={20} />
-          </IconButton>
-          <Text
-            position="absolute"
-            l={0}
-            r={0}
-            text="center"
-            pointerEvents="none"
-            fontSize="$5"
-            fontWeight="600"
-            color="$color"
-          >
-            Entry
-          </Text>
-          <XStack items="center" gap="$1" mr="$2">
-            <IconButton
-              variant="ghost"
-              size="sm"
-              aria-label="Delete entry"
-              disabled={deleteJournal.isPending}
-              onPress={confirmDelete}
-            >
-              <Trash2 size={18} color="$destructive" />
-            </IconButton>
-            <Button
-              intent="primary"
-              size="sm"
-              onPress={() => router.navigate("/journal")}
-            >
-              Done
-            </Button>
-          </XStack>
-        </XStack>
+      <JournalEditorHeader
+        title="Entry"
+        status={status}
+        flush={flush}
+        menu={[
+          {
+            label: "Delete entry",
+            destructive: true,
+            onPress: confirmDelete,
+          },
+        ]}
+      />
+      <YStack shrink={0} px="$4" pt="$2">
+        <BareInput
+          value={title}
+          onChangeText={setTitle}
+          placeholder={formatDefaultTitle(date)}
+          width="100%"
+          mb="$3"
+          px={0}
+          bg="transparent"
+          borderWidth={0}
+          outlineWidth={0}
+          fontSize={24}
+          fontWeight="700"
+          color="$color"
+          placeholderTextColor="$mutedForeground"
+          focusStyle={{ borderWidth: 0, outlineWidth: 0 }}
+          focusVisibleStyle={{ outlineWidth: 0 }}
+        />
 
-        <YStack shrink={0} px="$4" pt="$2">
-          <BareInput
-            value={title}
-            onChangeText={setTitle}
-            placeholder={formatDefaultTitle(date)}
-            width="100%"
-            mb="$3"
-            px={0}
-            bg="transparent"
-            borderWidth={0}
-            outlineWidth={0}
-            fontSize={24}
-            fontWeight="700"
-            color="$color"
-            placeholderTextColor="$mutedForeground"
-            focusStyle={{ borderWidth: 0, outlineWidth: 0 }}
-            focusVisibleStyle={{ outlineWidth: 0 }}
-          />
-
-          {/* Metadata chips — date · mood · tags. onTouchStart dismisses the
+        {/* Metadata chips — date · mood · tags. onTouchStart dismisses the
               editor's (webview) keyboard so the pickers open clean — see
               new.tsx for the full rationale. */}
-          <XStack
-            mb="$4"
-            flexWrap="wrap"
-            items="center"
-            gap="$2"
-            onTouchStart={() => {
-              void KeyboardController.dismiss();
+        <XStack
+          mb="$4"
+          flexWrap="wrap"
+          items="center"
+          gap="$2"
+          onTouchStart={() => {
+            void KeyboardController.dismiss();
+          }}
+        >
+          <QuickDatePicker
+            size="sm"
+            value={parseDateLocal(date)}
+            onChange={(d) => {
+              if (d) setDate(localDateKey(d));
             }}
+            clearable={false}
+          />
+
+          <Button
+            intent="outline"
+            size="sm"
+            rounded={9999}
+            gap="$1.5"
+            onPress={() => setMoodOpen(true)}
+            icon={
+              currentMood ? (
+                <Text fontSize="$3">{currentMood.emoji}</Text>
+              ) : (
+                <SmilePlus size={14} color="$mutedForeground" />
+              )
+            }
           >
-            <QuickDatePicker
-              size="sm"
-              value={parseDateLocal(date)}
-              onChange={(d) => {
-                if (d) setDate(localDateKey(d));
-              }}
-              clearable={false}
-            />
+            <Text fontSize="$2" color="$mutedForeground">
+              {currentMood?.label ?? "Mood"}
+            </Text>
+          </Button>
 
-            <Button
-              intent="outline"
-              size="sm"
-              rounded={9999}
-              gap="$1.5"
-              onPress={() => setMoodOpen(true)}
-              icon={
-                currentMood ? (
-                  <Text fontSize="$3">{currentMood.emoji}</Text>
-                ) : (
-                  <SmilePlus size={14} color="$mutedForeground" />
-                )
-              }
-            >
-              <Text fontSize="$2" color="$mutedForeground">
-                {currentMood?.label ?? "Mood"}
-              </Text>
-            </Button>
+          <TagInput value={tags} onChange={setTags} inline addLabel="Tag" />
+        </XStack>
+      </YStack>
 
-            <TagInput value={tags} onChange={setTags} inline addLabel="Tag" />
-          </XStack>
-        </YStack>
-
-        {/* Editor — seeded with the entry's content. 10tap accepts both TipTap
+      {/* Editor — seeded with the entry's content. 10tap accepts both TipTap
             JSON (new entries) and an HTML string (legacy) at runtime; the type
             is JSON-only, hence the cast. onChange always emits JSON. */}
-        <View flex={1}>
+      <View flex={1}>
+        {editorReady ? (
           <JournalEditor
             initialContent={content as RichTextEditorContent}
             onChange={setContent}
@@ -422,8 +393,41 @@ function EntryEditor({ entry }: { entry: Journal }) {
               <JournalTargetCelebration trigger={trigger} />
             )}
           />
-        </View>
-      </SafeAreaView>
+        ) : (
+          // Instant chrome: the header/title/chips above already painted; a
+          // few text-line skeletons stand in while the WebView editor boots.
+          <YStack px="$4" pt="$2" gap="$3">
+            <View
+              height={14}
+              width="88%"
+              rounded="$2"
+              bg="$muted"
+              opacity={0.5}
+            />
+            <View
+              height={14}
+              width="72%"
+              rounded="$2"
+              bg="$muted"
+              opacity={0.5}
+            />
+            <View
+              height={14}
+              width="93%"
+              rounded="$2"
+              bg="$muted"
+              opacity={0.5}
+            />
+            <View
+              height={14}
+              width="60%"
+              rounded="$2"
+              bg="$muted"
+              opacity={0.5}
+            />
+          </YStack>
+        )}
+      </View>
 
       {/* Mood picker — full-width bottom sheet (the kit MoodPicker's 48px
           bubbles overflow a popover). */}
@@ -463,9 +467,7 @@ function EntryEditor({ entry }: { entry: Journal }) {
 function Scaffold({ children }: { children: React.ReactNode }) {
   return (
     <YStack flex={1} bg="$background">
-      <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-        {children}
-      </SafeAreaView>
+      {children}
     </YStack>
   );
 }
@@ -475,32 +477,5 @@ function Centered({ children }: { children: React.ReactNode }) {
     <View flex={1} items="center" justify="center">
       {children}
     </View>
-  );
-}
-
-function BackBar({ onBack, title }: { onBack: () => void; title: string }) {
-  return (
-    <XStack items="center" px="$2" py="$2" position="relative">
-      <IconButton
-        variant="ghost"
-        size="sm"
-        aria-label="Back to journal"
-        onPress={onBack}
-      >
-        <ChevronLeft size={20} />
-      </IconButton>
-      <Text
-        position="absolute"
-        l={0}
-        r={0}
-        text="center"
-        pointerEvents="none"
-        fontSize="$5"
-        fontWeight="600"
-        color="$color"
-      >
-        {title}
-      </Text>
-    </XStack>
   );
 }

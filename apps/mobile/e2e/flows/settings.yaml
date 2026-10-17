@@ -1,0 +1,30 @@
+# Settings is one grouped list: plan, appearance, sign-out confirm.
+appId: com.stageholder.meridian
+name: settings
+---
+- runFlow: ../subflows/launch-signed-in.yaml
+- runFlow:
+    file: ../subflows/tab.yaml
+    env:
+      TAB_LABEL: "Settings"
+      TAB_ID: "tab-settings"
+- assertVisible:
+    id: "settings-plan"
+- assertVisible: "Free|Unlimited|Enterprise"
+# Appearance: Dark then back to System
+- scrollUntilVisible:
+    element: "Dark"
+    direction: DOWN
+- tapOn: "Dark"
+- tapOn: "System"
+# Sign out asks first; cancel keeps the session
+- scrollUntilVisible:
+    element:
+      id: "settings-sign-out"
+    direction: DOWN
+- tapOn:
+    id: "settings-sign-out"
+- assertVisible: "Sign out?"
+- tapOn: "Cancel"
+- assertVisible:
+    id: "settings-sign-out"

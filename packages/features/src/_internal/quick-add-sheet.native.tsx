@@ -10,7 +10,7 @@ import type { ReactNode } from "react";
 import { ArrowUp, Check } from "@tamagui/lucide-icons-2";
 import {
   FormSheet,
-  IconButton,
+  Spinner,
   Pill,
   Sheet,
   Text,
@@ -63,27 +63,40 @@ export function QuickAddSheet({
         {/* Pills + create button on ONE row, vertically centered. The pills
             scroll horizontally in the remaining width (minWidth 0 lets the
             flex child shrink so the ScrollView is bounded); the accent send
-            button is pinned at the right, aligned with the pills. IconButton
-            renders its glyph as CHILDREN (it has no `icon` prop). */}
+            button is pinned at the right, aligned with the pills. */}
         <XStack items="center" gap="$2">
           <View flex={1} minWidth={0}>
             <FormSheet.HorizontalScroll>{pills}</FormSheet.HorizontalScroll>
           </View>
-          <IconButton
-            circular
-            size="lg"
+          {/* Tamagui-pressable View, NOT the kit IconButton: the kit's RN
+              Pressable got no touches inside this portaled sheet on Android
+              (the send button was dead — nothing could be created). Tamagui
+              press events work there (verified on device). */}
+          <View
+            role="button"
             aria-label={`Create ${title}`}
-            borderWidth={0}
+            aria-disabled={submitDisabled || submitting}
+            width={48}
+            height={48}
+            rounded={9999}
+            items="center"
+            justify="center"
+            opacity={submitDisabled ? 0.45 : 1}
             style={{ backgroundColor: accentColor }}
-            pressStyle={
-              { backgroundColor: accentColor, opacity: 0.82 } as never
-            }
-            disabled={submitDisabled || submitting}
-            loading={submitting}
-            onPress={onSubmit}
+            pressStyle={{ opacity: 0.82, scale: 0.94 }}
+            transition="quick"
+            focusStyle={{ outlineWidth: 0 }}
+            focusVisibleStyle={{ outlineWidth: 0 }}
+            onPress={() => {
+              if (!submitDisabled && !submitting) onSubmit();
+            }}
           >
-            <ArrowUp size={20} color={"#ffffff" as never} />
-          </IconButton>
+            {submitting ? (
+              <Spinner size="small" color={"#ffffff" as never} />
+            ) : (
+              <ArrowUp size={20} color={"#ffffff" as never} />
+            )}
+          </View>
         </XStack>
       </YStack>
     </FormSheet>

@@ -9,6 +9,7 @@ import "@fontsource/bricolage-grotesque/500.css";
 import "@fontsource/bricolage-grotesque/700.css";
 import { App } from "./App";
 import { dispatchLoadingProgress } from "./lib/loading-progress";
+import { initDesktopAuthDeepLinks } from "./lib/desktop-auth";
 
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("Root element #root not found");
@@ -17,6 +18,10 @@ if (!rootEl) throw new Error("Root element #root not found");
 // are in, React is about to take over. Further progress events fire
 // from App.tsx at the SDK / meta / onboarding checkpoints.
 dispatchLoadingProgress(58, "Mounting interface");
+
+// Desktop: pick up the `meridian://auth/callback` deep link that the system
+// browser hands back after Hub sign-in. No-op on web and in `tauri dev`.
+initDesktopAuthDeepLinks();
 
 createRoot(rootEl).render(
   <StrictMode>

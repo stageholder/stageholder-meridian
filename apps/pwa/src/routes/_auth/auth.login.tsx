@@ -2,13 +2,40 @@ import { useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useSignIn } from "@stageholder/sdk/spa";
 import { H1, Paragraph, Text, YStack } from "@stageholder/ui";
+import { usesSystemBrowserAuth } from "@/lib/desktop-auth";
+import { DesktopSignIn } from "@/components/auth/desktop-sign-in";
 
 export const Route = createFileRoute("/_auth/auth/login")({
   validateSearch: (s): { returnTo?: string } => ({
-    returnTo: typeof s.returnTo === "string" ? s.returnTo : undefined,
+    returnTo: safeReturnTo(s.returnTo),
   }),
-  component: LoginPage,
+  // Desktop never auto-starts sign-in: each launch while signed out would
+  // otherwise throw the user into their browser unprompted.
+  component: () => (usesSystemBrowserAuth ? <DesktopLogin /> : <LoginPage />),
 });
+
+function DesktopLogin() {
+  const { returnTo } = Route.useSearch();
+  return <DesktopSignIn returnTo={returnTo ?? "/"} />;
+}
+
+/**
+ * Only same-origin app paths. A cross-origin (or protocol-relative `//host`)
+ * value used to reach the SDK, whose post-callback `history.replaceState`
+ * throws a SecurityError AFTER a successful sign-in → the signed-in user was
+ * bounced to /auth/error. Anything else falls back to "/".
+ */
+function safeReturnTo(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  if (
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.startsWith("/\\")
+  ) {
+    return undefined;
+  }
+  return value;
+}
 
 function LoginPage() {
   const { returnTo } = Route.useSearch();

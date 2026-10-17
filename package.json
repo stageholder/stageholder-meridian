@@ -11,7 +11,7 @@
     "publish:desktop:dry": "./scripts/local-publish-desktop.sh --no-upload",
     "dev": "turbo run dev",
     "dev:pwa": "turbo run dev --filter=pwa --filter=api",
-    "prod:pwa": "turbo run prod --filter=pwa --filter=api",
+    "prod:api": "turbo run prod --filter=api",
     "dev:desktop": "turbo run dev --filter=desktop --filter=api",
     "mobile": "turbo run dev dev:tunnel --filter=api --filter=@meridian/mobile",
     "mobile:ios": "turbo run dev dev:ios --filter=api --filter=@meridian/mobile",
@@ -54,11 +54,14 @@
     "packages/*"
   ],
   "dependencies": {
-    "@stageholder/sdk": "^1.0.0-alpha.65",
+    "@stageholder/sdk": "1.0.0-alpha.71",
     "agentic-flow": "^2.0.13",
     "react-day-picker": "^9.14.0"
   },
   "resolutions": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native-quick-base64": "3.0.1",
     "@tamagui/core": "2.3.2",
     "@tamagui/web": "2.3.2",
     "@tamagui/react-native-web-lite": "2.3.2",
@@ -68,6 +71,9 @@
     "@types/react-dom": "19.2.2"
   },
   "overrides": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native-quick-base64": "3.0.1",
     "tamagui": "2.3.2",
     "@tamagui/core": "2.3.2",
     "@tamagui/web": "2.3.2",
@@ -85,5 +91,8 @@
     "@tamagui/select": "2.3.2",
     "@tamagui/themes": "2.3.2",
     "react-native-web": "0.21.2"
+  },
+  "patchedDependencies": {
+    "@tamagui/sheet@2.3.2": "patches/@tamagui%2Fsheet@2.3.2.patch"
   }
 }

@@ -6,6 +6,7 @@
 // (one place to fix the "which date does a todo sort under" rule).
 
 import type { Todo } from "../types";
+import { localDateKey } from "../habits/streak";
 
 /**
  * The earliest of a todo's do/due dates that is strictly in the FUTURE
@@ -27,7 +28,9 @@ export function formatUpcomingLabel(dateKey: string, todayKey: string): string {
   const date = new Date(dateKey + "T00:00:00");
   const tomorrow = new Date(todayKey + "T00:00:00");
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowKey = tomorrow.toISOString().slice(0, 10);
+  // LOCAL date key: `toISOString()` is UTC, so east of UTC local midnight
+  // lands on the previous day and "Tomorrow" never matched.
+  const tomorrowKey = localDateKey(tomorrow);
   if (dateKey === tomorrowKey) return "Tomorrow";
   return date.toLocaleDateString("en-US", {
     weekday: "short",
@@ -58,7 +61,7 @@ export function groupUpcomingByDate(
   if (rangeDays > 0) {
     const end = new Date(today + "T00:00:00");
     end.setDate(end.getDate() + rangeDays);
-    maxKey = end.toISOString().slice(0, 10);
+    maxKey = localDateKey(end);
   }
 
   const byDate = new Map<string, Todo[]>();

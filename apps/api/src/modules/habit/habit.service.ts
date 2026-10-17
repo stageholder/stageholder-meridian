@@ -7,15 +7,18 @@ import {
 import type { StageholderUser } from "@stageholder/sdk/core";
 import { HabitRepository } from "./habit.repository";
 import { HabitGroupRepository } from "../habit-group/habit-group.repository";
+import { HabitEntryService } from "../habit-entry/habit-entry.service";
 import { Habit, HabitFrequency } from "./habit.entity";
 import { CreateHabitDto, UpdateHabitDto, ReorderHabitsDto } from "./habit.dto";
 import { enforceLimit } from "../../common/helpers/entitlement";
+import { shiftDays } from "../../common/date";
 import {
   buildPaginationMeta,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
   MAX_LIMIT,
 } from "../../shared";
+import { todayKey } from "../../common/request-timezone";
 
 @Injectable()
 export class HabitService {
@@ -25,6 +28,10 @@ export class HabitService {
     // group belongs to the user.
     @Inject(forwardRef(() => HabitGroupRepository))
     private readonly groupRepository: HabitGroupRepository,
+    // Circular by design (see module forwardRef): powers the
+    // `?withEntries` aggregation below.
+    @Inject(forwardRef(() => HabitEntryService))
+    private readonly habitEntryService: HabitEntryService,
   ) {}
 
   /**
@@ -169,6 +176,37 @@ export class HabitService {
       await this.assertOwnsGroup(userSub, groupId);
     }
     await this.repository.reorder(userSub, dto.items);
+  }
+
+  /** Habits + their entries for a rolling window — one bulk entries query
+   *  instead of the client fanning out one `/habits/:id/entries` request per
+   *  habit. `windowDays` is the lookback from "today" (UTC date key). */
+  async listByUserWithEntries(
+    userSub: string,
+    windowDays: number,
+    todayKeyArg?: string,
+  ) {
+    // Anchor on the client's local day when provided (parity with
+    // /dashboard/today) so the window doesn't drift by a day for non-UTC
+    // clients near midnight; fall back to the server's UTC day.
+    const today = todayKeyArg ?? todayKey();
+    const start = shiftDays(today, -windowDays);
+    const [habits, entries] = await Promise.all([
+      this.findByUser(userSub),
+      this.habitEntryService.listByUserAndDateRange(userSub, start, today),
+    ]);
+
+    const entriesByHabit = new Map<string, typeof entries>();
+    for (const entry of entries) {
+      const list = entriesByHabit.get(entry.habitId);
+      if (list) list.push(entry);
+      else entriesByHabit.set(entry.habitId, [entry]);
+    }
+
+    return habits.map((habit) => ({
+      ...habit.toObject(),
+      entries: (entriesByHabit.get(habit.id) ?? []).map((e) => e.toObject()),
+    }));
   }
 
   async listArchived(userSub: string) {

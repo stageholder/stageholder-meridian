@@ -13,7 +13,7 @@ import {
   YStack,
 } from "@stageholder/ui";
 import { parseMediaIcon } from "@repo/features/habits";
-import { useHabits } from "@/lib/api/habits";
+import { useHabitsWithEntries } from "@/lib/api/habits";
 import { useHabitGroups } from "@/lib/api/habit-groups";
 import { useCalendarData } from "@/lib/api/calendar";
 import {
@@ -65,7 +65,7 @@ interface Section {
 }
 
 function HabitsPage() {
-  const { data: habits, isLoading } = useHabits();
+  const { data: habits, isLoading } = useHabitsWithEntries();
   const { data: groups } = useHabitGroups();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [moveTarget, setMoveTarget] = useState<Habit | null>(null);

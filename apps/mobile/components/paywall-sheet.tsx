@@ -193,7 +193,9 @@ export function PaywallHost() {
           <LedgerCell label="Current plan" value="Free" />
           <LedgerCell
             label="Used"
-            value={`${reason.limit} of ${reason.limit}`}
+            // The 402 payload carries the real count when the server sends it;
+            // at a limit it's normally == limit, but never print a made-up one.
+            value={`${reason.current ?? reason.limit} of ${reason.limit}`}
             mono
           />
           <LedgerCell label="Recommended" value={planName} />

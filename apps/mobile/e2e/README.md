@@ -1,0 +1,89 @@
+# Meridian mobile E2E journeys (Maestro)
+
+The native counterpart of the PWA's Playwright suite (`apps/pwa/e2e`): real
+journeys driven on the iOS simulator or Android emulator against the **local
+dev stack**, rerun after any change to make sure the app still works.
+
+[Maestro](https://maestro.dev) drives the real native UI (taps, swipes, the
+system sign-in sheet, the native tab bar and back gesture), so it tests what a
+user touches, not a web rendering of it. Flows are YAML in `flows/`, shared
+steps in `subflows/`.
+
+## One-time setup (per machine)
+
+1. **Maestro CLI** (needs Java 17+):
+   ```bash
+   curl -fsSL --location https://github.com/mobile-dev-inc/maestro/releases/latest/download/maestro.zip -o /tmp/maestro.zip
+   unzip -q -o /tmp/maestro.zip -d ~/.maestro
+   ```
+   The runner finds `~/.maestro/maestro/bin/maestro` on its own (or `maestro`
+   on `PATH`). `brew install mobile-dev-inc/tap/maestro` works too once the
+   Xcode license is accepted.
+2. **iOS**: `sudo xcodebuild -license accept`, then a dev build on a booted
+   simulator: `bun run ios`.
+   **Android**: a booted emulator and a dev build: `bun run android`.
+3. **Account**: the suite reuses the PWA suite's dedicated test account —
+   `E2E_EMAIL` / `E2E_PASSWORD` / `E2E_JOURNAL_PASSPHRASE` from
+   `apps/pwa/e2e/.env.e2e` (gitignored) or the environment. See
+   `apps/pwa/e2e/README.md` → "Account and credentials".
+
+## Run
+
+Start the stack yourself (API `:4000`, PWA `:4001`, Hub `:4828`/`:4829`).
+Then, from `apps/mobile`, either:
+
+**Release build (recommended on Android)**: precompiled Hermes bytecode with
+the local-stack URLs baked in, no Metro. This is what users run: it starts in
+seconds and holds ~420 MB, where a dev-client build parses raw JS on every
+launch, which on an emulator takes minutes and 1 GB+ and makes runs flaky.
+
+```bash
+bun run e2e:build:android            # once per app change (~1 min incremental); installs on the emulator
+bun run e2e:android:release          # every journey
+```
+
+The build is E2E-only: `e2e/android/cleartext.init.gradle` merges a manifest
+overlay that allows plain HTTP to the local stack, and it builds only
+`arm64-v8a` (override with `E2E_ABI=x86_64` on an Intel emulator). Store
+builds are unaffected.
+
+**Dev build + Metro**: `bun run e2e:metro` (serves production-mode bundles
+pointed at localhost, ignoring `.env.local`), dev build installed, then:
+
+```bash
+bun run e2e                          # every journey, iOS simulator
+bun run e2e:android                  # every journey, Android emulator (adds adb reverse)
+bun run e2e -- flows/habits.yaml     # one journey
+bun run e2e:studio                   # Maestro Studio: inspect the screen, record steps
+```
+
+Use an emulator with **≥4 GB RAM** (`emulator -avd <name> -memory 4096`); on
+2 GB the UI stalls and taps get lost. Only one Maestro run per machine: two
+CLIs kill each other's driver.
+
+Each run: checks the stack → signs the account in headlessly (only to get an
+API token) → **wipes the account** (habits, todos, lists, groups, journal; it
+refuses to run unless `E2E_EMAIL` is a `jevb+…` account) → runs the journeys
+→ wipes again. Screenshots and logs of failures land in `e2e/.output/`
+(gitignored).
+
+## Journeys
+
+| Flow         | What it proves                                                                                                                                               |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `smoke`      | Signed-in launch lands on Today; every tab renders                                                                                                           |
+| `navigation` | Detail screens push on a native stack; back gesture / Android Back returns to where you came from (Calendar → Today, Billing → Settings, Journey → Settings) |
+| `habits`     | Create → check in → persists across relaunch → detail opens with native header → back                                                                        |
+| `todos`      | Quick-add → swipe-right complete → shows under the Done filter                                                                                               |
+| `journal`    | Unlock the encrypted journal → write → header shows "Saved" → Done waits for the save → entry listed                                                         |
+| `settings`   | Plan row, Appearance switch, Sign out asks for confirmation                                                                                                  |
+
+## Conventions
+
+- Test data is named `JEVB E2E <label> <timestamp>` (same prefix as the PWA).
+- Prefer visible text from the source; key controls without stable text carry
+  a `testID` (`fab-new-habit`, `fab-new-todo`, `fab-new-journal`,
+  `settings-plan`, `settings-sign-out`, `settings-profile`).
+- Every flow starts with `subflows/launch-signed-in.yaml`, so any one of them
+  runs on its own.
+- Never complete a purchase or change the plan from a flow.

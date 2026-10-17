@@ -20,6 +20,7 @@ import {
   getMultiplier,
   getTodoLight,
 } from "./domain/light-config";
+import { todayKey } from "../../common/request-timezone";
 
 @Injectable()
 export class LightService {
@@ -50,7 +51,7 @@ export class LightService {
     const todayStr =
       clientToday && /^\d{4}-\d{2}-\d{2}$/.test(clientToday)
         ? clientToday
-        : new Date().toISOString().slice(0, 10);
+        : todayKey();
     const today = new Date(todayStr + "T00:00:00Z");
     const windowStartDate = new Date(today);
     windowStartDate.setUTCDate(windowStartDate.getUTCDate() - 13);
@@ -727,31 +728,11 @@ export class LightService {
     };
   }
 
-  // The OIDC `zoneinfo` standard claim is the long-term plan; until the
-  // Hub emits it, server-side scheduling falls back to DEFAULT_TIMEZONE / UTC.
-  // Per-user timezone is now sourced client-side from the SDK's `useProfile()`.
+  // "Today" in the CALLER's timezone: both clients send `X-Timezone`
+  // (common/request-timezone.ts); requests without it (webhooks, old
+  // clients) fall back to DEFAULT_TIMEZONE / UTC as before.
   private async getTodayForUser(_userSub: string): Promise<string> {
-    return this.getToday();
-  }
-
-  private getToday(timezone?: string): string {
-    const tz = timezone || process.env.DEFAULT_TIMEZONE || "UTC";
-    try {
-      return new Intl.DateTimeFormat("en-CA", {
-        timeZone: tz,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(new Date());
-    } catch {
-      // Fall back to UTC if timezone is invalid
-      return new Intl.DateTimeFormat("en-CA", {
-        timeZone: "UTC",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(new Date());
-    }
+    return todayKey();
   }
 
   private addLightAndDetectTierUp(

@@ -1,6 +1,15 @@
 {
-  "timestamp": "2026-06-20T07:30:07.645Z",
+  "timestamp": "2026-07-29T18:44:10.277Z",
+  "distillationEnabled": true,
   "patternsConsolidated": 0,
   "memoryCleaned": 0,
-  "duplicatesRemoved": 0
+  "duplicatesRemoved": 0,
+  "episodes": 0,
+  "patternEmbeddings": 0,
+  "causalEdges": 0,
+  "promoted": 0,
+  "byProvenance": {},
+  "namespaces": ["feedback", "commands", "session"],
+  "dryRun": false,
+  "corrupt": false
 }

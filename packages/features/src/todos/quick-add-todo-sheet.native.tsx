@@ -170,20 +170,25 @@ export function QuickAddTodoSheet({
         submitDisabled={!title.trim()}
         field={
           <>
-            <SmartTodoInput
-              ref={titleRef}
-              value={title}
-              onValueChange={setTitle}
-              lists={listRefs}
-              locale={smartLocale}
-              parse
-              // The field highlights recognized phrases inline (rounded pills,
-              // Todoist-style); `onParse` additionally lifts them into the pill
-              // row below so a manual pick and a typed token stay in sync.
-              onParse={applyParse}
-              onSubmit={handleSubmit}
-              placeholder="What needs to be done?"
-            />
+            {/* testID wrapper: the field is a WebView editor, so its
+                placeholder isn't in the native accessibility tree — E2E
+                (Maestro) taps this container to focus it. */}
+            <View testID="quick-add-todo-title">
+              <SmartTodoInput
+                ref={titleRef}
+                value={title}
+                onValueChange={setTitle}
+                lists={listRefs}
+                locale={smartLocale}
+                parse
+                // The field highlights recognized phrases inline (rounded pills,
+                // Todoist-style); `onParse` additionally lifts them into the pill
+                // row below so a manual pick and a typed token stay in sync.
+                onParse={applyParse}
+                onSubmit={handleSubmit}
+                placeholder="What needs to be done?"
+              />
+            </View>
             {noteOpen ? (
               <TextArea
                 value={description}

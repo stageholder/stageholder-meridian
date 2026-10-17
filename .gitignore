@@ -50,3 +50,10 @@ yarn-error.log*
 # Local release credentials (loaded by scripts/local-publish-desktop.sh).
 # Keep .env.publish.example committed as the template.
 .env.publish
+
+# Playwright E2E (apps/pwa/e2e) — signed-in states and credentials are local only
+apps/pwa/e2e/.auth*/
+apps/pwa/e2e/.env.e2e
+apps/pwa/test-results/
+apps/pwa/playwright-report/
+apps/pwa/e2e/.probe/

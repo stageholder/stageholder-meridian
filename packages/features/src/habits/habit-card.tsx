@@ -245,25 +245,24 @@ export function HabitCard({
     return { streak, weeklyProgress, weekDays };
   }, [entries, habit, isQuota, today]);
 
-  async function handleCheckIn() {
+  function handleCheckIn() {
     if (isComplete || !isScheduledOnActiveDate || isPending) return;
-    // We can predict whether THIS check-in completes the habit because we
-    // own the before-value; the post-success animations fire on the same
-    // tick as the mutation resolution without waiting for re-fetched data.
+    // Fire the completion animations SYNCHRONOUSLY on the tap frame. We own the
+    // before-value, so completion is predictable without the server round-trip.
+    // Previously this `await`ed onCheckIn() BEFORE animating, which pinned the
+    // bounce + RadianceBurst to network latency (the "check animation lags"
+    // bug). The compact HabitCheckInRow already fires-and-forgets — match it.
+    // The host's optimistic update reflects the tap immediately and rolls back
+    // (+ toasts) on error, so a rare failed check-in briefly over-celebrates
+    // and then reverts — an acceptable trade for an instant-feeling tap.
     const willComplete = activeDateValue + 1 >= activeTargetCount;
-    try {
-      await onCheckIn();
-    } catch {
-      // The host already surfaced the error (toast in its mutation
-      // onError). Skip the celebration animations.
-      return;
-    }
     setBouncing(true);
     setTimeout(() => setBouncing(false), 500);
     if (willComplete) {
       setCompleting(true);
       setTimeout(() => setCompleting(false), 1200);
     }
+    void onCheckIn();
   }
 
   function handleSkip() {
@@ -309,10 +308,11 @@ export function HabitCard({
         bg="$card"
         p="$3"
         gap="$2.5"
-        // Same transition on web + native (Tamagui v2). The bespoke
-        // completion keyframe is web-only CSS (className below); native plays
-        // its equivalent via renderCompletionEffect (the ember Celebration).
-        transition="medium"
+        // No ambient `transition` on the resting card — on native it added a
+        // Reanimated spring hook per card for nothing (the smooth sibling apps
+        // use zero animation props on rows). The bespoke completion keyframe is
+        // web-only CSS (className below); native plays its equivalent via
+        // renderCompletionEffect (the ember Celebration).
         // allowlist: habit-card-completing — bespoke completion keyframe (no token equivalent).
         // Web-only; ignored on native (host plugs in a Reanimated alt via renderCompletionEffect).
         className={completing ? "habit-card-completing" : undefined}
@@ -326,8 +326,8 @@ export function HabitCard({
             cursor="pointer"
             items="center"
             gap="$2.5"
-            // Hover/press fade — same on web + native (Tamagui v2).
-            transition="quick"
+            // Web hover fade only — no `transition` (it added a native spring
+            // hook per card; native has no hover, so nothing is lost).
             hoverStyle={{ opacity: 0.8 }}
             role="button"
             aria-label={`Open ${habit.name}`}
@@ -477,8 +477,9 @@ export function HabitCard({
                   width={11}
                   height={11}
                   rounded={9999}
-                  // Dot color flip animates the same on web + native.
-                  transition="quick"
+                  // No `transition`: 7 dots × N cards meant 7 Reanimated spring
+                  // hooks per card purely for a color flip. Static change now
+                  // (matches the smooth sibling apps' zero-animation rows).
                   items="center"
                   justify="center"
                   // DOM `title` tooltip attr isn't in the kit View prop type

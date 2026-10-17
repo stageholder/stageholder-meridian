@@ -131,9 +131,17 @@ export function App() {
   return (
     <TamaguiBridge>
       <QueryClientProvider client={queryClient}>
+        {/*
+         * `queryClient` MUST be handed to the SDK provider too: it mounts its
+         * own `<QueryClientProvider>` (nearest wins for every hook below it)
+         * and, without this, creates a private client — leaving the
+         * module-level singleton that `encryption-store.ts`'s `lock()` evicts
+         * journal plaintext from, and that the mutation-cache settle hook in
+         * `lib/query-client.ts` runs on, pointed at a cache no view reads.
+         */}
         <StageholderSpaProvider
           productSlug="meridian"
-          config={{ ...spaConfig, renderPaywall: false }}
+          config={{ ...spaConfig, renderPaywall: false, queryClient }}
         >
           {/*
            * PaywallListener: bridges Meridian's `meridian:paywall` window

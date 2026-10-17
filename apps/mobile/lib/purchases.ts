@@ -154,9 +154,15 @@ export async function reconcileEntitlement(
 }
 
 /** Restore previous purchases (Apple requires this affordance). */
-export async function restorePurchases(): Promise<void> {
+/** Restore store purchases. Resolves `true` only when the store returned at
+ *  least one ACTIVE entitlement — "restored" must not be claimed when the
+ *  account simply had nothing to restore. */
+export async function restorePurchases(): Promise<boolean> {
   const Purchases = loadPurchases();
-  await Purchases.restorePurchases();
+  const info = (await Purchases.restorePurchases()) as
+    | { entitlements?: { active?: Record<string, unknown> } }
+    | undefined;
+  return Object.keys(info?.entitlements?.active ?? {}).length > 0;
 }
 
 /**

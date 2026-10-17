@@ -5,6 +5,7 @@ import { HabitRepository } from "./habit.repository";
 import { HabitService } from "./habit.service";
 import { HabitController } from "./habit.controller";
 import { HabitGroupModule } from "../habit-group/habit-group.module";
+import { HabitEntryModule } from "../habit-entry/habit-entry.module";
 
 @Module({
   imports: [
@@ -13,6 +14,10 @@ import { HabitGroupModule } from "../habit-group/habit-group.module";
     // HabitGroupRepository; HabitGroupModule imports HabitModule for its
     // orphan-on-delete cascade.
     forwardRef(() => HabitGroupModule),
+    // Bidirectional: HabitEntryModule imports HabitModule for HabitRepository
+    // (ownership checks); HabitService now needs HabitEntryService for the
+    // `?withEntries` aggregation (Task 2.3).
+    forwardRef(() => HabitEntryModule),
   ],
   controllers: [HabitController],
   providers: [HabitRepository, HabitService],

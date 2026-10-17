@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import {
   formatPlanPrice,
   useBillingPortal,
@@ -11,8 +10,11 @@ import {
   useSubscription,
   type PricingPlan,
   type ProductFeature,
+  // `isBillingError`, not `instanceof BillingError`: each SDK entry point
+  // bundles its own class copy, so a `/core` BillingError never matched the
+  // errors thrown by these `/spa` hooks (the tailored copy below never ran).
+  isBillingError,
 } from "@stageholder/sdk/spa";
-import { BillingError } from "@stageholder/sdk/core";
 import { openURL } from "@repo/core/platform/linking";
 import { billingReturnUrl, openBillingURL } from "@/lib/billing-return";
 import { PlanVisual } from "./plan-visual";
@@ -107,7 +109,7 @@ export function PlanTierCard({
       });
       openBillingURL(url);
     } catch (err) {
-      if (err instanceof BillingError) {
+      if (isBillingError(err)) {
         setErrorState({ code: err.code, message: err.message });
       } else {
         setErrorState({
@@ -150,7 +152,7 @@ export function PlanTierCard({
       });
       openURL(`/settings/billing/success?changed=1`);
     } catch (err) {
-      if (err instanceof BillingError) {
+      if (isBillingError(err)) {
         setErrorState({ code: err.code, message: err.message });
       } else {
         setErrorState({
@@ -180,11 +182,18 @@ export function PlanTierCard({
       });
       openBillingURL(url);
     } catch (err) {
-      setErrorState({
-        code: null,
-        message:
-          err instanceof Error ? err.message : "Could not open billing portal.",
-      });
+      // useBillingPortal throws a typed BillingError (SDK alpha.66+).
+      if (isBillingError(err)) {
+        setErrorState({ code: err.code, message: err.message });
+      } else {
+        setErrorState({
+          code: null,
+          message:
+            err instanceof Error
+              ? err.message
+              : "Could not open billing portal.",
+        });
+      }
     }
   }
   // Show the active-org label only when the user has more than one org —
@@ -242,12 +251,13 @@ export function PlanTierCard({
       transition="medium"
       hoverStyle={{ borderColor: "$color" }}
     >
-      {/* Featured badge — clear "this is the recommended pick" */}
+      {/* Featured badge — clear "this is the recommended pick". Tucked into
+          the corner: at 28/28 it sat on top of the tier bars in the header. */}
       {plan.isFeatured && (
         <XStack
           position="absolute"
-          t={28}
-          r={28}
+          t={12}
+          r={12}
           z={1}
           items="center"
           gap="$1.5"
@@ -482,19 +492,25 @@ function CheckoutErrorBanner({
 }
 
 /**
- * Follow-up action chip for the BILLING_EMAIL_REJECTED error. Internal nav
- * to the billing settings page via TanStack's useNavigate (client-side).
- * Rendered inside the destructive-themed banner, so the outline intent picks
- * up the danger tint from the surrounding theme.
+ * Follow-up action chip for the BILLING_EMAIL_REJECTED error, rendered inside
+ * the destructive-themed banner (the outline intent picks up its danger tint).
+ * The billing email lives on the org in the Stageholder Hub (Account → the
+ * org → Settings), not in Meridian. This used to navigate to Meridian's own
+ * /settings/billing, which has no such field — a dead end that blocked any
+ * customer whose email domain Polar rejects from ever upgrading.
  */
 function UpdateBillingEmailButton() {
-  const navigate = useNavigate();
+  const { org } = useOrg();
+  const hubWeb = (import.meta.env.VITE_HUB_WEB_URL ?? "").replace(/\/+$/, "");
+  const href = org?.slug
+    ? `${hubWeb}/account/${encodeURIComponent(org.slug)}/settings`
+    : `${hubWeb}/account`;
   return (
     <XStack self="flex-start">
       <Button
         intent="outline"
         size="sm"
-        onPress={() => void navigate({ to: "/settings/billing" })}
+        onPress={() => openURL(href, { newTab: true })}
       >
         Update billing email
       </Button>
@@ -520,6 +536,13 @@ function explainBillingError(code: string | null): ErrorCopy | null {
         message:
           "This plan is only available on team workspaces. Switch to a team org or pick a different plan.",
       };
+    case "BILLING_PORTAL_UNAVAILABLE":
+      return {
+        message:
+          "The billing portal isn't available for this subscription right now. Please contact support and we'll make the change for you.",
+      };
+    // Hub stopped sending this in SDK alpha.70 (portal failures now come back
+    // as BILLING_PORTAL_UNAVAILABLE); kept for older Hub deployments.
     case "POLAR_PRODUCT_TEAM_TYPE":
       return {
         message:

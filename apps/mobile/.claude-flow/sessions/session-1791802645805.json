@@ -1,0 +1,14 @@
+{
+  "id": "session-1791802645805",
+  "startedAt": "2026-10-12T10:57:25.805Z",
+  "cwd": "/Users/garda_dafi/Project/stageholder-meridian/apps/mobile",
+  "context": {},
+  "metrics": {
+    "edits": 2,
+    "commands": 0,
+    "tasks": 0,
+    "errors": 0
+  },
+  "endedAt": "2026-10-12T20:11:56.752Z",
+  "duration": 33270948
+}

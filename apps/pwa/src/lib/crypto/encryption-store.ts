@@ -21,8 +21,18 @@ export interface EncryptionState {
   wrappedDek: string | null;
   salt: string | null;
   userSub: string | null;
+  /**
+   * Bumped on EVERY transition that changes what `dek` is (including → null):
+   * setup, unlock, lock, changePassphrase, recoverWithCodes, and checkStatus's
+   * failure reset. Folded into the journal query keys (lib/api/journals.ts) so
+   * a cached PLAINTEXT query result decrypted under one DEK can never be served
+   * after a lock/unlock (or account switch) changes the DEK — mirrors mobile's
+   * `journalDekEpoch` (lib/journal-crypto.ts).
+   */
+  dekEpoch: number;
 
-  init: (userSub: string) => void;
+  /** Bind the store to the signed-in user (`null` = signed out). */
+  init: (userSub: string | null) => void;
   checkStatus: () => Promise<void>;
   setupPassphrase: (passphrase: string) => Promise<string[]>;
   unlock: (passphrase: string) => Promise<void>;
@@ -45,9 +55,22 @@ export const useEncryptionStore = create<EncryptionState>()((set, get) => ({
   wrappedDek: null,
   salt: null,
   userSub: null,
+  dekEpoch: 0,
 
-  init: (userSub: string) => {
+  init: (userSub: string | null) => {
+    const { userSub: prev, dek } = get();
+    if (prev === userSub) return;
+    // Sign-out, session loss or account switch: forget EVERYTHING of the
+    // previous user — the DEK, their wrapped key + salt, and the decrypted
+    // journal cache. (`lock()` used to be dead code: nothing called it, so a
+    // soft auth transition kept the old user's DEK and plaintext journals.)
+    if (prev !== null || dek) {
+      get().lock();
+      set({ isSetup: false, wrappedDek: null, salt: null });
+    }
     set({ userSub });
+    // A different account signed in without a full reload: load ITS keys.
+    if (prev !== null && userSub !== null) void get().checkStatus();
   },
 
   checkStatus: async () => {
@@ -75,7 +98,12 @@ export const useEncryptionStore = create<EncryptionState>()((set, get) => ({
       // queryFn's `if (dek)` branch could still mishandle the boundary. Forcing
       // the fully-locked state keeps every consumer on the safe path until the
       // next successful checkStatus.
-      set({ isSetup: false, dek: null, isUnlocked: false });
+      set((s) => ({
+        isSetup: false,
+        dek: null,
+        isUnlocked: false,
+        dekEpoch: s.dekEpoch + 1,
+      }));
     } finally {
       set({ isLoading: false });
     }
@@ -102,13 +130,14 @@ export const useEncryptionStore = create<EncryptionState>()((set, get) => ({
       recoveryCodes,
     });
 
-    set({
+    set((s) => ({
       dek,
       isUnlocked: true,
       isSetup: true,
       wrappedDek: passphraseWrappedDek,
       salt: passphraseSalt,
-    });
+      dekEpoch: s.dekEpoch + 1,
+    }));
 
     return recoveryCodes;
   },
@@ -123,11 +152,11 @@ export const useEncryptionStore = create<EncryptionState>()((set, get) => ({
     const masterKey = await deriveMasterKey(passphrase, saltBytes);
     const dek = await unwrapDEK(wrappedDek, masterKey);
 
-    set({ dek, isUnlocked: true });
+    set((s) => ({ dek, isUnlocked: true, dekEpoch: s.dekEpoch + 1 }));
   },
 
   lock: () => {
-    set({ dek: null, isUnlocked: false });
+    set((s) => ({ dek: null, isUnlocked: false, dekEpoch: s.dekEpoch + 1 }));
     // Drop the DECRYPTED journal data from the query cache. Without the DEK
     // we can no longer read it, and leaving plaintext journals cached for a
     // now-locked session would defeat at-rest locking. Previously the offline
@@ -164,11 +193,12 @@ export const useEncryptionStore = create<EncryptionState>()((set, get) => ({
       passphraseSalt: newSaltStr,
     });
 
-    set({
+    set((s) => ({
       dek,
       wrappedDek: newWrappedDek,
       salt: newSaltStr,
-    });
+      dekEpoch: s.dekEpoch + 1,
+    }));
   },
 
   recoverWithCodes: async (
@@ -206,13 +236,14 @@ export const useEncryptionStore = create<EncryptionState>()((set, get) => ({
       recoverySession,
     });
 
-    set({
+    set((s) => ({
       dek,
       isUnlocked: true,
       isSetup: true,
       wrappedDek: newPassphraseWrappedDek,
       salt: saltToBase64(newSalt),
-    });
+      dekEpoch: s.dekEpoch + 1,
+    }));
 
     return newCodes;
   },

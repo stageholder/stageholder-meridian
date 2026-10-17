@@ -55,10 +55,17 @@ export function TrialPill({
         <Link
           to={upgradeHref}
           aria-label={`${longLabel} in trial — manage subscription`}
-          style={{ textDecoration: "none" }}
+          // Never shrink: in the header row a squeezed pill wrapped "14 days
+          // left" onto three lines and spilled over the journey badge.
+          style={{ textDecoration: "none", flexShrink: 0 }}
         >
+          {/* No `group` prop: Tamagui makes a group a CSS container
+              (`container-type: inline-size`), which ignores its children when
+              sizing — the pill collapsed to its 22px of padding and "14 days
+              left" spilled over the journey badge. The decorative group-hover
+              wiggles went with it; hover still fades the pill. */}
           <XStack
-            group
+            shrink={0}
             height={28}
             items="center"
             gap="$1.5"
@@ -70,13 +77,7 @@ export function TrialPill({
             borderColor={tone.border}
             hoverStyle={{ opacity: 0.85 }}
           >
-            <Text
-              color={tone.color}
-              shrink={0}
-              lineHeight={0}
-              transition="quick"
-              $group-hover={{ rotate: "12deg" }}
-            >
+            <Text color={tone.color} shrink={0} lineHeight={0}>
               <Sparkles
                 // allowlist: animate-pulse — urgent pulse, no token equivalent
                 className={urgent ? "animate-pulse" : undefined}
@@ -90,6 +91,7 @@ export function TrialPill({
               fontSize="$1"
               lineHeight={16}
               color={tone.color}
+              whiteSpace="nowrap"
             >
               <Text display="none" $sm={{ display: "inline" }}>
                 {longLabel}
@@ -119,8 +121,6 @@ export function TrialPill({
               fontWeight="600"
               letterSpacing={0.9}
               color={tone.color}
-              transition="quick"
-              $group-hover={{ x: 2 }}
             >
               MANAGE
             </Text>

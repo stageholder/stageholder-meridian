@@ -4,6 +4,7 @@ import type { UserDeletedEvent } from "@stageholder/sdk/core";
 import { JournalService } from "../journal/journal.service";
 import { HabitService } from "../habit/habit.service";
 import { HabitEntryService } from "../habit-entry/habit-entry.service";
+import { HabitGroupService } from "../habit-group/habit-group.service";
 import { TodoListService } from "../todo-list/todo-list.service";
 import { TodoService } from "../todo/todo.service";
 import { TagService } from "../tag/tag.service";
@@ -45,6 +46,7 @@ export class HubWebhookHandlers {
     private readonly journalService: JournalService,
     private readonly habitService: HabitService,
     private readonly habitEntryService: HabitEntryService,
+    private readonly habitGroupService: HabitGroupService,
     private readonly todoListService: TodoListService,
     private readonly todoService: TodoService,
     private readonly tagService: TagService,
@@ -79,6 +81,9 @@ export class HubWebhookHandlers {
       this.journalService.deleteAllForUser(userSub),
       this.habitService.deleteAllForUser(userSub),
       this.habitEntryService.deleteAllForUser(userSub),
+      // Habit groups were missing here, so a deleted account kept its group
+      // names (incl. the 4 seeded ones) — found by the account-deletion e2e.
+      this.habitGroupService.deleteAllForUser(userSub),
       this.todoService.deleteAllForUser(userSub),
       this.todoListService.deleteAllForUser(userSub),
       this.tagService.deleteAllForUser(userSub),
