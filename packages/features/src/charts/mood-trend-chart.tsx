@@ -1,4 +1,5 @@
-import { AreaChart, Skeleton, Text, View } from "@stageholder/ui";
+import { Skeleton, Text, View } from "@stageholder/ui";
+import { AreaChart } from "@stageholder/ui/charts";
 
 /**
  * Per-day mood score (1–5) for the trend chart. `mood` is `null` for days

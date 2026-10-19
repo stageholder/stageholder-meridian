@@ -14,11 +14,9 @@ import {
   AlertDialog,
   Button,
   DropdownMenu,
-  EventCalendar,
   H1,
   H3,
   IconButton,
-  MediaGlyph,
   Paragraph,
   Skeleton,
   Stat,
@@ -29,6 +27,8 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
+import { EventCalendar } from "@stageholder/ui/data";
+import { MediaGlyph } from "@stageholder/ui/pickers";
 import { parseMediaIcon } from "@repo/features/habits";
 import { EditHabitSheet } from "@/components/habits/edit-habit-sheet";
 import { MoveToGroupDialog } from "@/components/habits/move-to-group-dialog";

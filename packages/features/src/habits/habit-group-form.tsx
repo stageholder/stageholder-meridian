@@ -4,16 +4,18 @@ import {
   Button,
   Input,
   Label,
-  MediaGlyph,
-  MediaPicker,
-  MediaPickerSheet,
   Popover,
   Text,
   View,
   XStack,
   YStack,
-  type MediaValue,
 } from "@stageholder/ui";
+import type { MediaValue } from "@stageholder/ui/pickers";
+import {
+  MediaGlyph,
+  MediaPicker,
+  MediaPickerSheet,
+} from "@stageholder/ui/pickers";
 import {
   useSheetAutoFocus,
   type Focusable,

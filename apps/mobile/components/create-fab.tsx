@@ -13,7 +13,7 @@
 // transparent to touches.
 
 import { FAB } from "@stageholder/ui";
-import { Plus } from "@tamagui/lucide-icons-2";
+import { Plus } from "@tamagui/lucide-icons-2/icons/Plus";
 import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 

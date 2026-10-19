@@ -33,7 +33,7 @@
 // suits a wide desktop page; both share the `{ currentTier, totalLight? }`
 // contract.
 
-import { Check } from "@tamagui/lucide-icons-2";
+import { Check } from "@tamagui/lucide-icons-2/icons/Check";
 import { GradientSurface, Text, View, XStack, YStack } from "@stageholder/ui";
 import { StarVisual } from "./star-visual";
 import { LIGHT_TIERS, getTierProgressDetail } from "@repo/core/types/light";

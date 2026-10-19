@@ -811,7 +811,7 @@ dependencies = [
 
 [[package]]
 name = "desktop"
-version = "0.2.1"
+version = "0.2.6"
 dependencies = [
  "log",
  "serde_json",

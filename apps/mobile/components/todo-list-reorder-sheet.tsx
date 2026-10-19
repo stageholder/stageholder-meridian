@@ -28,7 +28,8 @@ import {
 } from "@stageholder/ui";
 import { reorderItems } from "@stageholder/ui";
 import type { TodoList } from "@repo/core/types";
-import { GripVertical, X } from "@tamagui/lucide-icons-2";
+import { GripVertical } from "@tamagui/lucide-icons-2/icons/GripVertical";
+import { X } from "@tamagui/lucide-icons-2/icons/X";
 import { useState, useEffect } from "react";
 
 import { useReorderTodoLists } from "@/lib/api";

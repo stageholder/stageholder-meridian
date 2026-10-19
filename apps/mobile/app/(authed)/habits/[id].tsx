@@ -26,8 +26,6 @@
 
 import {
   Button,
-  EventCalendar,
-  MediaGlyph,
   Skeleton,
   Stat,
   StreakBadge,
@@ -37,6 +35,8 @@ import {
   YStack,
   toast,
 } from "@stageholder/ui";
+import { EventCalendar } from "@stageholder/ui/data";
+import { MediaGlyph } from "@stageholder/ui/pickers";
 import type { Habit, HabitEntry } from "@repo/core/types";
 import { parseMediaIcon } from "@repo/features/habits";
 import {
@@ -45,7 +45,11 @@ import {
   calculateWeeklyStreak,
   weeklyCompletions,
 } from "@repo/core/habits/entry-resolution";
-import { Check, Minus, SkipForward, Undo2, X } from "@tamagui/lucide-icons-2";
+import { Check } from "@tamagui/lucide-icons-2/icons/Check";
+import { Minus } from "@tamagui/lucide-icons-2/icons/Minus";
+import { SkipForward } from "@tamagui/lucide-icons-2/icons/SkipForward";
+import { Undo2 } from "@tamagui/lucide-icons-2/icons/Undo2";
+import { X } from "@tamagui/lucide-icons-2/icons/X";
 import {
   format,
   getDay,

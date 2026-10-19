@@ -1,11 +1,6 @@
-import {
-  StackedBarChart,
-  Skeleton,
-  Text,
-  View,
-  type StackedBarDatum,
-  type StackedBarSeries,
-} from "@stageholder/ui";
+import { Skeleton, Text, View } from "@stageholder/ui";
+import type { StackedBarDatum, StackedBarSeries } from "@stageholder/ui/charts";
+import { StackedBarChart } from "@stageholder/ui/charts";
 
 /**
  * Per-day breakdown of the three productivity pillars Meridian tracks.

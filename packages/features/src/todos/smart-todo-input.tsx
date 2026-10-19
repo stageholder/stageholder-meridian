@@ -24,7 +24,9 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
-import { Calendar, Flag, Inbox } from "@tamagui/lucide-icons-2";
+import { Calendar } from "@tamagui/lucide-icons-2/icons/Calendar";
+import { Flag } from "@tamagui/lucide-icons-2/icons/Flag";
+import { Inbox } from "@tamagui/lucide-icons-2/icons/Inbox";
 import { Text, View, XStack } from "@stageholder/ui";
 import {
   parseSmartTodo,
@@ -129,7 +131,14 @@ export const SmartTodoInput = forwardRef<
   const [activeIndex, setActiveIndex] = useState(0);
   const [focused, setFocused] = useState(false);
 
-  useImperativeHandle(ref, () => ({ focus: () => taRef.current?.focus() }), []);
+  useImperativeHandle(
+    ref,
+    () => ({
+      focus: () => taRef.current?.focus(),
+      blur: () => taRef.current?.blur(),
+    }),
+    [],
+  );
 
   const nowValue = now ?? new Date();
   const result = useMemo(

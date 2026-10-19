@@ -7,7 +7,8 @@
 // everything else a pill. Reset is by state (the host owns it); no
 // LazyBody / skeleton / epoch keys / mountChildren juggling here.
 import type { ReactNode } from "react";
-import { ArrowUp, Check } from "@tamagui/lucide-icons-2";
+import { ArrowUp } from "@tamagui/lucide-icons-2/icons/ArrowUp";
+import { Check } from "@tamagui/lucide-icons-2/icons/Check";
 import {
   FormSheet,
   Spinner,
@@ -33,6 +34,12 @@ export interface QuickAddSheetProps {
   field: ReactNode;
   /** Pill row content (Select pills, QuickDatePicker, QuickAddPill…). */
   pills: ReactNode;
+  /**
+   * Kit FormSheet `onSettled`: fires once per open when the slide has landed
+   * (spring complete or the kit's 350 ms cap). Hosts mount their SIBLING
+   * picker sheets / heavy fields from here — never from a timer.
+   */
+  onSettled?: () => void;
 }
 
 export function QuickAddSheet({
@@ -45,11 +52,13 @@ export function QuickAddSheet({
   submitDisabled,
   field,
   pills,
+  onSettled,
 }: QuickAddSheetProps) {
   return (
     <FormSheet
       open={open}
       onOpenChange={onOpenChange}
+      {...(onSettled ? { onSettled } : {})}
       // No title/header — the field's placeholder carries the prompt. The create
       // action is a send button pinned bottom-right (iOS compose style). Reset is
       // by state in the host. `pb` restores the breathing room the hidden footer

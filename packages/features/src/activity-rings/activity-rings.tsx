@@ -1,13 +1,11 @@
-import { CheckSquare, Target, BookOpen } from "@tamagui/lucide-icons-2";
+import { CheckSquare } from "@tamagui/lucide-icons-2/icons/CheckSquare";
+import { Target } from "@tamagui/lucide-icons-2/icons/Target";
+import { BookOpen } from "@tamagui/lucide-icons-2/icons/BookOpen";
+import { Skeleton, Text, View, XStack, YStack } from "@stageholder/ui";
 import {
   ActivityRings as KitActivityRings,
   ProgressRing,
-  Skeleton,
-  Text,
-  View,
-  XStack,
-  YStack,
-} from "@stageholder/ui";
+} from "@stageholder/ui/charts";
 import { tabularNums } from "../_internal/text-styles";
 import {
   activityRingsConfig,

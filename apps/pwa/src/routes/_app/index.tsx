@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { Dashboard, Text, View, YStack } from "@stageholder/ui";
+import { Text, View, YStack } from "@stageholder/ui";
+import { Dashboard } from "@stageholder/ui/data";
 import { useUserLight } from "@/lib/api/light";
 import { LevelUpCelebration } from "@repo/features/light";
 import { useLevelUp } from "@/lib/hooks/use-level-up";

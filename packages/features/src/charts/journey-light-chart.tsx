@@ -1,4 +1,5 @@
-import { AreaChart, Skeleton, Text, View, XStack } from "@stageholder/ui";
+import { Skeleton, Text, View, XStack } from "@stageholder/ui";
+import { AreaChart } from "@stageholder/ui/charts";
 import type { LightTrendDay } from "./light-earned-chart";
 import { tabularNums } from "../_internal/text-styles";
 

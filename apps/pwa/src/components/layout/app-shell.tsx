@@ -4,15 +4,13 @@ import {
   useNavigate,
   useRouterState,
 } from "@tanstack/react-router";
-import {
-  Search,
-  Keyboard,
-  ChevronLeft,
-  ChevronRight,
-  PanelLeft,
-  PanelLeftClose,
-  PanelLeftOpen,
-} from "@tamagui/lucide-icons-2";
+import { Search } from "@tamagui/lucide-icons-2/icons/Search";
+import { Keyboard } from "@tamagui/lucide-icons-2/icons/Keyboard";
+import { ChevronLeft } from "@tamagui/lucide-icons-2/icons/ChevronLeft";
+import { ChevronRight } from "@tamagui/lucide-icons-2/icons/ChevronRight";
+import { PanelLeft } from "@tamagui/lucide-icons-2/icons/PanelLeft";
+import { PanelLeftClose } from "@tamagui/lucide-icons-2/icons/PanelLeftClose";
+import { PanelLeftOpen } from "@tamagui/lucide-icons-2/icons/PanelLeftOpen";
 import { isDesktop } from "@repo/core/platform";
 import { openURL } from "@repo/core/platform/linking";
 import { subscribeLogout } from "@/lib/auth-broadcast";

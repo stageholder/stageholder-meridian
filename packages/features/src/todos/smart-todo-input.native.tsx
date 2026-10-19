@@ -30,7 +30,8 @@ import {
   type ReactNode,
 } from "react";
 import { useTheme } from "tamagui";
-import { Flag, Inbox } from "@tamagui/lucide-icons-2";
+import { Flag } from "@tamagui/lucide-icons-2/icons/Flag";
+import { Inbox } from "@tamagui/lucide-icons-2/icons/Inbox";
 import { Text, View, XStack, YStack } from "@stageholder/ui";
 import {
   CoreBridge,
@@ -141,6 +142,31 @@ function buildCss(
   `;
 }
 
+/**
+ * Focus the editor once its bridge is READY (not at mount). Isolated in a
+ * null-rendering leaf because `useBridgeState` re-renders its host on every
+ * editor state change — keep that off the field component itself.
+ */
+function AutoFocusWhenReady({
+  editor,
+  enabled,
+}: {
+  editor: ReturnType<typeof useEditorBridge>;
+  enabled: boolean;
+}) {
+  const { isReady } = useBridgeState(editor);
+  const done = useRef(false);
+  useEffect(() => {
+    if (!enabled || !isReady || done.current) return;
+    done.current = true;
+    // One beat after ready: lets the editor's first paint + the sheet's
+    // re-measure land before the keyboard starts moving the frame.
+    const t = setTimeout(() => editor.focus(), 120);
+    return () => clearTimeout(t);
+  }, [enabled, isReady, editor]);
+  return null;
+}
+
 export const SmartTodoInput = forwardRef<
   SmartTodoInputHandle,
   SmartTodoInputProps
@@ -185,7 +211,15 @@ export const SmartTodoInput = forwardRef<
     // Our custom web bundle: default tentap editor + the smart-highlight
     // decoration plugin + the window.__setSmartTokens hook.
     customSource: QUICK_ADD_EDITOR_HTML,
-    autofocus: autoFocus,
+    // NOT tentap's own `autofocus`: it summons the keyboard while the WebView
+    // is still initialising (bridge setup, CSS injection, the 900 KB bundle),
+    // i.e. while the JS thread is saturated. Inside a fit-sized FormSheet the
+    // keyboard spacer then grows the frame on the UI thread but Tamagui can't
+    // re-position it until JS frees up — the whole sheet sat hidden BEHIND the
+    // keyboard for ~2 s on the first open (Android release, filmstrip
+    // 2026-10-18). <AutoFocusWhenReady> below focuses once the bridge reports
+    // ready, when JS is idle again, so the sheet re-lays out in step.
+    autofocus: false,
     avoidIosKeyboard: true,
   });
 
@@ -194,7 +228,11 @@ export const SmartTodoInput = forwardRef<
     editor.injectCSS(css, "smart-todo-theme");
   }, [css, editor]);
 
-  useImperativeHandle(ref, () => ({ focus: () => editor.focus() }), [editor]);
+  useImperativeHandle(
+    ref,
+    () => ({ focus: () => editor.focus(), blur: () => editor.blur() }),
+    [editor],
+  );
 
   // ── Controlled value round-trip (mirrors the kit's tentap pattern) ──
   // `lastEmitted` distinguishes the editor's own typing echo from an EXTERNAL
@@ -325,6 +363,7 @@ export const SmartTodoInput = forwardRef<
   // Ghost field — no border/background; the editor sits directly on the sheet.
   return (
     <YStack gap="$2">
+      <AutoFocusWhenReady editor={editor} enabled={!!autoFocus} />
       <View height={FIELD_HEIGHT} overflow="hidden">
         <RichText
           editor={editor}

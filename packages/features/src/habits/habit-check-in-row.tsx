@@ -20,20 +20,18 @@ import { useState, type ReactNode } from "react";
 import {
   Button,
   IconButton,
-  MediaGlyph,
   Text,
   View,
   XStack,
   YStack,
 } from "@stageholder/ui";
-import {
-  Check,
-  MoreHorizontal,
-  RotateCcw,
-  SkipForward,
-  Target,
-  X,
-} from "@tamagui/lucide-icons-2";
+import { MediaGlyph } from "@stageholder/ui/pickers";
+import { Check } from "@tamagui/lucide-icons-2/icons/Check";
+import { MoreHorizontal } from "@tamagui/lucide-icons-2/icons/MoreHorizontal";
+import { RotateCcw } from "@tamagui/lucide-icons-2/icons/RotateCcw";
+import { SkipForward } from "@tamagui/lucide-icons-2/icons/SkipForward";
+import { Target } from "@tamagui/lucide-icons-2/icons/Target";
+import { X } from "@tamagui/lucide-icons-2/icons/X";
 import type { Habit } from "@repo/core/types";
 
 import { parseMediaIcon } from "./icon-value";

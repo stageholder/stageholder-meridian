@@ -14,7 +14,7 @@
 // screen's header.
 
 import { Text, XStack } from "@stageholder/ui";
-import { MoreHorizontal } from "@tamagui/lucide-icons-2";
+import { MoreHorizontal } from "@tamagui/lucide-icons-2/icons/MoreHorizontal";
 import { Stack } from "expo-router";
 
 import { showActionSheet } from "@/lib/action-sheet";

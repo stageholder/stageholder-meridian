@@ -8,7 +8,7 @@
 
 import { FormSheet, Text, View, XStack, YStack, toast } from "@stageholder/ui";
 import type { Habit } from "@repo/core/types";
-import { Check } from "@tamagui/lucide-icons-2";
+import { Check } from "@tamagui/lucide-icons-2/icons/Check";
 
 import { useHabitGroups, useUpdateHabit } from "@/lib/api";
 

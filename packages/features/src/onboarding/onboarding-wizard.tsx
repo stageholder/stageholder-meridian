@@ -20,24 +20,15 @@
 // its model; the profile is saved on finish alongside completion.
 
 import { useMemo } from "react";
-import {
-  Onboarding,
-  Input,
-  Label,
-  Text,
-  XStack,
-  YStack,
-  type OnboardingStep,
-  type OnboardingValues,
-} from "@stageholder/ui";
-import {
-  BookOpen,
-  CalendarDays,
-  Check,
-  CheckSquare,
-  Home,
-  Target,
-} from "@tamagui/lucide-icons-2";
+import { Input, Label, Text, XStack, YStack } from "@stageholder/ui";
+import type { OnboardingStep, OnboardingValues } from "@stageholder/ui/account";
+import { Onboarding } from "@stageholder/ui/account";
+import { BookOpen } from "@tamagui/lucide-icons-2/icons/BookOpen";
+import { CalendarDays } from "@tamagui/lucide-icons-2/icons/CalendarDays";
+import { Check } from "@tamagui/lucide-icons-2/icons/Check";
+import { CheckSquare } from "@tamagui/lucide-icons-2/icons/CheckSquare";
+import { Home } from "@tamagui/lucide-icons-2/icons/Home";
+import { Target } from "@tamagui/lucide-icons-2/icons/Target";
 
 import { TimezoneSelect } from "../settings/timezone-select";
 

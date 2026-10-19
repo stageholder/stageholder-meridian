@@ -4,7 +4,6 @@ import { Plus } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { CollapsibleGroup, splitHabitsByDay } from "@repo/features/calendar";
 import {
-  ActivityRings,
   AnimatePresence,
   IconButton,
   Skeleton,
@@ -13,6 +12,7 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
+import { ActivityRings } from "@stageholder/ui/charts";
 import { useTodoLists, useAllTodos } from "@/lib/api/todos";
 import { TodoItem } from "@/components/todos/todo-item";
 import { HabitListItem } from "@/components/habits/habit-list-item";

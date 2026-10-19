@@ -19,7 +19,6 @@
 //     each block still only paints its own days.
 
 import {
-  Heatmap,
   ScrollView,
   Skeleton,
   Text,
@@ -27,7 +26,8 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
-import type { HeatmapCellRenderArgs } from "@stageholder/ui";
+import { Heatmap } from "@stageholder/ui/charts";
+import type { HeatmapCellRenderArgs } from "@stageholder/ui/charts";
 import { useRef, useState } from "react";
 import { isWeb } from "tamagui";
 

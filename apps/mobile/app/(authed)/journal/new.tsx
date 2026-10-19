@@ -27,9 +27,6 @@
 
 import {
   Button,
-  MoodPicker,
-  MOOD_DEFAULT_OPTIONS,
-  QuickDatePicker,
   Sheet,
   Spinner,
   TagInput,
@@ -38,10 +35,15 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
+import {
+  MoodPicker,
+  MOOD_DEFAULT_OPTIONS,
+  QuickDatePicker,
+} from "@stageholder/ui/pickers";
 import { JournalEditor } from "@repo/features/journal";
-import type { RichTextEditorContent } from "@stageholder/ui";
+import type { RichTextEditorContent } from "@stageholder/ui/editor";
 import { countWordsFromContent } from "@repo/core/utils/text";
-import { SmilePlus } from "@tamagui/lucide-icons-2";
+import { SmilePlus } from "@tamagui/lucide-icons-2/icons/SmilePlus";
 import { Alert } from "react-native";
 // Bare tamagui Input for the title — no kit Frame chrome, matching the PWA's
 // bare title field (kit Input wraps a bordered Frame whose focus ring can't be
@@ -344,7 +346,10 @@ export default function NewJournalScreen() {
           initialContent={content}
           onChange={setContent}
           placeholder="What's on your mind?"
-          autoFocus
+          // 'ready': focus after the 10tap bridge reports ready (kit
+          // 0.4.0-alpha.2) — a mount-time focus raised the keyboard while the
+          // WebView was still initialising.
+          autoFocus="ready"
           saveStatus={status}
           target={wordTarget}
           otherWordsToday={otherWordsToday}

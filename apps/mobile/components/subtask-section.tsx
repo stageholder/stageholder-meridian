@@ -25,7 +25,9 @@ import {
   toast,
 } from "@stageholder/ui";
 import type { Subtask, Todo } from "@repo/core/types";
-import { Check, Plus, X } from "@tamagui/lucide-icons-2";
+import { Check } from "@tamagui/lucide-icons-2/icons/Check";
+import { Plus } from "@tamagui/lucide-icons-2/icons/Plus";
+import { X } from "@tamagui/lucide-icons-2/icons/X";
 
 import { useAddSubtask, useDeleteSubtask, useUpdateSubtask } from "@/lib/api";
 

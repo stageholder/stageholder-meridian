@@ -21,7 +21,6 @@ import {
   DropdownMenu,
   IconButton,
   Input,
-  QuickDatePicker,
   Separator,
   TextArea,
   Text,
@@ -30,6 +29,7 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
+import { QuickDatePicker } from "@stageholder/ui/pickers";
 // The kit Input is a frame-compound and doesn't forward refs to the inner
 // DOM input; the inline-edit title field needs direct .focus()/.blur()/
 // .selectionStart access, so use the raw Tamagui Input (forwards ref to the

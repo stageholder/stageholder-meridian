@@ -1,11 +1,9 @@
 import { useMemo } from "react";
-import {
-  UserCog,
-  CreditCard,
-  Moon,
-  RefreshCw,
-  LogOut,
-} from "@tamagui/lucide-icons-2";
+import { UserCog } from "@tamagui/lucide-icons-2/icons/UserCog";
+import { CreditCard } from "@tamagui/lucide-icons-2/icons/CreditCard";
+import { Moon } from "@tamagui/lucide-icons-2/icons/Moon";
+import { RefreshCw } from "@tamagui/lucide-icons-2/icons/RefreshCw";
+import { LogOut } from "@tamagui/lucide-icons-2/icons/LogOut";
 import { useStageholder } from "@stageholder/sdk/spa";
 import { isDesktop } from "@repo/core/platform";
 import { useAppTheme } from "@/lib/platform/theme";

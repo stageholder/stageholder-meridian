@@ -16,7 +16,7 @@ import { Alert } from "react-native";
 import { Button, FormSheet, Separator, Sheet, toast } from "@stageholder/ui";
 
 import { FormSheetSkeleton } from "@/components/form-sheet-skeleton";
-import { Trash2 } from "@tamagui/lucide-icons-2";
+import { Trash2 } from "@tamagui/lucide-icons-2/icons/Trash2";
 import { TodoForm, type TodoFormValues } from "@repo/features/todos";
 import type { Todo } from "@repo/core/types";
 

@@ -10,7 +10,10 @@
       "@repo/features/*": ["./src/*"]
     }
   },
-  "include": ["src"],
+  "include": [
+    "src",
+    "../../node_modules/@stageholder/ui/src/lucide-icons-deep.d.ts"
+  ],
   // The package's tsc check is WEB-oriented (it resolves @stageholder/ui's web
   // entry, not its react-native condition, and doesn't have react-native /
   // react-native-svg types installed). The `.native.*` siblings are RN-typed

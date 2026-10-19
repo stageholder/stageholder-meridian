@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Dialog, XStack, YStack } from "@stageholder/ui";
-import { Shield } from "@tamagui/lucide-icons-2";
+import { Shield } from "@tamagui/lucide-icons-2/icons/Shield";
 
 import {
   PASSPHRASE_SETUP_COPY,

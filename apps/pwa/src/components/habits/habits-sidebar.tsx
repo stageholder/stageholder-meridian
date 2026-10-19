@@ -22,7 +22,6 @@ import {
   Button,
   DropdownMenu,
   IconButton,
-  MediaGlyph,
   RippleButton,
   Sidebar,
   Text,
@@ -30,6 +29,7 @@ import {
   View,
   XStack,
 } from "@stageholder/ui";
+import { MediaGlyph } from "@stageholder/ui/pickers";
 import { parseMediaIcon } from "@repo/features/habits";
 import { useHabits } from "@/lib/api/habits";
 import {

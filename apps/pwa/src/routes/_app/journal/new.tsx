@@ -7,15 +7,14 @@ import { JournalEditor } from "@/components/journal/journal-editor";
 import {
   Button,
   Hide,
-  MoodPicker,
   Popover,
-  QuickDatePicker,
   TagInput,
   Text,
   View,
   XStack,
   YStack,
 } from "@stageholder/ui";
+import { MoodPicker, QuickDatePicker } from "@stageholder/ui/pickers";
 // The title uses a raw tamagui Input (see below) — bare, no kit Frame chrome.
 import { Input as BareInput } from "tamagui";
 import { BLOCK_GUTTER } from "@repo/features/journal";

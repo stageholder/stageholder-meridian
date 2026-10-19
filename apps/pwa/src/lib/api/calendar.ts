@@ -12,7 +12,7 @@
 import { keepPreviousData, useQuery, useQueries } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { addMonths, format } from "date-fns";
-import type { CalendarEvent } from "@stageholder/ui";
+import type { CalendarEvent } from "@stageholder/ui/data";
 import apiClient from "@/lib/api-client";
 import { parseDateLocal } from "@/lib/date";
 

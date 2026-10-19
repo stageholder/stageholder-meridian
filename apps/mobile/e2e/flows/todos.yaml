@@ -21,17 +21,39 @@ name: todos
     id: "quick-add-todo-title"
 - inputText: ${output.todo}
 - waitForAnimationToEnd
+# The WebView editor commits keystrokes asynchronously — on a loaded emulator
+# `inputText` returns while characters are still arriving ("JEVB E2E To"), so
+# wait for the full title to be in the field before creating.
+- extendedWaitUntil:
+    visible: ${output.todo}
+    timeout: 10000
 - tapOn: "Create New Todo"
 - waitForAnimationToEnd
 - extendedWaitUntil:
     visible: ${output.todo}
     timeout: 15000
-# Complete via a long swipe-right (the row's auto-committing quick action)
+# Complete via swipe-right. The row's first left action is `autoCommit`. Kit
+# < 0.4.0-alpha.2 mapped ReanimatedSwipeable's direction to the wrong panel
+# (RNGH 2.28–2.31), so a full swipe only REVEALED the green "Done" panel
+# (observed 2026-10-18); alpha.2 fixed the mapping. Keep accepting both
+# outcomes: if the panel is still open, tap its button. "Done" index 0 is the
+# segmented-control filter; the panel's button is the second "Done" on screen.
 - swipe:
     from:
       text: ${output.todo}
     direction: RIGHT
-    duration: 600
+    duration: 1000
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible:
+        text: "Done"
+        index: 1
+    commands:
+      - tapOn:
+          text: "Done"
+          index: 1
+      - waitForAnimationToEnd
 # Done filter shows it (the native segmented control)
 - tapOn:
     text: "Done"

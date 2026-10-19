@@ -6,7 +6,8 @@
 // with pressed-state feedback.
 
 import { Separator, Text, XStack, YStack } from "@stageholder/ui";
-import { ChevronRight, ExternalLink } from "@tamagui/lucide-icons-2";
+import { ChevronRight } from "@tamagui/lucide-icons-2/icons/ChevronRight";
+import { ExternalLink } from "@tamagui/lucide-icons-2/icons/ExternalLink";
 import { Children, Fragment, isValidElement, type ReactNode } from "react";
 
 export function SettingsGroup({

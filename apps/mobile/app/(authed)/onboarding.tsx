@@ -25,7 +25,7 @@ import {
   ONBOARDING_STEP_IDS,
   type OnboardingProfileValue,
 } from "@repo/features/onboarding";
-import type { OnboardingValues } from "@stageholder/ui";
+import type { OnboardingValues } from "@stageholder/ui/account";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useCompleteOnboarding } from "@/lib/api";

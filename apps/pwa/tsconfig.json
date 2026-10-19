@@ -27,6 +27,11 @@
     },
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "src/routeTree.gen.ts", "vite.config.ts"],
+  "include": [
+    "src",
+    "src/routeTree.gen.ts",
+    "vite.config.ts",
+    "../../node_modules/@stageholder/ui/src/lucide-icons-deep.d.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }

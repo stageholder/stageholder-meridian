@@ -17,6 +17,14 @@
 // Both gates run BEFORE the navigator renders so we never flash a half-loaded dashboard
 // at an unauthenticated or not-yet-onboarded request.
 //
+// PERF (push/tab jank): this component must NOT subscribe to navigation
+// state. The route hooks (useSegments) + the /me query that drive the
+// onboarding gate live in <OnboardingGate>, a sibling of the Stack that
+// renders only the masking overlay — so a navigation re-renders the gate, not
+// the navigator. (Re-rendering <Stack> with a fresh inline `screenOptions`
+// object on every navigation re-configured every native screen on each push —
+// the sibling apps document this exact pattern as a push-jank cause.)
+//
 // CalendarPickerProvider wraps <Stack> (not the root layout): its single
 // root-level CalendarSheet must mount INSIDE the authed tree — where the
 // screens that call useCalendarPicker live — but OUTSIDE any individual
@@ -25,16 +33,10 @@
 // Router's <Stack> boundary + HMR in practice.
 
 import { useStageholder } from "@stageholder/sdk/react-native";
-import {
-  Button,
-  CalendarPickerProvider,
-  Spinner,
-  Text,
-  View,
-  YStack,
-} from "@stageholder/ui";
+import { Button, Spinner, Text, View, YStack } from "@stageholder/ui";
+import { CalendarPickerProvider } from "@stageholder/ui/pickers";
 import { Redirect, Stack, useRouter, useSegments } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useTheme } from "tamagui";
 
 import { useMeridianMe } from "@/lib/api";
@@ -44,8 +46,6 @@ import { configurePurchases } from "@/lib/purchases";
 
 export default function AuthedLayout() {
   const { state, refreshSession } = useStageholder();
-  const segments = useSegments();
-  const router = useRouter();
   const theme = useTheme();
   // Theme tokens for the native stack chrome (scene bg so no white flash on
   // push; header surface + tint so headers match light/dark).
@@ -59,6 +59,132 @@ export default function AuthedLayout() {
   // present once authenticated (state.data is the me-response); undefined
   // otherwise, which keeps the effect below inert until we have an identity.
   const sub = state.status === "authenticated" ? state.data.sub : undefined;
+
+  // Retry handler for the recoverable `error` state below (network/server blip
+  // at startup with a still-valid refresh token). `refreshSession()` re-runs
+  // the failed refresh; success transitions state → authenticated and the tabs
+  // render. Kept above the early returns so hook order stays stable.
+  const [retrying, setRetrying] = useState(false);
+  const retrySession = useCallback(() => {
+    setRetrying(true);
+    void refreshSession().finally(() => setRetrying(false));
+  }, [refreshSession]);
+
+  // Stable native-stack options: only change when the theme tokens do, so the
+  // memoized <AuthedStack> never re-renders on navigation/auth/query churn.
+  const screenOptions = useMemo(
+    () => ({
+      contentStyle: { backgroundColor: sceneBg },
+      headerStyle: { backgroundColor: sceneBg },
+      headerTintColor: headerTint,
+      headerTitleStyle: { color: headerTint },
+      headerShadowVisible: false,
+      // iOS: chevron-only back button (the previous screen's title crowds
+      // narrow headers).
+      headerBackButtonDisplayMode: "minimal" as const,
+    }),
+    [sceneBg, headerTint],
+  );
+
+  // While the provider hydrates its session from SecureStore, hold render
+  // behind a centered spinner — bg from the theme so it matches light/dark.
+  if (state.status === "loading") {
+    return (
+      <View flex={1} items="center" justify="center" bg="$background">
+        <Spinner size="large" />
+      </View>
+    );
+  }
+  // `unauthenticated` = no/invalid refresh token → genuinely signed out; bounce
+  // to sign-in. NOTE this is DISTINCT from `error`: the SDK only reaches
+  // `unauthenticated` when there's no refresh token or it was revoked
+  // (invalid_grant → clearAll), so the redirect is safe here.
+  if (state.status === "unauthenticated") {
+    return <Redirect href="/sign-in" />;
+  }
+  // `error` is NOT a dead session: the SDK enters it only when a startup
+  // refresh fails for a NON-auth reason (network/server) AND there's no stale
+  // token to fall back on — the refresh token is still valid. Bouncing to
+  // sign-in would strand an offline user on a screen they can't complete while
+  // silently holding a recoverable session. Show a retry surface instead.
+  if (state.status === "error") {
+    return (
+      <View flex={1} items="center" justify="center" bg="$background" p="$6">
+        <YStack gap="$3" maxW={340} items="center">
+          <Text fontSize="$6" fontWeight="600" text="center">
+            Couldn&apos;t connect
+          </Text>
+          <Text fontSize="$3" color="$mutedForeground" text="center">
+            We couldn&apos;t reach your account. Check your connection and try
+            again — you&apos;re still signed in.
+          </Text>
+          <Button intent="primary" onPress={retrySession} disabled={retrying}>
+            {retrying ? "Retrying…" : "Try again"}
+          </Button>
+        </YStack>
+      </View>
+    );
+  }
+
+  // Authenticated — render the navigation frame plus the onboarding gate
+  // (a sibling that owns the route/query subscriptions and the masking overlay).
+  return (
+    <CalendarPickerProvider>
+      <View flex={1}>
+        <AuthedStack screenOptions={screenOptions} />
+        <OnboardingGate sub={sub} />
+      </View>
+    </CalendarPickerProvider>
+  );
+}
+
+type AuthedStackProps = {
+  screenOptions: React.ComponentProps<typeof Stack>["screenOptions"];
+};
+
+/** The native stack — memoized so it only re-renders when the (stable) theme
+ *  options change, never on navigation or auth/query state churn. */
+const AuthedStack = memo(function AuthedStack({
+  screenOptions,
+}: AuthedStackProps) {
+  return (
+    <Stack screenOptions={screenOptions}>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="habits/[id]" options={{ title: "Habit" }} />
+      <Stack.Screen name="calendar" options={{ title: "Calendar" }} />
+      <Stack.Screen name="journey" options={{ title: "Journey" }} />
+      <Stack.Screen name="billing" options={{ title: "Plans & billing" }} />
+      <Stack.Screen name="journal/[id]" options={{ title: "Entry" }} />
+      <Stack.Screen name="journal/new" options={{ title: "New entry" }} />
+      {/* Paywall — a modal sheet (swipe down to dismiss), the platform
+          convention for a purchase flow. */}
+      <Stack.Screen
+        name="upgrade"
+        options={{ title: "Upgrade", presentation: "modal" }}
+      />
+      {/* Onboarding — full-screen gated flow: no header, no swipe-back
+          escape hatch out of it. */}
+      <Stack.Screen
+        name="onboarding"
+        options={{
+          headerShown: false,
+          gestureEnabled: false,
+          animation: "fade",
+        }}
+      />
+    </Stack>
+  );
+});
+
+/**
+ * Onboarding gate + RevenueCat bootstrap. Owns every subscription that changes
+ * on navigation or data (useSegments, the /me query) so that churn re-renders
+ * THIS leaf — which renders nothing but the masking overlay — instead of the
+ * navigator. `sub` is the authenticated user's id (undefined = not signed in).
+ */
+function OnboardingGate({ sub }: { sub: string | undefined }) {
+  const segments = useSegments();
+  const router = useRouter();
   // expo-router types `segments` as a route-tuple union — widen for the
   // membership test.
   const onOnboarding = (segments as string[]).includes("onboarding");
@@ -127,117 +253,24 @@ export default function AuthedLayout() {
     if (needsOnboarding) router.replace("/(authed)/onboarding");
   }, [needsOnboarding, router]);
 
-  // Retry handler for the recoverable `error` state below (network/server blip
-  // at startup with a still-valid refresh token). `refreshSession()` re-runs
-  // the failed refresh; success transitions state → authenticated and the tabs
-  // render. Kept above the early returns so hook order stays stable.
-  const [retrying, setRetrying] = useState(false);
-  const retrySession = useCallback(() => {
-    setRetrying(true);
-    void refreshSession().finally(() => setRetrying(false));
-  }, [refreshSession]);
-
-  // While the provider hydrates its session from SecureStore, hold render
-  // behind a centered spinner — bg from the theme so it matches light/dark.
-  if (state.status === "loading") {
-    return (
-      <View flex={1} items="center" justify="center" bg="$background">
-        <Spinner size="large" />
-      </View>
-    );
-  }
-  // `unauthenticated` = no/invalid refresh token → genuinely signed out; bounce
-  // to sign-in. NOTE this is DISTINCT from `error`: the SDK only reaches
-  // `unauthenticated` when there's no refresh token or it was revoked
-  // (invalid_grant → clearAll), so the redirect is safe here.
-  if (state.status === "unauthenticated") {
-    return <Redirect href="/sign-in" />;
-  }
-  // `error` is NOT a dead session: the SDK enters it only when a startup
-  // refresh fails for a NON-auth reason (network/server) AND there's no stale
-  // token to fall back on — the refresh token is still valid. Bouncing to
-  // sign-in would strand an offline user on a screen they can't complete while
-  // silently holding a recoverable session. Show a retry surface instead.
-  if (state.status === "error") {
-    return (
-      <View flex={1} items="center" justify="center" bg="$background" p="$6">
-        <YStack gap="$3" maxW={340} items="center">
-          <Text fontSize="$6" fontWeight="600" text="center">
-            Couldn&apos;t connect
-          </Text>
-          <Text fontSize="$3" color="$mutedForeground" text="center">
-            We couldn&apos;t reach your account. Check your connection and try
-            again — you&apos;re still signed in.
-          </Text>
-          <Button intent="primary" onPress={retrySession} disabled={retrying}>
-            {retrying ? "Retrying…" : "Try again"}
-          </Button>
-        </YStack>
-      </View>
-    );
-  }
-
-  // Authenticated — render the navigation frame (plus the masking overlay while the
-  // onboarding state is still settling; see the gate comment above).
+  if (!(resolvingFlag || needsOnboarding)) return null;
+  // Masks the dashboard while the SecureStore flag resolves and while the
+  // onboarding replace() is in flight — keeps the Stack mounted (the redirect
+  // needs the navigator alive, see comment above) without ever flashing a
+  // screen the user shouldn't see yet.
   return (
-    <CalendarPickerProvider>
-      <View flex={1}>
-        <Stack
-          screenOptions={{
-            contentStyle: { backgroundColor: sceneBg },
-            headerStyle: { backgroundColor: sceneBg },
-            headerTintColor: headerTint,
-            headerTitleStyle: { color: headerTint },
-            headerShadowVisible: false,
-            // iOS: chevron-only back button (the previous screen's title
-            // crowds narrow headers).
-            headerBackButtonDisplayMode: "minimal",
-          }}
-        >
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="habits/[id]" options={{ title: "Habit" }} />
-          <Stack.Screen name="calendar" options={{ title: "Calendar" }} />
-          <Stack.Screen name="journey" options={{ title: "Journey" }} />
-          <Stack.Screen name="billing" options={{ title: "Plans & billing" }} />
-          <Stack.Screen name="journal/[id]" options={{ title: "Entry" }} />
-          <Stack.Screen name="journal/new" options={{ title: "New entry" }} />
-          {/* Paywall — a modal sheet (swipe down to dismiss), the platform
-              convention for a purchase flow. */}
-          <Stack.Screen
-            name="upgrade"
-            options={{ title: "Upgrade", presentation: "modal" }}
-          />
-          {/* Onboarding — full-screen gated flow: no header, no swipe-back
-              escape hatch out of it. */}
-          <Stack.Screen
-            name="onboarding"
-            options={{
-              headerShown: false,
-              gestureEnabled: false,
-              animation: "fade",
-            }}
-          />
-        </Stack>
-        {/* Masks the dashboard while the SecureStore flag resolves and while
-            the onboarding replace() is in flight — keeps the Stack mounted (the
-            redirect needs the navigator alive, see comment above) without
-            ever flashing a screen the user shouldn't see yet. */}
-        {resolvingFlag || needsOnboarding ? (
-          <View
-            position="absolute"
-            t={0}
-            l={0}
-            r={0}
-            b={0}
-            items="center"
-            justify="center"
-            bg="$background"
-            z={100}
-          >
-            <Spinner size="large" />
-          </View>
-        ) : null}
-      </View>
-    </CalendarPickerProvider>
+    <View
+      position="absolute"
+      t={0}
+      l={0}
+      r={0}
+      b={0}
+      items="center"
+      justify="center"
+      bg="$background"
+      z={100}
+    >
+      <Spinner size="large" />
+    </View>
   );
 }

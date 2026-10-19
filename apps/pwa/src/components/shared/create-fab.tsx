@@ -1,4 +1,4 @@
-import { Plus } from "@tamagui/lucide-icons-2";
+import { Plus } from "@tamagui/lucide-icons-2/icons/Plus";
 import { FAB, View } from "@stageholder/ui";
 
 /**

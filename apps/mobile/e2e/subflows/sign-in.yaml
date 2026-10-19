@@ -11,6 +11,13 @@ appId: com.stageholder.meridian
     commands:
       - tapOn: "Continue"
 # A freshly cleared Chrome shows its first-run screens before the Custom Tab.
+# They can take a few seconds to paint on a loaded emulator — a bare `when`
+# evaluates immediately and skipped the handler while the screen was still
+# loading, so first wait for whatever comes up (first-run, login page, or
+# an already signed-in Today).
+- extendedWaitUntil:
+    visible: "(?i)(stay signed out|accept & continue|use without an account|no thanks)|Email address|Today"
+    timeout: 45000
 - runFlow:
     when:
       platform: Android

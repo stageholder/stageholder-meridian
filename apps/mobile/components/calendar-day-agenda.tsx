@@ -12,7 +12,6 @@
 
 import { useState } from "react";
 import {
-  ActivityRings,
   AnimatePresence,
   Button,
   Separator,
@@ -21,12 +20,13 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
+import { ActivityRings } from "@stageholder/ui/charts";
 import { activityRingsConfig } from "@repo/features/activity-rings";
 import { TodoItem } from "@repo/features/todos";
 import { CollapsibleGroup, splitHabitsByDay } from "@repo/features/calendar";
 import { scheduledHabitsForDate } from "@repo/core/habits/entry-resolution";
 import type { Habit, Todo } from "@repo/core/types";
-import { Plus } from "@tamagui/lucide-icons-2";
+import { Plus } from "@tamagui/lucide-icons-2/icons/Plus";
 import { format } from "date-fns";
 import { useRouter } from "expo-router";
 

@@ -1,4 +1,4 @@
-import type { ActivityRing } from "@stageholder/ui";
+import type { ActivityRing } from "@stageholder/ui/charts";
 import { RING_CATEGORY, type RingColorMap } from "./ring-colors";
 
 // Platform-split colors (web CSS vars / native resolved hex — Metro picks

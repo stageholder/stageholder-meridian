@@ -1,10 +1,9 @@
-import {
-  Flame,
-  CheckCircle2,
-  Repeat2,
-  BookOpen,
-} from "@tamagui/lucide-icons-2";
-import { ProgressRing, Text, XStack, YStack } from "@stageholder/ui";
+import { Flame } from "@tamagui/lucide-icons-2/icons/Flame";
+import { CheckCircle2 } from "@tamagui/lucide-icons-2/icons/CheckCircle2";
+import { Repeat2 } from "@tamagui/lucide-icons-2/icons/Repeat2";
+import { BookOpen } from "@tamagui/lucide-icons-2/icons/BookOpen";
+import { Text, XStack, YStack } from "@stageholder/ui";
+import { ProgressRing } from "@stageholder/ui/charts";
 import type { UserLight } from "@repo/core/types/light";
 import { tabularNums } from "../_internal/text-styles";
 

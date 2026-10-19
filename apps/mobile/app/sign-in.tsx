@@ -23,11 +23,11 @@ import {
   H1,
   Paragraph,
   Spinner,
-  StageholderLogo,
   XStack,
   YStack,
 } from "@stageholder/ui";
-import { UserPlus } from "@tamagui/lucide-icons-2";
+import { StageholderLogo } from "@stageholder/ui/brand";
+import { UserPlus } from "@tamagui/lucide-icons-2/icons/UserPlus";
 import { openURL } from "@repo/core/platform/linking";
 import { Redirect } from "expo-router";
 import { Image } from "react-native";

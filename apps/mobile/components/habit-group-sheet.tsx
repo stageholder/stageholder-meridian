@@ -21,7 +21,7 @@ import {
   type HabitGroupFormValues,
 } from "@repo/features/habits";
 import type { HabitGroup } from "@repo/core/types";
-import { Trash2 } from "@tamagui/lucide-icons-2";
+import { Trash2 } from "@tamagui/lucide-icons-2/icons/Trash2";
 import { Alert } from "react-native";
 
 import {

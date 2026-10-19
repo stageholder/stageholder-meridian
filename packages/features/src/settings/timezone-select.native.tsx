@@ -10,7 +10,9 @@
 // too ("new york" → America/New_York).
 
 import { useMemo, useState } from "react";
-import { Check, ChevronDown, Search } from "@tamagui/lucide-icons-2";
+import { Check } from "@tamagui/lucide-icons-2/icons/Check";
+import { ChevronDown } from "@tamagui/lucide-icons-2/icons/ChevronDown";
+import { Search } from "@tamagui/lucide-icons-2/icons/Search";
 import { Input, Sheet, Text, View, XStack, YStack } from "@stageholder/ui";
 import { getTimezones } from "./timezone-data";
 

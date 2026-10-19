@@ -7,6 +7,8 @@
 // (no remount key / LazyBody / skeleton).
 
 import { toast } from "@stageholder/ui";
+import { useCallback } from "react";
+import { Keyboard } from "react-native";
 
 import { QuickAddTodoSheet, type TodoFormValues } from "@repo/features/todos";
 
@@ -79,10 +81,23 @@ export function CreateTodoDialog({
     );
   }
 
+  // The title field is a 10tap WebView editor that stays mounted after the
+  // sheet's first open, so closing the sheet (submit, swipe-down, tap-out)
+  // doesn't blur it like a native TextInput would — on Android the keyboard
+  // stayed up over the list behind the closed sheet (and swallowed the next
+  // touch). Dismiss it explicitly on every close path.
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      if (!next) Keyboard.dismiss();
+      onOpenChange(next);
+    },
+    [onOpenChange],
+  );
+
   return (
     <QuickAddTodoSheet
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={handleOpenChange}
       lists={lookupLists}
       defaultDueDate={defaultDueDate}
       // Resolved hex — native can't parse the web `var(--ring-todo)` default.

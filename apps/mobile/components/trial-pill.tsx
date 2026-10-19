@@ -16,7 +16,7 @@
 
 import { useSubscription } from "@stageholder/sdk/react-native";
 import { Text, XStack } from "@stageholder/ui";
-import { Sparkles } from "@tamagui/lucide-icons-2";
+import { Sparkles } from "@tamagui/lucide-icons-2/icons/Sparkles";
 import { useRouter } from "expo-router";
 
 export function TrialPill({

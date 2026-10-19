@@ -7,7 +7,8 @@
 import { useState } from "react";
 import { writeToClipboard } from "@repo/core/platform/clipboard";
 import { Button, Checkbox, Grid, Label, Text } from "@stageholder/ui";
-import { Check, Copy } from "@tamagui/lucide-icons-2";
+import { Check } from "@tamagui/lucide-icons-2/icons/Check";
+import { Copy } from "@tamagui/lucide-icons-2/icons/Copy";
 
 export interface RecoveryCodesPanelProps {
   codes: string[];

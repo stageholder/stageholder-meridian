@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
-import { ChevronDown, ChevronRight } from "@tamagui/lucide-icons-2";
+import { ChevronDown } from "@tamagui/lucide-icons-2/icons/ChevronDown";
+import { ChevronRight } from "@tamagui/lucide-icons-2/icons/ChevronRight";
 import { Text, XStack, YStack } from "@stageholder/ui";
 
 /**

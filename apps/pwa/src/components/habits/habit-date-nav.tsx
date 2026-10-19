@@ -8,7 +8,8 @@ import {
   startOfDay,
 } from "date-fns";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
-import { Calendar, IconButton, Popover, Text, XStack } from "@stageholder/ui";
+import { IconButton, Popover, Text, XStack } from "@stageholder/ui";
+import { Calendar } from "@stageholder/ui/pickers";
 
 const DAY_MS = 86_400_000;
 

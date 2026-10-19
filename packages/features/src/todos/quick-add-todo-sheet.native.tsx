@@ -7,13 +7,17 @@
 // kit CalendarSheet (sibling, quick presets). Create-only; EDIT keeps TodoForm.
 import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
-import { CalendarDays, Flag, Inbox, StickyNote } from "@tamagui/lucide-icons-2";
+import { CalendarDays } from "@tamagui/lucide-icons-2/icons/CalendarDays";
+import { Flag } from "@tamagui/lucide-icons-2/icons/Flag";
+import { Inbox } from "@tamagui/lucide-icons-2/icons/Inbox";
+import { StickyNote } from "@tamagui/lucide-icons-2/icons/StickyNote";
 import {
   parseSmartTodo,
   type SmartParseResult,
 } from "@repo/core/todos/smart-parse";
 import { resolveSmartLocale } from "@repo/core/todos/date-parse";
-import { CalendarSheet, TextArea, View } from "@stageholder/ui";
+import { Text, TextArea, View } from "@stageholder/ui";
+import { CalendarSheet } from "@stageholder/ui/pickers";
 import {
   QuickAddSheet,
   QuickAddPill,
@@ -51,6 +55,12 @@ function Dot({ tint }: { tint: string }) {
     />
   );
 }
+
+// Must match `FIELD_HEIGHT` + the editor CSS (`padding: 10px 12px; font-size:
+// 16px; line-height: 22px`) in smart-todo-input.native.tsx: the sheet is
+// `fit`-sized, so the stand-in has to occupy exactly the editor's box or the
+// frame would jump when the editor swaps in.
+const TITLE_FIELD_HEIGHT = 64;
 
 /** Parse a `yyyy-MM-dd` string as the LOCAL day (Calendar speaks `Date`). */
 function parseLocalDay(input: string): Date {
@@ -95,6 +105,17 @@ export function QuickAddTodoSheet({
   const [doOpen, setDoOpen] = useState(false);
   const [dueOpen, setDueOpen] = useState(false);
 
+  // OPEN CHOREOGRAPHY: the title is a WebView editor and the pickers are four
+  // sibling sheets; mounting all of that in the create sheet's open commit left
+  // the screen dimmed for ~2.7 s before the sheet slid up on the first open
+  // (measured, Android release). The sheet opens on light chrome — a same-size
+  // stand-in where the editor goes + the pill row — and the editor and pickers
+  // mount once the kit reports the slide has SETTLED (FormSheet `onSettled`,
+  // kit 0.4.0-alpha.2: spring complete or its 350 ms cap). Latched: a reopen
+  // renders everything immediately ('first-open' semantics). The editor
+  // autofocuses when its bridge is ready, so the keyboard still arrives on its own.
+  const [heavyReady, setHeavyReady] = useState(false);
+
   // Reset by STATE on each fresh open (open false→true) — no remount key.
   const wasOpen = useRef(open);
   useEffect(() => {
@@ -107,7 +128,16 @@ export function QuickAddTodoSheet({
       setDoDate(d.doDate ?? "");
       setDueDate(defaultDueDate ?? "");
       setListId(defaultListId);
+      // Reopen: the editor is already mounted, focus it once the slide lands.
+      // First open: the ref is still null here — the editor mounts after the
+      // beat with `autoFocus`, which focuses it as soon as it initialises.
       setTimeout(() => titleRef.current?.focus(), 350);
+    } else if (!open && wasOpen.current) {
+      // Closing (submit, swipe-down, tap-out): the title is a WebView editor
+      // that stays mounted after the first open, so nothing blurs it on close
+      // the way a native TextInput would unmount — on Android the keyboard
+      // stayed up over the list behind the closed sheet and ate the next touch.
+      titleRef.current?.blur();
     }
     wasOpen.current = open;
   }, [open, defaultDueDate, defaultListId]);
@@ -168,26 +198,43 @@ export function QuickAddTodoSheet({
         onSubmit={handleSubmit}
         submitting={isSubmitting}
         submitDisabled={!title.trim()}
+        onSettled={() => setHeavyReady(true)}
         field={
           <>
             {/* testID wrapper: the field is a WebView editor, so its
                 placeholder isn't in the native accessibility tree — E2E
                 (Maestro) taps this container to focus it. */}
             <View testID="quick-add-todo-title">
-              <SmartTodoInput
-                ref={titleRef}
-                value={title}
-                onValueChange={setTitle}
-                lists={listRefs}
-                locale={smartLocale}
-                parse
-                // The field highlights recognized phrases inline (rounded pills,
-                // Todoist-style); `onParse` additionally lifts them into the pill
-                // row below so a manual pick and a typed token stay in sync.
-                onParse={applyParse}
-                onSubmit={handleSubmit}
-                placeholder="What needs to be done?"
-              />
+              {heavyReady ? (
+                <SmartTodoInput
+                  ref={titleRef}
+                  value={title}
+                  onValueChange={setTitle}
+                  lists={listRefs}
+                  locale={smartLocale}
+                  parse
+                  // The field highlights recognized phrases inline (rounded pills,
+                  // Todoist-style); `onParse` additionally lifts them into the pill
+                  // row below so a manual pick and a typed token stay in sync.
+                  onParse={applyParse}
+                  onSubmit={handleSubmit}
+                  placeholder="What needs to be done?"
+                  autoFocus
+                />
+              ) : (
+                // Stand-in for the editor's box during the slide: same height,
+                // same text metrics/padding as the WebView's placeholder.
+                <View height={TITLE_FIELD_HEIGHT} px={12} pt={10}>
+                  <Text
+                    fontSize={16}
+                    lineHeight={22}
+                    color="$placeholderColor"
+                    numberOfLines={1}
+                  >
+                    What needs to be done?
+                  </Text>
+                </View>
+              )}
             </View>
             {noteOpen ? (
               <TextArea
@@ -243,54 +290,62 @@ export function QuickAddTodoSheet({
         }
       />
 
-      <PillPickerSheet
-        open={priorityOpen}
-        onOpenChange={(o) => {
-          setPriorityOpen(o);
-          if (!o) refocus();
-        }}
-        title="Priority"
-        options={priorityOptions}
-        value={priority}
-        onSelect={setPriority}
-      />
-      <PillPickerSheet
-        open={listOpen}
-        onOpenChange={(o) => {
-          setListOpen(o);
-          if (!o) refocus();
-        }}
-        title="List"
-        options={listOptions}
-        value={listId || defaultListId}
-        onSelect={setListId}
-      />
-      <CalendarSheet
-        open={doOpen}
-        onClose={() => {
-          setDoOpen(false);
-          refocus();
-        }}
-        value={doDate ? parseLocalDay(doDate) : null}
-        onSelect={(d) => {
-          setDoDate(d ? format(d, "yyyy-MM-dd") : "");
-          setDoOpen(false);
-        }}
-        title="Do date"
-      />
-      <CalendarSheet
-        open={dueOpen}
-        onClose={() => {
-          setDueOpen(false);
-          refocus();
-        }}
-        value={dueDate ? parseLocalDay(dueDate) : null}
-        onSelect={(d) => {
-          setDueDate(d ? format(d, "yyyy-MM-dd") : "");
-          setDueOpen(false);
-        }}
-        title="Deadline"
-      />
+      {heavyReady || priorityOpen ? (
+        <PillPickerSheet
+          open={priorityOpen}
+          onOpenChange={(o) => {
+            setPriorityOpen(o);
+            if (!o) refocus();
+          }}
+          title="Priority"
+          options={priorityOptions}
+          value={priority}
+          onSelect={setPriority}
+        />
+      ) : null}
+      {heavyReady || listOpen ? (
+        <PillPickerSheet
+          open={listOpen}
+          onOpenChange={(o) => {
+            setListOpen(o);
+            if (!o) refocus();
+          }}
+          title="List"
+          options={listOptions}
+          value={listId || defaultListId}
+          onSelect={setListId}
+        />
+      ) : null}
+      {heavyReady || doOpen ? (
+        <CalendarSheet
+          open={doOpen}
+          onClose={() => {
+            setDoOpen(false);
+            refocus();
+          }}
+          value={doDate ? parseLocalDay(doDate) : null}
+          onSelect={(d) => {
+            setDoDate(d ? format(d, "yyyy-MM-dd") : "");
+            setDoOpen(false);
+          }}
+          title="Do date"
+        />
+      ) : null}
+      {heavyReady || dueOpen ? (
+        <CalendarSheet
+          open={dueOpen}
+          onClose={() => {
+            setDueOpen(false);
+            refocus();
+          }}
+          value={dueDate ? parseLocalDay(dueDate) : null}
+          onSelect={(d) => {
+            setDueDate(d ? format(d, "yyyy-MM-dd") : "");
+            setDueOpen(false);
+          }}
+          title="Deadline"
+        />
+      ) : null}
     </>
   );
 }

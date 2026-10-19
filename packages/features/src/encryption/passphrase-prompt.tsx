@@ -3,7 +3,7 @@ import { passphraseInputProps } from "./passphrase-input-props";
 import { Button, H2, Input, Text, View, XStack, YStack } from "@stageholder/ui";
 // Form isn't re-exported by the kit yet; pull it from the shared tamagui dep.
 import { Form } from "tamagui";
-import { Lock } from "@tamagui/lucide-icons-2";
+import { Lock } from "@tamagui/lucide-icons-2/icons/Lock";
 
 export interface PassphrasePromptProps {
   /**

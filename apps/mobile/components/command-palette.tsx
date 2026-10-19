@@ -17,23 +17,22 @@
 
 import { useMemo, useState } from "react";
 import { CommandMenu, type CommandItem } from "@stageholder/ui";
-import {
-  BookOpen,
-  CalendarDays,
-  CheckSquare,
-  Home,
-  Moon,
-  Plus,
-  Settings,
-  Sparkles,
-  Sun,
-  Target,
-} from "@tamagui/lucide-icons-2";
+import { BookOpen } from "@tamagui/lucide-icons-2/icons/BookOpen";
+import { CalendarDays } from "@tamagui/lucide-icons-2/icons/CalendarDays";
+import { CheckSquare } from "@tamagui/lucide-icons-2/icons/CheckSquare";
+import { Home } from "@tamagui/lucide-icons-2/icons/Home";
+import { Moon } from "@tamagui/lucide-icons-2/icons/Moon";
+import { Plus } from "@tamagui/lucide-icons-2/icons/Plus";
+import { Settings } from "@tamagui/lucide-icons-2/icons/Settings";
+import { Sparkles } from "@tamagui/lucide-icons-2/icons/Sparkles";
+import { Sun } from "@tamagui/lucide-icons-2/icons/Sun";
+import { Target } from "@tamagui/lucide-icons-2/icons/Target";
 import { useRouter } from "expo-router";
 
 import { CreateHabitDialog } from "@/components/create-habit-dialog";
 import { CreateTodoDialog } from "@/components/create-todo-dialog";
 import { useAppTheme } from "@/lib/platform/theme";
+import { useMountOnOpen } from "@/lib/hooks/use-mount-on-open";
 
 interface CommandPaletteProps {
   open: boolean;
@@ -48,6 +47,15 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   // palette is mounted — the palette closes first, then the sheet slides up.
   const [createTodoOpen, setCreateTodoOpen] = useState(false);
   const [createHabitOpen, setCreateHabitOpen] = useState(false);
+  // The create sheets mount only once asked to open. Rendering them alongside
+  // the menu put two FormSheet shells into the palette's own open commit, and
+  // on native the sheet cannot start sliding until that commit has laid out
+  // (measured 2026-10-18: a FormSheet with sibling sheets in its open commit
+  // sat on a dimmed screen for 1–3.7 s before sliding; the kit's rule since
+  // 0.4.0-alpha.2 is "the open commit mounts only what draws the frame").
+  // The palette closes before a create sheet opens, so nothing is lost.
+  const todoHost = useMountOnOpen(createTodoOpen);
+  const habitHost = useMountOnOpen(createHabitOpen);
 
   const items = useMemo<CommandItem[]>(
     () => [
@@ -157,14 +165,18 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         items={items}
         placeholder="Search commands…"
       />
-      <CreateTodoDialog
-        open={createTodoOpen}
-        onOpenChange={setCreateTodoOpen}
-      />
-      <CreateHabitDialog
-        open={createHabitOpen}
-        onOpenChange={setCreateHabitOpen}
-      />
+      {todoHost ? (
+        <CreateTodoDialog
+          open={createTodoOpen}
+          onOpenChange={setCreateTodoOpen}
+        />
+      ) : null}
+      {habitHost ? (
+        <CreateHabitDialog
+          open={createHabitOpen}
+          onOpenChange={setCreateHabitOpen}
+        />
+      ) : null}
     </>
   );
 }

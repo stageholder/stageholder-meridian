@@ -197,6 +197,30 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return context.resolveRequest(context, moduleName, platform);
 };
 
+// `inlineRequires: true` — a module is evaluated the first time it is USED
+// instead of when the importing module loads. Expo's metro-config (SDK 56)
+// ships `inlineRequires: false`; React Native's own template has shipped
+// `true` for years. Measured 2026-10-18 on the Android release build, signed
+// out, on the sign-in screen 12s after a cold start: native heap 166 → 153 MB,
+// PSS 274 → 251 MB. The bigger half of the startup cost was the monolithic
+// @stageholder/ui barrel + the lucide root barrel being bundled and evaluated
+// in full; that is fixed at the source since @stageholder/ui 0.4.0-alpha.1
+// (core entry + nine domain entries, per-icon lucide imports — production
+// Android JS bundle 13.6 MB / 6037 modules → 9.7 MB / 4488 modules). NOTE a
+// domain entry (`@stageholder/ui/data`, `/pickers`, …) still evaluates as ONE
+// unit the first time anything is imported from it, so keep heavy entries off
+// the launch path (see components/today-widget.tsx). Keeps Expo's
+// `experimentalImportSupport` (the Metro ESM transform the Tamagui `import`
+// condition dedupe relies on); babel-preset-expo's `lazyImports` option is a
+// NO-OP under that transform (it only configures the Babel CommonJS plugin,
+// which Expo disables when static ESM is supported) — don't reach for it.
+config.transformer.getTransformOptions = async () => ({
+  transform: {
+    experimentalImportSupport: true,
+    inlineRequires: true,
+  },
+});
+
 // Plain Metro config — NO withTamagui wrapper (see header note 5). The Tamagui
 // compiler is optional on native and the smooth sibling apps (atlas/almanac)
 // don't use it; dropping it removes a build-time transform over the kit while

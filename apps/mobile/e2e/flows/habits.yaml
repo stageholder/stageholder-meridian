@@ -15,9 +15,17 @@ name: habits
     visible: "e.g. Read for 30 minutes"
     timeout: 20000
 - waitForAnimationToEnd
-- tapOn: "e.g. Read for 30 minutes"
-- inputText: ${output.habit}
-- waitForAnimationToEnd
+# A loaded emulator's Gboard drops/doubles keystrokes ("JBE2E Habit2317660"):
+# verify what landed in the field and redo the entry until it matches (same
+# guard as the Hub login form in subflows/sign-in.yaml).
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn: "e.g. Read for 30 minutes|${output.habit}|JEVB.*"
+      - eraseText: 60
+      - inputText: ${output.habit}
+      - waitForAnimationToEnd
+      - assertVisible: ${output.habit}
 - tapOn: "Create New Habit"
 # The sheet closes on success — wait for the row in the list, not the text
 # still sitting in the sheet's input.

@@ -1,4 +1,5 @@
-import { resolveIcon, type MediaValue } from "@stageholder/ui";
+import type { MediaValue } from "@stageholder/ui/pickers";
+import { resolveIcon } from "@stageholder/ui/pickers";
 
 // The habit/group `icon` field is a plain string end-to-end (core type → Mongo
 // String prop → DTO → PWA + mobile). The kit's identity primitives, however,

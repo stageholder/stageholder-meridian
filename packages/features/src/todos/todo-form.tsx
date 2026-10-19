@@ -1,6 +1,6 @@
 import { useId, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Inbox } from "@tamagui/lucide-icons-2";
+import { Inbox } from "@tamagui/lucide-icons-2/icons/Inbox";
 import { Form, isWeb } from "tamagui";
 import {
   parseSmartTodo,
@@ -13,7 +13,6 @@ import type { SmartTodoInputHandle } from "./smart-todo-input.types";
 import {
   Button,
   Label,
-  QuickDatePicker,
   Select,
   Text,
   TextArea,
@@ -21,6 +20,7 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
+import { QuickDatePicker } from "@stageholder/ui/pickers";
 
 /** Priority dot colors — fixed brand swatches matching the shadcn palette. */
 const PRIORITY_DOT: Record<string, string> = {

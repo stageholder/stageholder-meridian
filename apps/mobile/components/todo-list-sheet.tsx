@@ -17,7 +17,7 @@ import {
   type TodoListFormValues,
 } from "@repo/features/todos";
 import type { TodoList } from "@repo/core/types";
-import { Trash2 } from "@tamagui/lucide-icons-2";
+import { Trash2 } from "@tamagui/lucide-icons-2/icons/Trash2";
 import { Alert } from "react-native";
 
 import {

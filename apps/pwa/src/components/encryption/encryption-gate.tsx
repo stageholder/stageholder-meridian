@@ -1,13 +1,6 @@
 import { useEffect, useState } from "react";
-import {
-  Button,
-  Dialog,
-  LoadingScreen,
-  Text,
-  toast,
-  XStack,
-  YStack,
-} from "@stageholder/ui";
+import { Button, Dialog, Text, toast, XStack, YStack } from "@stageholder/ui";
+import { LoadingScreen } from "@stageholder/ui/brand";
 import {
   PASSPHRASE_RECOVERY_COPY,
   PassphrasePrompt,

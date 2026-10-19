@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import {
-  Check,
-  Clock,
-  Flag,
-  ListChecks,
-  Trash2,
-} from "@tamagui/lucide-icons-2";
+import { Check } from "@tamagui/lucide-icons-2/icons/Check";
+import { Clock } from "@tamagui/lucide-icons-2/icons/Clock";
+import { Flag } from "@tamagui/lucide-icons-2/icons/Flag";
+import { ListChecks } from "@tamagui/lucide-icons-2/icons/ListChecks";
+import { Trash2 } from "@tamagui/lucide-icons-2/icons/Trash2";
 import { isWeb } from "tamagui";
 import { IconButton, Text, View, XStack, YStack } from "@stageholder/ui";
 import type { Todo } from "@repo/core/types";

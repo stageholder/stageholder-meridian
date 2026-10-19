@@ -9,10 +9,14 @@
 // "+ group" · "Archived". Tapping a chip sets the active filter; tapping the
 // pencil on the active group opens its edit sheet.
 
-import { MediaGlyph, Pill, Text, View, XStack } from "@stageholder/ui";
+import { Pill, Text, View, XStack } from "@stageholder/ui";
+import { MediaGlyph } from "@stageholder/ui/pickers";
 import { parseMediaIcon } from "@repo/features/habits";
 import type { HabitGroup } from "@repo/core/types";
-import { Archive, ListOrdered, Pencil, Plus } from "@tamagui/lucide-icons-2";
+import { Archive } from "@tamagui/lucide-icons-2/icons/Archive";
+import { ListOrdered } from "@tamagui/lucide-icons-2/icons/ListOrdered";
+import { Pencil } from "@tamagui/lucide-icons-2/icons/Pencil";
+import { Plus } from "@tamagui/lucide-icons-2/icons/Plus";
 import { ScrollView as RNScrollView, View as RNView } from "react-native";
 
 /** The synthetic chip value for the Archived view. */

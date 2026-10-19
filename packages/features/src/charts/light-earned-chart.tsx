@@ -1,11 +1,5 @@
-import {
-  BarChart,
-  Skeleton,
-  Text,
-  View,
-  XStack,
-  YStack,
-} from "@stageholder/ui";
+import { Skeleton, Text, View, XStack, YStack } from "@stageholder/ui";
+import { BarChart } from "@stageholder/ui/charts";
 
 /** Light identity colour (gold/amber). Raw hex — RN can't read oklch(). */
 const LIGHT_COLOR = "#fb923c";

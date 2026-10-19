@@ -57,9 +57,31 @@ bun run e2e -- flows/habits.yaml     # one journey
 bun run e2e:studio                   # Maestro Studio: inspect the screen, record steps
 ```
 
-Use an emulator with **≥4 GB RAM** (`emulator -avd <name> -memory 4096`); on
-2 GB the UI stalls and taps get lost. Only one Maestro run per machine: two
-CLIs kill each other's driver.
+Use an emulator with **≥4 GB RAM and several cores** (`emulator -avd <name>
+-memory 4096 -cores 4` — the stock AVD config is 1 core); on 2 GB the UI stalls
+and taps get lost. Only one Maestro run per machine: two CLIs kill each other's
+driver. Emulator traps seen on 2026-10-18: a host under heavy load (load
+average > 20) starves the guest until Android shows "Pixel Launcher isn't
+responding" over every launch — that is not an app bug, calm the host or
+`adb reboot`; `INSTALL_FAILED_INSUFFICIENT_STORAGE` means `/data` is full —
+`adb uninstall com.stageholder.meridian` then install; Gboard drops keystrokes
+on a starved emulator, so flows that type verify the field and retry. Maestro
+also installs its own driver APK, so a full `/data` fails the run before any
+flow with "Requested internal only, but not enough space" — keep a few hundred
+MB free (uninstall stale builds of other apps). With two emulators attached
+(another project's AVD, for instance) pin the run:
+`ANDROID_SERIAL=emulator-5556 E2E_PIN_DEVICE=1 bun run e2e:android:release`.
+A full HOST disk (macOS APFS container) silently kills the emulator mid-run
+and makes every tool fail with `ENOSPC` — keep a few GB free (AVD images,
+`~/.gradle/caches`, `~/Library/Caches` and Xcode DerivedData are the usual
+hogs). Sheet-open latency can be measured without a profiler: Maestro
+`startRecording`/`stopRecording` (relative name; the mp4 lands under the
+test-output dir) or `adb shell screenrecord`, then ffmpeg `signalstats` on a
+top strip (overlay dim) and a bottom strip (frame arrival).
+Known app-side flake the flows tolerate: on Android the todo row's long
+swipe-right reveals the green "Done" panel but does not auto-commit
+(kit `SwipeableRow` `autoCommit` relies on RNGH `onSwipeableOpen`); the
+todos flow taps the revealed panel when it stays open.
 
 Each run: checks the stack → signs the account in headlessly (only to get an
 API token) → **wipes the account** (habits, todos, lists, groups, journal; it

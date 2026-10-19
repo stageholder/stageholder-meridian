@@ -4,13 +4,13 @@ import { Plus, Target } from "lucide-react";
 import {
   Button,
   EmptyState,
-  MediaGlyph,
   Skeleton,
   Text,
   View,
   XStack,
   YStack,
 } from "@stageholder/ui";
+import { MediaGlyph } from "@stageholder/ui/pickers";
 import { parseMediaIcon } from "@repo/features/habits";
 import { useHabitsWithEntries } from "@/lib/api/habits";
 import { useHabitGroups } from "@/lib/api/habit-groups";

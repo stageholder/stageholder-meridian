@@ -50,7 +50,7 @@ import {
 } from "@repo/features/encryption";
 import type { Journal } from "@repo/core/types";
 import { useUser } from "@stageholder/sdk/react-native";
-import { SlidersHorizontal } from "@tamagui/lucide-icons-2";
+import { SlidersHorizontal } from "@tamagui/lucide-icons-2/icons/SlidersHorizontal";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -58,6 +58,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { CreateFab } from "@/components/create-fab";
 import { JournalFilterSheet } from "@/components/journal-filter-sheet";
 import { useStagedMount } from "@/lib/hooks/use-staged-mount";
+import { useMountOnOpen } from "@/lib/hooks/use-mount-on-open";
+import { withLazyTab } from "@/lib/hooks/use-lazy-tab";
 import { FAB_CLEARANCE, ScreenScroll } from "@/components/screen-scroll";
 import { IGNITION } from "@/lib/ignition-palette";
 import { useJournals, useJournalsPaginated } from "@/lib/api";
@@ -69,7 +71,12 @@ import {
   useJournalCrypto,
 } from "@/lib/journal-crypto";
 
-export default function JournalScreen() {
+// Mounted on FIRST focus, not at launch — NativeTabs mounts every tab
+// eagerly otherwise (see use-lazy-tab). Function hoisting lets the export
+// sit above the definition.
+export default withLazyTab(JournalScreen);
+
+function JournalScreen() {
   const router = useRouter();
   const { user } = useUser();
   const { isSetup, isUnlocked, isLoading: statusLoading } = useJournalCrypto();
@@ -120,6 +127,11 @@ export default function JournalScreen() {
   // "Forgot passphrase?" link. Step mirrored so the sheet title swaps and
   // dismissal is blocked while the NEW codes are on screen.
   const [recoverOpen, setRecoverOpen] = useState(false);
+  // Sheet hosts mount on FIRST open only (use-mount-on-open). Hooks sit above
+  // the `locked` early return.
+  const filtersHost = useMountOnOpen(filtersOpen);
+  const setupHost = useMountOnOpen(setupOpen);
+  const recoverHost = useMountOnOpen(recoverOpen);
   const [recoverStep, setRecoverStep] =
     useState<PassphraseRecoveryStep>("redeem");
 
@@ -201,31 +213,33 @@ export default function JournalScreen() {
             NEW codes show once (dismissal blocked on that step, like the
             setup wizard's). On completion the journal is unlocked with the
             recovered DEK. */}
-        <FormSheet
-          hideFooter
-          open={recoverOpen}
-          onOpenChange={(open) => {
-            if (!open && recoverStep === "newCodes") return;
-            setRecoverOpen(open);
-            if (!open) setRecoverStep("redeem");
-          }}
-          title={PASSPHRASE_RECOVERY_COPY[recoverStep].title}
-          description={PASSPHRASE_RECOVERY_COPY[recoverStep].description}
-        >
-          <PassphraseRecoveryForm
-            key={recoverOpen ? "open" : "closed"}
-            onStepChange={setRecoverStep}
-            onRecover={async (codes, newPassphrase) => {
-              if (!user?.sub) throw new Error("Not signed in");
-              return recoverJournalWithCodes(codes, newPassphrase, user.sub);
+        {recoverHost ? (
+          <FormSheet
+            hideFooter
+            open={recoverOpen}
+            onOpenChange={(open) => {
+              if (!open && recoverStep === "newCodes") return;
+              setRecoverOpen(open);
+              if (!open) setRecoverStep("redeem");
             }}
-            onComplete={() => {
-              setRecoverOpen(false);
-              setRecoverStep("redeem");
-              void checkJournalStatus();
-            }}
-          />
-        </FormSheet>
+            title={PASSPHRASE_RECOVERY_COPY[recoverStep].title}
+            description={PASSPHRASE_RECOVERY_COPY[recoverStep].description}
+          >
+            <PassphraseRecoveryForm
+              key={recoverOpen ? "open" : "closed"}
+              onStepChange={setRecoverStep}
+              onRecover={async (codes, newPassphrase) => {
+                if (!user?.sub) throw new Error("Not signed in");
+                return recoverJournalWithCodes(codes, newPassphrase, user.sub);
+              }}
+              onComplete={() => {
+                setRecoverOpen(false);
+                setRecoverStep("redeem");
+                void checkJournalStatus();
+              }}
+            />
+          </FormSheet>
+        ) : null}
       </YStack>
     );
   }
@@ -414,16 +428,19 @@ export default function JournalScreen() {
 
       {/* Filters — date range + mood, applied live (PWA sidebar's Filter
           popover, rebuilt as a native sheet). */}
-      <JournalFilterSheet
-        open={filtersOpen}
-        onOpenChange={setFiltersOpen}
-        startDate={startDate}
-        endDate={endDate}
-        mood={moodFilter}
-        onStartDateChange={setStartDate}
-        onEndDateChange={setEndDate}
-        onMoodChange={setMoodFilter}
-      />
+      {/* Host mounted on first open only (use-mount-on-open). */}
+      {filtersHost ? (
+        <JournalFilterSheet
+          open={filtersOpen}
+          onOpenChange={setFiltersOpen}
+          startDate={startDate}
+          endDate={endDate}
+          mood={moodFilter}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+          onMoodChange={setMoodFilter}
+        />
+      ) : null}
 
       {/* First-time encryption setup — collects a passphrase, then shows the
           recovery codes. onSetup runs the native key ceremony + POSTs to
@@ -431,35 +448,37 @@ export default function JournalScreen() {
           banner disappears and new entries encrypt. The form renders its own
           Cancel/submit actions, so the kit footer is hidden; the form
           re-mounts on each open (`key`) so it resets by remount. */}
-      <FormSheet
-        hideFooter
-        open={setupOpen}
-        onOpenChange={(open) => {
-          // Once recovery codes are showing, only the Done button may close
-          // the sheet (overlay taps ignored) — dismissing mid-step would lose
-          // the codes forever.
-          if (!open && setupStep === "recovery") return;
-          setSetupOpen(open);
-          if (!open) setSetupStep("create");
-        }}
-        title={PASSPHRASE_SETUP_COPY[setupStep].title}
-        description={PASSPHRASE_SETUP_COPY[setupStep].description}
-      >
-        <PassphraseSetupForm
-          key={setupOpen ? "open" : "closed"}
-          onStepChange={setSetupStep}
-          onSetup={async (passphrase) => {
-            if (!user?.sub) throw new Error("Not signed in");
-            return setupJournalPassphrase(passphrase, user.sub);
+      {setupHost ? (
+        <FormSheet
+          hideFooter
+          open={setupOpen}
+          onOpenChange={(open) => {
+            // Once recovery codes are showing, only the Done button may close
+            // the sheet (overlay taps ignored) — dismissing mid-step would lose
+            // the codes forever.
+            if (!open && setupStep === "recovery") return;
+            setSetupOpen(open);
+            if (!open) setSetupStep("create");
           }}
-          onSetupError={() => toast.error("Couldn't set up encryption")}
-          onComplete={() => {
-            setSetupOpen(false);
-            setSetupStep("create");
-            void checkJournalStatus();
-          }}
-        />
-      </FormSheet>
+          title={PASSPHRASE_SETUP_COPY[setupStep].title}
+          description={PASSPHRASE_SETUP_COPY[setupStep].description}
+        >
+          <PassphraseSetupForm
+            key={setupOpen ? "open" : "closed"}
+            onStepChange={setSetupStep}
+            onSetup={async (passphrase) => {
+              if (!user?.sub) throw new Error("Not signed in");
+              return setupJournalPassphrase(passphrase, user.sub);
+            }}
+            onSetupError={() => toast.error("Couldn't set up encryption")}
+            onComplete={() => {
+              setSetupOpen(false);
+              setSetupStep("create");
+              void checkJournalStatus();
+            }}
+          />
+        </FormSheet>
+      ) : null}
     </YStack>
   );
 }

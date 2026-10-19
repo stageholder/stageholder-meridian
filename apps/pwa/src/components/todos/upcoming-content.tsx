@@ -3,15 +3,9 @@ import { CalendarClock, CalendarDays } from "lucide-react";
 import { TodoItem } from "./todo-item";
 import { QuickAddTodo } from "./quick-add-todo";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
-import {
-  AnimatePresence,
-  DatePicker,
-  Text,
-  View,
-  XStack,
-  YStack,
-  type CalendarRangeValue,
-} from "@stageholder/ui";
+import { AnimatePresence, Text, View, XStack, YStack } from "@stageholder/ui";
+import type { CalendarRangeValue } from "@stageholder/ui/pickers";
+import { DatePicker } from "@stageholder/ui/pickers";
 import { format, addDays } from "date-fns";
 import { TodoListSkeleton } from "@repo/features/todos";
 import type { Todo, TodoList } from "@repo/core/types";

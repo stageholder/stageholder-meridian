@@ -1,11 +1,9 @@
-import {
-  Home,
-  CalendarDays,
-  CheckSquare,
-  Target,
-  BookOpen,
-  Settings,
-} from "@tamagui/lucide-icons-2";
+import { Home } from "@tamagui/lucide-icons-2/icons/Home";
+import { CalendarDays } from "@tamagui/lucide-icons-2/icons/CalendarDays";
+import { CheckSquare } from "@tamagui/lucide-icons-2/icons/CheckSquare";
+import { Target } from "@tamagui/lucide-icons-2/icons/Target";
+import { BookOpen } from "@tamagui/lucide-icons-2/icons/BookOpen";
+import { Settings } from "@tamagui/lucide-icons-2/icons/Settings";
 
 /**
  * Icons come from `@tamagui/lucide-icons-2` — the kit's documented icon source

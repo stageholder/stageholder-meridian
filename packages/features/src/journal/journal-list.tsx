@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { format, isToday, isYesterday, isThisWeek, isThisYear } from "date-fns";
 import {
   Badge,
-  MOOD_DEFAULT_OPTIONS,
   Skeleton,
   Text,
   View,
@@ -10,7 +9,8 @@ import {
   YStack,
   usePressScale,
 } from "@stageholder/ui";
-import { BookOpen } from "@tamagui/lucide-icons-2";
+import { MOOD_DEFAULT_OPTIONS } from "@stageholder/ui/pickers";
+import { BookOpen } from "@tamagui/lucide-icons-2/icons/BookOpen";
 import type { Journal, JournalContent } from "@repo/core/types";
 
 /** Parse a `yyyy-MM-dd` or full ISO date string as the LOCAL day. */

@@ -14,7 +14,8 @@
 
 import type { PricingPlan, ProductFeature } from "@stageholder/sdk/spa";
 import { Text, View, XStack, YStack } from "@stageholder/ui";
-import { Check, Minus } from "@tamagui/lucide-icons-2";
+import { Check } from "@tamagui/lucide-icons-2/icons/Check";
+import { Minus } from "@tamagui/lucide-icons-2/icons/Minus";
 
 export function PlanComparison({
   plans,

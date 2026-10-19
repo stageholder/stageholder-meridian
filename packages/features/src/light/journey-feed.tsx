@@ -1,13 +1,11 @@
 import { format } from "date-fns";
-import {
-  CheckCircle2,
-  Plus,
-  Target,
-  BookOpen,
-  Star,
-  Flame,
-  CircleDot,
-} from "@tamagui/lucide-icons-2";
+import { CheckCircle2 } from "@tamagui/lucide-icons-2/icons/CheckCircle2";
+import { Plus } from "@tamagui/lucide-icons-2/icons/Plus";
+import { Target } from "@tamagui/lucide-icons-2/icons/Target";
+import { BookOpen } from "@tamagui/lucide-icons-2/icons/BookOpen";
+import { Star } from "@tamagui/lucide-icons-2/icons/Star";
+import { Flame } from "@tamagui/lucide-icons-2/icons/Flame";
+import { CircleDot } from "@tamagui/lucide-icons-2/icons/CircleDot";
 import { Button, Text, View, XStack, YStack } from "@stageholder/ui";
 import type { LightEvent } from "@repo/core/types/light";
 import { tabularNums } from "../_internal/text-styles";

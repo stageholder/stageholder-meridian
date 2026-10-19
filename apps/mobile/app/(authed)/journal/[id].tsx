@@ -21,9 +21,6 @@ import { useStagedMount } from "@/lib/hooks/use-staged-mount";
 import {
   Banner,
   Button,
-  MoodPicker,
-  MOOD_DEFAULT_OPTIONS,
-  QuickDatePicker,
   Sheet,
   Spinner,
   TagInput,
@@ -33,10 +30,15 @@ import {
   YStack,
   toast,
 } from "@stageholder/ui";
-import type { RichTextEditorContent } from "@stageholder/ui";
+import {
+  MoodPicker,
+  MOOD_DEFAULT_OPTIONS,
+  QuickDatePicker,
+} from "@stageholder/ui/pickers";
+import type { RichTextEditorContent } from "@stageholder/ui/editor";
 import { JournalEditor } from "@repo/features/journal";
 import type { Journal, JournalContent } from "@repo/core/types";
-import { SmilePlus } from "@tamagui/lucide-icons-2";
+import { SmilePlus } from "@tamagui/lucide-icons-2/icons/SmilePlus";
 import { Input as BareInput } from "tamagui";
 import { Alert } from "react-native";
 import { KeyboardController } from "react-native-keyboard-controller";

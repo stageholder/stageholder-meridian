@@ -1,15 +1,9 @@
 import { useState } from "react";
 import { useSignIn } from "@stageholder/sdk/spa";
-import {
-  Banner,
-  Button,
-  H1,
-  Paragraph,
-  StageholderLogo,
-  XStack,
-  YStack,
-} from "@stageholder/ui";
-import { ExternalLink, UserPlus } from "@tamagui/lucide-icons-2";
+import { Banner, Button, H1, Paragraph, XStack, YStack } from "@stageholder/ui";
+import { StageholderLogo } from "@stageholder/ui/brand";
+import { ExternalLink } from "@tamagui/lucide-icons-2/icons/ExternalLink";
+import { UserPlus } from "@tamagui/lucide-icons-2/icons/UserPlus";
 import { openURL } from "@repo/core/platform/linking";
 import { MeridianLogo } from "@/components/shared/meridian-logo";
 

@@ -15,7 +15,7 @@ import {
   ONBOARDING_STEP_IDS,
   type OnboardingProfileValue,
 } from "@repo/features/onboarding";
-import type { OnboardingValues } from "@stageholder/ui";
+import type { OnboardingValues } from "@stageholder/ui/account";
 
 export const Route = createFileRoute("/_auth/onboarding")({
   component: OnboardingPage,

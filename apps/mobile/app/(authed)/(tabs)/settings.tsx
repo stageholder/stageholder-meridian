@@ -34,7 +34,7 @@ import {
   useUpdateProfile,
   useUser,
 } from "@stageholder/sdk/react-native";
-import { ChevronRight } from "@tamagui/lucide-icons-2";
+import { ChevronRight } from "@tamagui/lucide-icons-2/icons/ChevronRight";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -44,6 +44,8 @@ import { SettingsGroup, SettingsRow } from "@/components/settings-list";
 import { useUpdateTargets, useUserLight } from "@/lib/api";
 import { canManageBilling, hubOrigin, useHubProfile } from "@/lib/api/hub";
 import { useSignOut } from "@/lib/hooks/use-sign-out";
+import { useMountOnOpen } from "@/lib/hooks/use-mount-on-open";
+import { withLazyTab } from "@/lib/hooks/use-lazy-tab";
 import {
   changeJournalPassphrase,
   checkJournalStatus,
@@ -63,7 +65,12 @@ const HUB_URL = (() => {
 
 type SheetKind = "profile" | "targets" | "passphrase" | null;
 
-export default function SettingsScreen() {
+// Mounted on FIRST focus, not at launch — NativeTabs mounts every tab
+// eagerly otherwise (see use-lazy-tab). Function hoisting lets the export
+// sit above the definition.
+export default withLazyTab(SettingsScreen);
+
+function SettingsScreen() {
   const router = useRouter();
   const { user } = useUser();
   const profileQuery = useHubProfile();
@@ -77,6 +84,9 @@ export default function SettingsScreen() {
   const { theme, setTheme } = useAppTheme();
   const { confirmSignOut, signingOut } = useSignOut();
   const [sheet, setSheet] = useState<SheetKind>(null);
+  // The three edit sheets mount on the FIRST open of any of them, not with
+  // the screen (use-mount-on-open).
+  const sheetsHost = useMountOnOpen(sheet !== null);
 
   // Load the journal's wrapped-key status so the passphrase row is accurate
   // even if the Journal tab hasn't been opened this session.
@@ -306,62 +316,66 @@ export default function SettingsScreen() {
         </ScreenScroll>
       </SafeAreaView>
 
-      <FormSheet
-        hideFooter
-        open={sheet === "profile"}
-        onOpenChange={(o) => !o && setSheet(null)}
-        title="Edit profile"
-        description="Your display name and timezone."
-      >
-        <ProfileForm
-          key={sheet === "profile" ? "open" : "closed"}
-          initialName={displayName}
-          initialTimezone={timezone}
-          onSubmit={async (data) => {
-            await updateProfile.mutateAsync(data);
-            await profileQuery.refetch();
-            setSheet(null);
-            toast.success("Profile saved");
-          }}
-        />
-      </FormSheet>
+      {sheetsHost ? (
+        <>
+          <FormSheet
+            hideFooter
+            open={sheet === "profile"}
+            onOpenChange={(o) => !o && setSheet(null)}
+            title="Edit profile"
+            description="Your display name and timezone."
+          >
+            <ProfileForm
+              key={sheet === "profile" ? "open" : "closed"}
+              initialName={displayName}
+              initialTimezone={timezone}
+              onSubmit={async (data) => {
+                await updateProfile.mutateAsync(data);
+                await profileQuery.refetch();
+                setSheet(null);
+                toast.success("Profile saved");
+              }}
+            />
+          </FormSheet>
 
-      <FormSheet
-        hideFooter
-        open={sheet === "targets"}
-        onOpenChange={(o) => !o && setSheet(null)}
-        title="Daily goals"
-        description="Your daily todo and journal goals."
-      >
-        <TargetsSettings
-          key={sheet === "targets" ? "open" : "closed"}
-          initialTodoTarget={todoTarget}
-          initialJournalTarget={journalTarget}
-          onSubmit={async (data) => {
-            await updateTargets.mutateAsync(data);
-            setSheet(null);
-            toast.success("Goals saved");
-          }}
-        />
-      </FormSheet>
+          <FormSheet
+            hideFooter
+            open={sheet === "targets"}
+            onOpenChange={(o) => !o && setSheet(null)}
+            title="Daily goals"
+            description="Your daily todo and journal goals."
+          >
+            <TargetsSettings
+              key={sheet === "targets" ? "open" : "closed"}
+              initialTodoTarget={todoTarget}
+              initialJournalTarget={journalTarget}
+              onSubmit={async (data) => {
+                await updateTargets.mutateAsync(data);
+                setSheet(null);
+                toast.success("Goals saved");
+              }}
+            />
+          </FormSheet>
 
-      <FormSheet
-        hideFooter
-        open={sheet === "passphrase"}
-        onOpenChange={(o) => !o && setSheet(null)}
-        title="Change passphrase"
-        description="Your entries stay encrypted — only the passphrase that unlocks them changes. Recovery codes keep working."
-      >
-        <PassphraseChangeForm
-          key={sheet === "passphrase" ? "open" : "closed"}
-          onChangePassphrase={changeJournalPassphrase}
-          onComplete={() => {
-            setSheet(null);
-            toast.success("Passphrase changed");
-          }}
-          onCancel={() => setSheet(null)}
-        />
-      </FormSheet>
+          <FormSheet
+            hideFooter
+            open={sheet === "passphrase"}
+            onOpenChange={(o) => !o && setSheet(null)}
+            title="Change passphrase"
+            description="Your entries stay encrypted — only the passphrase that unlocks them changes. Recovery codes keep working."
+          >
+            <PassphraseChangeForm
+              key={sheet === "passphrase" ? "open" : "closed"}
+              onChangePassphrase={changeJournalPassphrase}
+              onComplete={() => {
+                setSheet(null);
+                toast.success("Passphrase changed");
+              }}
+              onCancel={() => setSheet(null)}
+            />
+          </FormSheet>
+        </>
+      ) : null}
     </YStack>
   );
 }

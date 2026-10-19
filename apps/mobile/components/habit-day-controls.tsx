@@ -11,12 +11,10 @@
 //                     screen (mobile has no inline calendar popover).
 
 import { IconButton, Text, View, XStack } from "@stageholder/ui";
-import {
-  ChevronLeft,
-  ChevronRight,
-  LayoutGrid,
-  List,
-} from "@tamagui/lucide-icons-2";
+import { ChevronLeft } from "@tamagui/lucide-icons-2/icons/ChevronLeft";
+import { ChevronRight } from "@tamagui/lucide-icons-2/icons/ChevronRight";
+import { LayoutGrid } from "@tamagui/lucide-icons-2/icons/LayoutGrid";
+import { List } from "@tamagui/lucide-icons-2/icons/List";
 import { addDays, format } from "date-fns";
 
 export type HabitViewMode = "card" | "list";

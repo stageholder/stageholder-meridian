@@ -3,12 +3,12 @@ import {
   Button,
   Popover,
   Progress,
-  ProgressRing,
   RippleButton,
   Text,
   XStack,
   YStack,
 } from "@stageholder/ui";
+import { ProgressRing } from "@stageholder/ui/charts";
 import { StarVisual } from "@repo/features/light";
 import { useAppTheme } from "@/lib/platform/theme";
 import { getTierProgressDetail, LIGHT_TIERS } from "@repo/core/types/light";

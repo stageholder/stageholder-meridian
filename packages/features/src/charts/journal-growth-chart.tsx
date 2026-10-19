@@ -1,4 +1,5 @@
-import { AreaChart, Skeleton, Text, View } from "@stageholder/ui";
+import { Skeleton, Text, View } from "@stageholder/ui";
+import { AreaChart } from "@stageholder/ui/charts";
 
 /**
  * Per-day cumulative journal totals for the trend chart. Each app's

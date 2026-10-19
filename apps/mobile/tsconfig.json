@@ -6,6 +6,12 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"],
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts",
+    "../../node_modules/@stageholder/ui/src/lucide-icons-deep.d.ts"
+  ],
   "exclude": ["node_modules", "e2e"]
 }

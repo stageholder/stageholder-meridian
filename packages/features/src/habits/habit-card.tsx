@@ -1,19 +1,16 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { format, subDays, startOfWeek, addDays } from "date-fns";
-import {
-  Check,
-  MoreHorizontal,
-  SkipForward,
-  Undo2,
-  X,
-} from "@tamagui/lucide-icons-2";
+import { Check } from "@tamagui/lucide-icons-2/icons/Check";
+import { MoreHorizontal } from "@tamagui/lucide-icons-2/icons/MoreHorizontal";
+import { SkipForward } from "@tamagui/lucide-icons-2/icons/SkipForward";
+import { Undo2 } from "@tamagui/lucide-icons-2/icons/Undo2";
+import { X } from "@tamagui/lucide-icons-2/icons/X";
 import {
   AlertDialog,
   Button,
   DropdownMenu,
   H3,
   IconButton,
-  MediaGlyph,
   RippleButton,
   Skeleton,
   StreakBadge,
@@ -22,6 +19,7 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
+import { MediaGlyph } from "@stageholder/ui/pickers";
 import type { Habit, HabitEntry } from "@repo/core/types";
 import { parseMediaIcon } from "./icon-value";
 import {

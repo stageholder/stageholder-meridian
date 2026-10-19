@@ -39,14 +39,12 @@ import {
   groupUpcomingByDate,
 } from "@repo/core/todos/upcoming";
 import type { Todo, TodoList } from "@repo/core/types";
-import {
-  Check,
-  ListOrdered,
-  Pencil,
-  Plus,
-  RotateCcw,
-  Trash2,
-} from "@tamagui/lucide-icons-2";
+import { Check } from "@tamagui/lucide-icons-2/icons/Check";
+import { ListOrdered } from "@tamagui/lucide-icons-2/icons/ListOrdered";
+import { Pencil } from "@tamagui/lucide-icons-2/icons/Pencil";
+import { Plus } from "@tamagui/lucide-icons-2/icons/Plus";
+import { RotateCcw } from "@tamagui/lucide-icons-2/icons/RotateCcw";
+import { Trash2 } from "@tamagui/lucide-icons-2/icons/Trash2";
 import { format, subDays } from "date-fns";
 import { memo, useCallback, useMemo, useState } from "react";
 import { RefreshControl, ScrollView as RNScrollView } from "react-native";
@@ -63,6 +61,8 @@ import {
   type StatusFilter,
 } from "@/components/status-filter-tabs";
 import { useStagedMount } from "@/lib/hooks/use-staged-mount";
+import { useMountOnOpen } from "@/lib/hooks/use-mount-on-open";
+import { withLazyTab } from "@/lib/hooks/use-lazy-tab";
 import { IGNITION } from "@/lib/ignition-palette";
 
 import {
@@ -201,7 +201,12 @@ const TodoRow = memo(function TodoRow({
   );
 });
 
-export default function TodosScreen() {
+// Mounted on FIRST focus, not at launch — NativeTabs mounts every tab
+// eagerly otherwise (see use-lazy-tab). Function hoisting lets the export
+// sit above the definition.
+export default withLazyTab(TodosScreen);
+
+function TodosScreen() {
   // Two-phase first mount (matches habits.tsx / index.tsx). Expo-router tabs are
   // lazy, so the FIRST tap on Todos mounts the WHOLE screen synchronously on the
   // tap frame — FlashList init + the eager CreateTodoDialog form tree — which
@@ -233,6 +238,11 @@ export default function TodosScreen() {
   const [listSheet, setListSheet] = useState<false | null | TodoList>(false);
   // Reorder sheet.
   const [reorderOpen, setReorderOpen] = useState(false);
+  // Sheet hosts mount on FIRST open only (use-mount-on-open).
+  const createHost = useMountOnOpen(createOpen);
+  const editHost = useMountOnOpen(editOpen);
+  const listSheetHost = useMountOnOpen(listSheet !== false);
+  const reorderHost = useMountOnOpen(reorderOpen);
   // Upcoming range window (days ahead; 0 = All). Mirrors the PWA's preset row.
   const [upcomingRange, setUpcomingRange] = useState(7);
 
@@ -713,11 +723,10 @@ export default function TodosScreen() {
         onPress={() => setCreateOpen(true)}
       />
 
-      {/* Deferred with the body (useStagedMount): QuickAddTodoSheet mounts its
-          full form + nested pickers EAGERLY even while closed, so keeping it out
-          of the first-frame tree is a big part of making the tab flip instantly.
-          60ms later it's mounted — long before a user can tap the FAB. */}
-      {bodyMounted ? (
+      {/* QuickAddTodoSheet mounts its full form + nested pickers (and, once
+          opened, a 10tap WebView) — so the host mounts on the FIRST open, not
+          with the screen (use-mount-on-open). */}
+      {createHost ? (
         <CreateTodoDialog
           open={createOpen}
           onOpenChange={setCreateOpen}
@@ -727,33 +736,42 @@ export default function TodosScreen() {
       ) : null}
 
       {/* Create / edit a list — shared TodoListForm in a FormSheet. */}
-      <TodoListSheet
-        open={listSheet !== false}
-        onOpenChange={(next) => {
-          if (!next) setListSheet(false);
-        }}
-        list={listSheet === false ? null : listSheet}
-        onDeleted={(id) => {
-          if (activeListId === id) setActiveListId(null);
-        }}
-      />
+      {/* Host mounted on first open only (use-mount-on-open). */}
+      {listSheetHost ? (
+        <TodoListSheet
+          open={listSheet !== false}
+          onOpenChange={(next) => {
+            if (!next) setListSheet(false);
+          }}
+          list={listSheet === false ? null : listSheet}
+          onDeleted={(id) => {
+            if (activeListId === id) setActiveListId(null);
+          }}
+        />
+      ) : null}
 
       {/* Edit — tapping a row seeds this with the todo; same shared TodoForm
           as create, in a bottom Sheet. `editOpen` drives visibility while
           `editing` holds the content through the close animation. */}
-      <EditTodoDialog
-        open={editOpen}
-        onOpenChange={handleEditOpenChange}
-        todo={editing}
-      />
+      {/* Host mounted on first open only (use-mount-on-open). */}
+      {editHost ? (
+        <EditTodoDialog
+          open={editOpen}
+          onOpenChange={handleEditOpenChange}
+          todo={editing}
+        />
+      ) : null}
 
       {/* Reorder lists — vertical drag sheet; only shown when 2+ custom
           lists exist (the trigger pill is hidden otherwise). */}
-      <TodoListReorderSheet
-        open={reorderOpen}
-        onOpenChange={setReorderOpen}
-        lists={lists}
-      />
+      {/* Host mounted on first open only (use-mount-on-open). */}
+      {reorderHost ? (
+        <TodoListReorderSheet
+          open={reorderOpen}
+          onOpenChange={setReorderOpen}
+          lists={lists}
+        />
+      ) : null}
     </YStack>
   );
 }

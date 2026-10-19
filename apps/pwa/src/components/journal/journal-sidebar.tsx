@@ -8,15 +8,15 @@ import { CreateFab } from "@/components/shared/create-fab";
 import type { Journal } from "@repo/core/types";
 import {
   Button,
-  DateRangePicker,
   Popover,
   ScrollArea,
   Select,
   Text,
   XStack,
   YStack,
-  type CalendarRangeValue,
 } from "@stageholder/ui";
+import type { CalendarRangeValue } from "@stageholder/ui/pickers";
+import { DateRangePicker } from "@stageholder/ui/pickers";
 
 const moodOptions = [
   { value: 0, label: "All Moods" },

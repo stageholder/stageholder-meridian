@@ -4,13 +4,13 @@ import {
   Button,
   EmptyState,
   List,
-  MediaGlyph,
   Text,
   View,
   XStack,
   YStack,
   toast,
 } from "@stageholder/ui";
+import { MediaGlyph } from "@stageholder/ui/pickers";
 import { parseMediaIcon } from "@repo/features/habits";
 import { useArchivedHabits, useUnarchiveHabit } from "@/lib/api/habits";
 import type { Habit } from "@repo/core/types";

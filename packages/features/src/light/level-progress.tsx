@@ -1,4 +1,4 @@
-import { Flame } from "@tamagui/lucide-icons-2";
+import { Flame } from "@tamagui/lucide-icons-2/icons/Flame";
 import { GradientSurface, Text, View, XStack, YStack } from "@stageholder/ui";
 import type { UserLight } from "@repo/core/types/light";
 import {

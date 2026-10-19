@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useHandleCallback, useUser } from "@stageholder/sdk/spa";
-import { LoadingScreen } from "@stageholder/ui";
+import { LoadingScreen } from "@stageholder/ui/brand";
 
 export const Route = createFileRoute("/_auth/auth/callback")({
   component: CallbackPage,

@@ -16,15 +16,8 @@
 // The parent screen owns the filter state (this sheet is fully controlled);
 // filters apply as they change, and "Done" simply closes the sheet.
 
-import {
-  Button,
-  FormSheet,
-  MoodPicker,
-  QuickDatePicker,
-  Text,
-  XStack,
-  YStack,
-} from "@stageholder/ui";
+import { Button, FormSheet, Text, XStack, YStack } from "@stageholder/ui";
+import { MoodPicker, QuickDatePicker } from "@stageholder/ui/pickers";
 import { format } from "date-fns";
 
 export interface JournalFilterSheetProps {

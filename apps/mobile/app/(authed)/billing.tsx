@@ -48,7 +48,8 @@ import {
   useStageholder,
   useSubscription,
 } from "@stageholder/sdk/react-native";
-import { Download, ExternalLink } from "@tamagui/lucide-icons-2";
+import { Download } from "@tamagui/lucide-icons-2/icons/Download";
+import { ExternalLink } from "@tamagui/lucide-icons-2/icons/ExternalLink";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Platform } from "react-native";
 

@@ -1,14 +1,9 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { format } from "date-fns";
-import {
-  ActivityRings,
-  EventCalendar,
-  Text,
-  View,
-  XStack,
-  YStack,
-  type ActivityRing,
-} from "@stageholder/ui";
+import { Text, View, XStack, YStack } from "@stageholder/ui";
+import type { ActivityRing } from "@stageholder/ui/charts";
+import { ActivityRings } from "@stageholder/ui/charts";
+import { EventCalendar } from "@stageholder/ui/data";
 import { DayAgenda } from "./day-agenda";
 import {
   useCalendarRange,

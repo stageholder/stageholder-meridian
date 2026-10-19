@@ -4,9 +4,6 @@ import {
   Button,
   Input,
   Label,
-  MediaGlyph,
-  MediaPicker,
-  MediaPickerSheet,
   NumberInput,
   Popover,
   Select,
@@ -16,9 +13,14 @@ import {
   View,
   XStack,
   YStack,
-  type MediaValue,
 } from "@stageholder/ui";
-import { Smile } from "@tamagui/lucide-icons-2";
+import type { MediaValue } from "@stageholder/ui/pickers";
+import {
+  MediaGlyph,
+  MediaPicker,
+  MediaPickerSheet,
+} from "@stageholder/ui/pickers";
+import { Smile } from "@tamagui/lucide-icons-2/icons/Smile";
 import type { Habit } from "@repo/core/types";
 import {
   useSheetAutoFocus,

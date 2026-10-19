@@ -13,7 +13,7 @@
 import { useMemo } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { addMonths, format } from "date-fns";
-import type { CalendarEvent } from "@stageholder/ui";
+import type { CalendarEvent } from "@stageholder/ui/data";
 import type { Habit } from "@repo/core/types";
 import {
   computeRingPercentages,

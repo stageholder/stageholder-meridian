@@ -75,6 +75,8 @@ import {
 } from "@/lib/api";
 import { useLocalDayKey } from "@/lib/hooks/use-local-day";
 import { useStagedMount } from "@/lib/hooks/use-staged-mount";
+import { useMountOnOpen } from "@/lib/hooks/use-mount-on-open";
+import { withLazyTab } from "@/lib/hooks/use-lazy-tab";
 import { useCalendarData } from "@/lib/api/hooks/calendar";
 import { IGNITION } from "@/lib/ignition-palette";
 
@@ -102,7 +104,12 @@ interface Section {
   habits: Habit[];
 }
 
-export default function HabitsScreen() {
+// Mounted on FIRST focus, not at launch — NativeTabs mounts every tab
+// eagerly otherwise (see use-lazy-tab). Function hoisting lets the export
+// sit above the definition.
+export default withLazyTab(HabitsScreen);
+
+function HabitsScreen() {
   // Two-phase first mount: the tab's FIRST tap paints header + chips + a
   // skeleton, and the card list (the expensive part — Sortable + dropdown +
   // entries query per card) mounts one beat later. Later tab switches never
@@ -138,6 +145,11 @@ export default function HabitsScreen() {
   );
   // Reorder-groups sheet.
   const [reorderGroupsOpen, setReorderGroupsOpen] = useState(false);
+  // Sheet hosts mount on FIRST open only (use-mount-on-open).
+  const createHost = useMountOnOpen(createOpen);
+  const groupSheetHost = useMountOnOpen(groupSheet !== false);
+  const moveHost = useMountOnOpen(movingHabit !== null);
+  const reorderGroupsHost = useMountOnOpen(reorderGroupsOpen);
   // Card ⇄ list view mode, and the day being viewed/checked-in (defaults to
   // today; the date-nav lets you review / back-fill a past day).
   const [viewMode, setViewMode] = useState<HabitViewMode>("card");
@@ -617,14 +629,17 @@ export default function HabitsScreen() {
         onPress={() => setCreateOpen(true)}
       />
 
-      <CreateHabitDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        // When a real group is the active filter, new habits land in it.
-        groupId={
-          activeChip && activeChip !== ARCHIVED_CHIP ? activeChip : undefined
-        }
-      />
+      {/* Host mounted on first open only (use-mount-on-open). */}
+      {createHost ? (
+        <CreateHabitDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          // When a real group is the active filter, new habits land in it.
+          groupId={
+            activeChip && activeChip !== ARCHIVED_CHIP ? activeChip : undefined
+          }
+        />
+      ) : null}
 
       {/* Edit — same shared HabitForm, seeded from the tapped habit. */}
       {editingHabit ? (
@@ -638,32 +653,41 @@ export default function HabitsScreen() {
       ) : null}
 
       {/* Create / edit a group — shared HabitGroupForm in a FormSheet. */}
-      <HabitGroupSheet
-        open={groupSheet !== false}
-        onOpenChange={(next) => {
-          if (!next) setGroupSheet(false);
-        }}
-        group={groupSheet === false ? null : groupSheet}
-        onDeleted={(id) => {
-          if (activeChip === id) setActiveChip(null);
-        }}
-      />
+      {/* Host mounted on first open only (use-mount-on-open). */}
+      {groupSheetHost ? (
+        <HabitGroupSheet
+          open={groupSheet !== false}
+          onOpenChange={(next) => {
+            if (!next) setGroupSheet(false);
+          }}
+          group={groupSheet === false ? null : groupSheet}
+          onDeleted={(id) => {
+            if (activeChip === id) setActiveChip(null);
+          }}
+        />
+      ) : null}
 
       {/* Move a habit to another group — driven picker Sheet. */}
-      <HabitMoveToGroupSheet
-        habit={movingHabit}
-        open={movingHabit !== null}
-        onOpenChange={(next) => {
-          if (!next) setMovingHabit(null);
-        }}
-      />
+      {/* Host mounted on first open only (use-mount-on-open). */}
+      {moveHost ? (
+        <HabitMoveToGroupSheet
+          habit={movingHabit}
+          open={movingHabit !== null}
+          onOpenChange={(next) => {
+            if (!next) setMovingHabit(null);
+          }}
+        />
+      ) : null}
 
       {/* Reorder groups — driven Sortable Sheet. */}
-      <HabitGroupReorderSheet
-        open={reorderGroupsOpen}
-        onOpenChange={setReorderGroupsOpen}
-        groups={groups}
-      />
+      {/* Host mounted on first open only (use-mount-on-open). */}
+      {reorderGroupsHost ? (
+        <HabitGroupReorderSheet
+          open={reorderGroupsOpen}
+          onOpenChange={setReorderGroupsOpen}
+          groups={groups}
+        />
+      ) : null}
     </YStack>
   );
 }

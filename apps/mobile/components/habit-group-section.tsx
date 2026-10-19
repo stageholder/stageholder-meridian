@@ -10,14 +10,8 @@
 // this group while applying the new order.
 
 import { memo } from "react";
-import {
-  MediaGlyph,
-  Sortable,
-  Text,
-  View,
-  XStack,
-  YStack,
-} from "@stageholder/ui";
+import { Sortable, Text, View, XStack, YStack } from "@stageholder/ui";
+import { MediaGlyph } from "@stageholder/ui/pickers";
 import { parseMediaIcon } from "@repo/features/habits";
 import type { Habit } from "@repo/core/types";
 

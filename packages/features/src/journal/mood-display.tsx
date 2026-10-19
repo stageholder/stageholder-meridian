@@ -1,5 +1,5 @@
 import { Text } from "@stageholder/ui";
-import { MOOD_DEFAULT_OPTIONS } from "@stageholder/ui";
+import { MOOD_DEFAULT_OPTIONS } from "@stageholder/ui/pickers";
 
 export interface MoodDisplayProps {
   /** 1–5 mood value from the kit's `MOOD_DEFAULT_OPTIONS` scale. */

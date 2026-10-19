@@ -1,4 +1,7 @@
-import { Sparkles, Calendar, Trophy, Zap } from "@tamagui/lucide-icons-2";
+import { Sparkles } from "@tamagui/lucide-icons-2/icons/Sparkles";
+import { Calendar } from "@tamagui/lucide-icons-2/icons/Calendar";
+import { Trophy } from "@tamagui/lucide-icons-2/icons/Trophy";
+import { Zap } from "@tamagui/lucide-icons-2/icons/Zap";
 import { Text, XStack, YStack } from "@stageholder/ui";
 import type { UserLight } from "@repo/core/types/light";
 import { getMultiplierLabel } from "@repo/core/types/light";

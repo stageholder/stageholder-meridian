@@ -16,12 +16,10 @@
 
 import { useUser } from "@stageholder/sdk/react-native";
 import {
-  ActivityRings,
   AnimatePresence,
   Banner,
   Button,
   Card,
-  Dashboard,
   H2,
   IconButton,
   Paragraph,
@@ -34,6 +32,8 @@ import {
   YStack,
   usePressScale,
 } from "@stageholder/ui";
+import { ActivityRings } from "@stageholder/ui/charts";
+import { TodayWidget, TodayWidgets } from "@/components/today-widget";
 import {
   DashboardStats,
   type DashboardStatItem,
@@ -48,7 +48,8 @@ import {
 import { LevelProgress, LevelUpCelebration } from "@repo/features/light";
 import type { Todo } from "@repo/core/types";
 import type { UserLight } from "@repo/core/types/light";
-import { CalendarDays, Search } from "@tamagui/lucide-icons-2";
+import { CalendarDays } from "@tamagui/lucide-icons-2/icons/CalendarDays";
+import { Search } from "@tamagui/lucide-icons-2/icons/Search";
 import { useQueryClient } from "@tanstack/react-query";
 import { format, subDays } from "date-fns";
 import { useRouter } from "expo-router";
@@ -71,7 +72,7 @@ import { EditTodoDialog } from "@/components/edit-todo-dialog";
 import { useDayActivityCounts } from "@/lib/api/hooks/calendar";
 import { IGNITION } from "@/lib/ignition-palette";
 import { useLevelUp } from "@/lib/use-level-up";
-import { useWarmTabs } from "@/lib/hooks/use-warm-tabs";
+import { useMountOnOpen } from "@/lib/hooks/use-mount-on-open";
 import { useLocalDayKey } from "@/lib/hooks/use-local-day";
 import { useJournalGrowth } from "@/lib/use-journal-growth";
 import { useWritingHeatmap } from "@/lib/use-writing-heatmap";
@@ -112,17 +113,6 @@ function dayDelta(
   return { direction: "flat", label: "—" };
 }
 
-// Sibling tabs warmed in the background from the landing screen so the FIRST
-// tap on each is an instant native flip, not a lazy mount-on-tap (the "slow
-// first click, fast after" behavior). Module constant → stable effect dep.
-// Settings is light + rarely the first destination, so it mounts on demand.
-const WARM_TABS = ["todos", "habits", "journal"] as const;
-// Start well after Today's own first data + charts have committed, and space
-// the mounts out: each warm mount is a long JS task, and stacking them in the
-// first ~2s made any early tap/scroll wait behind them.
-const WARM_START_MS = 2500;
-const WARM_STEP_MS = 1500;
-
 export default function TodayScreen() {
   const { user } = useUser();
   const router = useRouter();
@@ -131,10 +121,6 @@ export default function TodayScreen() {
   // launch day after midnight. Same source `useDashboardToday` keys on, so the
   // rows' `activeDate` and the aggregate can never disagree. See use-local-day.
   const today = useLocalDayKey();
-  // Pre-mount the other tabs shortly after Today paints (staggered, in the
-  // background) so switching to them is instant — see use-warm-tabs.
-  useWarmTabs(WARM_TABS, WARM_START_MS, WARM_STEP_MS);
-
   // ---- Queries ----
   // ONE request for the whole Today aggregate (rings + KPI display numbers +
   // habit/todo widget lists + journal words), shaped by the shared selector.
@@ -201,6 +187,7 @@ export default function TodayScreen() {
   const [refreshing, setRefreshing] = useState(false);
   // Command palette (PWA ⌘K parity) — opened from the header Search button.
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const paletteHost = useMountOnOpen(paletteOpen);
 
   // PERF: gate for the below-the-fold trend charts — the four SVG chart
   // trees mount one painted frame + 300ms after the screen, so they never
@@ -331,6 +318,7 @@ export default function TodayScreen() {
   // open flag from content so the sheet keeps its values through the exit anim.
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
   const [editTodoOpen, setEditTodoOpen] = useState(false);
+  const editTodoHost = useMountOnOpen(editTodoOpen);
   function openTodoEdit(todo: Todo) {
     setEditingTodo(todo);
     setEditTodoOpen(true);
@@ -408,7 +396,7 @@ export default function TodayScreen() {
               </Banner>
             ) : null}
 
-            {/* ---- Dashboard grid: motivation-first stack. Kit `Dashboard`
+            {/* ---- Widget stack: motivation-first. `TodayWidget` mirrors the kit `Dashboard` (see components/today-widget.tsx), which
                  renders a 12-col grid on wide screens but STACKS to a single
                  column on native, so on mobile every widget is a full-width
                  card. The hero widgets (level + rings) stay chromeless
@@ -416,27 +404,22 @@ export default function TodayScreen() {
                  `Card`/rings visual shows through unchanged; the section
                  widgets (habits/todos/journals) take the widget's own card
                  chrome + title + "View all" action. ---- */}
-            <Dashboard columns={12} gap="$4">
+            <TodayWidgets gap="$4">
               {/* ---- Level progress (gamification) — taps through to the
                    Journey screen (tier path, streaks, Light feed). Hosted in a
                    flush chromeless widget so the pressable `LevelProgressCard`
                    keeps its own card + press-scale. ---- */}
               {lightQuery.data ? (
-                <Dashboard.Widget
-                  colSpan={12}
-                  hideHeader
-                  bordered={false}
-                  flush
-                >
+                <TodayWidget hideHeader bordered={false} flush>
                   <LevelProgressCard
                     userLight={lightQuery.data}
                     onPress={() => router.push("/journey")}
                   />
-                </Dashboard.Widget>
+                </TodayWidget>
               ) : null}
 
               {/* ---- Activity rings + legend ---- */}
-              <Dashboard.Widget colSpan={12} hideHeader bordered={false} flush>
+              <TodayWidget hideHeader bordered={false} flush>
                 <Card>
                   <Card.Body items="center" gap="$4" py="$5">
                     {isLoading && !vm ? (
@@ -492,19 +475,18 @@ export default function TodayScreen() {
                     )}
                   </Card.Body>
                 </Card>
-              </Dashboard.Widget>
+              </TodayWidget>
 
               {/* ---- KPI row (shared DashboardStats) — chromeless flush cell;
                    the `Stat` tiles carry their own hairline card borders. ---- */}
-              <Dashboard.Widget colSpan={12} hideHeader bordered={false} flush>
+              <TodayWidget hideHeader bordered={false} flush>
                 <DashboardStats stats={stats} />
-              </Dashboard.Widget>
+              </TodayWidget>
 
               {/* ---- Habits Today — REAL interactive check-in rows (parity
                    with the PWA dashboard). Check in / skip / fail right here;
                    "View all" opens the full habits screen. ---- */}
-              <Dashboard.Widget
-                colSpan={12}
+              <TodayWidget
                 title="Habits Today"
                 actions={<ViewAll onPress={() => router.push("/habits")} />}
               >
@@ -530,12 +512,11 @@ export default function TodayScreen() {
                     ))}
                   </YStack>
                 )}
-              </Dashboard.Widget>
+              </TodayWidget>
 
               {/* ---- Today's Todos — REAL TodoItem (compact): checkbox + burn,
                    tap to edit. Mirrors the PWA dashboard's compact TodoItem. -- */}
-              <Dashboard.Widget
-                colSpan={12}
+              <TodayWidget
                 title="Today's Todos"
                 actions={<ViewAll onPress={() => router.push("/todos")} />}
               >
@@ -561,7 +542,7 @@ export default function TodayScreen() {
                     </AnimatePresence>
                   </YStack>
                 )}
-              </Dashboard.Widget>
+              </TodayWidget>
 
               {/* ---- Trend charts (PWA dashboard parity: journal pair, then
                    the weekly-activity + light-growth pair). Shared views over
@@ -574,7 +555,7 @@ export default function TodayScreen() {
                    first-mount interactions settle, so they never compete with
                    the navigation frame. Fixed-height placeholders keep the
                    scroll extent stable. ---- */}
-              <Dashboard.Widget colSpan={12} title="Journal Growth">
+              <TodayWidget title="Journal Growth">
                 {chartsReady ? (
                   <JournalGrowthChart
                     data={journalGrowth.data}
@@ -584,11 +565,11 @@ export default function TodayScreen() {
                 ) : (
                   <View height={200} />
                 )}
-              </Dashboard.Widget>
+              </TodayWidget>
               {/* Writing activity — GitHub-style word-count heatmap in the
                   journal identity colour. Colour is baked into the view (no
                   CSS-var resolution needed), so no `color` prop here. */}
-              <Dashboard.Widget colSpan={12} title="Writing Activity">
+              <TodayWidget title="Writing Activity">
                 {chartsReady ? (
                   <WritingHeatmapChart
                     data={writingHeatmap.data}
@@ -597,10 +578,10 @@ export default function TodayScreen() {
                 ) : (
                   <View height={200} />
                 )}
-              </Dashboard.Widget>
+              </TodayWidget>
               {/* Activity pair: weekly activity (stacked todo/habit/journal in
                   identity colours) then light growth (gapped bars). */}
-              <Dashboard.Widget colSpan={12} title="Weekly Activity">
+              <TodayWidget title="Weekly Activity">
                 {chartsReady ? (
                   <WeeklyActivityChart
                     data={weeklyActivity.data}
@@ -609,8 +590,8 @@ export default function TodayScreen() {
                 ) : (
                   <View height={200} />
                 )}
-              </Dashboard.Widget>
-              <Dashboard.Widget colSpan={12} title="Light Growth">
+              </TodayWidget>
+              <TodayWidget title="Light Growth">
                 {chartsReady ? (
                   <LightEarnedChart
                     data={lightTrend}
@@ -619,22 +600,28 @@ export default function TodayScreen() {
                 ) : (
                   <View height={200} />
                 )}
-              </Dashboard.Widget>
-            </Dashboard>
+              </TodayWidget>
+            </TodayWidgets>
           </YStack>
         </ScreenScroll>
       </SafeAreaView>
 
       {/* Tap a todo in the widget → shared edit sheet (same as /todos). */}
-      <EditTodoDialog
-        open={editTodoOpen}
-        onOpenChange={setEditTodoOpen}
-        todo={editingTodo}
-      />
+      {/* Host mounted on first open only (use-mount-on-open). */}
+      {editTodoHost ? (
+        <EditTodoDialog
+          open={editTodoOpen}
+          onOpenChange={setEditTodoOpen}
+          todo={editingTodo}
+        />
+      ) : null}
 
       {/* Command palette (⌘K parity) — kit CommandMenu, bottom Sheet on
           phones; hosts its own New Todo / New Habit create sheets. */}
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+      {/* Host mounted on first open only (use-mount-on-open). */}
+      {paletteHost ? (
+        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+      ) : null}
 
       {/* Level-up overlay — rendered above the scroll frame so it covers the
           whole screen when a tier is crossed from Today. */}

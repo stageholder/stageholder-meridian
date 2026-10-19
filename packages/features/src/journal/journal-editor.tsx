@@ -6,11 +6,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import {
-  RichTextEditor,
-  YStack,
-  type RichTextEditorContent,
-} from "@stageholder/ui";
+import { YStack } from "@stageholder/ui";
+import type { RichTextEditorContent } from "@stageholder/ui/editor";
+import { RichTextEditor } from "@stageholder/ui/editor";
 import { countWordsFromContent } from "@repo/core/utils/text";
 
 // The kit's `RichTextEditorContent` IS TipTap's `JSONContent` (re-exported)
@@ -74,8 +72,12 @@ export interface JournalEditorProps {
   onChange: (json: JSONContent) => void;
   /** Empty-state placeholder. */
   placeholder?: string;
-  /** Focus the editor on mount. Default `false`. */
-  autoFocus?: boolean;
+  /**
+   * `true` focuses on mount; `'ready'` (kit RichTextEditor, native) focuses
+   * once the editor bridge is ready so the keyboard never rises while the
+   * WebView is still initialising. Web treats `'ready'` as `true`. Default `false`.
+   */
+  autoFocus?: boolean | "ready";
   /**
    * Autosave status. Accepted for cross-host API symmetry; the visible badge
    * is rendered by the web host (the block variant has no toolbar slot to host

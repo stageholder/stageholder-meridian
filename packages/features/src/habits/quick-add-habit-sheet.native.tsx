@@ -8,17 +8,13 @@
 // picker sheets. Create-only; EDIT keeps the full HabitForm.
 import { useEffect, useRef, useState } from "react";
 import type { TextInput } from "react-native";
-import {
-  Folder,
-  Repeat,
-  Smile,
-  StickyNote,
-  Target,
-} from "@tamagui/lucide-icons-2";
+import { Folder } from "@tamagui/lucide-icons-2/icons/Folder";
+import { Repeat } from "@tamagui/lucide-icons-2/icons/Repeat";
+import { Smile } from "@tamagui/lucide-icons-2/icons/Smile";
+import { StickyNote } from "@tamagui/lucide-icons-2/icons/StickyNote";
+import { Target } from "@tamagui/lucide-icons-2/icons/Target";
 import {
   Input,
-  MediaGlyph,
-  MediaPickerSheet,
   NumberInput,
   Select,
   Sheet,
@@ -26,8 +22,9 @@ import {
   ToggleGroup,
   View,
   XStack,
-  type MediaValue,
 } from "@stageholder/ui";
+import type { MediaValue } from "@stageholder/ui/pickers";
+import { MediaGlyph, MediaPickerSheet } from "@stageholder/ui/pickers";
 import {
   QuickAddSheet,
   QuickAddPill,
@@ -268,7 +265,28 @@ export function QuickAddHabitSheet({
   const hasGroups = !!groups && groups.length > 0;
   const nameRef = useRef<TextInput>(null);
 
-  const [name, setName] = useState("");
+  // The name field is UNCONTROLLED on purpose. A controlled RN TextInput
+  // pushes `value` back to the native view after every keystroke; when the
+  // JS thread lags (this sheet re-rendered its whole pill row per character)
+  // keystrokes/backspaces that arrive in between are dropped on Android —
+  // visible as "JEVB E2E Hab 0278…" in the Maestro run and as lost characters
+  // for a fast typist on a slow phone. Keep the text in a ref and only lift a
+  // boolean (empty ↔ non-empty) into state so the submit button repaints on
+  // that transition instead of on every character (kit Chat.Composer pattern).
+  const nameText = useRef("");
+  const [hasName, setHasName] = useState(false);
+  // Nested pickers (icon / frequency / target / color / group) are SIBLING
+  // sheets; mounting their five shells in the create sheet's open commit is
+  // what made the first open sit on a dimmed screen for ~1.4 s. They mount once
+  // the kit FormSheet reports the slide has SETTLED (`onSettled`, kit
+  // 0.4.0-alpha.2) — nothing can tap a pill before then — and stay mounted
+  // afterwards (latched, 'first-open' semantics).
+  const [pickersReady, setPickersReady] = useState(false);
+  const handleNameChange = (t: string) => {
+    nameText.current = t;
+    const next = t.trim().length > 0;
+    setHasName((prev) => (prev === next ? prev : next));
+  };
   const [description, setDescription] = useState("");
   const [noteOpen, setNoteOpen] = useState(false);
   const [icon, setIcon] = useState(HABIT_FORM_DEFAULTS.icon ?? "🎯");
@@ -291,7 +309,9 @@ export function QuickAddHabitSheet({
   const wasOpen = useRef(open);
   useEffect(() => {
     if (open && !wasOpen.current) {
-      setName("");
+      nameText.current = "";
+      setHasName(false);
+      nameRef.current?.clear();
       setDescription("");
       setNoteOpen(false);
       setIcon(HABIT_FORM_DEFAULTS.icon ?? "🎯");
@@ -308,9 +328,10 @@ export function QuickAddHabitSheet({
   }, [open, defaultGroupId]);
 
   function handleSubmit() {
-    if (!name.trim()) return;
+    const name = nameText.current.trim();
+    if (!name) return;
     void onSubmit({
-      name: name.trim(),
+      name,
       description: description.trim() || undefined,
       frequency,
       targetCount,
@@ -360,7 +381,8 @@ export function QuickAddHabitSheet({
         accentColor={accentColor}
         onSubmit={handleSubmit}
         submitting={isSubmitting}
-        submitDisabled={!name.trim()}
+        submitDisabled={!hasName}
+        onSettled={() => setPickersReady(true)}
         field={
           <>
             <XStack gap="$2" items="center">
@@ -385,8 +407,8 @@ export function QuickAddHabitSheet({
               <Input
                 flex={1}
                 ref={nameRef as never}
-                value={name}
-                onChangeText={setName}
+                defaultValue=""
+                onChangeText={handleNameChange}
                 placeholder="e.g. Read for 30 minutes"
                 // Return creates the habit (Todoist-style quick capture) —
                 // the keyboard's own action key is the most reachable submit
@@ -445,61 +467,71 @@ export function QuickAddHabitSheet({
         }
       />
 
-      <MediaPickerSheet
-        open={iconOpen}
-        onClose={() => {
-          setIconOpen(false);
-          refocus();
-        }}
-        tabs={["emoji", "icon"]}
-        value={parseMediaIcon(icon)}
-        onChange={handlePickIcon}
-      />
-      <FrequencyPickerSheet
-        open={freqOpen}
-        onOpenChange={(o) => {
-          setFreqOpen(o);
-          if (!o) refocus();
-        }}
-        frequency={frequency}
-        setFrequency={setFrequency}
-        scheduledDays={scheduledDays}
-        setScheduledDays={setScheduledDays}
-        weeklyTarget={weeklyTarget}
-        setWeeklyTarget={setWeeklyTarget}
-      />
-      <TargetPickerSheet
-        open={targetOpen}
-        onOpenChange={(o) => {
-          setTargetOpen(o);
-          if (!o) refocus();
-        }}
-        frequency={frequency}
-        targetCount={targetCount}
-        setTargetCount={setTargetCount}
-        unit={unit}
-        setUnit={setUnit}
-      />
-      <ColorPickerSheet
-        open={colorOpen}
-        onOpenChange={(o) => {
-          setColorOpen(o);
-          if (!o) refocus();
-        }}
-        color={color}
-        setColor={setColor}
-      />
-      <PillPickerSheet
-        open={groupOpen}
-        onOpenChange={(o) => {
-          setGroupOpen(o);
-          if (!o) refocus();
-        }}
-        title="Group"
-        options={groupOptions}
-        value={groupId ?? NO_GROUP_VALUE}
-        onSelect={(v) => setGroupId(v === NO_GROUP_VALUE ? null : v)}
-      />
+      {pickersReady || iconOpen ? (
+        <MediaPickerSheet
+          open={iconOpen}
+          onClose={() => {
+            setIconOpen(false);
+            refocus();
+          }}
+          tabs={["emoji", "icon"]}
+          value={parseMediaIcon(icon)}
+          onChange={handlePickIcon}
+        />
+      ) : null}
+      {pickersReady || freqOpen ? (
+        <FrequencyPickerSheet
+          open={freqOpen}
+          onOpenChange={(o) => {
+            setFreqOpen(o);
+            if (!o) refocus();
+          }}
+          frequency={frequency}
+          setFrequency={setFrequency}
+          scheduledDays={scheduledDays}
+          setScheduledDays={setScheduledDays}
+          weeklyTarget={weeklyTarget}
+          setWeeklyTarget={setWeeklyTarget}
+        />
+      ) : null}
+      {pickersReady || targetOpen ? (
+        <TargetPickerSheet
+          open={targetOpen}
+          onOpenChange={(o) => {
+            setTargetOpen(o);
+            if (!o) refocus();
+          }}
+          frequency={frequency}
+          targetCount={targetCount}
+          setTargetCount={setTargetCount}
+          unit={unit}
+          setUnit={setUnit}
+        />
+      ) : null}
+      {pickersReady || colorOpen ? (
+        <ColorPickerSheet
+          open={colorOpen}
+          onOpenChange={(o) => {
+            setColorOpen(o);
+            if (!o) refocus();
+          }}
+          color={color}
+          setColor={setColor}
+        />
+      ) : null}
+      {pickersReady || groupOpen ? (
+        <PillPickerSheet
+          open={groupOpen}
+          onOpenChange={(o) => {
+            setGroupOpen(o);
+            if (!o) refocus();
+          }}
+          title="Group"
+          options={groupOptions}
+          value={groupId ?? NO_GROUP_VALUE}
+          onSelect={(v) => setGroupId(v === NO_GROUP_VALUE ? null : v)}
+        />
+      ) : null}
     </>
   );
 }
