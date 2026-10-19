@@ -138,11 +138,32 @@ echo "Building Tauri app for ${TARGET}..."
 ( cd "${REPO_ROOT}/apps/desktop" && bun run tauri build --target "${TARGET}" )
 
 # ---------------------------------------------------------------------------
+# Notarize + staple the DMG (macOS, Developer ID only). Tauri notarizes and
+# staples the .app, but the DMG that wraps it is only signed — Gatekeeper
+# assesses a downloaded disk image as "Unnotarized Developer ID" and can warn
+# on open. notarytool accepts the .dmg directly; stapling it means the check
+# also passes offline. Skipped when the Apple credentials are not set
+# (ad-hoc build) or no DMG was produced.
+# ---------------------------------------------------------------------------
+BUNDLE_DIR="${REPO_ROOT}/apps/desktop/src-tauri/target/${TARGET}/release/bundle"
+if [[ -n "${APPLE_ID:-}" && -n "${APPLE_PASSWORD:-}" && -n "${APPLE_TEAM_ID:-}" ]]; then
+  DMG_TO_NOTARIZE="$(find "${BUNDLE_DIR}/dmg" -maxdepth 1 -name "*.dmg" 2>/dev/null | head -1)"
+  if [[ -n "${DMG_TO_NOTARIZE}" ]]; then
+    echo ""
+    echo "Notarizing DMG: ${DMG_TO_NOTARIZE}"
+    xcrun notarytool submit "${DMG_TO_NOTARIZE}" \
+      --apple-id "${APPLE_ID}" --team-id "${APPLE_TEAM_ID}" \
+      --password "${APPLE_PASSWORD}" --wait
+    xcrun stapler staple "${DMG_TO_NOTARIZE}"
+    spctl -a -vv -t open --context context:primary-signature "${DMG_TO_NOTARIZE}"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
 # Stage artifacts in the layout publish-desktop.sh expects:
 #   out/updater/<target>/*.app.tar.gz + .sig (or .AppImage / -setup.exe + .sig)
 #   out/installer/<target>/*.dmg | *.deb | *-setup.exe
 # ---------------------------------------------------------------------------
-BUNDLE_DIR="${REPO_ROOT}/apps/desktop/src-tauri/target/${TARGET}/release/bundle"
 STAGE_ROOT="${REPO_ROOT}/out/release-${VERSION}"
 UPDATER_STAGE="${STAGE_ROOT}/updater/${TARGET}"
 INSTALLER_STAGE="${STAGE_ROOT}/installer/${TARGET}"

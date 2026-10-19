@@ -2,7 +2,7 @@
   "expo": {
     "name": "Meridian",
     "slug": "meridian-mobile",
-    "version": "0.0.1",
+    "version": "1.0.1",
     "orientation": "portrait",
     "platforms": ["ios", "android"],
     "icon": "./assets/icon.png",
