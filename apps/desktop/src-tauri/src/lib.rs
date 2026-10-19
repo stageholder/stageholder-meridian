@@ -21,7 +21,6 @@ pub fn run() {
         // `meridian://auth/callback`, which the webview picks up via the JS
         // `onOpenUrl`/`getCurrent` API (`apps/pwa/src/lib/desktop-auth.ts`).
         .plugin(tauri_plugin_deep_link::init())
-        .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(
             tauri_plugin_log::Builder::new()
                 .targets([

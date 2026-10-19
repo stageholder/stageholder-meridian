@@ -1,6 +1,6 @@
 [package]
 name = "desktop"
-version = "0.2.6"
+version = "0.2.7"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
@@ -33,7 +33,6 @@ tauri-plugin-process = "2"
 tauri-plugin-log = "2"
 tauri-plugin-store = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
-tauri-plugin-window-state = "2"
 log = "0.4"
 tauri-plugin-deep-link = "2"
 
