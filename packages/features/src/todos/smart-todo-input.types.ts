@@ -6,8 +6,7 @@ import type { SmartLocale } from "@repo/core/todos/date-parse";
 
 export interface SmartTodoInputHandle {
   focus: () => void;
-  /** Drop focus (and the soft keyboard it holds). On native the field is a
-   *  WebView editor, which RN's `Keyboard.dismiss()` cannot blur. */
+  /** Drop focus (and the soft keyboard it holds). */
   blur: () => void;
 }
 

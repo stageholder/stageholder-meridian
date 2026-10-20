@@ -306,7 +306,12 @@ export function QuickAddHabitSheet({
   const [groupOpen, setGroupOpen] = useState(false);
 
   // Reset by STATE on each fresh open (open false→true) — no remount key.
-  const wasOpen = useRef(open);
+  // Starts FALSE, not `open`: hosts mount this sheet in the same commit as
+  // their first open (`useMountOnOpen` — Today palette, habits/todos tabs), so
+  // the first render already has `open === true`. Seeding the ref with `open`
+  // skipped this effect on that first open — no reset, and NO autofocus (the
+  // keyboard never came up until the second open; 2026-10-20).
+  const wasOpen = useRef(false);
   useEffect(() => {
     if (open && !wasOpen.current) {
       nameText.current = "";

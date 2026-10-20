@@ -43,6 +43,10 @@ export interface IapOffering {
   availablePackages: IapPackage[];
 }
 
+// A `test_…` (RevenueCat Test Store) key in a Release build crashes the
+// native SDK on configure() by design. That is a CONFIG error, caught at
+// build time by scripts/check-revenuecat-env.mjs (EAS pre-install hook) — not
+// masked here. Test Store keys belong only to dev-client (Debug) builds.
 function apiKey(): string | undefined {
   return Platform.OS === "ios"
     ? process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY
@@ -183,8 +187,10 @@ export function storeManagementUrl(): string {
 // Apple guideline 3.1.2 requires functional Terms of Use (EULA) AND Privacy
 // Policy links on any screen offering subscriptions; Google Play likewise
 // expects an accessible privacy policy. Shown on the paywall footer.
-// TODO(legal): confirm these are the live URLs (placeholders on the product
-// domain) before store submission.
-export const TERMS_OF_USE_URL = "https://meridian.stageholder.com/legal/terms";
-export const PRIVACY_POLICY_URL =
-  "https://meridian.stageholder.com/legal/privacy";
+//
+// These point at the Stageholder Hub's legal pages: they are the suite-wide
+// terms/privacy (they name Meridian explicitly) and they are LIVE. The
+// Meridian web app has no /legal routes of its own, so a product-domain URL
+// would 404 during App Review.
+export const TERMS_OF_USE_URL = "https://hub.stageholder.com/legal/terms";
+export const PRIVACY_POLICY_URL = "https://hub.stageholder.com/legal/privacy";

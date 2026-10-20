@@ -1,0 +1,44 @@
+diff --git a/dist/esm/components/Sheet.mjs b/dist/esm/components/Sheet.mjs
+--- a/dist/esm/components/Sheet.mjs
++++ b/dist/esm/components/Sheet.mjs
+@@ -440,10 +440,17 @@ function SheetLazyBody({
+     children: ready ? children : fallback
+   }, ready ? "ready" : "pending");
+ }
+-function SheetOverlay(props) {
++function SheetOverlay({ transition = "medium", enterStyle, exitStyle, ...props }) {
+   const nativeMode = useContext(NativeSheetModeContext);
+   if (nativeMode) return null;
++  // PATCH (meridian, 2026-10-20): backdrop FADE. Since @tamagui/sheet 2.0 the
++  // overlay is a presence child mounted only while open; without a transition
++  // + enter/exit opacity the dim pops in and vanishes. Mirrors the kit source
++  // fix pending in stageholder-ui (Sheet.tsx SheetOverlay); drop on 0.4.0-alpha.3.
+   return /* @__PURE__ */jsx(StyledOverlay, {
++    transition,
++    enterStyle: { opacity: 0, ...enterStyle },
++    exitStyle: { opacity: 0, ...exitStyle },
+     ...props
+   });
+ }
+diff --git a/dist/esm/components/Sheet.native.js b/dist/esm/components/Sheet.native.js
+--- a/dist/esm/components/Sheet.native.js
++++ b/dist/esm/components/Sheet.native.js
+@@ -500,10 +500,17 @@ function SheetLazyBody(param) {
+   // (cold first open only — sticky ready never flips back).
+   ready ? "ready" : "pending");
+ }
+-function SheetOverlay(props) {
++function SheetOverlay({ transition = "medium", enterStyle, exitStyle, ...props }) {
+   var nativeMode = useContext(NativeSheetModeContext);
+   if (nativeMode) return null;
++  // PATCH (meridian, 2026-10-20): backdrop FADE. Since @tamagui/sheet 2.0 the
++  // overlay is a presence child mounted only while open; without a transition
++  // + enter/exit opacity the dim pops in and vanishes. Mirrors the kit source
++  // fix pending in stageholder-ui (Sheet.tsx SheetOverlay); drop on 0.4.0-alpha.3.
+   return /* @__PURE__ */_jsx(StyledOverlay, {
++    transition,
++    enterStyle: { opacity: 0, ...enterStyle },
++    exitStyle: { opacity: 0, ...exitStyle },
+     ...props
+   });
+ }

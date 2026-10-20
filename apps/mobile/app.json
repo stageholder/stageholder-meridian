@@ -48,7 +48,8 @@
           "backgroundColor": "#001f3f"
         }
       ],
-      "expo-status-bar"
+      "expo-status-bar",
+      "./plugins/with-ios-deployment-target"
     ],
     "experiments": {
       "typedRoutes": true

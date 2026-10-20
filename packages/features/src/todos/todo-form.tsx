@@ -7,6 +7,7 @@ import {
   type SmartParseResult,
 } from "@repo/core/todos/smart-parse";
 import { resolveSmartLocale } from "@repo/core/todos/date-parse";
+import { accentButtonPressProps } from "../_internal/accent-button-press";
 import { useSheetAutoFocus } from "../_internal/use-sheet-autofocus";
 import { SmartTodoInput } from "./smart-todo-input";
 import type { SmartTodoInputHandle } from "./smart-todo-input.types";
@@ -435,12 +436,7 @@ export function TodoForm({
               borderWidth={0}
               color={"#ffffff" as never}
               style={{ backgroundColor: accentColor }}
-              hoverStyle={
-                { backgroundColor: accentColor, opacity: 0.9 } as never
-              }
-              pressStyle={
-                { backgroundColor: accentColor, opacity: 0.82 } as never
-              }
+              {...accentButtonPressProps(accentColor)}
               disabled={!title.trim() || isSubmitting}
               loading={isSubmitting}
               loadingText={submittingLabel}

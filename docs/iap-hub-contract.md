@@ -73,7 +73,14 @@ A user could hold a Polar sub AND a store sub for the same product/org pair.
   - Web upgrade page: when the active claim is store-billed, point to the
     phone's subscription settings instead of Polar checkout.
 
-## 5. Operational setup (blocked on developer-program registration)
+## 5. Operational setup
+
+Status (2026-10-20): the Hub side is built and proven end to end over HTTP
+(`stageholder-identity/apps/api/test/e2e/revenuecat.e2e.ts` drives every
+lifecycle event below against a real Hub and asserts the claim). App Store
+Connect + TestFlight exist. Still outstanding: the Hub `store_products` rows
+in production (§5.0), the RevenueCat webhook pointed at production, and one
+sandbox purchase on a device to prove the store → RevenueCat leg.
 
 ### 5.0 Canonical product catalog (authoritative — all three layers must match)
 
@@ -81,12 +88,17 @@ This is the single source of truth for store product IDs. The **same**
 identifiers must be used in (a) App Store Connect + Play Console, (b) the
 RevenueCat "default" Offering packages, and (c) the Hub `store_products`
 mapping table (§2). Meridian sells one fixed-price paid plan
-(`meridian-unlimited`, product slug `meridian`) on a personal org — see §6.
+(`unlimited`, product slug `meridian`) on a personal org — see §6.
 
-| Store product ID             | Platform(s)      | Cycle   | → plan slug          | → product slug | RC package    |
-| ---------------------------- | ---------------- | ------- | -------------------- | -------------- | ------------- |
-| `meridian_unlimited_monthly` | app_store + play | monthly | `meridian-unlimited` | `meridian`     | `$rc_monthly` |
-| `meridian_unlimited_yearly`  | app_store + play | yearly  | `meridian-unlimited` | `meridian`     | `$rc_annual`  |
+> The Hub plan slug is `unlimited` (not `meridian-unlimited`): plan slugs
+> are scoped per product in the Hub catalog, so the product name is not
+> repeated. An earlier revision of this table carried the wrong slug; a
+> mapping on a slug that does not exist makes the webhook 503 forever.
+
+| Store product ID             | Platform(s)      | Cycle   | → plan slug | → product slug | RC package    |
+| ---------------------------- | ---------------- | ------- | ----------- | -------------- | ------------- |
+| `meridian_unlimited_monthly` | app_store + play | monthly | `unlimited` | `meridian`     | `$rc_monthly` |
+| `meridian_unlimited_yearly`  | app_store + play | yearly  | `unlimited` | `meridian`     | `$rc_annual`  |
 
 Notes:
 
@@ -96,11 +108,13 @@ Notes:
   (the `store_products` row still carries `platform`, but the ID matches).
 - On Play, the subscription has a single base plan per cycle; name the base
   plan after the cycle (`monthly` / `yearly`) under the subscription ID above.
-- Hub `store_products` seed rows (one per platform × product):
-  - `(meridian_unlimited_monthly, app_store, meridian-unlimited, meridian)`
-  - `(meridian_unlimited_monthly, play,      meridian-unlimited, meridian)`
-  - `(meridian_unlimited_yearly,  app_store, meridian-unlimited, meridian)`
-  - `(meridian_unlimited_yearly,  play,      meridian-unlimited, meridian)`
+- Hub `store_products` rows (one per platform × product). Entered in the Hub
+  admin: Products → Meridian → Plans & Pricing → open the **Unlimited** plan →
+  "Store products" section (no deploy, no seed):
+  - `(meridian_unlimited_monthly, app_store, unlimited,          meridian)`
+  - `(meridian_unlimited_monthly, play,      unlimited,          meridian)`
+  - `(meridian_unlimited_yearly,  app_store, unlimited,          meridian)`
+  - `(meridian_unlimited_yearly,  play,      unlimited,          meridian)`
 - The client never hardcodes these — RevenueCat's Offering drives the paywall
   list and `priceString`. This table exists so the store config, RC offering,
   and Hub mapping don't drift.
@@ -118,6 +132,14 @@ Notes:
    - `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY` (public Google key, `goog_…`)
      These are PUBLIC client keys (safe to inline); their presence is the
      feature flag — no key, no IAP UI.
+   - **Test Store keys (`test_…`) only in the EAS `development` environment.**
+     `production` and `preview` compile Release, and purchases-ios 5.x
+     `fatalError`s on a Test Store key in a Release build (the TestFlight
+     "closes on launch" symptom, 2026-10-19). The EAS pre-install hook
+     `apps/mobile/scripts/check-revenuecat-env.mjs` fails any non-dev-client
+     build that carries a `test_` key, so the mistake is caught before a
+     binary exists. TestFlight / internal builds test against Apple's sandbox
+     with the real `appl_` key.
 5. Rebuild natives: `bun install && expo prebuild --clean` + dev build
    (`react-native-purchases` adds a pod/gradle dep). Until then the lazy
    `require` in `lib/purchases.ts` keeps existing builds working.

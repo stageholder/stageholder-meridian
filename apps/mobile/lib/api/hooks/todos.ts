@@ -79,14 +79,20 @@ export function useTodos(filters?: { listId?: string }) {
   });
 }
 
-export function useTodo(id: string | null | undefined) {
+export function useTodo(
+  id: string | null | undefined,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: id ? todoKeys.detail(id) : todoKeys.detail("disabled"),
     queryFn: async () => {
       const { data } = await apiClient.get<Todo>(`/todos/${id}`);
       return data;
     },
-    enabled: !!id,
+    // `enabled: false` turns this into a pure CACHE MIRROR — the detail sheet
+    // seeds the key from the tapped row and reads every optimistic patch
+    // through it (see onMutate below), with no network round-trip per open.
+    enabled: !!id && options?.enabled !== false,
   });
 }
 
@@ -212,6 +218,9 @@ export function useCreateTodo() {
       // denominator. Write the server row straight in rather than refetching
       // the whole aggregate — we already hold the authoritative record.
       writeDashboardTodo(qc, server);
+      qc.setQueryData<Todo>(todoKeys.detail(server.id), (t) =>
+        t ? server : t,
+      );
     },
   });
 }
@@ -269,6 +278,12 @@ export function useUpdateTodo() {
               return applyPatch(t);
             })
           : list,
+      );
+      // The detail key (todo detail sheet) is a mirror of the same row: patch
+      // it in the same tick so the sheet flips with the list. No-op when the
+      // sheet never seeded it.
+      qc.setQueryData<Todo>(todoKeys.detail(id), (t) =>
+        t ? applyPatch(t) : t,
       );
       // Mirror into /dashboard/today so a checkbox tap IN the Today widget
       // flips on the tap frame. Without this the aggregate has no edge from

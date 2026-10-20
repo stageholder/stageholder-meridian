@@ -532,3 +532,22 @@ Meta+A` does not select-all — use `page eval` `el.select()` + `keyboard type`
   `Bash(jevb *)` allow rule — no pipes, `grep`, `sleep`.
 - Follow-ups: rotate the Hub admin password (it was pasted into the chat);
   the catalog file in `docs/billing/` still carries the $4.99 prices.
+
+### 2026-10-20 — habit status control re-sized to the Check In button (visual check)
+
+Driven with `jevb` (session `mer-hab`) on the local stack, signed in as the
+E2E account, to confirm that the shared `HabitStatusPill`
+(`packages/features/src/habits/habit-status-pill.tsx`) renders the same on the
+PWA as on the simulator. Created `JEVB Design habit`, checked in on the card
+view, switched to the list view, undid, then deleted the habit.
+
+- Card view: "Check In" (kit Button `sm`) → "Complete" pill occupy the same
+  32 px box with the same radius and label size; the action row no longer
+  re-flows on check-in. Burst + undo unchanged.
+- List view: "Complete" → "Done" likewise in place next to the week strip.
+- Background: the native habit check-in had been dead since the kit
+  0.4.0-alpha.2 bump (kit Button on gesture-handler + a Tamagui `pressStyle`
+  on it); fixed app-side with `accentButtonPressProps()` (web-only styles).
+  Not reproducible on the PWA, which is why this entry is visual only.
+- Regression net: `apps/mobile/e2e/flows/habits.yaml` (Maestro) covers the
+  native tap; the Playwright habits spec covers the PWA check-in.

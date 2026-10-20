@@ -27,6 +27,14 @@ export {
 export { QuickAddTodoSheet } from "./quick-add-todo-sheet";
 export type { QuickAddTodoSheetProps } from "./quick-add-todo-sheet.types";
 
+// Native todo DETAIL sheet (per-field instant commit) — null stub on web; the
+// PWA keeps its own TodoDetailDialog.
+export { TodoDetailSheet } from "./todo-detail-sheet";
+export type {
+  TodoDetailSheetProps,
+  TodoDetailPatch,
+} from "./todo-detail-sheet.types";
+
 // Cross-platform smart quick-add field (web overlay pills / native chips) —
 // resolves `.tsx` on web and `.native.tsx` on RN via the bundler.
 export { SmartTodoInput } from "./smart-todo-input";

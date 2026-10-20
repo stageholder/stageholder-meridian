@@ -16,7 +16,7 @@ import {
   type SmartParseResult,
 } from "@repo/core/todos/smart-parse";
 import { resolveSmartLocale } from "@repo/core/todos/date-parse";
-import { Text, TextArea, View } from "@stageholder/ui";
+import { TextArea, View } from "@stageholder/ui";
 import { CalendarSheet } from "@stageholder/ui/pickers";
 import {
   QuickAddSheet,
@@ -60,8 +60,6 @@ function Dot({ tint }: { tint: string }) {
 // 16px; line-height: 22px`) in smart-todo-input.native.tsx: the sheet is
 // `fit`-sized, so the stand-in has to occupy exactly the editor's box or the
 // frame would jump when the editor swaps in.
-const TITLE_FIELD_HEIGHT = 64;
-
 /** Parse a `yyyy-MM-dd` string as the LOCAL day (Calendar speaks `Date`). */
 function parseLocalDay(input: string): Date {
   return new Date(input + "T00:00:00");
@@ -105,19 +103,24 @@ export function QuickAddTodoSheet({
   const [doOpen, setDoOpen] = useState(false);
   const [dueOpen, setDueOpen] = useState(false);
 
-  // OPEN CHOREOGRAPHY: the title is a WebView editor and the pickers are four
-  // sibling sheets; mounting all of that in the create sheet's open commit left
-  // the screen dimmed for ~2.7 s before the sheet slid up on the first open
-  // (measured, Android release). The sheet opens on light chrome — a same-size
-  // stand-in where the editor goes + the pill row — and the editor and pickers
+  // OPEN CHOREOGRAPHY: the title is a native TextInput (light — it mounts in
+  // the open commit) but the pickers are four SIBLING sheets; mounting those
+  // in the create sheet's open commit left the screen dimmed for ~2.7 s before
+  // the sheet slid up on the first open (measured, Android release). They
   // mount once the kit reports the slide has SETTLED (FormSheet `onSettled`,
-  // kit 0.4.0-alpha.2: spring complete or its 350 ms cap). Latched: a reopen
-  // renders everything immediately ('first-open' semantics). The editor
-  // autofocuses when its bridge is ready, so the keyboard still arrives on its own.
+  // kit 0.4.0-alpha.2: spring complete or its 350 ms cap), and the title is
+  // focused from that same signal so the keyboard rises the moment the sheet
+  // lands — never from a timer. Latched: a reopen renders everything at once.
+  // (The field used to be a WebView editor gated behind a stand-in here; see
+  // smart-todo-input.native.tsx for why that was replaced, 2026-10-20.)
   const [heavyReady, setHeavyReady] = useState(false);
 
   // Reset by STATE on each fresh open (open false→true) — no remount key.
-  const wasOpen = useRef(open);
+  // Starts FALSE, not `open`: hosts mount this sheet in the same commit as
+  // their first open (`useMountOnOpen` — Today palette, habits/todos tabs), so
+  // the first render already has `open === true`. Seeding the ref with `open`
+  // skipped this effect on that first open (no reset; 2026-10-20).
+  const wasOpen = useRef(false);
   useEffect(() => {
     if (open && !wasOpen.current) {
       const d = makeTodoFormDefaults();
@@ -128,15 +131,10 @@ export function QuickAddTodoSheet({
       setDoDate(d.doDate ?? "");
       setDueDate(defaultDueDate ?? "");
       setListId(defaultListId);
-      // Reopen: the editor is already mounted, focus it once the slide lands.
-      // First open: the ref is still null here — the editor mounts after the
-      // beat with `autoFocus`, which focuses it as soon as it initialises.
-      setTimeout(() => titleRef.current?.focus(), 350);
     } else if (!open && wasOpen.current) {
-      // Closing (submit, swipe-down, tap-out): the title is a WebView editor
-      // that stays mounted after the first open, so nothing blurs it on close
-      // the way a native TextInput would unmount — on Android the keyboard
-      // stayed up over the list behind the closed sheet and ate the next touch.
+      // Closing (submit, swipe-down, tap-out): the field stays mounted after
+      // the first open, so blur it explicitly — otherwise the keyboard stayed
+      // up over the list behind the closed sheet and ate the next touch.
       titleRef.current?.blur();
     }
     wasOpen.current = open;
@@ -198,43 +196,29 @@ export function QuickAddTodoSheet({
         onSubmit={handleSubmit}
         submitting={isSubmitting}
         submitDisabled={!title.trim()}
-        onSettled={() => setHeavyReady(true)}
+        onSettled={() => {
+          setHeavyReady(true);
+          // Keyboard the moment the slide lands (kit's real settle signal).
+          titleRef.current?.focus();
+        }}
         field={
           <>
-            {/* testID wrapper: the field is a WebView editor, so its
-                placeholder isn't in the native accessibility tree — E2E
-                (Maestro) taps this container to focus it. */}
+            {/* testID wrapper kept for the E2E flows (Maestro taps it). */}
             <View testID="quick-add-todo-title">
-              {heavyReady ? (
-                <SmartTodoInput
-                  ref={titleRef}
-                  value={title}
-                  onValueChange={setTitle}
-                  lists={listRefs}
-                  locale={smartLocale}
-                  parse
-                  // The field highlights recognized phrases inline (rounded pills,
-                  // Todoist-style); `onParse` additionally lifts them into the pill
-                  // row below so a manual pick and a typed token stay in sync.
-                  onParse={applyParse}
-                  onSubmit={handleSubmit}
-                  placeholder="What needs to be done?"
-                  autoFocus
-                />
-              ) : (
-                // Stand-in for the editor's box during the slide: same height,
-                // same text metrics/padding as the WebView's placeholder.
-                <View height={TITLE_FIELD_HEIGHT} px={12} pt={10}>
-                  <Text
-                    fontSize={16}
-                    lineHeight={22}
-                    color="$placeholderColor"
-                    numberOfLines={1}
-                  >
-                    What needs to be done?
-                  </Text>
-                </View>
-              )}
+              <SmartTodoInput
+                ref={titleRef}
+                value={title}
+                onValueChange={setTitle}
+                lists={listRefs}
+                locale={smartLocale}
+                parse
+                // The field highlights recognized phrases inline; `onParse`
+                // additionally lifts them into the pill row below so a manual
+                // pick and a typed token stay in sync.
+                onParse={applyParse}
+                onSubmit={handleSubmit}
+                placeholder="What needs to be done?"
+              />
             </View>
             {noteOpen ? (
               <TextArea

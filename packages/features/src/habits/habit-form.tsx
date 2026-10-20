@@ -26,6 +26,7 @@ import {
   useSheetAutoFocus,
   type Focusable,
 } from "../_internal/use-sheet-autofocus";
+import { accentButtonPressProps } from "../_internal/accent-button-press";
 import { encodeMediaIcon, parseMediaIcon } from "./icon-value";
 
 /**
@@ -520,12 +521,7 @@ export function HabitForm({
               borderWidth={0}
               color={"#ffffff" as never}
               style={{ backgroundColor: accentColor }}
-              hoverStyle={
-                { backgroundColor: accentColor, opacity: 0.9 } as never
-              }
-              pressStyle={
-                { backgroundColor: accentColor, opacity: 0.82 } as never
-              }
+              {...accentButtonPressProps(accentColor)}
               disabled={!name.trim() || isSubmitting}
               loading={isSubmitting}
               loadingText={submittingLabel}

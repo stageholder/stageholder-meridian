@@ -68,7 +68,7 @@ import {
 } from "@/lib/api";
 import { useDashboardToday } from "@/lib/api/hooks/dashboard";
 import { HabitCheckInRow } from "@/components/habit-check-in-row";
-import { EditTodoDialog } from "@/components/edit-todo-dialog";
+import { TodoDetailSheet } from "@/components/todo-detail-sheet";
 import { useDayActivityCounts } from "@/lib/api/hooks/calendar";
 import { IGNITION } from "@/lib/ignition-palette";
 import { useLevelUp } from "@/lib/use-level-up";
@@ -187,6 +187,11 @@ export default function TodayScreen() {
   const [refreshing, setRefreshing] = useState(false);
   // Command palette (PWA ⌘K parity) — opened from the header Search button.
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // Host mounted on first open (the palette drives its OWN prop-driven kit
+  // Sheet — see components/command-palette.tsx). NOTE: do not host the kit
+  // `CommandMenu` here behind this gate: its Dialog→Adapt→Sheet needs the
+  // `<Adapt.Contents/>` portal host mounted BEFORE the first open, or the
+  // first tap shows a dimmed screen with an empty frame (2026-10-20).
   const paletteHost = useMountOnOpen(paletteOpen);
 
   // PERF: gate for the below-the-fold trend charts — the four SVG chart
@@ -609,7 +614,7 @@ export default function TodayScreen() {
       {/* Tap a todo in the widget → shared edit sheet (same as /todos). */}
       {/* Host mounted on first open only (use-mount-on-open). */}
       {editTodoHost ? (
-        <EditTodoDialog
+        <TodoDetailSheet
           open={editTodoOpen}
           onOpenChange={setEditTodoOpen}
           todo={editingTodo}

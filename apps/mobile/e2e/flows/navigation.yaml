@@ -4,6 +4,18 @@ appId: com.stageholder.meridian
 name: navigation
 ---
 - runFlow: ../subflows/launch-signed-in.yaml
+# Command palette FIRST open right after launch (regression: the palette host
+# used to mount in the same commit as its first open, so the Adapt→Sheet
+# portal host missed the teleport and the first tap showed a dimmed screen
+# with an empty frame — second tap fine). The 4 s cap is the whole point.
+- tapOn: "Search"
+- extendedWaitUntil:
+    visible: "Search commands…"
+    timeout: 4000
+- assertVisible: "Navigation"
+- tapOn: "Today"
+- assertVisible:
+    id: "today-greeting"
 # Today → Calendar → back to Today
 - tapOn: "Open calendar"
 - assertVisible: "Calendar"

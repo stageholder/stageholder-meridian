@@ -53,6 +53,7 @@ import { useUser } from "@stageholder/sdk/react-native";
 import { SlidersHorizontal } from "@tamagui/lucide-icons-2/icons/SlidersHorizontal";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { CreateFab } from "@/components/create-fab";
@@ -203,10 +204,18 @@ function JournalScreen() {
     return (
       <YStack flex={1} bg="$background">
         <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-          <PassphrasePrompt
-            onUnlock={handleUnlock}
-            onForgot={() => setRecoverOpen(true)}
-          />
+          {/* The prompt centres itself in whatever height it gets, so padding
+              the bottom by the keyboard height keeps the passphrase field
+              (and Unlock) above the keys — the field was hidden behind the
+              keyboard on autofocus before (2026-10-20). keyboard-controller's
+              view tracks the keyboard frame on the UI thread (no RN
+              KeyboardAvoidingView lag); the KeyboardProvider is in _layout. */}
+          <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+            <PassphrasePrompt
+              onUnlock={handleUnlock}
+              onForgot={() => setRecoverOpen(true)}
+            />
+          </KeyboardAvoidingView>
         </SafeAreaView>
 
         {/* Recovery — redeem saved codes + set a new passphrase, then the

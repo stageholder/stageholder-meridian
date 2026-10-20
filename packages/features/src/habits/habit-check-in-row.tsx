@@ -34,14 +34,14 @@ import { Target } from "@tamagui/lucide-icons-2/icons/Target";
 import { X } from "@tamagui/lucide-icons-2/icons/X";
 import type { Habit } from "@repo/core/types";
 
+import { accentButtonPressProps } from "../_internal/accent-button-press";
+import { HabitStatusPill } from "./habit-status-pill";
 import { parseMediaIcon } from "./icon-value";
 
 // Fixed semantic colors for the status icons — lucide-icons-2 reads its own
 // `color` (no theme cascade) and must resolve on native, so these are raw hex.
 // The pill BACKGROUNDS use kit tokens ($successMuted etc.), which do adapt.
-const SUCCESS = "#16a34a";
 const DESTRUCTIVE = "#ef4444";
-const MUTED = "#71717a";
 
 export interface HabitCheckInRowProps {
   habit: Habit;
@@ -217,27 +217,15 @@ export function HabitCheckInRow({
               {controlOverlay}
               {renderCompletionEffect?.(completing)}
               {isComplete ? (
-                <StatusPill
-                  bg="$successMuted"
-                  color="$success"
-                  icon={<Check size={13} color={SUCCESS} />}
+                <HabitStatusPill
+                  status="complete"
                   label="Done"
-                  scale={bouncing ? 1.12 : 1}
+                  bouncing={bouncing}
                 />
               ) : isSkipped ? (
-                <StatusPill
-                  bg="$muted"
-                  color="$mutedForeground"
-                  icon={<SkipForward size={12} color={MUTED} />}
-                  label="Skipped"
-                />
+                <HabitStatusPill status="skipped" label="Skipped" />
               ) : isFailed ? (
-                <StatusPill
-                  bg="$destructiveMuted"
-                  color="$destructive"
-                  icon={<X size={12} color={DESTRUCTIVE} />}
-                  label="Failed"
-                />
+                <HabitStatusPill status="failed" label="Failed" />
               ) : (
                 <Button
                   size="sm"
@@ -245,12 +233,12 @@ export function HabitCheckInRow({
                   color={"#ffffff" as never}
                   icon={<Check size={13} color="#ffffff" />}
                   style={{ backgroundColor: accentColor }}
-                  pressStyle={
-                    { backgroundColor: accentColor, opacity: 0.85 } as never
-                  }
-                  // See StatusPill — transition makes the bounce animate.
+                  {...accentButtonPressProps(accentColor)}
+                  // Enter pop (scale only — an explicit opacity would override the
+                  // kit's disabled dim) + the press bounce; both need `transition`.
+                  enterStyle={{ scale: 0.9 }}
                   transition="quick"
-                  scale={bouncing ? 1.12 : 1}
+                  scale={bouncing ? 1.1 : 1}
                   disabled={disabled}
                   onPress={handleCheckIn}
                 >
@@ -320,41 +308,6 @@ export function HabitCheckInRow({
 
         {trailingSlot}
       </XStack>
-    </XStack>
-  );
-}
-
-function StatusPill({
-  bg,
-  color,
-  icon,
-  label,
-  scale = 1,
-}: {
-  bg: string;
-  color: string;
-  icon: ReactNode;
-  label: string;
-  scale?: number;
-}) {
-  return (
-    <XStack
-      items="center"
-      gap="$1.5"
-      rounded="$md"
-      px="$2.5"
-      py="$1.5"
-      bg={bg as never}
-      // `transition` makes the bounce (scale 1 → 1.08 → 1) actually ANIMATE —
-      // without it the scale flip snapped invisibly (the check-in "bounce"
-      // never played). User-triggered, one row at a time — cheap on native.
-      transition="quick"
-      scale={scale}
-    >
-      {icon}
-      <Text fontSize="$1" fontWeight="600" color={color as never}>
-        {label}
-      </Text>
     </XStack>
   );
 }

@@ -143,18 +143,28 @@ export function useJournal(id: string | null | undefined) {
       // Flat filtered lists cache Journal[]; the paginated cache (also under
       // lists()) is InfiniteData — the Array.isArray guard skips it here, and
       // it's searched separately below.
+      // CURRENT EPOCH ONLY. The list caches are keyed `[...prefix, epoch]`, and
+      // a prefix match returns every epoch still in the cache — including the
+      // list fetched while the journal was LOCKED (no DEK → the queryFn
+      // returned raw ciphertext), which outlives the unlock for gcTime and is
+      // iterated FIRST (insertion order). Seeding from it painted the encrypted
+      // blob in the reader for a beat before the real fetch replaced it (the
+      // "blinking encrypted journal" after unlock, 2026-10-20).
+      const isCurrentEpoch = (key: readonly unknown[]) =>
+        key[key.length - 1] === epoch;
       const flat = qc.getQueriesData<Journal[]>({
         queryKey: journalKeys.lists(),
       });
-      for (const [, list] of flat) {
-        if (!Array.isArray(list)) continue;
+      for (const [key, list] of flat) {
+        if (!isCurrentEpoch(key) || !Array.isArray(list)) continue;
         const hit = list.find((j) => j.id === id);
         if (hit) return hit;
       }
       const paged = qc.getQueriesData<{ pages: PaginatedJournals[] }>({
         queryKey: journalKeys.paginated(),
       });
-      for (const [, data] of paged) {
+      for (const [key, data] of paged) {
+        if (!isCurrentEpoch(key)) continue;
         for (const page of data?.pages ?? []) {
           const hit = page?.data?.find((j) => j.id === id);
           if (hit) return hit;

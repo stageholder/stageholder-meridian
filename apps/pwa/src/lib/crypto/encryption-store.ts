@@ -60,17 +60,29 @@ export const useEncryptionStore = create<EncryptionState>()((set, get) => ({
   init: (userSub: string | null) => {
     const { userSub: prev, dek } = get();
     if (prev === userSub) return;
-    // Sign-out, session loss or account switch: forget EVERYTHING of the
-    // previous user — the DEK, their wrapped key + salt, and the decrypted
-    // journal cache. (`lock()` used to be dead code: nothing called it, so a
-    // soft auth transition kept the old user's DEK and plaintext journals.)
-    if (prev !== null || dek) {
+    if (userSub === null) {
+      // Session loss / sign-out / a transient "no user yet" render: drop the
+      // DEK (and the decrypted cache) so nothing readable outlives the
+      // session — but KEEP `isSetup` + the wrapped key material. Clearing
+      // `isSetup` here made `isLocked` (= isSetup && !dek) read FALSE, so the
+      // EncryptionGate rendered its children and every journal query re-ran
+      // under the new epoch with no DEK, caching + painting raw ciphertext
+      // (the "encrypted journal" flash) until the gate remounted. With
+      // `isSetup` kept, the same transition shows the lock screen instead.
+      // `prev` is kept too, so a DIFFERENT account signing in next still
+      // trips the account-switch wipe below. (2026-10-20)
+      if (dek) get().lock();
+      return;
+    }
+    // Account switch without a full reload: forget EVERYTHING of the previous
+    // user — the DEK, their wrapped key + salt, and the decrypted journal
+    // cache — then load the new account's keys.
+    if (prev !== null) {
       get().lock();
       set({ isSetup: false, wrappedDek: null, salt: null });
     }
     set({ userSub });
-    // A different account signed in without a full reload: load ITS keys.
-    if (prev !== null && userSub !== null) void get().checkStatus();
+    if (prev !== null) void get().checkStatus();
   },
 
   checkStatus: async () => {

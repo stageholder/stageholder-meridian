@@ -22,6 +22,7 @@ import { MoodPicker } from "@stageholder/ui/pickers";
 import { Input as BareInput } from "tamagui";
 import { BLOCK_GUTTER } from "@repo/features/journal";
 import { useJournal, useDeleteJournal } from "@/lib/api/journals";
+import { warnIfCiphertext } from "@/lib/crypto/ciphertext-guard";
 import { useAutosave } from "@/lib/hooks/use-autosave";
 import type { JournalContent } from "@repo/core/types";
 
@@ -85,6 +86,7 @@ function JournalEntryPage() {
   // Initialize form state from fetched journal (once)
   useEffect(() => {
     if (journal && !initialized) {
+      warnIfCiphertext("entry-pane seed", journal);
       setTitle(journal.title);
       setContent(journal.content);
       setMood(journal.mood);

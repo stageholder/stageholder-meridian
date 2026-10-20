@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import { writeToClipboard } from "@repo/core/platform/clipboard";
-import { Button, Checkbox, Grid, Label, Text } from "@stageholder/ui";
+import { Button, Checkbox, Grid, Text, XStack } from "@stageholder/ui";
 import { Check } from "@tamagui/lucide-icons-2/icons/Check";
 import { Copy } from "@tamagui/lucide-icons-2/icons/Copy";
 
@@ -63,14 +63,30 @@ export function RecoveryCodesPanel({
       >
         {copied ? "Copied!" : "Copy to Clipboard"}
       </Button>
-      <Label flexDirection="row" items="center" gap="$2" size="$3">
-        <Checkbox checked={saved} onCheckedChange={(v) => setSaved(v === true)}>
+      {/* A plain row, NOT the kit `Label`: on native Tamagui's Label is a
+          Text, so a Checkbox nested in it rendered inline (misaligned) and
+          never received the tap (2026-10-20). The caption toggles the box
+          itself, which keeps the label-click affordance on every platform. */}
+      <XStack items="center" gap="$2">
+        <Checkbox
+          checked={saved}
+          onCheckedChange={(v) => setSaved(v === true)}
+          aria-label="I have saved these recovery codes"
+        >
           <Checkbox.Indicator>
             <Check size={12} />
           </Checkbox.Indicator>
         </Checkbox>
-        <Text>I have saved these recovery codes</Text>
-      </Label>
+        <Text
+          fontSize="$3"
+          fontWeight="500"
+          color="$color"
+          flex={1}
+          onPress={() => setSaved((v) => !v)}
+        >
+          I have saved these recovery codes
+        </Text>
+      </XStack>
       <Button onPress={onDone} disabled={!saved} width="100%">
         {doneLabel}
       </Button>

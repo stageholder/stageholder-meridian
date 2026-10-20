@@ -61,11 +61,17 @@ export function QuickAddSheet({
       {...(onSettled ? { onSettled } : {})}
       // No title/header — the field's placeholder carries the prompt. The create
       // action is a send button pinned bottom-right (iOS compose style). Reset is
-      // by state in the host. `pb` restores the breathing room the hidden footer
-      // removed.
+      // by state in the host.
       hideFooter
+      // COMPACT frame (2026-10-20): the stock FormSheet frame (p $5, pt $4
+      // without a grabber) plus the old body `pb $6` left ~60 px of air above
+      // the field and ~50 px between the pills and the keyboard. pt $3 puts
+      // the field right under the sheet edge; pb $4 + the frame's default gap
+      // $4 = 32 px of bottom chrome, which is what the kit's keyboard spacer
+      // trims (FRAME_BOTTOM_CHROME 28) → the pills sit ~4 px above the keys.
+      frameProps={{ pt: "$3", pb: "$4" }}
     >
-      <YStack gap="$3" pb="$6">
+      <YStack gap="$2">
         {/* Primary field — the placeholder is the only prompt now. */}
         {field}
 

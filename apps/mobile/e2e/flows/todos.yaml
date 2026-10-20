@@ -16,14 +16,14 @@ name: todos
       id: "quick-add-todo-title"
     timeout: 20000
 - waitForAnimationToEnd
-# The title is a rich-text (WebView) field — tap it so it owns the keyboard.
+# Tap the title so it owns the keyboard (the sheet focuses it on settle; the
+# tap makes the flow independent of that timing).
 - tapOn:
     id: "quick-add-todo-title"
 - inputText: ${output.todo}
 - waitForAnimationToEnd
-# The WebView editor commits keystrokes asynchronously — on a loaded emulator
-# `inputText` returns while characters are still arriving ("JEVB E2E To"), so
-# wait for the full title to be in the field before creating.
+# On a loaded emulator `inputText` can return while characters are still
+# arriving, so wait for the full title to be in the field before creating.
 - extendedWaitUntil:
     visible: ${output.todo}
     timeout: 10000
@@ -32,6 +32,19 @@ name: todos
 - extendedWaitUntil:
     visible: ${output.todo}
     timeout: 15000
+# Tapping the row opens the DETAIL sheet (per-field instant commit, no Save):
+# the status circle + bare title on top, the attribute pills, then the ghost
+# notes field. Close it by tapping the dimmed overlay above the sheet.
+- tapOn: ${output.todo}
+- extendedWaitUntil:
+    visible: "Add notes…"
+    timeout: 10000
+- assertVisible: "Priority|Low|Medium|High|Urgent"
+- tapOn:
+    point: "50%,9%"
+- extendedWaitUntil:
+    notVisible: "Add notes…"
+    timeout: 8000
 # Complete via swipe-right. The row's first left action is `autoCommit`. Kit
 # < 0.4.0-alpha.2 mapped ReanimatedSwipeable's direction to the wrong panel
 # (RNGH 2.28–2.31), so a full swipe only REVEALED the green "Done" panel

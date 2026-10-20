@@ -19,6 +19,10 @@
     "prod:mobile": "turbo run prod --filter=@meridian/mobile",
     "prod:mobile:ios": "turbo run prod:ios --filter=@meridian/mobile",
     "prod:mobile:android": "turbo run prod:android --filter=@meridian/mobile",
+    "build:mobile:ios": "bun run --cwd apps/mobile build:prod:ios",
+    "build:mobile:android": "bun run --cwd apps/mobile build:prod:android",
+    "submit:mobile:ios": "bun run --cwd apps/mobile submit:ios",
+    "submit:mobile:android": "bun run --cwd apps/mobile submit:android",
     "tunnel": "bun scripts/toggle-tunnel.ts",
     "tunnel:status": "bun scripts/toggle-tunnel.ts status",
     "tunnel:on": "bun scripts/toggle-tunnel.ts on",
@@ -90,9 +94,11 @@
     "@tamagui/linear-gradient": "2.3.2",
     "@tamagui/select": "2.3.2",
     "@tamagui/themes": "2.3.2",
-    "react-native-web": "0.21.2"
+    "react-native-web": "0.21.2",
+    "expo-modules-jsi": "56.0.14"
   },
   "patchedDependencies": {
-    "@tamagui/sheet@2.3.2": "patches/@tamagui%2Fsheet@2.3.2.patch"
+    "@tamagui/sheet@2.3.2": "patches/@tamagui%2Fsheet@2.3.2.patch",
+    "@stageholder/ui@0.4.0-alpha.2": "patches/@stageholder%2Fui@0.4.0-alpha.2.patch"
   }
 }

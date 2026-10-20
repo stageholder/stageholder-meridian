@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { JournalList as JournalListView } from "@repo/features/journal";
 import type { Journal } from "@repo/core/types";
+import { warnIfCiphertext } from "@/lib/crypto/ciphertext-guard";
 
 /**
  * PWA wrapper: wires TanStack `useNavigate` to `onJournalPress` and
@@ -17,6 +18,7 @@ export function JournalList({
   activeId?: string;
 }) {
   const navigate = useNavigate();
+  for (const j of journals) warnIfCiphertext("sidebar row", j);
   return (
     <JournalListView
       journals={journals}

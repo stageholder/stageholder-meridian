@@ -16,8 +16,8 @@
 //   - OPEN todos grouped by date bucket: Overdue / Today / Upcoming /
 //     Someday (the PWA's today/upcoming/inbox views, stacked).
 //   - COMPLETED section after (the PWA's completed view).
-// Tapping a row opens the native EditTodoDialog (shared TodoForm + the
-// instant-commit SubtaskSection).
+// Tapping a row opens the native TodoDetailSheet — a Todoist-style detail
+// where every field commits on its own (no Save), subtasks included.
 
 import {
   Banner,
@@ -53,7 +53,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { FAB_CLEARANCE } from "@/components/screen-scroll";
 import { CreateFab } from "@/components/create-fab";
 import { CreateTodoDialog } from "@/components/create-todo-dialog";
-import { EditTodoDialog } from "@/components/edit-todo-dialog";
+import { TodoDetailSheet } from "@/components/todo-detail-sheet";
 import { TodoListSheet } from "@/components/todo-list-sheet";
 import { TodoListReorderSheet } from "@/components/todo-list-reorder-sheet";
 import {
@@ -723,9 +723,8 @@ function TodosScreen() {
         onPress={() => setCreateOpen(true)}
       />
 
-      {/* QuickAddTodoSheet mounts its full form + nested pickers (and, once
-          opened, a 10tap WebView) — so the host mounts on the FIRST open, not
-          with the screen (use-mount-on-open). */}
+      {/* QuickAddTodoSheet mounts its full form + nested pickers — so the host
+          mounts on the FIRST open, not with the screen (use-mount-on-open). */}
       {createHost ? (
         <CreateTodoDialog
           open={createOpen}
@@ -755,7 +754,7 @@ function TodosScreen() {
           `editing` holds the content through the close animation. */}
       {/* Host mounted on first open only (use-mount-on-open). */}
       {editHost ? (
-        <EditTodoDialog
+        <TodoDetailSheet
           open={editOpen}
           onOpenChange={handleEditOpenChange}
           todo={editing}

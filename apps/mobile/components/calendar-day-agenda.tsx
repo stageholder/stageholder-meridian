@@ -36,7 +36,7 @@ import {
   type CalendarDayData,
 } from "@/lib/api/hooks/calendar";
 import { useDeleteTodo, useToggleTodo, useTodos } from "@/lib/api";
-import { EditTodoDialog } from "@/components/edit-todo-dialog";
+import { TodoDetailSheet } from "@/components/todo-detail-sheet";
 import { HabitCheckInRow } from "./habit-check-in-row";
 import { IGNITION } from "@/lib/ignition-palette";
 
@@ -261,7 +261,7 @@ export function CalendarDayAgenda({
       </YStack>
 
       {/* Tap a todo → the shared edit sheet (same as the todos screen). */}
-      <EditTodoDialog
+      <TodoDetailSheet
         open={editing !== null}
         onOpenChange={(next) => {
           if (!next) setEditing(null);

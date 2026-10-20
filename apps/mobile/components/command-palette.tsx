@@ -2,9 +2,20 @@
 //
 // Native mirror of the PWA's CommandPalette (apps/pwa/src/components/shared/
 // command-palette.tsx) — the last open parity item from the production-
-// hardening rounds. Same kit `CommandMenu`, same groups (Navigation /
-// Actions / General); on a phone the kit adapts the palette to a bottom
-// Sheet (search field + thumb-sized rows — see the kit docs-expo demo).
+// hardening rounds. Same groups (Navigation / Actions / General), same
+// label / description / keyword filter as the kit `CommandMenu`.
+//
+// WHY THIS HOSTS ITS OWN SHEET instead of rendering the kit `CommandMenu`
+// (2026-10-20): on phones the kit palette is a Dialog that `Adapt`s to a
+// plain Sheet with NO keyboard handling — the software keyboard simply drew
+// over the results list (the sheet never lifted), and the search field's
+// `autoFocus` raised the keyboard while the sheet was still sliding. The kit
+// `FormSheet.native` solves both (an animated bottom spacer = live keyboard
+// height stretches the `fit` sheet above the keyboard, engaged only after the
+// open settles), but its Cancel/Save chrome doesn't fit a palette. So this
+// file drives a kit `Sheet` itself and copies FormSheet's spacer pattern,
+// while the rows / group labels / search wrap stay the kit's own styled
+// `CommandMenu.*` parts — the look is identical to the kit palette.
 //
 // Touch differences from the PWA, by design:
 //   - No ⌘K (useCommandMenuShortcut is web-only): the host renders a Search
@@ -15,8 +26,22 @@
 //     surfaces are self-contained dialogs, so the palette hosts its own).
 //   - "Keyboard Shortcuts" is omitted (web-only concept).
 
-import { useMemo, useState } from "react";
-import { CommandMenu, type CommandItem } from "@stageholder/ui";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Keyboard, type TextInput } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+} from "react-native-reanimated";
+import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
+import {
+  CommandMenu,
+  Input,
+  Sheet,
+  Text,
+  XStack,
+  YStack,
+  type CommandItem,
+} from "@stageholder/ui";
 import { BookOpen } from "@tamagui/lucide-icons-2/icons/BookOpen";
 import { CalendarDays } from "@tamagui/lucide-icons-2/icons/CalendarDays";
 import { CheckSquare } from "@tamagui/lucide-icons-2/icons/CheckSquare";
@@ -39,9 +64,30 @@ interface CommandPaletteProps {
   onOpenChange: (open: boolean) => void;
 }
 
+/** Results list height — same as the kit `CommandMenu.List` (320). */
+const LIST_HEIGHT = 320;
+
+/**
+ * The frame's own chrome below the list (its bottom padding). The keyboard
+ * spacer is trimmed by this so the last row sits a small, proper distance
+ * above the keyboard instead of floating (FormSheet's FRAME_BOTTOM_CHROME
+ * idea, sized for this frame's `pb`).
+ */
+const FRAME_BOTTOM_CHROME = 8;
+
+/** Filter mirrors the kit CommandMenu: label / description / keyword substring. */
+function matches(item: CommandItem, q: string): boolean {
+  if (item.label.toLowerCase().includes(q)) return true;
+  if (item.description?.toLowerCase().includes(q)) return true;
+  return item.keywords?.some((k) => k.toLowerCase().includes(q)) ?? false;
+}
+
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const router = useRouter();
   const { resolvedTheme, setTheme } = useAppTheme();
+
+  const [query, setQuery] = useState("");
+  const inputRef = useRef<TextInput | null>(null);
 
   // Create sheets hosted here so "New Todo/Habit" work from anywhere the
   // palette is mounted — the palette closes first, then the sheet slides up.
@@ -56,6 +102,49 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   // The palette closes before a create sheet opens, so nothing is lost.
   const todoHost = useMountOnOpen(createTodoOpen);
   const habitHost = useMountOnOpen(createHabitOpen);
+
+  // Keyboard height as a Reanimated SHARED VALUE (UI thread, frame-by-frame),
+  // driving an animated bottom spacer so the `fit` sheet grows above the
+  // keyboard in sync with the keyboard's own animation — FormSheet.native's
+  // stretch technique, not `moveOnKeyboardChange` (translating the whole
+  // sheet can get stuck mid-animation; a spacer can't: keyboard 0 → spacer 0).
+  // abs() because the library reports the value negative on some platforms.
+  // Engaged only after the open SETTLES: before that the frame hasn't been
+  // positioned yet, and growing it early left a whole sheet hidden behind the
+  // keyboard for ~2 s (meridian quick-add, 2026-10-18).
+  const { height: kbHeight } = useReanimatedKeyboardAnimation();
+  const settledSV = useSharedValue(0);
+  const spacerStyle = useAnimatedStyle(() => {
+    const h = Math.abs(kbHeight.value);
+    return {
+      height:
+        settledSV.value && h > 0 ? Math.max(0, h - FRAME_BOTTOM_CHROME) : 0,
+    };
+  });
+
+  // Closing resets the search and re-arms the settle gate for the next open.
+  // The search field is blurred explicitly: the kit keeps the body mounted
+  // after the first open, so nothing unmounts the focused TextInput on a
+  // swipe-down / overlay tap and the keyboard would linger over the page.
+  useEffect(() => {
+    if (!open) {
+      setQuery("");
+      settledSV.value = 0;
+      inputRef.current?.blur();
+    }
+  }, [open, settledSV]);
+
+  // Row tap: hand the keyboard off BEFORE the action runs. "New Todo" opens
+  // the quick-add whose title is a WebView editor that focuses itself once
+  // its bridge is ready; with the palette's keyboard still dismissing at that
+  // moment the WebView focus was swallowed and the sheet opened unfocused
+  // (2026-10-20). Dismissing first lets the create sheet's own
+  // focus-after-settle raise a clean keyboard (habit name / todo editor).
+  function runItem(it: CommandItem) {
+    Keyboard.dismiss();
+    it.onSelect();
+    onOpenChange(false);
+  }
 
   const items = useMemo<CommandItem[]>(
     () => [
@@ -157,14 +246,108 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     [router, resolvedTheme, setTheme],
   );
 
+  const grouped = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const filtered = q ? items.filter((it) => matches(it, q)) : items;
+    const map = new Map<string, CommandItem[]>();
+    for (const it of filtered) {
+      const key = it.group ?? "__default__";
+      const list = map.get(key) ?? [];
+      list.push(it);
+      map.set(key, list);
+    }
+    return Array.from(map.entries());
+  }, [items, query]);
+
   return (
     <>
-      <CommandMenu
+      <Sheet
+        modal
         open={open}
         onOpenChange={onOpenChange}
-        items={items}
-        placeholder="Search commands…"
-      />
+        transition="medium"
+        dismissOnSnapToBottom
+        snapPointsMode="fit"
+        onSettled={() => {
+          settledSV.value = 1;
+          // Focus AFTER the slide lands (not `autoFocus` on mount) so the
+          // keyboard rises once the sheet is in place rather than mid-slide.
+          inputRef.current?.focus();
+        }}
+      >
+        {/* Backdrop FADE: since @tamagui/sheet 2.0 the overlay is a presence
+            child mounted only while open, so without a transition + enter/exit
+            opacity the dim POPS in and vanishes ("dim blinks", 2026-10-20).
+            The kit's Sheet.Overlay gains these defaults in its next release;
+            until that ships, every app-hosted overlay sets them itself. */}
+        <Sheet.Overlay
+          transition="medium"
+          enterStyle={{ opacity: 0 }}
+          exitStyle={{ opacity: 0 }}
+        />
+        {/* pt 0 — the kit grabber is the frame's first child with its own
+            spacing (FormSheet convention); px/gap 0 so the search wrap and
+            rows use the kit palette's own insets. */}
+        <Sheet.Frame pt={0} px={0} pb={FRAME_BOTTOM_CHROME} gap={0}>
+          <CommandMenu.SearchWrap>
+            <Input
+              ref={inputRef as never}
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search commands…"
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+              bg="transparent"
+              borderWidth={0}
+              flex={1}
+            />
+          </CommandMenu.SearchWrap>
+          {/* keyboardShouldPersistTaps so a row tap lands while the search
+              keyboard is up (one tap, not "dismiss keyboard, then tap"). */}
+          <Sheet.ScrollView
+            height={LIST_HEIGHT}
+            keyboardShouldPersistTaps="handled"
+          >
+            <YStack py="$2" px="$2">
+              {grouped.length === 0 ? (
+                <CommandMenu.Empty>No matching commands.</CommandMenu.Empty>
+              ) : (
+                grouped.map(([groupKey, list]) => (
+                  <YStack key={groupKey} gap={2}>
+                    {groupKey !== "__default__" ? (
+                      <CommandMenu.GroupLabel>
+                        {groupKey}
+                      </CommandMenu.GroupLabel>
+                    ) : null}
+                    {list.map((it) => (
+                      <CommandMenu.Item key={it.id} onPress={() => runItem(it)}>
+                        {it.icon ? (
+                          <XStack items="center" justify="center">
+                            {it.icon}
+                          </XStack>
+                        ) : null}
+                        <YStack flex={1}>
+                          <Text fontSize="$3" color="$color">
+                            {it.label}
+                          </Text>
+                          {it.description ? (
+                            <Text fontSize="$1" color="$mutedForeground">
+                              {it.description}
+                            </Text>
+                          ) : null}
+                        </YStack>
+                      </CommandMenu.Item>
+                    ))}
+                  </YStack>
+                ))
+              )}
+            </YStack>
+          </Sheet.ScrollView>
+          {/* Keyboard spacer — grows the fit-sized frame above the keyboard. */}
+          <Animated.View style={spacerStyle} />
+        </Sheet.Frame>
+      </Sheet>
       {todoHost ? (
         <CreateTodoDialog
           open={createTodoOpen}

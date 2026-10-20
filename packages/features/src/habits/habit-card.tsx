@@ -21,6 +21,8 @@ import {
 } from "@stageholder/ui";
 import { MediaGlyph } from "@stageholder/ui/pickers";
 import type { Habit, HabitEntry } from "@repo/core/types";
+import { accentButtonPressProps } from "../_internal/accent-button-press";
+import { HabitStatusPill } from "./habit-status-pill";
 import { parseMediaIcon } from "./icon-value";
 import {
   resolveTargetCount,
@@ -553,22 +555,11 @@ export function HabitCard({
             <View position="relative" items="center" justify="center">
               {renderCompletionEffect?.(completing)}
               {isComplete ? (
-                <XStack
-                  items="center"
-                  gap="$1.5"
-                  rounded="$md"
-                  px="$2.5"
-                  py="$1.5"
-                  bg="$successMuted"
-                  transition="quick"
-                  scale={bouncing ? 1.1 : 1}
-                >
-                  {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
-                  <Check size={14} color="$success" />
-                  <Text fontSize="$1" fontWeight="600" color="$success">
-                    Logged
-                  </Text>
-                </XStack>
+                <HabitStatusPill
+                  status="complete"
+                  label="Logged"
+                  bouncing={bouncing}
+                />
               ) : (
                 <Button
                   size="sm"
@@ -576,16 +567,12 @@ export function HabitCard({
                   color={"#ffffff" as never}
                   icon={<Check size={14} color="#ffffff" />}
                   style={{ backgroundColor: accentColor }}
-                  hoverStyle={
-                    { backgroundColor: accentColor, opacity: 0.9 } as never
-                  }
-                  pressStyle={
-                    { backgroundColor: accentColor, opacity: 0.82 } as never
-                  }
+                  {...accentButtonPressProps(accentColor)}
                   onPress={handleCheckIn}
                   disabled={isPending}
                   loading={isPending}
                   loadingText="Logging…"
+                  enterStyle={{ scale: 0.9 }}
                   transition="quick"
                   scale={bouncing ? 1.1 : 1}
                 >
@@ -619,56 +606,17 @@ export function HabitCard({
             <View position="relative" items="center" justify="center">
               {renderCompletionEffect?.(completing)}
               {isComplete ? (
-                <XStack
-                  items="center"
-                  gap="$1.5"
-                  rounded="$md"
-                  px="$2.5"
-                  py="$1.5"
-                  bg="$successMuted"
-                  transition="quick"
-                  scale={bouncing ? 1.1 : 1}
-                >
-                  {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
-                  <Check size={14} color="$success" />
-                  <Text fontSize="$1" fontWeight="600" color="$success">
-                    Complete
-                  </Text>
-                </XStack>
+                <HabitStatusPill
+                  status="complete"
+                  label="Complete"
+                  bouncing={bouncing}
+                />
               ) : isSkipped ? (
-                <XStack
-                  items="center"
-                  gap="$1.5"
-                  rounded="$md"
-                  px="$2.5"
-                  py="$1.5"
-                  bg="$muted"
-                >
-                  {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
-                  <SkipForward size={12} color="$mutedForeground" />
-                  <Text fontSize="$1" fontWeight="600" color="$mutedForeground">
-                    Skipped
-                  </Text>
-                </XStack>
+                <HabitStatusPill status="skipped" label="Skipped" />
               ) : isFailed ? (
-                <XStack
-                  items="center"
-                  gap="$1.5"
-                  rounded="$md"
-                  px="$2.5"
-                  py="$1.5"
-                  bg="$destructiveMuted"
-                >
-                  {/* lucide-icons-2 reads its own `color` (no CSS cascade). */}
-                  <X size={12} color="$destructive" />
-                  <Text fontSize="$1" fontWeight="600" color="$destructive">
-                    Failed
-                  </Text>
-                </XStack>
+                <HabitStatusPill status="failed" label="Failed" />
               ) : !isScheduledOnActiveDate ? (
-                <Text fontSize="$1" fontWeight="500" color="$mutedForeground">
-                  Rest day
-                </Text>
+                <HabitStatusPill status="rest" label="Rest day" />
               ) : (
                 <Button
                   size="sm"
@@ -676,16 +624,12 @@ export function HabitCard({
                   color={"#ffffff" as never}
                   icon={<Check size={14} color="#ffffff" />}
                   style={{ backgroundColor: accentColor }}
-                  hoverStyle={
-                    { backgroundColor: accentColor, opacity: 0.9 } as never
-                  }
-                  pressStyle={
-                    { backgroundColor: accentColor, opacity: 0.82 } as never
-                  }
+                  {...accentButtonPressProps(accentColor)}
                   onPress={handleCheckIn}
                   disabled={isPending}
                   loading={isPending}
                   loadingText="Checking…"
+                  enterStyle={{ scale: 0.9 }}
                   transition="quick"
                   scale={bouncing ? 1.1 : 1}
                 >
