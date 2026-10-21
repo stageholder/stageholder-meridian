@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Flame } from "@tamagui/lucide-icons-2/icons/Flame";
 import { GradientSurface, Text, View, XStack, YStack } from "@stageholder/ui";
 import type { UserLight } from "@repo/core/types/light";
@@ -10,9 +11,18 @@ import { tabularNums } from "../_internal/text-styles";
 
 interface LevelProgressProps {
   userLight: UserLight;
+  /**
+   * Hold the bar EMPTY (no fill, no tween). Hosts park the card while its
+   * screen is blurred so the next focus sweeps 0 → percent instead of
+   * flashing the finished bar first.
+   */
+  parked?: boolean;
 }
 
-export function LevelProgress({ userLight }: LevelProgressProps) {
+export function LevelProgress({
+  userLight,
+  parked = false,
+}: LevelProgressProps) {
   const { totalLight, currentTier, currentTitle, perfectDayStreak } = userLight;
   const nextTier = getNextTier(currentTier);
   // One helper drives both the bar fill and its caption so they always encode
@@ -22,6 +32,15 @@ export function LevelProgress({ userLight }: LevelProgressProps) {
     totalLight,
     currentTier,
   );
+  const [fill, setFill] = useState(0);
+  useEffect(() => {
+    if (parked) {
+      setFill(0);
+      return;
+    }
+    const t = setTimeout(() => setFill(percent), 60);
+    return () => clearTimeout(t);
+  }, [percent, parked]);
 
   return (
     // Layout (margin/width) is owned by the caller via a wrapping View; the
@@ -56,7 +75,11 @@ export function LevelProgress({ userLight }: LevelProgressProps) {
           height="100%"
           rounded={9999}
           transition="slow"
-          width={`${percent}%`}
+          // Fill from EMPTY on mount (and on every remount — the Today screen
+          // re-keys this card per visit): `fill` starts at 0 and settles to
+          // `percent` a tick later, so the gold bar sweeps in instead of
+          // appearing full. Later value changes animate from the current fill.
+          width={`${fill}%`}
         />
       </View>
 

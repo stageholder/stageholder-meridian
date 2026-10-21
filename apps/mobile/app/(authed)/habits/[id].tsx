@@ -20,7 +20,7 @@
 // disagree on a streak. Colors come from IGNITION.habit (the native ring
 // palette) instead of the web's --ring-habit CSS vars.
 //
-// Mobile deviations: Edit reuses the existing EditHabitDialog (FormSheet);
+// Mobile deviations: Edit opens the HabitDetailSheet (per-field commit);
 // delete confirms via the platform Alert (RN's native confirm idiom) instead
 // of the web AlertDialog.
 
@@ -64,7 +64,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Alert } from "react-native";
 
-import { EditHabitDialog } from "@/components/edit-habit-dialog";
+import { HabitDetailSheet } from "@/components/habit-detail-sheet";
 import { HabitMoveToGroupSheet } from "@/components/habit-move-to-group-sheet";
 import { HeaderActions } from "@/components/header-actions";
 import { ScreenScroll } from "@/components/screen-scroll";
@@ -792,10 +792,11 @@ export default function HabitDetailScreen() {
       </ScreenScroll>
 
       {habit && editOpen ? (
-        <EditHabitDialog
+        <HabitDetailSheet
           habit={habit}
           open={editOpen}
           onOpenChange={setEditOpen}
+          onDeleted={() => router.back()}
         />
       ) : null}
 

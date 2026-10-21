@@ -5,24 +5,16 @@
 // Recomposes the proven HabitForm controls (MediaPickerSheet, Select, Input,
 // ToggleGroup, NumberInput, color swatches) into the QuickAddSheet shell — the
 // heavier sub-config (weekly days, target+unit, color) lives in small nested
-// picker sheets. Create-only; EDIT keeps the full HabitForm.
+// picker sheets (habit-pickers.native.tsx, shared with the detail sheet).
 import { useEffect, useRef, useState } from "react";
-import type { TextInput } from "react-native";
+import { TextInput } from "react-native";
 import { Folder } from "@tamagui/lucide-icons-2/icons/Folder";
 import { Repeat } from "@tamagui/lucide-icons-2/icons/Repeat";
 import { Smile } from "@tamagui/lucide-icons-2/icons/Smile";
 import { StickyNote } from "@tamagui/lucide-icons-2/icons/StickyNote";
 import { Target } from "@tamagui/lucide-icons-2/icons/Target";
-import {
-  Input,
-  NumberInput,
-  Select,
-  Sheet,
-  Text,
-  ToggleGroup,
-  View,
-  XStack,
-} from "@stageholder/ui";
+import { Input, View, XStack } from "@stageholder/ui";
+import { useTheme } from "tamagui";
 import type { MediaValue } from "@stageholder/ui/pickers";
 import { MediaGlyph, MediaPickerSheet } from "@stageholder/ui/pickers";
 import {
@@ -31,225 +23,15 @@ import {
   PillPickerSheet,
   type PillPickerOption,
 } from "../_internal/quick-add-sheet.native";
+import {
+  ColorPickerSheet,
+  FrequencyPickerSheet,
+  NO_GROUP_VALUE,
+  TargetPickerSheet,
+} from "./habit-pickers.native";
 import { encodeMediaIcon, parseMediaIcon } from "./icon-value";
 import { HABIT_FORM_DEFAULTS, type HabitFormValues } from "./habit-form";
 import type { QuickAddHabitSheetProps } from "./quick-add-habit-sheet.types";
-
-// Kept in sync with habit-form.tsx (stable brand constants). Verbatim values —
-// Mon-first day order, the 9-swatch habit palette.
-const DAY_OPTIONS = [
-  { value: 1, label: "Mon" },
-  { value: 2, label: "Tue" },
-  { value: 3, label: "Wed" },
-  { value: 4, label: "Thu" },
-  { value: 5, label: "Fri" },
-  { value: 6, label: "Sat" },
-  { value: 0, label: "Sun" },
-] as const;
-
-const COLOR_OPTIONS = [
-  { value: "#ef4444", label: "Red" },
-  { value: "#f97316", label: "Orange" },
-  { value: "#eab308", label: "Yellow" },
-  { value: "#22c55e", label: "Green" },
-  { value: "#3b82f6", label: "Blue" },
-  { value: "#8b5cf6", label: "Purple" },
-  { value: "#ec4899", label: "Pink" },
-  { value: "#14b8a6", label: "Teal" },
-  { value: "#78716c", label: "Stone" },
-] as const;
-
-const NO_GROUP_VALUE = "__none__";
-
-// ── nested picker sheets ────────────────────────────────────────────────────
-
-function FrequencyPickerSheet({
-  open,
-  onOpenChange,
-  frequency,
-  setFrequency,
-  scheduledDays,
-  setScheduledDays,
-  weeklyTarget,
-  setWeeklyTarget,
-}: {
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-  frequency: HabitFormValues["frequency"];
-  setFrequency: (f: HabitFormValues["frequency"]) => void;
-  scheduledDays: number[];
-  setScheduledDays: (d: number[]) => void;
-  weeklyTarget: number;
-  setWeeklyTarget: (n: number) => void;
-}) {
-  return (
-    <Sheet
-      modal
-      open={open}
-      onOpenChange={onOpenChange}
-      snapPointsMode="fit"
-      dismissOnSnapToBottom
-      transition="medium"
-    >
-      <Sheet.Overlay />
-      <Sheet.Frame pt={0} pb="$6" px="$4" gap="$3">
-        <Text fontSize="$5" fontWeight="600" color="$color">
-          Frequency
-        </Text>
-        <Select
-          value={frequency}
-          onValueChange={(v) => {
-            setFrequency(v as HabitFormValues["frequency"]);
-            if (v !== "weekly") setScheduledDays([]);
-          }}
-          inSheet
-        >
-          <Select.Trigger width="100%" />
-          <Select.Content>
-            <Select.Item value="daily">Daily</Select.Item>
-            <Select.Item value="weekly">Specific days</Select.Item>
-            <Select.Item value="weekly_target">Times per week</Select.Item>
-          </Select.Content>
-        </Select>
-
-        {frequency === "weekly" ? (
-          <ToggleGroup
-            type="multiple"
-            value={scheduledDays.map(String)}
-            onValueChange={(vals: string[]) =>
-              setScheduledDays(vals.map(Number).sort((a, b) => a - b))
-            }
-          >
-            {DAY_OPTIONS.map((day) => (
-              <ToggleGroup.Item
-                key={day.value}
-                value={String(day.value)}
-                aria-label={day.label}
-              >
-                <Text>{day.label}</Text>
-              </ToggleGroup.Item>
-            ))}
-          </ToggleGroup>
-        ) : null}
-
-        {frequency === "weekly_target" ? (
-          <XStack items="center" gap="$2">
-            <NumberInput
-              value={weeklyTarget}
-              onChange={setWeeklyTarget}
-              min={1}
-              max={7}
-              step={1}
-            />
-            <Text fontSize="$3" color="$mutedForeground">
-              × / week
-            </Text>
-          </XStack>
-        ) : null}
-      </Sheet.Frame>
-    </Sheet>
-  );
-}
-
-function TargetPickerSheet({
-  open,
-  onOpenChange,
-  frequency,
-  targetCount,
-  setTargetCount,
-  unit,
-  setUnit,
-}: {
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-  frequency: HabitFormValues["frequency"];
-  targetCount: number;
-  setTargetCount: (n: number) => void;
-  unit: string;
-  setUnit: (s: string) => void;
-}) {
-  return (
-    <Sheet
-      modal
-      open={open}
-      onOpenChange={onOpenChange}
-      snapPointsMode="fit"
-      dismissOnSnapToBottom
-      transition="medium"
-    >
-      <Sheet.Overlay />
-      <Sheet.Frame pt={0} pb="$6" px="$4" gap="$3">
-        <Text fontSize="$5" fontWeight="600" color="$color">
-          {frequency === "weekly_target" ? "Per session" : "Times per day"}
-        </Text>
-        <XStack gap="$3">
-          <Input
-            flex={1}
-            keyboardType="number-pad"
-            value={String(targetCount)}
-            onChangeText={(t) => setTargetCount(Number(t) || 1)}
-          />
-          <Input
-            flex={1}
-            value={unit}
-            onChangeText={setUnit}
-            placeholder="Unit (e.g. minutes)"
-          />
-        </XStack>
-      </Sheet.Frame>
-    </Sheet>
-  );
-}
-
-function ColorPickerSheet({
-  open,
-  onOpenChange,
-  color,
-  setColor,
-}: {
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-  color: string;
-  setColor: (c: string) => void;
-}) {
-  return (
-    <Sheet
-      modal
-      open={open}
-      onOpenChange={onOpenChange}
-      snapPointsMode="fit"
-      dismissOnSnapToBottom
-      transition="medium"
-    >
-      <Sheet.Overlay />
-      <Sheet.Frame pt={0} pb="$6" px="$4" gap="$3">
-        <Text fontSize="$5" fontWeight="600" color="$color">
-          Color
-        </Text>
-        <XStack gap="$3" flexWrap="wrap">
-          {COLOR_OPTIONS.map(({ value: swatch, label }) => (
-            <View
-              key={swatch}
-              role="button"
-              aria-pressed={color === swatch}
-              aria-label={label}
-              onPress={() => {
-                setColor(swatch);
-                onOpenChange(false);
-              }}
-              height={32}
-              width={32}
-              rounded={9999}
-              borderWidth={2}
-              borderColor={color === swatch ? "$color" : "transparent"}
-              style={{ backgroundColor: swatch }}
-            />
-          ))}
-        </XStack>
-      </Sheet.Frame>
-    </Sheet>
-  );
-}
 
 // ── main sheet ──────────────────────────────────────────────────────────────
 
@@ -264,6 +46,10 @@ export function QuickAddHabitSheet({
 }: QuickAddHabitSheetProps) {
   const hasGroups = !!groups && groups.length > 0;
   const nameRef = useRef<TextInput>(null);
+  const theme = useTheme();
+  const fg = theme.color?.val ?? "#000";
+  const placeholderColor =
+    theme.placeholderColor?.val ?? theme.mutedForeground?.val ?? "#888";
 
   // The name field is UNCONTROLLED on purpose. A controlled RN TextInput
   // pushes `value` back to the native view after every keystroke; when the
@@ -327,7 +113,9 @@ export function QuickAddHabitSheet({
       setUnit("");
       setColor(HABIT_FORM_DEFAULTS.color);
       setGroupId(defaultGroupId ?? null);
-      setTimeout(() => nameRef.current?.focus(), 350);
+      // Focus in the open commit so the keyboard rises WITH the slide (a
+      // settle-time focus read as a visible lag between sheet and keyboard).
+      nameRef.current?.focus();
     }
     wasOpen.current = open;
   }, [open, defaultGroupId]);
@@ -387,7 +175,14 @@ export function QuickAddHabitSheet({
         onSubmit={handleSubmit}
         submitting={isSubmitting}
         submitDisabled={!hasName}
-        onSettled={() => setPickersReady(true)}
+        onSettled={() => {
+          setPickersReady(true);
+          // Backstop for the FIRST open: the host mounts this sheet in the
+          // same commit the open effect runs, so that focus() finds no input
+          // yet and the keyboard never rose (todo sheet already does this).
+          // Guarded — the kit fires onSettled on the close settle too.
+          if (open) nameRef.current?.focus();
+        }}
         field={
           <>
             <XStack gap="$2" items="center">
@@ -409,18 +204,32 @@ export function QuickAddHabitSheet({
                   fallback={<Smile size={20} color="$mutedForeground" />}
                 />
               </View>
-              <Input
-                flex={1}
-                ref={nameRef as never}
+              {/* GHOST field, like the todo composer's title: no border, no
+                  box — the input sits directly on the sheet (same font metrics
+                  as smart-todo-input.native.tsx). The boxed kit Input read as
+                  a form next to the todo quick-add (2026-10-21). */}
+              <TextInput
+                ref={nameRef}
                 defaultValue=""
                 onChangeText={handleNameChange}
                 placeholder="e.g. Read for 30 minutes"
+                placeholderTextColor={placeholderColor}
                 // Return creates the habit (Todoist-style quick capture) —
                 // the keyboard's own action key is the most reachable submit
                 // while typing, wherever the sheet sits.
                 returnKeyType="done"
                 submitBehavior="blurAndSubmit"
                 onSubmitEditing={handleSubmit}
+                autoCapitalize="sentences"
+                style={{
+                  flex: 1,
+                  minHeight: 44,
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  fontSize: 16,
+                  lineHeight: 22,
+                  color: fg,
+                }}
               />
             </XStack>
             {noteOpen ? (

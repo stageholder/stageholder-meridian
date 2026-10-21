@@ -22,3 +22,10 @@ export { encodeMediaIcon, parseMediaIcon } from "./icon-value";
 // build resolves the null stub (`.tsx`), RN resolves `.native.tsx`.
 export { QuickAddHabitSheet } from "./quick-add-habit-sheet";
 export type { QuickAddHabitSheetProps } from "./quick-add-habit-sheet.types";
+
+// Native habit DETAIL (edit) sheet — per-field instant commit; null stub on web.
+export { HabitDetailSheet } from "./habit-detail-sheet";
+export type {
+  HabitDetailSheetProps,
+  HabitDetailPatch,
+} from "./habit-detail-sheet.types";

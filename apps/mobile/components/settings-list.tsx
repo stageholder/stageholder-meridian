@@ -43,7 +43,10 @@ export function SettingsGroup({
       >
         {rows.map((row, i) => (
           <Fragment key={row.key ?? i}>
-            {i > 0 ? <Separator ml="$4" /> : null}
+            {/* Full-width divider: an iOS-style left inset only lines up
+                when rows lead with an icon; ours lead with text, so the
+                inset read as a stray left gap. */}
+            {i > 0 ? <Separator /> : null}
             {row}
           </Fragment>
         ))}

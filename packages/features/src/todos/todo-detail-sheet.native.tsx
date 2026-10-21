@@ -137,6 +137,11 @@ export function TodoDetailSheet({
   // over the list behind the sheet.
   const wasOpen = useRef(false);
   useEffect(() => {
+    if (open && !wasOpen.current) {
+      // Keyboard WITH the slide (see quick-add): the body mounts in this
+      // commit, so focus now; the settle focus below is only a backstop.
+      titleRef.current?.focus();
+    }
     if (!open && wasOpen.current) {
       titleRef.current?.blur();
       notesRef.current?.blur();
@@ -253,7 +258,15 @@ export function TodoDetailSheet({
           // was ready and the keyboard stayed down. NOT RN `autoFocus`: that
           // re-fired on the frame re-measure a drag triggers, re-raising the
           // keyboard as the sheet was being dismissed (2026-10-20).
-          setTimeout(() => titleRef.current?.focus(), 80);
+          setTimeout(() => {
+            const el = titleRef.current;
+            if (!el) return;
+            // Opened from a closing menu/sheet the field can end up FOCUSED
+            // with the keyboard down (caret, no keys) — a plain focus() is a
+            // no-op then, so always cycle it (a 30 ms blur is invisible).
+            el.blur();
+            setTimeout(() => el.focus(), 30);
+          }, 80);
         }}
         // The kit FormSheet defaults to `disableDrag` (a form should not be
         // swiped away mid-edit). Nothing here is lost on close — every field
@@ -448,52 +461,59 @@ export function TodoDetailSheet({
             </Text>
           ) : null}
         </YStack>
-      </FormSheet>
 
-      {heavyReady || priorityOpen ? (
-        <PillPickerSheet
-          open={priorityOpen}
-          onOpenChange={setPriorityOpen}
-          title="Priority"
-          options={priorityOptions}
-          value={todo.priority}
-          onSelect={(v) => onPatch({ priority: v as Todo["priority"] })}
-        />
-      ) : null}
-      {heavyReady || listOpen ? (
-        <PillPickerSheet
-          open={listOpen}
-          onOpenChange={setListOpen}
-          title="List"
-          options={listOptions}
-          value={todo.listId}
-          onSelect={(v) => onPatch({ listId: v })}
-        />
-      ) : null}
-      {heavyReady || doOpen ? (
-        <CalendarSheet
-          open={doOpen}
-          onClose={() => setDoOpen(false)}
-          value={todo.doDate ? parseLocalDay(todo.doDate.slice(0, 10)) : null}
-          onSelect={(d) => {
-            onPatch({ doDate: d ? format(d, "yyyy-MM-dd") : null });
-            setDoOpen(false);
-          }}
-          title="Do date"
-        />
-      ) : null}
-      {heavyReady || dueOpen ? (
-        <CalendarSheet
-          open={dueOpen}
-          onClose={() => setDueOpen(false)}
-          value={todo.dueDate ? parseLocalDay(todo.dueDate.slice(0, 10)) : null}
-          onSelect={(d) => {
-            onPatch({ dueDate: d ? format(d, "yyyy-MM-dd") : null });
-            setDueOpen(false);
-          }}
-          title="Deadline"
-        />
-      ) : null}
+        {/* Pickers NESTED in the sheet (not siblings): Tamagui gives a sheet
+            rendered inside another sheet `parentSheet.zIndex + 1`, so they
+            stack above this frame by contract. As siblings they relied on
+            portal insertion order and, hosted on the Habits tab, rendered
+            BEHIND this frame (overlay above, frame hidden; 2026-10-21). */}
+        {heavyReady || priorityOpen ? (
+          <PillPickerSheet
+            open={priorityOpen}
+            onOpenChange={setPriorityOpen}
+            title="Priority"
+            options={priorityOptions}
+            value={todo.priority}
+            onSelect={(v) => onPatch({ priority: v as Todo["priority"] })}
+          />
+        ) : null}
+        {heavyReady || listOpen ? (
+          <PillPickerSheet
+            open={listOpen}
+            onOpenChange={setListOpen}
+            title="List"
+            options={listOptions}
+            value={todo.listId}
+            onSelect={(v) => onPatch({ listId: v })}
+          />
+        ) : null}
+        {heavyReady || doOpen ? (
+          <CalendarSheet
+            open={doOpen}
+            onClose={() => setDoOpen(false)}
+            value={todo.doDate ? parseLocalDay(todo.doDate.slice(0, 10)) : null}
+            onSelect={(d) => {
+              onPatch({ doDate: d ? format(d, "yyyy-MM-dd") : null });
+              setDoOpen(false);
+            }}
+            title="Do date"
+          />
+        ) : null}
+        {heavyReady || dueOpen ? (
+          <CalendarSheet
+            open={dueOpen}
+            onClose={() => setDueOpen(false)}
+            value={
+              todo.dueDate ? parseLocalDay(todo.dueDate.slice(0, 10)) : null
+            }
+            onSelect={(d) => {
+              onPatch({ dueDate: d ? format(d, "yyyy-MM-dd") : null });
+              setDueOpen(false);
+            }}
+            title="Deadline"
+          />
+        ) : null}
+      </FormSheet>
     </>
   );
 }

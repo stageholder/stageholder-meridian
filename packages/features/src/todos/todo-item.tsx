@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ControlPress } from "../_internal/control-press";
 import { Check } from "@tamagui/lucide-icons-2/icons/Check";
 import { Clock } from "@tamagui/lucide-icons-2/icons/Clock";
 import { Flag } from "@tamagui/lucide-icons-2/icons/Flag";
@@ -228,18 +229,12 @@ export function TodoItem({
   animateEnter = true,
 }: TodoItemProps) {
   const [burning, setBurning] = useState(false);
-  const [gone, setGone] = useState(false);
 
-  // The row hides itself optimistically after the burn (setGone below) so
-  // completion feels instant. If the host's mutation fails, its cache rollback
-  // flips this todo back to "todo" — reappear rather than stay silently hidden.
-  // (On success the todo becomes "done" and the parent unmounts/relocates this
-  // row, so this only ever fires on the rollback path.)
+  // If the host's mutation fails, its cache rollback flips this todo back to
+  // "todo" — clear the burn so the row is tappable again. (On success the
+  // todo becomes "done" and the parent removes/relocates this row.)
   useEffect(() => {
-    if (todo.status !== "done") {
-      setGone(false);
-      setBurning(false);
-    }
+    if (todo.status !== "done") setBurning(false);
   }, [todo.status]);
 
   // Cross-platform "don't open the detail sheet when the checkbox/delete was
@@ -276,9 +271,14 @@ export function TodoItem({
     // native (the animation is pure Tamagui enterStyle/transition).
     setBurning(true);
     setTimeout(() => {
-      // Burn finished → drop the row immediately (don't wait on the mutation
-      // round-trip or a second exit animation), then commit in the background.
-      setGone(true);
+      // Burn finished → commit. The host's OPTIMISTIC patch removes the todo
+      // from the list in the same tick, and the list's AnimatePresence plays
+      // this row's exitStyle. The row must NOT short-circuit to `null` here
+      // (it used to, via a hide flag): an exiting child that renders nothing
+      // never reports exit-complete, so Tamagui's AnimatePresence froze on its
+      // stale child list and every remaining row kept rendering from stale
+      // elements — the NEXT todo's checkbox went dead after the first one was
+      // completed (Today widget, 2026-10-21).
       onToggle();
     }, BURN_MS);
   }
@@ -303,10 +303,6 @@ export function TodoItem({
   // contradicting the Today bucket which correctly includes it.
   const isOverdue =
     todo.dueDate && !isDone && parseDateLocal(todo.dueDate) < localTodayStart();
-
-  // Burn already played → remove the row the instant it ends, so the list
-  // closes immediately (no lingering while the mutation/exit settles).
-  if (gone) return null;
 
   return (
     <XStack
@@ -350,97 +346,95 @@ export function TodoItem({
       {...({ onContextMenu } as object)}
     >
       <View shrink={0} position="relative">
-        <View
-          onPressIn={pressedControl}
+        <ControlPress
+          label={isDone ? "Mark as incomplete" : "Mark as complete"}
+          checked={isDone || burning}
           onPress={handleToggle}
-          // 20px visual, 44pt EFFECTIVE target — the bare 20px circle was
-          // less than half the Apple/Android minimum touch size, so real
-          // thumbs missed it and the row's open-detail fired instead.
-          {...({ hitSlop: 12 } as object)}
-          // 20px (was 24): balanced against the compact title (18px line) +
-          // date (16px line) block so the circle doesn't out-size the text.
-          width={20}
-          height={20}
-          items="center"
-          justify="center"
-          rounded={9999}
-          borderWidth={2}
-          transition="quick"
-          // Border color as a single PROP source (not the inline `style`): on
-          // native Tamagui expands the `borderColor` prop into per-side
-          // longhands that beat a `style` shorthand, so the red border set via
-          // `style` lost to the base `$mutedForeground` and the done circle
-          // kept a grey ring while its fill went red. `as never` carries the
-          // theme-aware var/hex the strict color prop rejects (same cast as
-          // `hoverStyle`).
-          borderColor={
-            (burning
-              ? EMBER
-              : isDone
-                ? TODO_COLOR
-                : "$mutedForeground") as never
-          }
-          // The pressable itself stays STATIC (transparent) — the fill is a
-          // separate opacity-animated child below. Animating this View's own
-          // `bg` from "transparent" broke the feel on native:
-          // Reanimated interpolates "transparent" as rgba(0,0,0,0), so the
-          // fill faded through muddy grey-black instead of red, and animating
-          // the pressable risked swallowing quick taps.
-          bg="transparent"
-          // Native keeps a pressable focused after a tap (no pointer/keyboard
-          // `:focus-visible` gating and no tap-to-blur), so Tamagui's default
-          // focus ring — the theme's blue `$outlineColor` — lingers around the
-          // circle long after the toggle. Zero it: this control never needs a
-          // focus ring. Matches `timezone-select.native.tsx`.
-          focusStyle={{ outlineWidth: 0 }}
-          focusVisibleStyle={{ outlineWidth: 0 }}
-          hoverStyle={
-            !isDone && !burning
-              ? { borderColor: TODO_COLOR as never }
-              : undefined
-          }
-          role="checkbox"
-          aria-checked={isDone || burning}
-          aria-label={isDone ? "Mark as incomplete" : "Mark as complete"}
+          onPressIn={pressedControl}
         >
-          {/* Fill layer — the "check registered" feedback. A static-color disc
+          <View
+            // 20px (was 24): balanced against the compact title (18px line) +
+            // date (16px line) block so the circle doesn't out-size the text.
+            width={20}
+            height={20}
+            items="center"
+            justify="center"
+            rounded={9999}
+            borderWidth={2}
+            transition="quick"
+            // Border color as a single PROP source (not the inline `style`): on
+            // native Tamagui expands the `borderColor` prop into per-side
+            // longhands that beat a `style` shorthand, so the red border set via
+            // `style` lost to the base `$mutedForeground` and the done circle
+            // kept a grey ring while its fill went red. `as never` carries the
+            // theme-aware var/hex the strict color prop rejects (same cast as
+            // `hoverStyle`).
+            borderColor={
+              (burning
+                ? EMBER
+                : isDone
+                  ? TODO_COLOR
+                  : "$mutedForeground") as never
+            }
+            // The pressable itself stays STATIC (transparent) — the fill is a
+            // separate opacity-animated child below. Animating this View's own
+            // `bg` from "transparent" broke the feel on native:
+            // Reanimated interpolates "transparent" as rgba(0,0,0,0), so the
+            // fill faded through muddy grey-black instead of red, and animating
+            // the pressable risked swallowing quick taps.
+            bg="transparent"
+            // Native keeps a pressable focused after a tap (no pointer/keyboard
+            // `:focus-visible` gating and no tap-to-blur), so Tamagui's default
+            // focus ring — the theme's blue `$outlineColor` — lingers around the
+            // circle long after the toggle. Zero it: this control never needs a
+            // focus ring. Matches `timezone-select.native.tsx`.
+            focusStyle={{ outlineWidth: 0 }}
+            focusVisibleStyle={{ outlineWidth: 0 }}
+            hoverStyle={
+              !isDone && !burning
+                ? { borderColor: TODO_COLOR as never }
+                : undefined
+            }
+          >
+            {/* Fill layer — the "check registered" feedback. A static-color disc
               whose OPACITY (a first-class animatable prop) fades in: opacity
               interpolation is artifact-free on both drivers, unlike animating
               a background color from "transparent". pointerEvents="none" so
               every tap lands on the pressable parent. Color itself never
               animates (ember vs red just swaps), so it can ride `style`, which
               accepts the theme-aware var/hex. */}
-          <View
-            position="absolute"
-            t={0}
-            l={0}
-            r={0}
-            b={0}
-            rounded={9999}
-            style={{ backgroundColor: burning ? EMBER : TODO_COLOR }}
-            opacity={isDone || burning ? 1 : 0}
-            transition="quick"
-            pointerEvents="none"
-          />
-          {isDone || burning ? (
             <View
-              transition="bouncy"
-              // Explicit base scale/opacity: the native Reanimated driver
-              // animates enterStyle → these concrete targets. Without them the
-              // enter sticks at `scale: 0` on native and the check never shows
-              // during the burn (web's CSS driver tolerates the missing base).
-              opacity={1}
-              scale={1}
-              enterStyle={burning ? { scale: 0, opacity: 0 } : undefined}
-              // Taps on the icon must fall through to the pressable circle.
+              position="absolute"
+              t={0}
+              l={0}
+              r={0}
+              b={0}
+              rounded={9999}
+              style={{ backgroundColor: burning ? EMBER : TODO_COLOR }}
+              opacity={isDone || burning ? 1 : 0}
+              transition="quick"
               pointerEvents="none"
-            >
-              {/* lucide-icons-2 reads its own `color` (no CSS cascade). White
+            />
+            {isDone || burning ? (
+              <View
+                transition="bouncy"
+                // Explicit base scale/opacity: the native Reanimated driver
+                // animates enterStyle → these concrete targets. Without them the
+                // enter sticks at `scale: 0` on native and the check never shows
+                // during the burn (web's CSS driver tolerates the missing base).
+                opacity={1}
+                scale={1}
+                enterStyle={burning ? { scale: 0, opacity: 0 } : undefined}
+                // Taps on the icon must fall through to the pressable circle.
+                pointerEvents="none"
+              >
+                {/* lucide-icons-2 reads its own `color` (no CSS cascade). White
                   check on the red/ember fill. */}
-              <Check size={12} strokeWidth={3} color="#ffffff" />
-            </View>
-          ) : null}
-        </View>
+                <Check size={12} strokeWidth={3} color="#ffffff" />
+              </View>
+            ) : null}
+          </View>
+        </ControlPress>
         {burning ? (
           // Confirming ring pulse — expands + fades on ignite.
           <View

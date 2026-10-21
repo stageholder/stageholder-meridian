@@ -233,14 +233,19 @@ export function useHabitsWithEntries() {
   });
 }
 
-export function useHabit(id: string | null | undefined) {
+export function useHabit(
+  id: string | null | undefined,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: id ? habitKeys.detail(id) : habitKeys.detail("disabled"),
     queryFn: async () => {
       const { data } = await apiClient.get<Habit>(`/habits/${id}`);
       return data;
     },
-    enabled: !!id,
+    // `enabled: false` = pure CACHE MIRROR (the habit detail sheet seeds the
+    // key from the tapped row and reads optimistic patches through it).
+    enabled: !!id && options?.enabled !== false,
   });
 }
 
@@ -371,6 +376,27 @@ export function useUpdateHabit() {
     }) => {
       const { data } = await apiClient.patch<Habit>(`/habits/${id}`, patch);
       return data;
+    },
+    // Instant flip for the detail sheet's pills / name: patch the row in the
+    // list caches and the detail key (the sheet reads the latter). `null`
+    // clears come back from the server as absent fields — mirror that shape.
+    onMutate: ({ id, patch }) => {
+      const normalized: Partial<Habit> = {};
+      for (const [k, v] of Object.entries(patch)) {
+        (normalized as Record<string, unknown>)[k] = v === null ? undefined : v;
+      }
+      const apply = (h: Habit): Habit => ({ ...h, ...normalized });
+      qc.setQueriesData<Habit[]>({ queryKey: habitKeys.lists() }, (list) =>
+        Array.isArray(list)
+          ? list.map((h) => (h.id === id ? apply(h) : h))
+          : list,
+      );
+      qc.setQueryData<Habit>(habitKeys.detail(id), (h) => (h ? apply(h) : h));
+    },
+    onSuccess: (server) => {
+      qc.setQueryData<Habit>(habitKeys.detail(server.id), (h) =>
+        h ? server : h,
+      );
     },
     onSettled: (_, __, vars) => {
       qc.invalidateQueries({ queryKey: habitKeys.lists() });

@@ -18,7 +18,7 @@
 //   - When "Archived" is active, the archived habits list with a Restore action
 //     per card (no drag).
 //
-// Creation/editing uses the SAME cross-platform shared HabitForm as the PWA —
+// Creation = QuickAddHabitSheet, editing = HabitDetailSheet (per-field commit) —
 // see components/{create,edit}-habit-dialog.tsx, which now pass the user's
 // groups so the form's group picker appears. The FAB opens create.
 
@@ -53,7 +53,7 @@ import {
   HabitViewToggle,
   type HabitViewMode,
 } from "@/components/habit-day-controls";
-import { EditHabitDialog } from "@/components/edit-habit-dialog";
+import { HabitDetailSheet } from "@/components/habit-detail-sheet";
 import { HabitCardRow } from "@/components/habit-card-row";
 import {
   ARCHIVED_CHIP,
@@ -131,6 +131,16 @@ function HabitsScreen() {
   // The habit currently open in the edit sheet (null = closed). Lifted so the
   // sheet renders outside the scrolling list and re-mounts cleanly per habit.
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
+  // Open the detail sheet only once the card's DropdownMenu sheet has slid
+  // away. Mounting it in the same commit as the menu's close left the detail
+  // sheet's own sibling pickers (colour / frequency / …) dimming the screen
+  // WITHOUT their frame and ignoring taps — the picker rendered behind the
+  // still-dismissing menu sheet. The same sheet opened from the detail
+  // screen's header button (no menu sheet in flight) was fine (2026-10-21).
+  const openEditAfterMenu = useCallback(
+    (habit: Habit) => setTimeout(() => setEditingHabit(habit), 400),
+    [],
+  );
   // Active chip filter — null = All, ARCHIVED_CHIP = Archived, else a groupId.
   const [activeChip, setActiveChip] = useState<HabitChipSelection>(null);
   // Group sheet — false = closed, null = create, a group = edit.
@@ -520,7 +530,7 @@ function HabitsScreen() {
                           key={habit.id}
                           habit={habit}
                           isArchived
-                          onEdit={() => setEditingHabit(habit)}
+                          onEdit={() => openEditAfterMenu(habit)}
                           onOpenDetail={() => openDetail(habit)}
                           onUnarchive={() => restore(habit)}
                         />
@@ -606,7 +616,7 @@ function HabitsScreen() {
                         // default (undefined) so the rows read the un-suffixed
                         // "today" path (parity with the PWA section).
                         selectedDate={isViewingToday ? undefined : selectedDate}
-                        onEdit={setEditingHabit}
+                        onEdit={openEditAfterMenu}
                         onOpenDetail={openDetail}
                         onArchive={archive}
                         onMoveToGroup={setMovingHabit}
@@ -641,9 +651,9 @@ function HabitsScreen() {
         />
       ) : null}
 
-      {/* Edit — same shared HabitForm, seeded from the tapped habit. */}
+      {/* Edit — the per-field detail sheet (same language as the todo one). */}
       {editingHabit ? (
-        <EditHabitDialog
+        <HabitDetailSheet
           habit={editingHabit}
           open={!!editingHabit}
           onOpenChange={(next) => {

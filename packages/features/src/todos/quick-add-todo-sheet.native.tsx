@@ -131,6 +131,12 @@ export function QuickAddTodoSheet({
       setDoDate(d.doDate ?? "");
       setDueDate(defaultDueDate ?? "");
       setListId(defaultListId);
+      // Keyboard WITH the slide: focus in the open commit (the field is a
+      // native TextInput mounted in this same commit). Focusing only on the
+      // kit's settle signal (~350 ms later) read as a visible lag between the
+      // sheet landing and the keyboard rising (2026-10-21). The settle focus
+      // below stays as a backstop for the first-ever open.
+      titleRef.current?.focus();
     } else if (!open && wasOpen.current) {
       // Closing (submit, swipe-down, tap-out): the field stays mounted after
       // the first open, so blur it explicitly — otherwise the keyboard stayed

@@ -52,8 +52,14 @@ import { CalendarDays } from "@tamagui/lucide-icons-2/icons/CalendarDays";
 import { Search } from "@tamagui/lucide-icons-2/icons/Search";
 import { useQueryClient } from "@tanstack/react-query";
 import { format, subDays } from "date-fns";
-import { useRouter } from "expo-router";
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ScreenScroll } from "@/components/screen-scroll";
@@ -185,6 +191,22 @@ export default function TodayScreen() {
 
   // ---- Refresh ----
   const [refreshing, setRefreshing] = useState(false);
+  // REPLAY the hero motion on every visit. The rings, the level bar and the
+  // KPI count-ups all animate towards their value; this tab stays mounted for
+  // the life of the app, so left alone they play once. While the tab is
+  // BLURRED the hero is PARKED at zero (empty rings, empty bar, 0 counts —
+  // nobody sees it), and the next focus hands the real values back, so the
+  // first frame the user sees is the empty state sweeping up — no flash of
+  // the finished numbers first (re-keying on focus did exactly that flash,
+  // 2026-10-21). Blurred tabs keep rendering, so parking (not remounting)
+  // is what keeps the motion for the moment the user is actually looking.
+  const [heroParked, setHeroParked] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      setHeroParked(false);
+      return () => setHeroParked(true);
+    }, []),
+  );
   // Command palette (PWA ⌘K parity) — opened from the header Search button.
   const [paletteOpen, setPaletteOpen] = useState(false);
   // Host mounted on first open (the palette drives its OWN prop-driven kit
@@ -253,6 +275,11 @@ export default function TodayScreen() {
       })),
     [rings, habitStats.totalScheduledToday],
   );
+  // Zero-value twin of the rings for the parked (blurred) state.
+  const parkedRings = useMemo(
+    () => ringData.map((r) => ({ ...r, value: 0 })),
+    [ringData],
+  );
 
   // KPI tiles for the shared `DashboardStats` row (kit `Stat`). Light gets an
   // animated single-number value; every tile carries a day-over-day delta
@@ -308,6 +335,12 @@ export default function TodayScreen() {
     todayCounts.counts,
     yesterdayCounts.counts,
   ]);
+  // Numeric tiles at 0 for the parked state so the kit Stat counts UP from
+  // 0 on the next focus (its tween restarts when the value drops).
+  const parkedStats = useMemo(
+    () => stats.map((st) => (st.value != null ? { ...st, value: 0 } : st)),
+    [stats],
+  );
 
   // NOTE: `scheduledTodayHabits` (the widget's check-in rows) and
   // `todayTodoList` (the todos widget) now come straight off the view-model
@@ -418,6 +451,7 @@ export default function TodayScreen() {
                 <TodayWidget hideHeader bordered={false} flush>
                   <LevelProgressCard
                     userLight={lightQuery.data}
+                    parked={heroParked}
                     onPress={() => router.push("/journey")}
                   />
                 </TodayWidget>
@@ -435,7 +469,10 @@ export default function TodayScreen() {
                       <>
                         {/* Hollow center (PWA parity) — the legend below
                             carries the numbers; no glyph in the middle. */}
-                        <ActivityRings size={196} rings={ringData} />
+                        <ActivityRings
+                          size={196}
+                          rings={heroParked ? parkedRings : ringData}
+                        />
                         <XStack gap="$5" flexWrap="wrap" justify="center">
                           {ringData.map((r) => (
                             <YStack
@@ -485,7 +522,7 @@ export default function TodayScreen() {
               {/* ---- KPI row (shared DashboardStats) — chromeless flush cell;
                    the `Stat` tiles carry their own hairline card borders. ---- */}
               <TodayWidget hideHeader bordered={false} flush>
-                <DashboardStats stats={stats} />
+                <DashboardStats stats={heroParked ? parkedStats : stats} />
               </TodayWidget>
 
               {/* ---- Habits Today — REAL interactive check-in rows (parity
@@ -691,15 +728,17 @@ function ViewAll({ onPress }: { onPress: () => void }) {
 function LevelProgressCard({
   userLight,
   onPress,
+  parked,
 }: {
   userLight: UserLight;
   onPress: () => void;
+  parked?: boolean;
 }) {
   const { handlers, pressProps } = usePressScale({ onPress, haptic: "none" });
   return (
     <Card {...handlers} {...pressProps} transition="quick" role="button">
       <Card.Body gap="$2">
-        <LevelProgress userLight={userLight} />
+        <LevelProgress userLight={userLight} parked={parked} />
         <Text fontSize="$1" color="$mutedForeground" self="flex-end">
           View journey ›
         </Text>
