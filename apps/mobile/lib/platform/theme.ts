@@ -53,6 +53,20 @@ function resolvePreference(pref: ThemePreference): ResolvedTheme {
   return pref === "system" ? systemTheme() : pref;
 }
 
+/**
+ * Push the preference down to the NATIVE interface style. Tamagui only themes
+ * the JS tree; the platform chrome — the Liquid Glass tab bar (NativeTabs),
+ * the UISegmentedControl behind the kit SegmentedControl, alerts, pickers —
+ * follows the window's user-interface style. Without this an explicit "dark"
+ * pick left those in the OS's light style: unreadable segment labels and a
+ * tab bar that went light mid-swipe and stayed there (2026-10-21).
+ * `unspecified` clears the override so "system" follows the OS again. Must run
+ * BEFORE resolving "system": `getColorScheme()` reports the override.
+ */
+function applyNativeScheme(pref: ThemePreference): void {
+  Appearance.setColorScheme(pref === "system" ? "unspecified" : pref);
+}
+
 // Module-level state. Starts at "system" → OS scheme; `initTheme()` overwrites
 // `preference` with the persisted value once AsyncStorage resolves.
 let preference: ThemePreference = "system";
@@ -92,6 +106,7 @@ function persist(pref: ThemePreference): void {
 function setTheme(next: ThemePreference): void {
   preference = next;
   persist(next);
+  applyNativeScheme(next);
   resolved = resolvePreference(next);
   commit();
 }
@@ -114,6 +129,7 @@ export function initTheme(): Promise<void> {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored === "light" || stored === "dark" || stored === "system") {
         preference = stored;
+        applyNativeScheme(stored);
         resolved = resolvePreference(stored);
         commit();
       }

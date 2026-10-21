@@ -15,13 +15,11 @@ export function ControlPress({
   label,
   checked,
   onPress,
-  onPressIn,
   children,
 }: ControlPressProps) {
   return (
     <Pressable
       onPress={() => onPress()}
-      onPressIn={onPressIn}
       hitSlop={12}
       accessibilityRole="checkbox"
       accessibilityState={{ checked }}

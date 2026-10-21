@@ -11,7 +11,7 @@
 // var(--ring-*) CSS custom properties.
 
 import { useMemo } from "react";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery, type QueryClient } from "@tanstack/react-query";
 import { addMonths, format } from "date-fns";
 import type { CalendarEvent } from "@stageholder/ui/data";
 import type { Habit } from "@repo/core/types";
@@ -75,6 +75,16 @@ async function fetchCalendarMonth(month: string): Promise<CalendarData> {
     }
   }
   return data;
+}
+
+/** Warm one month (e.g. the current one from Today) so the calendar screen
+ *  opens with the visible week already populated instead of a spinner. */
+export function prefetchCalendarMonth(qc: QueryClient, month: string) {
+  return qc.prefetchQuery({
+    queryKey: ["calendar", month],
+    queryFn: () => fetchCalendarMonth(month),
+    staleTime: 60_000,
+  });
 }
 
 export function useCalendarData(month: string) {

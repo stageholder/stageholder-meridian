@@ -51,6 +51,7 @@ import type { UserLight } from "@repo/core/types/light";
 import { CalendarDays } from "@tamagui/lucide-icons-2/icons/CalendarDays";
 import { Search } from "@tamagui/lucide-icons-2/icons/Search";
 import { useQueryClient } from "@tanstack/react-query";
+import { prefetchCalendarMonth } from "@/lib/api/hooks/calendar";
 import { format, subDays } from "date-fns";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
@@ -164,6 +165,11 @@ export default function TodayScreen() {
 
   const toggleTodo = useToggleTodo();
   const qc = useQueryClient();
+  // Warm the current calendar month so the Calendar screen (pushed from the
+  // header icon) opens with this week's rings populated, not a spinner.
+  useEffect(() => {
+    void prefetchCalendarMonth(qc, format(new Date(), "yyyy-MM"));
+  }, [qc]);
 
   // Commit the shaped view-model through useDeferredValue: when a fresh
   // /dashboard/today payload arrives, React can keep the current UI (and the

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ControlPress } from "../_internal/control-press";
 import { Check } from "@tamagui/lucide-icons-2/icons/Check";
 import { Clock } from "@tamagui/lucide-icons-2/icons/Clock";
@@ -237,30 +237,12 @@ export function TodoItem({
     if (todo.status !== "done") setBurning(false);
   }, [todo.status]);
 
-  // Cross-platform "don't open the detail sheet when the checkbox/delete was
-  // tapped". Web relies on stopPropagation (onPress → bubbling onClick), but
-  // native has no propagation: tapping the checkbox would ALSO fire the row's
-  // onPress and open the edit sheet. An inner control records its touch-DOWN
-  // time (onPressIn, before ANY onPress fires — order-independent); the row's
-  // onPress ignores presses that land within a beat of a control press. A
-  // timestamp (not a boolean) so it self-expires — it can never get stuck
-  // "true" in the native case where only the control's onPress fires.
-  const controlPressAt = useRef(0);
-  const pressedControl = () => {
-    controlPressAt.current = Date.now();
-  };
-
   const isDone = todo.status === "done";
   const priority =
     PRIORITY_CONFIG[todo.priority as keyof typeof PRIORITY_CONFIG] ??
     PRIORITY_CONFIG.none;
 
-  function handleToggle(e?: { stopPropagation?: () => void }) {
-    // Web: stops the row's onPress (open-detail) from also firing — onPress
-    // maps to a bubbling onClick. Native: the RN responder system already
-    // gives the touch to this innermost view (no bubbling), and the press
-    // event carries no stopPropagation — so optional-chain it.
-    e?.stopPropagation?.();
+  function handleToggle() {
     if (isDone) {
       // Un-complete: flip back immediately, no burn.
       onToggle();
@@ -283,10 +265,7 @@ export function TodoItem({
     }, BURN_MS);
   }
 
-  function handleDelete(e?: { stopPropagation?: () => void }) {
-    // See handleToggle — optional-chained so native (no stopPropagation on
-    // the press event) doesn't throw while web still stops row bubbling.
-    e?.stopPropagation?.();
+  function handleDelete() {
     onDelete();
   }
 
@@ -305,17 +284,11 @@ export function TodoItem({
     todo.dueDate && !isDone && parseDateLocal(todo.dueDate) < localTodayStart();
 
   return (
+    // Layout only. Two SEPARATE press targets sit inside: the checkbox (toggle)
+    // and the body (open detail). They never overlap, so no tap needs to be
+    // told apart from another — no propagation tricks, no timing guards.
     <XStack
       group
-      onPress={() => {
-        // Skip when an inner control (checkbox / delete) was just the press
-        // target — native has no stopPropagation, so without this a checkbox
-        // tap would also open the detail sheet. 400ms covers the touch
-        // down→up gap of a single tap.
-        if (Date.now() - controlPressAt.current < 400) return;
-        if (!burning) onOpenDetail();
-      }}
-      cursor="pointer"
       items="center"
       gap="$3"
       // Compact rows sit inside dashboard/calendar widgets as bordered CARD
@@ -336,11 +309,6 @@ export function TodoItem({
       // burn below.
       {...(animateEnter ? ROW_ANIMATION_PROPS : {})}
       hoverStyle={burning ? undefined : { bg: "$accent" }}
-      // Touch feedback — a tappable row with no pressed state reads as dead
-      // on a phone (hover never fires there).
-      pressStyle={burning ? undefined : { bg: "$accent" }}
-      role="button"
-      aria-label="Open todo details"
       // Web-only right-click → host's actions menu. Passed through to the DOM
       // node (Tamagui forwards unknown props on web); no-op on native.
       {...({ onContextMenu } as object)}
@@ -350,7 +318,6 @@ export function TodoItem({
           label={isDone ? "Mark as incomplete" : "Mark as complete"}
           checked={isDone || burning}
           onPress={handleToggle}
-          onPressIn={pressedControl}
         >
           <View
             // 20px (was 24): balanced against the compact title (18px line) +
@@ -462,7 +429,21 @@ export function TodoItem({
           leading is ~1.6× and was opening a loose gap above the date); a
           tight 18px line + the small gap is the dense single-row treatment
           used by Todoist / Things. */}
-      <YStack flex={1} minW={0} gap="$1">
+      <YStack
+        flex={1}
+        minW={0}
+        gap="$1"
+        // The body IS the open-detail target (title + meta). hitSlop stretches
+        // the tap area over the row's vertical padding.
+        onPress={() => {
+          if (!burning) onOpenDetail();
+        }}
+        cursor="pointer"
+        pressStyle={{ opacity: 0.6 }}
+        role="button"
+        aria-label="Open todo details"
+        {...({ hitSlop: { top: 10, bottom: 10 } } as object)}
+      >
         <Text
           fontSize="$3"
           fontWeight="500"
@@ -575,13 +556,9 @@ export function TodoItem({
       </YStack>
 
       {/* Trailing actions: the host's "…" menu when `renderActions` is given
-          (PWA), else the default hover delete button (mobile / other hosts).
-          The wrapping View records the control-press timestamp so a tap on the
-          menu/delete doesn't ALSO fire the row's open-detail onPress. */}
+          (PWA), else the default hover delete button (mobile / other hosts). */}
       {renderActions ? (
-        <View shrink={0} onPressIn={pressedControl}>
-          {renderActions()}
-        </View>
+        <View shrink={0}>{renderActions()}</View>
       ) : isWeb ? (
         // Hover-reveal delete is a WEB-only affordance: on touch it's
         // permanently invisible ($group-hover never fires) yet still mounted
@@ -591,7 +568,6 @@ export function TodoItem({
           variant="ghost"
           size="sm"
           intent="danger"
-          onPressIn={pressedControl}
           onPress={handleDelete}
           aria-label="Delete todo"
           opacity={0}

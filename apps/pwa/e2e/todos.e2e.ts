@@ -37,10 +37,21 @@ async function inboxId(api: MeridianApi): Promise<string> {
  * `opacity: 0` element as visible. Polling computed opacity catches a row
  * that never finishes its enter animation (a real bug class in Tamagui).
  */
-async function settledRow(page: Page, title: string): Promise<Locator> {
-  const rows = page
+/**
+ * The row container. Since 2026-10-21 the row is a plain layout box holding
+ * two separate press targets — the checkbox and the "Open todo details" body
+ * — so we find the body by its name and step up to the row (`..`), which is
+ * what animates and what holds the checkbox.
+ */
+function todoRow(page: Page, title: string): Locator {
+  return page
     .getByRole("button", { name: "Open todo details" })
-    .filter({ hasText: title });
+    .filter({ hasText: title })
+    .locator("..");
+}
+
+async function settledRow(page: Page, title: string): Promise<Locator> {
+  const rows = todoRow(page, title);
   await expect
     .poll(
       async () =>
@@ -112,9 +123,7 @@ test.describe("todos", () => {
     const title = uniqueName("complete");
     await api.post("/todos", { title, listId: await inboxId(api) });
     await open(page, "/todos/inbox");
-    const row = page.getByRole("button", { name: "Open todo details" }).filter({
-      hasText: title,
-    });
+    const row = todoRow(page, title);
     await row.getByRole("checkbox", { name: "Mark as complete" }).click();
     await expect(row).toBeHidden();
 
@@ -129,11 +138,7 @@ test.describe("todos", () => {
       )
       .toMatch(/done|completed/i);
 
-    const doneRow = page
-      .getByRole("button", { name: "Open todo details" })
-      .filter({
-        hasText: title,
-      });
+    const doneRow = todoRow(page, title);
     await doneRow.getByRole("checkbox").click();
     await expect(doneRow).toBeHidden();
     await open(page, "/todos/inbox");

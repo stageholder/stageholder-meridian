@@ -18,20 +18,15 @@
 // month-window queries.
 
 import { useCallback, useMemo, useState } from "react";
-import {
-  Button,
-  Separator,
-  Spinner,
-  Text,
-  XStack,
-  YStack,
-} from "@stageholder/ui";
+import { Button, Separator, Text, YStack } from "@stageholder/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 
 import { CalendarDayAgenda } from "@/components/calendar-day-agenda";
 import { CreateTodoDialog } from "@/components/create-todo-dialog";
 import { ScreenScroll } from "@/components/screen-scroll";
+import { useMountOnOpen } from "@/lib/hooks/use-mount-on-open";
+import { useStagedMount } from "@/lib/hooks/use-staged-mount";
 import { WeekStrip } from "@/components/week-strip";
 import { EMPTY_DAY, useCalendarRange } from "@/lib/api/hooks/calendar";
 import { useHabits } from "@/lib/api";
@@ -50,8 +45,15 @@ export default function CalendarScreen() {
 
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [createTodoOpen, setCreateTodoOpen] = useState(false);
+  // The create sheet host mounts on its FIRST open, not with the screen
+  // (same as the Todos tab) — it was paying for the whole quick-add form +
+  // nested pickers inside this screen's push commit.
+  const createHost = useMountOnOpen(createTodoOpen);
+  // Skeleton-first: the strip paints on the push frame, the agenda list a
+  // beat later (use-staged-mount), so the slide-in never waits on it.
+  const agendaReady = useStagedMount();
 
-  const { data: calendarData, isLoading, isError } = useCalendarRange();
+  const { data: calendarData, isError } = useCalendarRange();
   const { data: habits } = useHabits();
   const habitsList = useMemo(() => habits ?? [], [habits]);
 
@@ -86,11 +88,10 @@ export default function CalendarScreen() {
                 Try again
               </Button>
             </YStack>
-          ) : isLoading && Object.keys(calendarData).length === 0 ? (
-            <XStack height={120} items="center" justify="center">
-              <Spinner size="large" />
-            </XStack>
           ) : (
+            // No spinner gate: the strip renders at once with hollow rings
+            // and fills in as the month queries land (Today prefetches the
+            // current month, so the visible week is usually already there).
             <YStack gap="$2">
               {/* Month label follows the selected day. */}
               <Text fontSize="$5" fontWeight="600" color="$color" px="$1">
@@ -113,22 +114,26 @@ export default function CalendarScreen() {
 
           <Separator />
 
-          <CalendarDayAgenda
-            date={selectedDate}
-            dayData={selectedDayData}
-            habits={habitsList}
-            onAddTodo={() => setCreateTodoOpen(true)}
-          />
+          {agendaReady ? (
+            <CalendarDayAgenda
+              date={selectedDate}
+              dayData={selectedDayData}
+              habits={habitsList}
+              onAddTodo={() => setCreateTodoOpen(true)}
+            />
+          ) : null}
         </YStack>
       </ScreenScroll>
 
       {/* Pre-fill the tapped day's date so a todo added from the calendar is
           actually DUE that day (PWA agenda parity) — the field stays editable. */}
-      <CreateTodoDialog
-        open={createTodoOpen}
-        onOpenChange={setCreateTodoOpen}
-        defaultDueDate={format(selectedDate, "yyyy-MM-dd")}
-      />
+      {createHost ? (
+        <CreateTodoDialog
+          open={createTodoOpen}
+          onOpenChange={setCreateTodoOpen}
+          defaultDueDate={format(selectedDate, "yyyy-MM-dd")}
+        />
+      ) : null}
     </YStack>
   );
 }

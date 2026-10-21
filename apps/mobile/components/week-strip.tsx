@@ -114,6 +114,10 @@ export function WeekStrip({
           keyExtractor={(d) => d.toISOString()}
           renderItem={renderWeek}
           // A strip is 3 pages of mounted content at most — keep it tight.
+          // initialNumToRender: RN's default (10) mounted ten week pages × 7
+          // SVG ring sets on the FIRST frame, which held the push animation
+          // back (2026-10-21). One page now, neighbours on the next batch.
+          initialNumToRender={1}
           windowSize={3}
           maxToRenderPerBatch={2}
           style={{ flexGrow: 0 }}

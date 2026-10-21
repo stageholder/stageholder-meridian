@@ -9,7 +9,6 @@ export interface ControlPressProps {
   label: string;
   checked: boolean;
   onPress: (e?: { stopPropagation?: () => void }) => void;
-  onPressIn: () => void;
   children: ReactNode;
 }
 
@@ -17,13 +16,11 @@ export function ControlPress({
   label,
   checked,
   onPress,
-  onPressIn,
   children,
 }: ControlPressProps) {
   return (
     <View
       onPress={onPress}
-      onPressIn={onPressIn}
       role="checkbox"
       aria-checked={checked}
       aria-label={label}
