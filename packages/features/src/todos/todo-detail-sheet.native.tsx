@@ -45,6 +45,7 @@ import type { Todo } from "@repo/core/types";
 import {
   QuickAddPill,
   PillPickerSheet,
+  useSheetSession,
   type PillPickerOption,
 } from "../_internal/quick-add-sheet.native";
 import type { TodoDetailSheetProps } from "./todo-detail-sheet.types";
@@ -95,9 +96,20 @@ function openPicker(set: (open: boolean) => void) {
   set(true);
 }
 
-export function TodoDetailSheet({
+/**
+ * Every open is a FRESH instance (keyed on `useSheetSession`) and the sheet
+ * unmounts its children at close — same rule as the quick-add: initial state
+ * is the reset, the keyboard drops with the fields, no open/closed refs.
+ */
+export function TodoDetailSheet(props: TodoDetailSheetProps) {
+  const { session, onClosed } = useSheetSession();
+  return <TodoDetail key={session} {...props} onClosed={onClosed} />;
+}
+
+function TodoDetail({
   open,
   onOpenChange,
+  onClosed,
   todo,
   lists,
   accentColor,
@@ -105,7 +117,7 @@ export function TodoDetailSheet({
   onToggleStatus,
   onMore,
   subtasks,
-}: TodoDetailSheetProps) {
+}: TodoDetailSheetProps & { onClosed: () => void }) {
   const theme = useTheme();
   const fg = theme.color?.val ?? "#000";
   const muted = theme.mutedForeground?.val ?? "#888";
@@ -114,47 +126,24 @@ export function TodoDetailSheet({
   const titleRef = useRef<TextInput>(null);
   const notesRef = useRef<TextInput>(null);
 
-  // Text fields are DRAFTS committed on blur/return; everything else is read
-  // straight off `todo` (the host's optimistic cache flips it instantly).
+  // Text fields are DRAFTS (seeded once — this instance lives for one open);
+  // everything else is read straight off `todo` (the host's optimistic cache
+  // flips it instantly).
   const [title, setTitle] = useState(todo?.title ?? "");
   const [notes, setNotes] = useState(todo?.description ?? "");
-  const seededFor = useRef<string | null>(todo?.id ?? null);
-  useEffect(() => {
-    // Re-seed when a DIFFERENT todo is shown, or the same one is reopened
-    // (so an abandoned draft never survives a close). While open, the server
-    // echo of our own commit must not clobber what the user is typing.
-    if (!todo) return;
-    if (seededFor.current !== todo.id || !open) {
-      setTitle(todo.title);
-      setNotes(todo.description ?? "");
-      seededFor.current = todo.id;
-    }
-  }, [todo, open]);
 
+  // Picker sheets mount once the slide has settled (kit `onSettled`).
   const [heavyReady, setHeavyReady] = useState(false);
-  // Mirror of `open` for the settle callback below (its closure can be stale).
-  const openRef = useRef(open);
-  openRef.current = open;
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
 
-  // Closing: blur the drafts (commits them) so the keyboard never lingers
-  // over the list behind the sheet.
-  const wasOpen = useRef(false);
+  // Keyboard with the slide: when the sheet opens, focus the field one
+  // animation frame later (the kit mounts the field at open and attaches it
+  // a beat after; the frame callback is cancelled on close/unmount).
   useEffect(() => {
-    if (open && !wasOpen.current) {
-      // Keyboard WITH the slide (see quick-add): the body mounts in this
-      // commit, so focus now; the settle focus below is only a backstop.
-      titleRef.current?.focus();
-    }
-    if (!open && wasOpen.current) {
-      titleRef.current?.blur();
-      notesRef.current?.blur();
-      // Belt and braces: after a drag-dismiss the blur alone left the
-      // keyboard standing over the list (observed 2026-10-20).
-      Keyboard.dismiss();
-    }
-    wasOpen.current = open;
+    if (!open) return;
+    const id = requestAnimationFrame(() => titleRef.current?.focus());
+    return () => cancelAnimationFrame(id);
   }, [open]);
 
   // Debounced autosave for the two text drafts. Blur is not a reliable
@@ -230,13 +219,10 @@ export function TodoDetailSheet({
         open={open}
         onOpenChange={(next) => {
           if (!next) {
-            // Drop the keyboard WHILE the inputs are still mounted. On a
-            // drag-dismiss the sheet tears its body down (mountChildren
-            // "open") before the host's `open` flips, so the close effect
-            // below finds no focused input to blur and iOS keeps the keyboard
-            // standing over the list (observed 2026-10-20).
-            titleRef.current?.blur();
-            notesRef.current?.blur();
+            // Commit the drafts (unmounting a field fires no blur) and drop
+            // the keyboard before the close slide.
+            commitTitle();
+            commitNotes();
             Keyboard.dismiss();
           }
           onOpenChange(next);
@@ -251,28 +237,7 @@ export function TodoDetailSheet({
         // lists scroll inside their own capped region below.
         hideFooter
         mountChildren="open"
-        onSettled={() => {
-          // The kit reports a settle for the CLOSE slide too. Focusing then
-          // raised the keyboard over the list as the sheet left (and with no
-          // mounted input to blur it stayed) — only act on an OPEN settle.
-          if (!openRef.current) return;
-          setHeavyReady(true);
-          // Keyboard once the slide lands: the title is the thing you most
-          // often came to change. Deferred a tick — called synchronously from
-          // the settle callback the focus sometimes landed before the input
-          // was ready and the keyboard stayed down. NOT RN `autoFocus`: that
-          // re-fired on the frame re-measure a drag triggers, re-raising the
-          // keyboard as the sheet was being dismissed (2026-10-20).
-          setTimeout(() => {
-            const el = titleRef.current;
-            if (!el) return;
-            // Opened from a closing menu/sheet the field can end up FOCUSED
-            // with the keyboard down (caret, no keys) — a plain focus() is a
-            // no-op then, so always cycle it (a 30 ms blur is invisible).
-            el.blur();
-            setTimeout(() => el.focus(), 30);
-          }, 80);
-        }}
+        onSettled={() => (open ? setHeavyReady(true) : onClosed())}
         // The kit FormSheet defaults to `disableDrag` (a form should not be
         // swiped away mid-edit). Nothing here is lost on close — every field
         // commits on its own — so swipe-to-dismiss is the right affordance.
@@ -306,10 +271,7 @@ export function TodoDetailSheet({
             // over the list (2026-10-20). Tapping the dimmed page above always
             // closes in one go.
             onTouchStart={() => {
-              if (!Keyboard.isVisible()) return;
-              titleRef.current?.blur();
-              notesRef.current?.blur();
-              Keyboard.dismiss();
+              if (Keyboard.isVisible()) Keyboard.dismiss();
             }}
           >
             <View

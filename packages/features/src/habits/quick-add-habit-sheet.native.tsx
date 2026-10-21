@@ -5,7 +5,7 @@
 // Create-only; editing is the habit detail sheet.
 //
 // Same ONE RULE as the todo quick-add: every open is a FRESH instance (keyed
-// on `useOpenSession`) and the sheet unmounts its children at close — initial
+// on `useSheetSession`) and the sheet unmounts its children at close — initial
 // state is the reset, `autoFocus` raises the keyboard with the slide, and the
 // keyboard drops because the field is gone. No effects, no refs for focus.
 import { useEffect, useRef, useState } from "react";
@@ -23,7 +23,7 @@ import {
   QuickAddSheet,
   QuickAddPill,
   PillPickerSheet,
-  useOpenSession,
+  useSheetSession,
   type PillPickerOption,
 } from "../_internal/quick-add-sheet.native";
 import {
@@ -44,8 +44,8 @@ function openPicker(set: (open: boolean) => void) {
 }
 
 export function QuickAddHabitSheet(props: QuickAddHabitSheetProps) {
-  const session = useOpenSession(props.open);
-  return <HabitQuickAdd key={session} {...props} />;
+  const { session, onClosed } = useSheetSession();
+  return <HabitQuickAdd key={session} {...props} onClosed={onClosed} />;
 }
 
 function HabitQuickAdd({
@@ -56,7 +56,8 @@ function HabitQuickAdd({
   accentColor,
   isSubmitting,
   onSubmit,
-}: QuickAddHabitSheetProps) {
+  onClosed,
+}: QuickAddHabitSheetProps & { onClosed: () => void }) {
   const hasGroups = !!groups && groups.length > 0;
   const nameRef = useRef<TextInput>(null);
   const theme = useTheme();
@@ -94,12 +95,14 @@ function HabitQuickAdd({
   // Picker sheets mount once the slide has settled (kit `onSettled`).
   const [settled, setSettled] = useState(false);
 
-  // Keyboard with the slide: `autoFocus` plus one animation frame after
-  // mount (see the todo quick-add for why), cancelled on unmount.
+  // Keyboard with the slide: when the sheet opens, focus the field one
+  // animation frame later (the kit mounts the field at open and attaches it
+  // a beat after; the frame callback is cancelled on close/unmount).
   useEffect(() => {
+    if (!open) return;
     const id = requestAnimationFrame(() => nameRef.current?.focus());
     return () => cancelAnimationFrame(id);
-  }, []);
+  }, [open]);
 
   // Bring the keyboard back to the name after a picker closes.
   const refocus = () => nameRef.current?.focus();
@@ -153,7 +156,7 @@ function HabitQuickAdd({
         onSubmit={handleSubmit}
         submitting={isSubmitting}
         submitDisabled={!hasName}
-        onSettled={() => setSettled(true)}
+        onSettled={() => (open ? setSettled(true) : onClosed())}
         field={
           <>
             <XStack gap="$2" items="center">

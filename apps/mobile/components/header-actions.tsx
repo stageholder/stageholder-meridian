@@ -16,6 +16,7 @@
 import { Text, XStack } from "@stageholder/ui";
 import { MoreHorizontal } from "@tamagui/lucide-icons-2/icons/MoreHorizontal";
 import { Stack } from "expo-router";
+import { Pressable } from "react-native";
 
 import { showActionSheet } from "@/lib/action-sheet";
 
@@ -42,37 +43,39 @@ export function HeaderActions({
       options={{
         ...(headerTitle ? { headerTitle } : {}),
         headerRight: () => (
+          // RN `Pressable`, not Tamagui press props: a Tamagui `Text onPress`
+          // in the native header dropped the FIRST tap after a push (the
+          // handler never ran; the second tap worked — 2026-10-21), the same
+          // press family that went dead on the todo checkbox.
           <XStack items="center" gap="$3">
             {primary ? (
-              <Text
-                role="button"
-                aria-label={primary.label}
-                aria-disabled={primary.disabled}
-                fontSize="$5"
-                fontWeight="600"
-                color="$color10"
-                opacity={primary.disabled ? 0.45 : 1}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={primary.label}
+                disabled={primary.disabled}
                 hitSlop={10}
-                pressStyle={{ opacity: 0.6 }}
-                onPress={primary.disabled ? undefined : primary.onPress}
+                onPress={primary.onPress}
+                style={({ pressed }) => ({
+                  opacity: primary.disabled ? 0.45 : pressed ? 0.6 : 1,
+                })}
               >
-                {primary.label}
-              </Text>
+                <Text fontSize="$5" fontWeight="600" color="$color10">
+                  {primary.label}
+                </Text>
+              </Pressable>
             ) : null}
             {menu.length > 0 ? (
-              <XStack
-                role="button"
-                aria-label="More actions"
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="More actions"
                 hitSlop={10}
-                pressStyle={{ opacity: 0.6 }}
-                focusStyle={{ outlineWidth: 0 }}
-                focusVisibleStyle={{ outlineWidth: 0 }}
                 onPress={() =>
                   showActionSheet({ title: menuTitle, actions: menu })
                 }
+                style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
               >
                 <MoreHorizontal size={22} color="$color" />
-              </XStack>
+              </Pressable>
             ) : null}
           </XStack>
         ),

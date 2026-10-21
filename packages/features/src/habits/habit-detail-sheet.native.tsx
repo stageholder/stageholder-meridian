@@ -39,6 +39,7 @@ import type { Habit } from "@repo/core/types";
 import {
   QuickAddPill,
   PillPickerSheet,
+  useSheetSession,
   type PillPickerOption,
 } from "../_internal/quick-add-sheet.native";
 import {
@@ -67,14 +68,25 @@ function openPicker(set: (open: boolean) => void) {
   set(true);
 }
 
-export function HabitDetailSheet({
+/**
+ * Every open is a FRESH instance (keyed on `useSheetSession`) and the sheet
+ * unmounts its children at close — same rule as the quick-add: initial state
+ * is the reset, the keyboard drops with the fields, no open/closed refs.
+ */
+export function HabitDetailSheet(props: HabitDetailSheetProps) {
+  const { session, onClosed } = useSheetSession();
+  return <HabitDetail key={session} {...props} onClosed={onClosed} />;
+}
+
+function HabitDetail({
   open,
   onOpenChange,
+  onClosed,
   habit,
   groups,
   onPatch,
   onMore,
-}: HabitDetailSheetProps) {
+}: HabitDetailSheetProps & { onClosed: () => void }) {
   const theme = useTheme();
   const fg = theme.color?.val ?? "#000";
   const muted = theme.mutedForeground?.val ?? "#888";
@@ -86,17 +98,11 @@ export function HabitDetailSheet({
   // straight off `habit` (the host's optimistic cache flips it instantly).
   const [name, setName] = useState(habit?.name ?? "");
   const [notes, setNotes] = useState(habit?.description ?? "");
-  const seededFor = useRef<string | null>(habit?.id ?? null);
-  useEffect(() => {
-    if (!habit) return;
-    if (seededFor.current !== habit.id || !open) {
-      setName(habit.name);
-      setNotes(habit.description ?? "");
-      seededFor.current = habit.id;
-    }
-  }, [habit, open]);
 
   const [pickersReady, setPickersReady] = useState(false);
+  // The kit keeps the settle callback it was first given, so read `open`
+  // through a ref there (a stale `false` closure would treat the OPEN settle
+  // as a close and replace the instance mid-open).
   const openRef = useRef(open);
   openRef.current = open;
   const [iconOpen, setIconOpen] = useState(false);
@@ -105,18 +111,13 @@ export function HabitDetailSheet({
   const [colorOpen, setColorOpen] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
 
-  const wasOpen = useRef(false);
+  // Keyboard with the slide: when the sheet opens, focus the field one
+  // animation frame later (the kit mounts the field at open and attaches it
+  // a beat after; the frame callback is cancelled on close/unmount).
   useEffect(() => {
-    if (open && !wasOpen.current) {
-      // Keyboard WITH the slide; the settle focus below is only a backstop.
-      nameRef.current?.focus();
-    }
-    if (!open && wasOpen.current) {
-      nameRef.current?.blur();
-      notesRef.current?.blur();
-      Keyboard.dismiss();
-    }
-    wasOpen.current = open;
+    if (!open) return;
+    const id = requestAnimationFrame(() => nameRef.current?.focus());
+    return () => cancelAnimationFrame(id);
   }, [open]);
 
   // Debounced autosave for the drafts (blur is not a reliable commit point on
@@ -191,8 +192,10 @@ export function HabitDetailSheet({
         open={open}
         onOpenChange={(next) => {
           if (!next) {
-            nameRef.current?.blur();
-            notesRef.current?.blur();
+            // Commit the drafts (unmounting a field fires no blur) and drop
+            // the keyboard before the close slide.
+            commitName();
+            commitNotes();
             Keyboard.dismiss();
           }
           onOpenChange(next);
@@ -201,19 +204,7 @@ export function HabitDetailSheet({
         mountChildren="open"
         disableDrag={false}
         hideHandle
-        onSettled={() => {
-          if (!openRef.current) return; // the kit settles on CLOSE too
-          setPickersReady(true);
-          setTimeout(() => {
-            const el = nameRef.current;
-            if (!el) return;
-            // Opened from a closing menu/sheet the field can end up FOCUSED
-            // with the keyboard down (caret, no keys) — a plain focus() is a
-            // no-op then, so always cycle it (a 30 ms blur is invisible).
-            el.blur();
-            setTimeout(() => el.focus(), 30);
-          }, 80);
-        }}
+        onSettled={() => (openRef.current ? setPickersReady(true) : onClosed())}
         frameProps={{ pt: "$2", pb: "$4" }}
       >
         <YStack gap="$2.5">
@@ -225,10 +216,7 @@ export function HabitDetailSheet({
             items="center"
             justify="center"
             onTouchStart={() => {
-              if (!Keyboard.isVisible()) return;
-              nameRef.current?.blur();
-              notesRef.current?.blur();
-              Keyboard.dismiss();
+              if (Keyboard.isVisible()) Keyboard.dismiss();
             }}
           >
             <View

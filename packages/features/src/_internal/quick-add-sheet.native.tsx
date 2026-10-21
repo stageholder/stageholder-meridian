@@ -6,7 +6,7 @@
 // pinned accent send button. Todoist-style quick capture — one thing to type,
 // everything else a pill. Reset is by state (the host owns it); no
 // LazyBody / skeleton / epoch keys / mountChildren juggling here.
-import { useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { ArrowUp } from "@tamagui/lucide-icons-2/icons/ArrowUp";
 import { Check } from "@tamagui/lucide-icons-2/icons/Check";
 import {
@@ -137,21 +137,19 @@ export function QuickAddSheet({
 }
 
 /**
- * A number that increments every time `open` flips to true. Hosts key their
- * form on it so EVERY open mounts a fresh instance: initial state is the
- * reset, `autoFocus` is the focus, and nothing carries over between opens
- * or between screens. The key only changes on open, so the close animation
- * is untouched. (Replaces reset-by-state effects, open/closed refs and
- * imperative focus/blur choreography, 2026-10-21.)
+ * Fresh instance per use. Hosts key their sheet on `session` and call
+ * `onClosed` from the sheet's close settle (kit `onSettled` while `!open`):
+ * the finished instance is replaced by a brand-new CLOSED one, so initial
+ * state is the reset, nothing carries over between opens or screens, the
+ * close animation is untouched, and every open is a plain open on a mounted
+ * sheet (mounting a sheet already open left it closed on a pushed screen's
+ * first tap, 2026-10-21). Replaces reset-by-state effects, open/closed refs
+ * and imperative focus/blur choreography.
  */
-export function useOpenSession(open: boolean): number {
-  const [prevOpen, setPrevOpen] = useState(open);
+export function useSheetSession(): { session: number; onClosed: () => void } {
   const [session, setSession] = useState(0);
-  if (open !== prevOpen) {
-    setPrevOpen(open);
-    if (open) setSession((n) => n + 1);
-  }
-  return session;
+  const onClosed = useCallback(() => setSession((n) => n + 1), []);
+  return { session, onClosed };
 }
 
 export interface QuickAddPillProps {

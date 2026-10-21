@@ -5,7 +5,7 @@
 // accent send button. Create-only; editing is the detail sheet.
 //
 // ONE RULE keeps it predictable: every open is a FRESH instance (keyed on
-// `useOpenSession`), and the sheet unmounts its children at close. So there
+// `useSheetSession`), and the sheet unmounts its children at close. So there
 // is no reset code, no open/closed refs, no focus timers — initial state is
 // the reset, `autoFocus` raises the keyboard with the slide, and the keyboard
 // drops because the field is gone.
@@ -25,7 +25,7 @@ import {
   QuickAddSheet,
   QuickAddPill,
   PillPickerSheet,
-  useOpenSession,
+  useSheetSession,
   type PillPickerOption,
 } from "../_internal/quick-add-sheet.native";
 import { SmartTodoInput } from "./smart-todo-input";
@@ -72,8 +72,8 @@ function openPicker(set: (open: boolean) => void) {
 }
 
 export function QuickAddTodoSheet(props: QuickAddTodoSheetProps) {
-  const session = useOpenSession(props.open);
-  return <TodoQuickAdd key={session} {...props} />;
+  const { session, onClosed } = useSheetSession();
+  return <TodoQuickAdd key={session} {...props} onClosed={onClosed} />;
 }
 
 function TodoQuickAdd({
@@ -84,7 +84,8 @@ function TodoQuickAdd({
   accentColor,
   isSubmitting,
   onSubmit,
-}: QuickAddTodoSheetProps) {
+  onClosed,
+}: QuickAddTodoSheetProps & { onClosed: () => void }) {
   const smartLocale = useRef(resolveSmartLocale()).current;
   const titleRef = useRef<SmartTodoInputHandle>(null);
 
@@ -112,14 +113,14 @@ function TodoQuickAdd({
   // mounting them in the open commit delayed the slide itself.
   const [settled, setSettled] = useState(false);
 
-  // Keyboard with the slide. `autoFocus` covers most mounts; when the host
-  // mounts the sheet in the same commit as its first open, the kit attaches
-  // the field a beat later, so also focus one animation frame after mount
-  // (cancelled on unmount — nothing can fire after a close).
+  // Keyboard with the slide: when the sheet opens, focus the field one
+  // animation frame later (the kit mounts the field at open and attaches it
+  // a beat after; the frame callback is cancelled on close/unmount).
   useEffect(() => {
+    if (!open) return;
     const id = requestAnimationFrame(() => titleRef.current?.focus());
     return () => cancelAnimationFrame(id);
-  }, []);
+  }, [open]);
 
   // Bring the keyboard back to the title after a picker closes.
   const refocus = () => titleRef.current?.focus();
@@ -175,7 +176,7 @@ function TodoQuickAdd({
       onSubmit={handleSubmit}
       submitting={isSubmitting}
       submitDisabled={!title.trim()}
-      onSettled={() => setSettled(true)}
+      onSettled={() => (open ? setSettled(true) : onClosed())}
       field={
         <>
           {/* testID wrapper kept for the E2E flows (Maestro taps it). */}

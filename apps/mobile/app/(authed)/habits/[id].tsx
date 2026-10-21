@@ -791,7 +791,10 @@ export default function HabitDetailScreen() {
         )}
       </ScreenScroll>
 
-      {habit && editOpen ? (
+      {/* Always mounted while the habit is loaded (like the Habits tab host):
+          `open` flips on a mounted sheet. Mounting the sheet already-open on
+          the first Edit tap left it closed (2026-10-21). */}
+      {habit ? (
         <HabitDetailSheet
           habit={habit}
           open={editOpen}
