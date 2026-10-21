@@ -36,10 +36,18 @@ export interface QuickAddSheetProps {
   pills: ReactNode;
   /**
    * Kit FormSheet `onSettled`: fires once per open when the slide has landed
-   * (spring complete or the kit's 350 ms cap). Hosts mount their SIBLING
+   * (spring complete or the kit's 350 ms cap). Hosts mount their nested
    * picker sheets / heavy fields from here — never from a timer.
    */
   onSettled?: () => void;
+  /**
+   * Picker sheets, rendered INSIDE the FormSheet (not as siblings): Tamagui
+   * gives a sheet nested in another sheet `parentSheet.zIndex + 1`, so they
+   * stack above this frame by contract. As siblings they relied on portal
+   * insertion order and rendered BEHIND the create sheet — the pills looked
+   * dead and the calendar peeked out half-hidden (2026-10-21).
+   */
+  children?: ReactNode;
 }
 
 export function QuickAddSheet({
@@ -53,6 +61,7 @@ export function QuickAddSheet({
   field,
   pills,
   onSettled,
+  children,
 }: QuickAddSheetProps) {
   return (
     <FormSheet
@@ -81,7 +90,13 @@ export function QuickAddSheet({
             button is pinned at the right, aligned with the pills. */}
         <XStack items="center" gap="$2">
           <View flex={1} minWidth={0}>
-            <FormSheet.HorizontalScroll>{pills}</FormSheet.HorizontalScroll>
+            {/* `always`: the row is a ScrollView under an OPEN keyboard, and
+                RN's ScrollView swallows the first tap on a non-input child to
+                dismiss the keyboard (default `never`) — every pill looked
+                dead: priority stuck on Low, Note never opened (2026-10-21). */}
+            <FormSheet.HorizontalScroll keyboardShouldPersistTaps="always">
+              {pills}
+            </FormSheet.HorizontalScroll>
           </View>
           {/* Tamagui-pressable View, NOT the kit IconButton: the kit's RN
               Pressable got no touches inside this portaled sheet on Android
@@ -114,6 +129,7 @@ export function QuickAddSheet({
           </View>
         </XStack>
       </YStack>
+      {children}
     </FormSheet>
   );
 }
@@ -140,7 +156,6 @@ export function QuickAddPill({ icon, label, onPress }: QuickAddPillProps) {
     </Pill>
   );
 }
-
 export interface PillPickerOption {
   value: string;
   label: string;

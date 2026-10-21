@@ -23,7 +23,7 @@
 // red button in the body. Pickers are SIBLING sheets mounted once the slide
 // has settled (kit `onSettled`), the same open choreography as quick-add.
 import { useEffect, useRef, useState } from "react";
-import { Keyboard, ScrollView, TextInput } from "react-native";
+import { Keyboard, ScrollView, TextInput, View as RNView } from "react-native";
 import { format } from "date-fns";
 import { CalendarDays } from "@tamagui/lucide-icons-2/icons/CalendarDays";
 import { Check } from "@tamagui/lucide-icons-2/icons/Check";
@@ -39,7 +39,7 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
-import { CalendarSheet } from "@stageholder/ui/pickers";
+import { QuickDatePicker } from "@stageholder/ui/pickers";
 import { useTheme } from "tamagui";
 import type { Todo } from "@repo/core/types";
 import {
@@ -88,6 +88,13 @@ const SUBTASKS_MAX_HEIGHT = 280;
 const TITLE_FONT = 20;
 const TITLE_LINE = 26;
 
+/** Picker sheets slide up from the screen bottom — under an open keyboard
+ *  they'd be hidden behind the keys (2026-10-21). Drop the keyboard first. */
+function openPicker(set: (open: boolean) => void) {
+  Keyboard.dismiss();
+  set(true);
+}
+
 export function TodoDetailSheet({
   open,
   onOpenChange,
@@ -130,8 +137,6 @@ export function TodoDetailSheet({
   openRef.current = open;
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
-  const [doOpen, setDoOpen] = useState(false);
-  const [dueOpen, setDueOpen] = useState(false);
 
   // Closing: blur the drafts (commits them) so the keyboard never lingers
   // over the list behind the sheet.
@@ -375,7 +380,7 @@ export function TodoDetailSheet({
           </XStack>
 
           {/* Attribute pills — the quick-add row, now live: each pick commits. */}
-          <FormSheet.HorizontalScroll>
+          <FormSheet.HorizontalScroll keyboardShouldPersistTaps="always">
             <QuickAddPill
               icon={
                 todo.priority !== "none" ? (
@@ -383,7 +388,7 @@ export function TodoDetailSheet({
                 ) : undefined
               }
               label={todo.priority === "none" ? "Priority" : cap(todo.priority)}
-              onPress={() => setPriorityOpen(true)}
+              onPress={() => openPicker(setPriorityOpen)}
             />
             {showListPill ? (
               <QuickAddPill
@@ -395,21 +400,36 @@ export function TodoDetailSheet({
                   ) : undefined
                 }
                 label={selectedList?.name ?? "List"}
-                onPress={() => setListOpen(true)}
+                onPress={() => openPicker(setListOpen)}
               />
             ) : null}
-            <QuickAddPill
-              icon={<CalendarDays size={13} />}
-              label={todo.doDate ? fmtDate(todo.doDate.slice(0, 10)) : "Do"}
-              onPress={() => setDoOpen(true)}
-            />
-            <QuickAddPill
-              icon={<Flag size={13} />}
-              label={
-                todo.dueDate ? fmtDate(todo.dueDate.slice(0, 10)) : "Deadline"
-              }
-              onPress={() => setDueOpen(true)}
-            />
+            {/* Dates = the kit QuickDatePicker (same control as the quick-add
+                and the web form). Touch-down drops the keyboard so the
+                picker's sheet isn't hidden behind the keys. */}
+            <RNView onTouchStart={() => Keyboard.dismiss()}>
+              <QuickDatePicker
+                size="sm"
+                placeholder="Do"
+                value={
+                  todo.doDate ? parseLocalDay(todo.doDate.slice(0, 10)) : null
+                }
+                onChange={(d) =>
+                  onPatch({ doDate: d ? format(d, "yyyy-MM-dd") : null })
+                }
+              />
+            </RNView>
+            <RNView onTouchStart={() => Keyboard.dismiss()}>
+              <QuickDatePicker
+                size="sm"
+                placeholder="Deadline"
+                value={
+                  todo.dueDate ? parseLocalDay(todo.dueDate.slice(0, 10)) : null
+                }
+                onChange={(d) =>
+                  onPatch({ dueDate: d ? format(d, "yyyy-MM-dd") : null })
+                }
+              />
+            </RNView>
           </FormSheet.HorizontalScroll>
 
           {/* Notes — ghost field, commits on blur. */}
@@ -485,32 +505,6 @@ export function TodoDetailSheet({
             options={listOptions}
             value={todo.listId}
             onSelect={(v) => onPatch({ listId: v })}
-          />
-        ) : null}
-        {heavyReady || doOpen ? (
-          <CalendarSheet
-            open={doOpen}
-            onClose={() => setDoOpen(false)}
-            value={todo.doDate ? parseLocalDay(todo.doDate.slice(0, 10)) : null}
-            onSelect={(d) => {
-              onPatch({ doDate: d ? format(d, "yyyy-MM-dd") : null });
-              setDoOpen(false);
-            }}
-            title="Do date"
-          />
-        ) : null}
-        {heavyReady || dueOpen ? (
-          <CalendarSheet
-            open={dueOpen}
-            onClose={() => setDueOpen(false)}
-            value={
-              todo.dueDate ? parseLocalDay(todo.dueDate.slice(0, 10)) : null
-            }
-            onSelect={(d) => {
-              onPatch({ dueDate: d ? format(d, "yyyy-MM-dd") : null });
-              setDueOpen(false);
-            }}
-            title="Deadline"
           />
         ) : null}
       </FormSheet>

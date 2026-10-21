@@ -7,7 +7,7 @@
 // heavier sub-config (weekly days, target+unit, color) lives in small nested
 // picker sheets (habit-pickers.native.tsx, shared with the detail sheet).
 import { useEffect, useRef, useState } from "react";
-import { TextInput } from "react-native";
+import { TextInput, Keyboard } from "react-native";
 import { Folder } from "@tamagui/lucide-icons-2/icons/Folder";
 import { Repeat } from "@tamagui/lucide-icons-2/icons/Repeat";
 import { Smile } from "@tamagui/lucide-icons-2/icons/Smile";
@@ -34,6 +34,13 @@ import { HABIT_FORM_DEFAULTS, type HabitFormValues } from "./habit-form";
 import type { QuickAddHabitSheetProps } from "./quick-add-habit-sheet.types";
 
 // ── main sheet ──────────────────────────────────────────────────────────────
+
+/** Picker sheets slide up from the screen bottom — under an open keyboard
+ *  they'd be hidden behind the keys (2026-10-21). Drop the keyboard first. */
+function openPicker(set: (open: boolean) => void) {
+  Keyboard.dismiss();
+  set(true);
+}
 
 export function QuickAddHabitSheet({
   open,
@@ -75,6 +82,16 @@ export function QuickAddHabitSheet({
   };
   const [description, setDescription] = useState("");
   const [noteOpen, setNoteOpen] = useState(false);
+  const noteRef = useRef<TextInput>(null);
+  // Note pill → the field mounts in this commit, so focus it on the next
+  // tick; toggling it off hands the keyboard back to the name.
+  useEffect(() => {
+    const t = setTimeout(
+      () => (noteOpen ? noteRef.current : nameRef.current)?.focus(),
+      50,
+    );
+    return () => clearTimeout(t);
+  }, [noteOpen]);
   const [icon, setIcon] = useState(HABIT_FORM_DEFAULTS.icon ?? "🎯");
   const [frequency, setFrequency] =
     useState<HabitFormValues["frequency"]>("daily");
@@ -189,7 +206,7 @@ export function QuickAddHabitSheet({
               <View
                 role="button"
                 aria-label="Pick an icon"
-                onPress={() => setIconOpen(true)}
+                onPress={() => openPicker(setIconOpen)}
                 width={40}
                 height={40}
                 rounded="$3"
@@ -234,6 +251,7 @@ export function QuickAddHabitSheet({
             </XStack>
             {noteOpen ? (
               <Input
+                ref={noteRef as never}
                 value={description}
                 onChangeText={setDescription}
                 placeholder="Add note…"
@@ -246,12 +264,12 @@ export function QuickAddHabitSheet({
             <QuickAddPill
               icon={<Repeat size={13} />}
               label={freqLabel}
-              onPress={() => setFreqOpen(true)}
+              onPress={() => openPicker(setFreqOpen)}
             />
             <QuickAddPill
               icon={<Target size={13} />}
               label={targetLabel}
-              onPress={() => setTargetOpen(true)}
+              onPress={() => openPicker(setTargetOpen)}
             />
             <QuickAddPill
               icon={
@@ -263,13 +281,13 @@ export function QuickAddHabitSheet({
                 />
               }
               label="Color"
-              onPress={() => setColorOpen(true)}
+              onPress={() => openPicker(setColorOpen)}
             />
             {hasGroups ? (
               <QuickAddPill
                 icon={<Folder size={13} color="$mutedForeground" />}
                 label={activeGroupName ?? "Group"}
-                onPress={() => setGroupOpen(true)}
+                onPress={() => openPicker(setGroupOpen)}
               />
             ) : null}
             <QuickAddPill
@@ -279,7 +297,61 @@ export function QuickAddHabitSheet({
             />
           </>
         }
-      />
+      >
+        {pickersReady || freqOpen ? (
+          <FrequencyPickerSheet
+            open={freqOpen}
+            onOpenChange={(o) => {
+              setFreqOpen(o);
+              if (!o) refocus();
+            }}
+            frequency={frequency}
+            setFrequency={setFrequency}
+            scheduledDays={scheduledDays}
+            setScheduledDays={setScheduledDays}
+            weeklyTarget={weeklyTarget}
+            setWeeklyTarget={setWeeklyTarget}
+          />
+        ) : null}
+        {pickersReady || targetOpen ? (
+          <TargetPickerSheet
+            open={targetOpen}
+            onOpenChange={(o) => {
+              setTargetOpen(o);
+              if (!o) refocus();
+            }}
+            frequency={frequency}
+            targetCount={targetCount}
+            setTargetCount={setTargetCount}
+            unit={unit}
+            setUnit={setUnit}
+          />
+        ) : null}
+        {pickersReady || colorOpen ? (
+          <ColorPickerSheet
+            open={colorOpen}
+            onOpenChange={(o) => {
+              setColorOpen(o);
+              if (!o) refocus();
+            }}
+            color={color}
+            setColor={setColor}
+          />
+        ) : null}
+        {pickersReady || groupOpen ? (
+          <PillPickerSheet
+            open={groupOpen}
+            onOpenChange={(o) => {
+              setGroupOpen(o);
+              if (!o) refocus();
+            }}
+            title="Group"
+            options={groupOptions}
+            value={groupId ?? NO_GROUP_VALUE}
+            onSelect={(v) => setGroupId(v === NO_GROUP_VALUE ? null : v)}
+          />
+        ) : null}
+      </QuickAddSheet>
 
       {pickersReady || iconOpen ? (
         <MediaPickerSheet
@@ -291,59 +363,6 @@ export function QuickAddHabitSheet({
           tabs={["emoji", "icon"]}
           value={parseMediaIcon(icon)}
           onChange={handlePickIcon}
-        />
-      ) : null}
-      {pickersReady || freqOpen ? (
-        <FrequencyPickerSheet
-          open={freqOpen}
-          onOpenChange={(o) => {
-            setFreqOpen(o);
-            if (!o) refocus();
-          }}
-          frequency={frequency}
-          setFrequency={setFrequency}
-          scheduledDays={scheduledDays}
-          setScheduledDays={setScheduledDays}
-          weeklyTarget={weeklyTarget}
-          setWeeklyTarget={setWeeklyTarget}
-        />
-      ) : null}
-      {pickersReady || targetOpen ? (
-        <TargetPickerSheet
-          open={targetOpen}
-          onOpenChange={(o) => {
-            setTargetOpen(o);
-            if (!o) refocus();
-          }}
-          frequency={frequency}
-          targetCount={targetCount}
-          setTargetCount={setTargetCount}
-          unit={unit}
-          setUnit={setUnit}
-        />
-      ) : null}
-      {pickersReady || colorOpen ? (
-        <ColorPickerSheet
-          open={colorOpen}
-          onOpenChange={(o) => {
-            setColorOpen(o);
-            if (!o) refocus();
-          }}
-          color={color}
-          setColor={setColor}
-        />
-      ) : null}
-      {pickersReady || groupOpen ? (
-        <PillPickerSheet
-          open={groupOpen}
-          onOpenChange={(o) => {
-            setGroupOpen(o);
-            if (!o) refocus();
-          }}
-          title="Group"
-          options={groupOptions}
-          value={groupId ?? NO_GROUP_VALUE}
-          onSelect={(v) => setGroupId(v === NO_GROUP_VALUE ? null : v)}
         />
       ) : null}
     </>

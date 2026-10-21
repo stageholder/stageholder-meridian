@@ -60,6 +60,13 @@ function fmtStamp(iso: string | undefined): string | null {
   return Number.isNaN(d.getTime()) ? null : format(d, "d MMM yyyy");
 }
 
+/** Picker sheets slide up from the screen bottom — under an open keyboard
+ *  they'd be hidden behind the keys (2026-10-21). Drop the keyboard first. */
+function openPicker(set: (open: boolean) => void) {
+  Keyboard.dismiss();
+  set(true);
+}
+
 export function HabitDetailSheet({
   open,
   onOpenChange,
@@ -238,7 +245,7 @@ export function HabitDetailSheet({
             <View
               role="button"
               aria-label="Pick an icon"
-              onPress={() => setIconOpen(true)}
+              onPress={() => openPicker(setIconOpen)}
               width={36}
               height={36}
               rounded="$3"
@@ -288,16 +295,16 @@ export function HabitDetailSheet({
           </XStack>
 
           {/* The quick-add pills, now live. */}
-          <FormSheet.HorizontalScroll>
+          <FormSheet.HorizontalScroll keyboardShouldPersistTaps="always">
             <QuickAddPill
               icon={<Repeat size={13} />}
               label={freqLabel}
-              onPress={() => setFreqOpen(true)}
+              onPress={() => openPicker(setFreqOpen)}
             />
             <QuickAddPill
               icon={<Target size={13} />}
               label={targetLabel}
-              onPress={() => setTargetOpen(true)}
+              onPress={() => openPicker(setTargetOpen)}
             />
             <QuickAddPill
               icon={
@@ -309,13 +316,13 @@ export function HabitDetailSheet({
                 />
               }
               label="Color"
-              onPress={() => setColorOpen(true)}
+              onPress={() => openPicker(setColorOpen)}
             />
             {hasGroups ? (
               <QuickAddPill
                 icon={<Folder size={13} color="$mutedForeground" />}
                 label={activeGroupName ?? "Ungrouped"}
-                onPress={() => setGroupOpen(true)}
+                onPress={() => openPicker(setGroupOpen)}
               />
             ) : null}
           </FormSheet.HorizontalScroll>

@@ -2,13 +2,12 @@
 //
 // Compact Todoist-style quick-add for creating a todo on native. Type a title
 // (smart NL parse fills the pills + shows removable chips); everything else is
-// a pill with a default. EVERY pill is the kit `Pill` (via QuickAddPill) so
-// they are all one size: Priority/List open a PillPickerSheet; the dates open a
-// kit CalendarSheet (sibling, quick presets). Create-only; EDIT keeps TodoForm.
+// a pill with a default: Priority/List are kit Pills (QuickAddPill) opening a
+// PillPickerSheet; the dates are the kit QuickDatePicker (same as the web
+// form). Picker sheets are NESTED in the sheet (stacking). Create-only.
 import { useEffect, useRef, useState } from "react";
+import { Keyboard, TextInput, View as RNView } from "react-native";
 import { format } from "date-fns";
-import { CalendarDays } from "@tamagui/lucide-icons-2/icons/CalendarDays";
-import { Flag } from "@tamagui/lucide-icons-2/icons/Flag";
 import { Inbox } from "@tamagui/lucide-icons-2/icons/Inbox";
 import { StickyNote } from "@tamagui/lucide-icons-2/icons/StickyNote";
 import {
@@ -17,7 +16,7 @@ import {
 } from "@repo/core/todos/smart-parse";
 import { resolveSmartLocale } from "@repo/core/todos/date-parse";
 import { TextArea, View } from "@stageholder/ui";
-import { CalendarSheet } from "@stageholder/ui/pickers";
+import { QuickDatePicker } from "@stageholder/ui/pickers";
 import {
   QuickAddSheet,
   QuickAddPill,
@@ -64,9 +63,12 @@ function Dot({ tint }: { tint: string }) {
 function parseLocalDay(input: string): Date {
   return new Date(input + "T00:00:00");
 }
-/** Compact display label for a `yyyy-MM-dd` value. */
-function fmtDate(iso: string): string {
-  return format(parseLocalDay(iso), "d MMM yyyy");
+
+/** Picker sheets slide up from the screen bottom — under an open keyboard
+ *  they'd be hidden behind the keys (2026-10-21). Drop the keyboard first. */
+function openPicker(set: (open: boolean) => void) {
+  Keyboard.dismiss();
+  set(true);
 }
 
 export function QuickAddTodoSheet({
@@ -94,14 +96,22 @@ export function QuickAddTodoSheet({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [noteOpen, setNoteOpen] = useState(false);
+  const noteRef = useRef<TextInput>(null);
+  // Note pill → the field mounts in this commit, so focus it on the next
+  // tick; toggling it off hands the keyboard back to the title.
+  useEffect(() => {
+    const t = setTimeout(
+      () => (noteOpen ? noteRef.current : titleRef.current)?.focus(),
+      50,
+    );
+    return () => clearTimeout(t);
+  }, [noteOpen]);
   const [priority, setPriority] = useState(makeTodoFormDefaults().priority);
   const [doDate, setDoDate] = useState(makeTodoFormDefaults().doDate ?? "");
   const [dueDate, setDueDate] = useState(defaultDueDate ?? "");
   const [listId, setListId] = useState(defaultListId);
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
-  const [doOpen, setDoOpen] = useState(false);
-  const [dueOpen, setDueOpen] = useState(false);
 
   // OPEN CHOREOGRAPHY: the title is a native TextInput (light — it mounts in
   // the open commit) but the pickers are four SIBLING sheets; mounting those
@@ -228,6 +238,7 @@ export function QuickAddTodoSheet({
             </View>
             {noteOpen ? (
               <TextArea
+                ref={noteRef as never}
                 value={description}
                 onChangeText={setDescription}
                 placeholder="Add note…"
@@ -246,7 +257,7 @@ export function QuickAddTodoSheet({
                 ) : undefined
               }
               label={priority === "none" ? "Priority" : cap(priority)}
-              onPress={() => setPriorityOpen(true)}
+              onPress={() => openPicker(setPriorityOpen)}
             />
             {showListPill ? (
               <QuickAddPill
@@ -258,19 +269,36 @@ export function QuickAddTodoSheet({
                   ) : undefined
                 }
                 label={selectedList?.name ?? "List"}
-                onPress={() => setListOpen(true)}
+                onPress={() => openPicker(setListOpen)}
               />
             ) : null}
-            <QuickAddPill
-              icon={<CalendarDays size={13} />}
-              label={doDate ? fmtDate(doDate) : "Do"}
-              onPress={() => setDoOpen(true)}
-            />
-            <QuickAddPill
-              icon={<Flag size={13} />}
-              label={dueDate ? fmtDate(dueDate) : "Deadline"}
-              onPress={() => setDueOpen(true)}
-            />
+            {/* Dates = the kit QuickDatePicker (presets + calendar in its own
+                sheet), the SAME control the web form uses — not a hand-rolled
+                CalendarSheet. The touch-down wrapper drops the keyboard so its
+                sheet isn't hidden behind the keys; a pick closes it, and
+                `refocus` brings the keyboard back like the pill pickers do. */}
+            <RNView onTouchStart={() => Keyboard.dismiss()}>
+              <QuickDatePicker
+                size="sm"
+                placeholder="Do"
+                value={doDate ? parseLocalDay(doDate) : null}
+                onChange={(d) => {
+                  setDoDate(d ? format(d, "yyyy-MM-dd") : "");
+                  refocus();
+                }}
+              />
+            </RNView>
+            <RNView onTouchStart={() => Keyboard.dismiss()}>
+              <QuickDatePicker
+                size="sm"
+                placeholder="Deadline"
+                value={dueDate ? parseLocalDay(dueDate) : null}
+                onChange={(d) => {
+                  setDueDate(d ? format(d, "yyyy-MM-dd") : "");
+                  refocus();
+                }}
+              />
+            </RNView>
             <QuickAddPill
               icon={<StickyNote size={13} />}
               label="Note"
@@ -278,64 +306,34 @@ export function QuickAddTodoSheet({
             />
           </>
         }
-      />
-
-      {heavyReady || priorityOpen ? (
-        <PillPickerSheet
-          open={priorityOpen}
-          onOpenChange={(o) => {
-            setPriorityOpen(o);
-            if (!o) refocus();
-          }}
-          title="Priority"
-          options={priorityOptions}
-          value={priority}
-          onSelect={setPriority}
-        />
-      ) : null}
-      {heavyReady || listOpen ? (
-        <PillPickerSheet
-          open={listOpen}
-          onOpenChange={(o) => {
-            setListOpen(o);
-            if (!o) refocus();
-          }}
-          title="List"
-          options={listOptions}
-          value={listId || defaultListId}
-          onSelect={setListId}
-        />
-      ) : null}
-      {heavyReady || doOpen ? (
-        <CalendarSheet
-          open={doOpen}
-          onClose={() => {
-            setDoOpen(false);
-            refocus();
-          }}
-          value={doDate ? parseLocalDay(doDate) : null}
-          onSelect={(d) => {
-            setDoDate(d ? format(d, "yyyy-MM-dd") : "");
-            setDoOpen(false);
-          }}
-          title="Do date"
-        />
-      ) : null}
-      {heavyReady || dueOpen ? (
-        <CalendarSheet
-          open={dueOpen}
-          onClose={() => {
-            setDueOpen(false);
-            refocus();
-          }}
-          value={dueDate ? parseLocalDay(dueDate) : null}
-          onSelect={(d) => {
-            setDueDate(d ? format(d, "yyyy-MM-dd") : "");
-            setDueOpen(false);
-          }}
-          title="Deadline"
-        />
-      ) : null}
+      >
+        {heavyReady || priorityOpen ? (
+          <PillPickerSheet
+            open={priorityOpen}
+            onOpenChange={(o) => {
+              setPriorityOpen(o);
+              if (!o) refocus();
+            }}
+            title="Priority"
+            options={priorityOptions}
+            value={priority}
+            onSelect={setPriority}
+          />
+        ) : null}
+        {heavyReady || listOpen ? (
+          <PillPickerSheet
+            open={listOpen}
+            onOpenChange={(o) => {
+              setListOpen(o);
+              if (!o) refocus();
+            }}
+            title="List"
+            options={listOptions}
+            value={listId || defaultListId}
+            onSelect={setListId}
+          />
+        ) : null}
+      </QuickAddSheet>
     </>
   );
 }
