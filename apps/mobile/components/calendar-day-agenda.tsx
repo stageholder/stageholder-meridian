@@ -22,7 +22,7 @@ import {
 } from "@stageholder/ui";
 import { ActivityRings } from "@stageholder/ui/charts";
 import { activityRingsConfig } from "@repo/features/activity-rings";
-import { TodoItem } from "@repo/features/todos";
+import { SectionHeader, TodoItem } from "@repo/features/todos";
 import { CollapsibleGroup, splitHabitsByDay } from "@repo/features/calendar";
 import { scheduledHabitsForDate } from "@repo/core/habits/entry-resolution";
 import type { Habit, Todo } from "@repo/core/types";
@@ -152,14 +152,11 @@ export function CalendarDayAgenda({
           </Text>
         ) : null}
 
-        {/* Todos — the REAL shared `TodoItem` (checkbox + burn + meta badges +
-          tap-to-edit), compact, exactly like the PWA agenda: pending shown,
-          completed tucked in a collapsible group. */}
+        {/* Todos — the REAL shared `TodoItem`, the SAME full rows as the Todos
+          tab: pending shown, completed tucked in a collapsible group. */}
         {dayTodos.length > 0 ? (
           <YStack gap="$1.5">
-            <Text fontSize="$1" fontWeight="600" color="$mutedForeground">
-              TODOS
-            </Text>
+            <SectionHeader label="Todos" count={dayTodos.length} />
             {activeTodos.length > 0 ? (
               <YStack gap="$2">
                 <AnimatePresence>
@@ -167,7 +164,6 @@ export function CalendarDayAgenda({
                     <TodoItem
                       key={todo.id}
                       todo={todo}
-                      compact
                       onToggle={() =>
                         toggleTodo.mutate({ id: todo.id, status: todo.status })
                       }
@@ -183,7 +179,6 @@ export function CalendarDayAgenda({
                 <TodoItem
                   key={todo.id}
                   todo={todo}
-                  compact
                   onToggle={() =>
                     toggleTodo.mutate({ id: todo.id, status: todo.status })
                   }
@@ -200,9 +195,7 @@ export function CalendarDayAgenda({
           in a collapsible group, exactly like the PWA agenda. */}
         {scheduledHabits.length > 0 ? (
           <YStack gap="$1.5">
-            <Text fontSize="$1" fontWeight="600" color="$mutedForeground">
-              HABITS
-            </Text>
+            <SectionHeader label="Habits" count={scheduledHabits.length} />
             {pendingHabits.map((habit) => (
               <HabitCheckInRow
                 key={habit.id}
@@ -227,9 +220,7 @@ export function CalendarDayAgenda({
         {/* Journal entries — tap to open. */}
         {dayData.journals.length > 0 ? (
           <YStack gap="$1.5">
-            <Text fontSize="$1" fontWeight="600" color="$mutedForeground">
-              JOURNAL
-            </Text>
+            <SectionHeader label="Journal" count={dayData.journals.length} />
             {dayData.journals.map((j) => (
               <XStack
                 key={j.id}

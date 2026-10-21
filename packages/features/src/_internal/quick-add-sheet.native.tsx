@@ -6,7 +6,7 @@
 // pinned accent send button. Todoist-style quick capture — one thing to type,
 // everything else a pill. Reset is by state (the host owns it); no
 // LazyBody / skeleton / epoch keys / mountChildren juggling here.
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { ArrowUp } from "@tamagui/lucide-icons-2/icons/ArrowUp";
 import { Check } from "@tamagui/lucide-icons-2/icons/Check";
 import {
@@ -69,9 +69,11 @@ export function QuickAddSheet({
       onOpenChange={onOpenChange}
       {...(onSettled ? { onSettled } : {})}
       // No title/header — the field's placeholder carries the prompt. The create
-      // action is a send button pinned bottom-right (iOS compose style). Reset is
-      // by state in the host.
+      // action is a send button pinned bottom-right (iOS compose style).
       hideFooter
+      // Children mount at open and UNMOUNT at close: the field goes with the
+      // sheet, so the keyboard drops by itself — no blur/dismiss calls.
+      mountChildren="open"
       // COMPACT frame (2026-10-20): the stock FormSheet frame (p $5, pt $4
       // without a grabber) plus the old body `pb $6` left ~60 px of air above
       // the field and ~50 px between the pills and the keyboard. pt $3 puts
@@ -132,6 +134,24 @@ export function QuickAddSheet({
       {children}
     </FormSheet>
   );
+}
+
+/**
+ * A number that increments every time `open` flips to true. Hosts key their
+ * form on it so EVERY open mounts a fresh instance: initial state is the
+ * reset, `autoFocus` is the focus, and nothing carries over between opens
+ * or between screens. The key only changes on open, so the close animation
+ * is untouched. (Replaces reset-by-state effects, open/closed refs and
+ * imperative focus/blur choreography, 2026-10-21.)
+ */
+export function useOpenSession(open: boolean): number {
+  const [prevOpen, setPrevOpen] = useState(open);
+  const [session, setSession] = useState(0);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) setSession((n) => n + 1);
+  }
+  return session;
 }
 
 export interface QuickAddPillProps {

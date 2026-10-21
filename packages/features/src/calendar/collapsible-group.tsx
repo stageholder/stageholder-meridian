@@ -1,16 +1,16 @@
 import { useState, type ReactNode } from "react";
-import { ChevronDown } from "@tamagui/lucide-icons-2/icons/ChevronDown";
-import { ChevronRight } from "@tamagui/lucide-icons-2/icons/ChevronRight";
-import { Text, XStack, YStack } from "@stageholder/ui";
+import { YStack } from "@stageholder/ui";
+import { SectionHeader } from "../todos/section-header";
 
 /**
- * Collapsible "Completed" / "Done" group for the calendar day-agenda — a
- * chevron + uppercase label + count header that expands to reveal its
- * children. Shared by the PWA and native agendas (pure Tamagui v2, so it
- * renders + animates identically on both). Renders nothing when `count` is 0.
+ * Collapsible "Completed" / "Done" group — the shared `SectionHeader` in its
+ * collapsible form (chevron + uppercase label · count) that expands to reveal
+ * its children. Used by the PWA and native agendas and by the Todos tab's
+ * Completed section, so finished items look and behave the same everywhere.
+ * Renders nothing when `count` is 0.
  *
  * Starts collapsed by default (`defaultOpen` to override) — finished items are
- * tucked away so the agenda leads with what's still pending.
+ * tucked away so a list leads with what's still pending.
  */
 export function CollapsibleGroup({
   label,
@@ -26,36 +26,13 @@ export function CollapsibleGroup({
   const [open, setOpen] = useState(defaultOpen);
   if (count === 0) return null;
   return (
-    <YStack gap="$1">
-      <XStack
-        onPress={() => setOpen((v) => !v)}
-        cursor="pointer"
-        items="center"
-        gap="$1.5"
-        rounded="$md"
-        py="$1"
-        transition="quick"
-        hoverStyle={{ bg: "$accent" }}
-        pressStyle={{ opacity: 0.7 }}
-        role="button"
-        aria-expanded={open}
-      >
-        <Text color="$mutedForeground" lineHeight={0}>
-          {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        </Text>
-        <Text
-          fontSize="$1"
-          fontWeight="600"
-          color="$mutedForeground"
-          textTransform="uppercase"
-          letterSpacing={0.5}
-        >
-          {label}
-        </Text>
-        <Text fontSize="$1" color="$mutedForeground">
-          {count}
-        </Text>
-      </XStack>
+    <YStack>
+      <SectionHeader
+        label={label}
+        count={count}
+        open={open}
+        onToggle={() => setOpen((v) => !v)}
+      />
       {open ? <YStack gap="$2">{children}</YStack> : null}
     </YStack>
   );

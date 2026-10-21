@@ -33,7 +33,11 @@ import {
   toast,
 } from "@stageholder/ui";
 import { FlashList, type ListRenderItemInfo } from "@shopify/flash-list";
-import { TodoItem, TodoListSkeleton } from "@repo/features/todos";
+import {
+  SectionHeader,
+  TodoItem,
+  TodoListSkeleton,
+} from "@repo/features/todos";
 import {
   formatUpcomingLabel,
   groupUpcomingByDate,
@@ -46,7 +50,7 @@ import { Plus } from "@tamagui/lucide-icons-2/icons/Plus";
 import { RotateCcw } from "@tamagui/lucide-icons-2/icons/RotateCcw";
 import { Trash2 } from "@tamagui/lucide-icons-2/icons/Trash2";
 import { format, subDays } from "date-fns";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useDeferredValue, useMemo, useState } from "react";
 import { RefreshControl, ScrollView as RNScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -122,6 +126,9 @@ type ListRow =
       label: string;
       count: number;
       destructive?: boolean;
+      /** Collapsible header (the Completed section) + its current state. */
+      collapsible?: boolean;
+      open?: boolean;
     }
   | { key: string; type: "presets" }
   | { key: string; type: "windowEmpty" }
@@ -245,6 +252,9 @@ function TodosScreen() {
   const reorderHost = useMountOnOpen(reorderOpen);
   // Upcoming range window (days ahead; 0 = All). Mirrors the PWA's preset row.
   const [upcomingRange, setUpcomingRange] = useState(7);
+  // Completed section: tucked away by default (same as the calendar agenda's
+  // group); the "Done" filter is an explicit ask, so it shows expanded there.
+  const [doneOpen, setDoneOpen] = useState(false);
 
   // Stable — feeds RefreshControl and the memoized renderRow.
   const handleRefresh = useCallback(async () => {
@@ -371,6 +381,11 @@ function TodosScreen() {
   // open buckets, "all" shows both.
   const showOpen = statusFilter !== "done";
   const showDone = statusFilter !== "todo";
+  const doneExpanded = statusFilter === "done" || doneOpen;
+  // The header flips on the tap frame; the (many) completed rows mount in a
+  // deferred render right after — expanding used to stall on the row mount
+  // with no feedback at all.
+  const doneRowsExpanded = useDeferredValue(doneExpanded);
   const openCount = BUCKET_ORDER.reduce((n, b) => n + buckets[b].length, 0);
   // Todos exist, but the active filter side is empty (e.g. "Done" with no
   // completed todos). Distinct from the all-empty EmptyState above.
@@ -441,9 +456,13 @@ function TodosScreen() {
         type: "sectionHeader",
         label: "Completed",
         count: done.length,
+        collapsible: true,
+        open: doneExpanded,
       });
-      for (const todo of done) {
-        out.push({ key: todo.id, type: "todo", todo });
+      if (doneRowsExpanded) {
+        for (const todo of done) {
+          out.push({ key: todo.id, type: "todo", todo });
+        }
       }
     }
     return out;
@@ -459,6 +478,8 @@ function TodosScreen() {
     upcomingGroups,
     upcomingShown,
     done,
+    doneExpanded,
+    doneRowsExpanded,
   ]);
 
   const rowKey = useCallback((r: ListRow) => r.key, []);
@@ -525,20 +546,15 @@ function TodosScreen() {
           );
         case "sectionHeader":
           return (
-            <XStack items="center" gap="$2" px="$2.5" pt="$3" pb="$2">
-              <Text
-                fontSize="$1"
-                fontWeight="600"
-                color={item.destructive ? "$destructive" : "$mutedForeground"}
-                letterSpacing={0.6}
-                textTransform="uppercase"
-              >
-                {item.label} · {item.count}
-              </Text>
-              <View flex={1}>
-                <Separator />
-              </View>
-            </XStack>
+            <SectionHeader
+              label={item.label}
+              count={item.count}
+              destructive={item.destructive}
+              open={item.open}
+              onToggle={
+                item.collapsible ? () => setDoneOpen((v) => !v) : undefined
+              }
+            />
           );
         case "presets":
           // Range presets — 7 / 14 / 30 days / All.

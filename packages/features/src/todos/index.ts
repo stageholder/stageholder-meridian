@@ -3,6 +3,7 @@
 // nav/mutation callbacks.
 
 export { TodoItem, type TodoItemProps } from "./todo-item";
+export { SectionHeader, type SectionHeaderProps } from "./section-header";
 
 export { TodoListSkeleton } from "./todo-list-skeleton";
 
