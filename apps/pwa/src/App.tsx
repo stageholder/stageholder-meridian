@@ -16,6 +16,7 @@ import { EncryptionStoreInitializer } from "@/components/providers/encryption-st
 import { LogProvider } from "@/components/shared/log-provider";
 import { queryClient } from "@/lib/query-client";
 import tamaguiConfig from "../tamagui.config";
+import { DayRollover } from "@/lib/hooks/use-local-day";
 
 function InnerApp() {
   const { user, isLoading: userLoading } = useUser();
@@ -131,6 +132,7 @@ export function App() {
   return (
     <TamaguiBridge>
       <QueryClientProvider client={queryClient}>
+        <DayRollover />
         {/*
          * `queryClient` MUST be handed to the SDK provider too: it mounts its
          * own `<QueryClientProvider>` (nearest wins for every hook below it)

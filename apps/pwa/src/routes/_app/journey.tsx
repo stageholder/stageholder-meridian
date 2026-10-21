@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { format } from "date-fns";
 import { useUserLight } from "@/lib/api/light";
 import { ActivityRings } from "@/components/activity-rings";
 import {
@@ -15,6 +14,7 @@ import { LIGHT_TIERS } from "@repo/core/types/light";
 import { JourneyFeed } from "@/components/light/journey-feed";
 import { JourneyLightChart } from "@/components/light/journey-light-chart";
 import { Card, H1, H2, Paragraph, View, XStack, YStack } from "@stageholder/ui";
+import { useLocalDayKey } from "@/lib/hooks/use-local-day";
 
 export const Route = createFileRoute("/_app/journey")({
   component: JourneyPage,
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_app/journey")({
 function JourneyPage() {
   const { data: userLight, isLoading } = useUserLight();
   const { levelUpTier, dismiss } = useLevelUp(userLight);
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = useLocalDayKey();
 
   if (isLoading || !userLight) {
     return (

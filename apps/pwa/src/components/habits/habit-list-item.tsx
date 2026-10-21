@@ -27,6 +27,8 @@ import {
   useDeleteHabit,
 } from "@/lib/api/habits";
 import { EditHabitSheet } from "./edit-habit-sheet";
+import { useLocalDayKey } from "@/lib/hooks/use-local-day";
+import { parseDateLocal } from "@/lib/date";
 
 interface HabitListItemProps {
   habit: Habit;
@@ -61,10 +63,13 @@ export function HabitListItem({
   isArchived,
   onMoveToGroup,
 }: HabitListItemProps) {
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = useLocalDayKey();
   const activeDate = selectedDate || today;
   const isViewingToday = !selectedDate || selectedDate === today;
-  const ninetyDaysAgo = format(subDays(new Date(), 90), "yyyy-MM-dd");
+  const ninetyDaysAgo = format(
+    subDays(parseDateLocal(today), 90),
+    "yyyy-MM-dd",
+  );
 
   // Include the active date in the window (the date-nav can jump past 90 days
   // back) so an existing entry there isn't misread as un-acted → duplicate 409.
@@ -232,7 +237,7 @@ export function HabitListItem({
   // card view's week strip, rendered as a compact inline run so the list row
   // gives the same at-a-glance streak read.
   const isQuota = habit.frequency === "weekly_target";
-  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+  const weekStart = startOfWeek(parseDateLocal(today), { weekStartsOn: 1 });
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const date = addDays(weekStart, i);
     const dateStr = format(date, "yyyy-MM-dd");

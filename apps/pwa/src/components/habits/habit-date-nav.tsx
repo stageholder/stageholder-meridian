@@ -10,15 +10,17 @@ import {
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { IconButton, Popover, Text, XStack } from "@stageholder/ui";
 import { Calendar } from "@stageholder/ui/pickers";
+import { useLocalDayKey } from "@/lib/hooks/use-local-day";
+import { parseDateLocal } from "@/lib/date";
 
 const DAY_MS = 86_400_000;
 
 /** Past-oriented smart label: Today / Yesterday / weekday (this week) / "Mar 12". */
-function smartDateLabel(date: Date): string {
+function smartDateLabel(date: Date, today: Date): string {
   if (isToday(date)) return "Today";
   if (isYesterday(date)) return "Yesterday";
   const diffDays = Math.round(
-    (startOfDay(new Date()).getTime() - startOfDay(date).getTime()) / DAY_MS,
+    (today.getTime() - startOfDay(date).getTime()) / DAY_MS,
   );
   if (diffDays > 1 && diffDays < 7) return format(date, "EEEE"); // "Monday"
   return format(date, "MMM d"); // "Mar 12"
@@ -42,7 +44,7 @@ interface HabitDateNavProps {
  */
 export function HabitDateNav({ value, onChange }: HabitDateNavProps) {
   const [open, setOpen] = useState(false);
-  const today = startOfDay(new Date());
+  const today = parseDateLocal(useLocalDayKey());
   // `value` is normalized to a real day; >= today means "viewing today"
   // (future is blocked everywhere, so it never exceeds today).
   const atToday = startOfDay(value).getTime() >= today.getTime();
@@ -81,7 +83,7 @@ export function HabitDateNav({ value, onChange }: HabitDateNavProps) {
               <CalendarDays size={16} />
             </Text>
             <Text fontSize="$3" fontWeight="500" color="$color">
-              {smartDateLabel(value)}
+              {smartDateLabel(value, today)}
             </Text>
           </XStack>
         </Popover.Trigger>

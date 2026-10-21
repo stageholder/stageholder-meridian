@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { format } from "date-fns";
 import { Text, View, YStack } from "@stageholder/ui";
 import { Dashboard } from "@stageholder/ui/data";
 import { useUserLight } from "@/lib/api/light";
@@ -14,6 +13,7 @@ import { WeeklyActivityChart } from "@/components/dashboard/charts/weekly-activi
 import { JournalGrowthChart } from "@/components/dashboard/charts/journal-growth-chart";
 import { LightEarnedChart } from "@/components/dashboard/charts/light-earned-chart";
 import { WritingHeatmap } from "@/components/dashboard/charts/writing-heatmap";
+import { useLocalDayKey } from "@/lib/hooks/use-local-day";
 
 export const Route = createFileRoute("/_app/")({
   component: DashboardPage,
@@ -42,7 +42,7 @@ function ViewAll({ to }: { to: string }) {
  * chrome + titles, and the shared feature views render only their content.
  */
 function DashboardPage() {
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = useLocalDayKey();
   const { data: userLight } = useUserLight();
   const { levelUpTier, dismiss } = useLevelUp(userLight);
   const { stats, isLoading: statsLoading } = useDashboardStats(userLight);

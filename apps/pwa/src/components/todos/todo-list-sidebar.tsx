@@ -1,6 +1,5 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useRef, useState, type DragEvent, type ReactElement } from "react";
-import { format } from "date-fns";
 import {
   Sun,
   CalendarClock,
@@ -32,6 +31,7 @@ import {
 } from "@/lib/api/todos";
 import { CreateListDialog } from "./create-list-dialog";
 import type { Todo, TodoList } from "@repo/core/types";
+import { useLocalDayKey } from "@/lib/hooks/use-local-day";
 
 interface TodoListSidebarProps {
   onNavigate?: () => void;
@@ -419,7 +419,7 @@ export function TodoListSidebar({ onNavigate }: TodoListSidebarProps = {}) {
   const basePath = "/todos";
 
   // ── Live counts ──────────────────────────────────────────────────────────
-  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const todayStr = useLocalDayKey();
   const pending = (allTodos ?? []).filter((t: Todo) => t.status !== "done");
 
   const isDueByToday = (t: Todo) => {

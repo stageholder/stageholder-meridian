@@ -2,24 +2,25 @@ import { CheckCircle2 } from "lucide-react";
 import { AnimatePresence, Text, View, XStack, YStack } from "@stageholder/ui";
 import { TodoItem } from "./todo-item";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
-import { todoCompletedAt } from "@/lib/date";
+import { todoCompletedAt, parseDateLocal } from "@/lib/date";
 import { TodoListSkeleton } from "@repo/features/todos";
 import type { Todo, TodoList } from "@repo/core/types";
+import { useLocalDayKey } from "@/lib/hooks/use-local-day";
+import { subDays } from "date-fns";
 
 export function CompletedContent() {
   const { data: todos, isLoading: todosLoading } = useAllTodos();
   const { data: lists, isLoading: listsLoading } = useTodoLists();
 
   const isLoading = todosLoading || listsLoading;
+  const today = useLocalDayKey();
 
   const listMap = new Map<string, TodoList>();
   for (const list of lists || []) {
     listMap.set(list.id, list);
   }
 
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  sevenDaysAgo.setHours(0, 0, 0, 0);
+  const sevenDaysAgo = subDays(parseDateLocal(today), 7);
 
   const completedTodos = (todos || [])
     .filter(

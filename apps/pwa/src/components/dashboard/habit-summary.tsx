@@ -1,6 +1,8 @@
 import { Skeleton, Text, YStack } from "@stageholder/ui";
 import { HabitListItem } from "@/components/habits/habit-list-item";
 import { useHabits } from "@/lib/api/habits";
+import { useLocalDayKey } from "@/lib/hooks/use-local-day";
+import { parseDateLocal } from "@/lib/date";
 
 const MAX_ROWS = 5;
 
@@ -13,6 +15,7 @@ const MAX_ROWS = 5;
  * host `Dashboard.Widget`.
  */
 export function HabitSummary() {
+  const today = useLocalDayKey();
   const { data: habits, isLoading } = useHabits();
 
   if (isLoading) {
@@ -35,7 +38,7 @@ export function HabitSummary() {
     );
   }
 
-  const todayDow = new Date().getDay();
+  const todayDow = parseDateLocal(today).getDay();
   const scheduledToday = habits.filter(
     (h) =>
       h.frequency !== "weekly_target" &&

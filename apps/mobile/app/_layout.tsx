@@ -56,6 +56,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { QueryProvider, queryClient } from "@/lib/api";
+import { DayRollover } from "@/lib/hooks/use-local-day";
 import { PaywallHost } from "@/components/paywall-sheet";
 import { useAppFonts } from "@/lib/fonts";
 import { expoHapticImpl } from "@/lib/haptic-impl";
@@ -289,6 +290,7 @@ export default function RootLayout() {
             }}
           >
             <QueryProvider>
+              <DayRollover />
               <TamaguiProvider
                 config={tamaguiConfig}
                 defaultTheme={resolvedTheme}

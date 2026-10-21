@@ -1,11 +1,11 @@
-import { format } from "date-fns";
 import { CheckSquare, BookOpen, Target } from "lucide-react";
 import { useActivityRings } from "@/lib/hooks/use-activity-rings";
 import { Popover, Text, View, XStack, YStack } from "@stageholder/ui";
 import { ProgressRing } from "@stageholder/ui/charts";
+import { useLocalDayKey } from "@/lib/hooks/use-local-day";
 
 export function DailyTargetRings() {
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = useLocalDayKey();
   const { data, details, isLoading } = useActivityRings(today);
 
   if (isLoading) return null;

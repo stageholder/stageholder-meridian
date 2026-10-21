@@ -52,6 +52,7 @@ import {
 } from "@repo/core/habits/entry-resolution";
 import { startOfWeek, subWeeks } from "date-fns";
 import { parseDateLocal } from "@/lib/date";
+import { useLocalDayKey } from "@/lib/hooks/use-local-day";
 
 export const Route = createFileRoute("/_app/habits/$id")({
   component: HabitDetailPage,
@@ -73,10 +74,10 @@ function HabitDetailPage() {
   const [moveToGroupOpen, setMoveToGroupOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = useLocalDayKey();
   // A full year of history powers the year-long Activity heatmap (and the
   // streak/stat/recent-entry computations below).
-  const yearAgo = format(subDays(new Date(), 365), "yyyy-MM-dd");
+  const yearAgo = format(subDays(parseDateLocal(today), 365), "yyyy-MM-dd");
 
   const { data: allEntries } = useHabitEntries(id, {
     startDate: yearAgo,
@@ -86,7 +87,7 @@ function HabitDetailPage() {
   // Entries for the month of the day being edited (defaults to current month).
   // This window backs the action panel's entry lookups for PATCH/undo, so it
   // tracks whichever day the Calendar has selected.
-  const editAnchor = selectedDate ? parseDateLocal(selectedDate) : new Date();
+  const editAnchor = parseDateLocal(selectedDate ?? today);
   const calMonthStart = format(startOfMonth(editAnchor), "yyyy-MM-dd");
   const calMonthEnd = format(endOfMonth(editAnchor), "yyyy-MM-dd");
   const { data: monthEntries } = useHabitEntries(id, {
@@ -153,7 +154,7 @@ function HabitDetailPage() {
     // "completed day" still counts toward the week; Skip/Fail don't apply.
     if (habit.frequency === "weekly_target") {
       const quota = habit.weeklyTarget ?? 1;
-      const now = new Date();
+      const now = parseDateLocal(today);
       const streak = calculateWeeklyStreak(entryMap, habit);
       const weeklyProgress = weeklyCompletions(
         entryMap,
@@ -226,7 +227,7 @@ function HabitDetailPage() {
     }
 
     const hasSchedule = habit.scheduledDays && habit.scheduledDays.length > 0;
-    const now = new Date();
+    const now = parseDateLocal(today);
     const todayStr = format(now, "yyyy-MM-dd");
 
     // Current streak (skips non-scheduled days; skip entries preserve but don't extend)
@@ -303,7 +304,7 @@ function HabitDetailPage() {
       completionRate,
       weeklyProgress: 0,
     };
-  }, [entryMap, habit]);
+  }, [entryMap, habit, today]);
 
   // Per-day completion keyed by yyyy-MM-dd — drives the month calendar's day
   // tinting (complete / partial / skip / fail) in renderDayCell.

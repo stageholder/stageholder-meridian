@@ -16,6 +16,8 @@ import {
   activityRingsConfig,
 } from "@/lib/hooks/use-activity-rings";
 import type { Habit } from "@repo/core/types";
+import { useLocalDayKey } from "@/lib/hooks/use-local-day";
+import { parseDateLocal } from "@/lib/date";
 
 const EMPTY_DAY: CalendarDayData = {
   todos: [],
@@ -80,6 +82,7 @@ function CellActivityRing({ rings }: { rings: ActivityRing[] }) {
 }
 
 export function CalendarView() {
+  const today = useLocalDayKey();
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
 
   // One merged window (today ±3 months) feeds EventCalendar's own month nav —
@@ -96,10 +99,7 @@ export function CalendarView() {
   // Start of today (local). Past + today cells always render their ring (a
   // track-only "empty" ring for inactive days) so the month reads as history;
   // future cells show just the date.
-  const startOfToday = useMemo(() => {
-    const n = new Date();
-    return new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime();
-  }, []);
+  const startOfToday = useMemo(() => parseDateLocal(today).getTime(), [today]);
 
   const selectedDayData =
     calendarData[format(selectedDate, "yyyy-MM-dd")] ?? EMPTY_DAY;

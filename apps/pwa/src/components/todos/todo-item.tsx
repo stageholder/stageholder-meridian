@@ -32,6 +32,8 @@ import {
   useTodoLists,
 } from "@/lib/api/todos";
 import { TodoDetailDialog } from "./todo-detail-dialog";
+import { useLocalDayKey } from "@/lib/hooks/use-local-day";
+import { parseDateLocal } from "@/lib/date";
 
 interface TodoItemProps {
   todo: Todo;
@@ -91,7 +93,8 @@ export function TodoItem({ todo, listId, showList, compact }: TodoItemProps) {
 
   // Quick do-date presets — icon-only (compact, Todoist-style); the label is
   // the tooltip/aria. `null` clears the date ("No date").
-  const now = new Date();
+  const today = useLocalDayKey();
+  const now = parseDateLocal(today);
   const doDateOptions: {
     label: string;
     value: string | null;

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { format, startOfWeek, addDays } from "date-fns";
 import { Plus, Target } from "lucide-react";
@@ -33,6 +33,7 @@ import { HabitViewToggle } from "@/components/habits/habit-view-toggle";
 import { CreateFab } from "@/components/shared/create-fab";
 import { parseDateLocal } from "@/lib/date";
 import type { Habit, HabitGroup } from "@repo/core/types";
+import { useLocalDayKey } from "@/lib/hooks/use-local-day";
 
 /**
  * `useState` rather than localStorage for now — most users stick with
@@ -69,8 +70,16 @@ function HabitsPage() {
   const { data: groups } = useHabitGroups();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [moveTarget, setMoveTarget] = useState<Habit | null>(null);
-  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const todayStr = useLocalDayKey();
   const [selectedDate, setSelectedDate] = useState(todayStr);
+  // Day rollover with the page open: a selection that was "today" follows
+  // the new day (an explicit past pick stays put).
+  const lastToday = useRef(todayStr);
+  useEffect(() => {
+    if (lastToday.current === todayStr) return;
+    setSelectedDate((d) => (d === lastToday.current ? todayStr : d));
+    lastToday.current = todayStr;
+  }, [todayStr]);
   const [viewMode, setViewMode] = useState<HabitViewMode>(DEFAULT_VIEW_MODE);
 
   const isViewingToday = selectedDate === todayStr;

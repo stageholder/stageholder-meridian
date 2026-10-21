@@ -9,6 +9,8 @@ import { DatePicker } from "@stageholder/ui/pickers";
 import { format, addDays } from "date-fns";
 import { TodoListSkeleton } from "@repo/features/todos";
 import type { Todo, TodoList } from "@repo/core/types";
+import { useLocalDayKey } from "@/lib/hooks/use-local-day";
+import { parseDateLocal } from "@/lib/date";
 
 const PRESETS = [
   { label: "7 days", days: 7 },
@@ -27,7 +29,7 @@ export function UpcomingContent() {
 
   const isLoading = todosLoading || listsLoading;
 
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = useLocalDayKey();
 
   const hasCustomRange = customRange?.start != null;
   const customFrom = customRange?.start
@@ -45,7 +47,7 @@ export function UpcomingContent() {
       : hasCustomRange && customFrom
         ? customFrom
         : selectedDays > 0
-          ? format(addDays(new Date(), selectedDays), "yyyy-MM-dd")
+          ? format(addDays(parseDateLocal(today), selectedDays), "yyyy-MM-dd")
           : null; // null = show all
 
   const listMap = new Map<string, TodoList>();
@@ -88,8 +90,7 @@ export function UpcomingContent() {
 
   const formatDateLabel = (dateStr: string) => {
     const date = new Date(dateStr + "T00:00:00");
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrow = addDays(parseDateLocal(today), 1);
     const tomorrowStr = format(tomorrow, "yyyy-MM-dd");
     if (dateStr === tomorrowStr) return "Tomorrow";
     return date.toLocaleDateString("en-US", {
@@ -175,8 +176,7 @@ export function UpcomingContent() {
           isDateDisabled={(date) => {
             const d = new Date(date);
             d.setHours(0, 0, 0, 0);
-            const now = new Date();
-            now.setHours(0, 0, 0, 0);
+            const now = parseDateLocal(today);
             return d < now;
           }}
           trigger={({ formatted, open }) => (

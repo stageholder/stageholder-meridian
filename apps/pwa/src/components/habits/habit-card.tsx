@@ -16,6 +16,8 @@ import { EditHabitSheet } from "./edit-habit-sheet";
 // Shared cross-platform burst (PWA + native, one source). Transform/opacity-only
 // so it stays cheap on native's Reanimated driver as well as the PWA's CSS driver.
 import { RadianceBurst } from "@repo/features/habits";
+import { useLocalDayKey } from "@/lib/hooks/use-local-day";
+import { parseDateLocal } from "@/lib/date";
 
 interface HabitCardProps {
   habit: Habit;
@@ -59,10 +61,13 @@ export function HabitCard({
   isArchived,
   onMoveToGroup,
 }: HabitCardProps) {
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = useLocalDayKey();
   const activeDate = selectedDate || today;
   const isViewingToday = !selectedDate || selectedDate === today;
-  const ninetyDaysAgo = format(subDays(new Date(), 90), "yyyy-MM-dd");
+  const ninetyDaysAgo = format(
+    subDays(parseDateLocal(today), 90),
+    "yyyy-MM-dd",
+  );
 
   // Always include the active date in the fetched window: the date-nav can jump
   // past 90 days back, and if the selected day's entry isn't fetched the card

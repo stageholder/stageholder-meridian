@@ -22,6 +22,7 @@ import { useJournals } from "@/lib/api/journals";
 import { useAutosave } from "@/lib/hooks/use-autosave";
 import type { JournalContent } from "@repo/core/types";
 import { countWordsFromContent } from "@repo/core/utils/text";
+import { useLocalDayKey } from "@/lib/hooks/use-local-day";
 
 type NewJournalSearch = {
   date?: string;
@@ -49,7 +50,7 @@ function formatDefaultTitle(isoDate: string): string {
 function NewJournalPage() {
   const navigate = useNavigate();
   const { date: dateParam } = Route.useSearch();
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = useLocalDayKey();
   const [title, setTitle] = useState("");
   // New journals always start as JSON content — there's no legacy HTML
   // for a fresh entry. Type matches the editor's onChange signature.

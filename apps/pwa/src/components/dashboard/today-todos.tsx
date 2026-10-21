@@ -1,8 +1,8 @@
-import { format } from "date-fns";
 import { AnimatePresence, Skeleton, Text, YStack } from "@stageholder/ui";
 import { TodoItem } from "@/components/todos/todo-item";
 import { useAllTodos } from "@/lib/api/todos";
 import type { Todo } from "@repo/core/types";
+import { useLocalDayKey } from "@/lib/hooks/use-local-day";
 
 const MAX_ROWS = 5;
 
@@ -15,7 +15,7 @@ const MAX_ROWS = 5;
  */
 export function TodayTodos() {
   const { data: todos, isLoading } = useAllTodos();
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = useLocalDayKey();
 
   if (isLoading) {
     return (

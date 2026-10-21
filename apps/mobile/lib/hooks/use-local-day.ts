@@ -17,7 +17,8 @@
 // Both funnel through a setState that BAILS when the key is unchanged, so this
 // costs one comparison a minute and re-renders only on an actual day change.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AppState } from "react-native";
 import { localDateKey } from "@repo/core/habits/streak";
 
@@ -45,4 +46,22 @@ export function useLocalDayKey(): string {
   }, []);
 
   return day;
+}
+
+/**
+ * Mounted once at the app root: when the local day changes, every cached
+ * query is yesterday's answer (and several keys embed the day), so refetch
+ * all of them once. One invalidation per rollover, only for queries with a
+ * mounted screen; the minute tick itself never touches the network.
+ */
+export function DayRollover() {
+  const day = useLocalDayKey();
+  const qc = useQueryClient();
+  const seen = useRef(day);
+  useEffect(() => {
+    if (seen.current === day) return;
+    seen.current = day;
+    void qc.invalidateQueries();
+  }, [day, qc]);
+  return null;
 }

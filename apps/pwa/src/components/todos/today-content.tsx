@@ -9,6 +9,7 @@ import { TodoListSkeleton } from "@repo/features/todos";
 import { useAllTodos, useTodoLists } from "@/lib/api/todos";
 import { todoCompletedAt } from "@/lib/date";
 import type { Todo } from "@repo/core/types";
+import { useLocalDayKey } from "@/lib/hooks/use-local-day";
 
 export function TodayContent() {
   const {
@@ -25,7 +26,7 @@ export function TodayContent() {
   const isLoading = todosLoading || listsLoading;
   const isError = todosError || listsError;
 
-  const today = format(new Date(), "yyyy-MM-dd");
+  const today = useLocalDayKey();
 
   const dueByToday = (todos || []).filter((t: Todo) => {
     if (t.status === "done") return false;
