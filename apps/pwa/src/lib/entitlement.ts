@@ -14,6 +14,7 @@ export interface Entitlement {
     max_habits: number;
     max_todo_lists: number;
     max_active_todos: number;
+    max_habit_groups: number;
   };
 }
 

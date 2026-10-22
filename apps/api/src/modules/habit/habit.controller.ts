@@ -96,7 +96,9 @@ export class HabitController {
 
   @Post(":id/unarchive")
   async unarchive(@Req() req: StageholderRequest, @Param("id") id: string) {
-    return (await this.service.unarchive(req.user.sub, id)).toObject();
+    return (
+      await this.service.unarchive(req.user.sub, id, req.user)
+    ).toObject();
   }
 
   @Get(":id")

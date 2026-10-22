@@ -16,7 +16,7 @@ appId: com.stageholder.meridian
 # after launch runs before anything has rendered).
 - extendedWaitUntil:
     visible:
-      text: "Development Build|This is the developer menu.*|Sign in with Stageholder|Today|.*isn't responding"
+      text: "Development Build|This is the developer menu.*|.*Sign in with Stageholder.*|Today|.*isn't responding"
     # A cold dev-client launch on a busy machine can take well over 45s.
     timeout: 120000
 - runFlow:
@@ -32,7 +32,7 @@ appId: com.stageholder.meridian
       - tapOn: "http://localhost:8081"
       - extendedWaitUntil:
           visible:
-            text: "This is the developer menu.*|Sign in with Stageholder|Today"
+            text: "This is the developer menu.*|.*Sign in with Stageholder.*|Today"
           timeout: 90000
 # Dev builds show Expo's developer-menu intro once per install…
 - runFlow:
@@ -58,11 +58,11 @@ appId: com.stageholder.meridian
                 direction: DOWN
 - extendedWaitUntil:
     visible:
-      text: "Sign in with Stageholder|Today"
+      text: ".*Sign in with Stageholder.*|Today"
     timeout: 45000
 - runFlow:
     when:
-      visible: "Sign in with Stageholder"
+      visible: ".*Sign in with Stageholder.*"
     file: sign-in.yaml
 - extendedWaitUntil:
     visible:

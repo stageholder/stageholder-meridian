@@ -16,8 +16,14 @@
     "./platform/notifications": "./src/platform/notifications.ts",
     "./platform/updater": "./src/platform/updater.ts",
     "./platform/logger": "./src/platform/logger.ts",
-    "./platform/clipboard": "./src/platform/clipboard.ts",
-    "./platform/linking": "./src/platform/linking.ts",
+    "./platform/clipboard": {
+      "react-native": "./src/platform/clipboard.native.ts",
+      "default": "./src/platform/clipboard.ts"
+    },
+    "./platform/linking": {
+      "react-native": "./src/platform/linking.native.ts",
+      "default": "./src/platform/linking.ts"
+    },
     "./utils/*": "./src/utils/*.ts",
     "./habits/*": "./src/habits/*.ts",
     "./todos/*": "./src/todos/*.ts",

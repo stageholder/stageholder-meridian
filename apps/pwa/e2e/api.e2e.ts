@@ -37,6 +37,56 @@ test.describe("api", () => {
     expect(owners.size).toBe(1);
   });
 
+  test("Free plan caps: seeded groups don't count; unarchive honours max_habits", async ({
+    api,
+  }) => {
+    type Item = { id: string };
+    const ent = await api.get<{
+      plan: string;
+      limits: { max_habits: number; max_habit_groups: number };
+    }>("/me/entitlement");
+    test.skip(ent.plan !== "free", "account is not on the Free plan");
+    // MeridianApi throws `METHOD /path → <status>: <body>`.
+    const limitReached = /→ 402: .*limit_reached/;
+
+    // Free allows `max_habit_groups` (5) groups. The 4 seeded time-of-day
+    // groups must NOT eat that allowance (they used to: one custom group fit).
+    const groups: Item[] = [];
+    for (let i = 1; i <= ent.limits.max_habit_groups; i++) {
+      groups.push(
+        await api.post<Item>("/habit-groups", { name: uniqueName(`grp${i}`) }),
+      );
+    }
+    await expect(
+      api.post("/habit-groups", { name: uniqueName("grp6") }),
+    ).rejects.toThrow(limitReached);
+
+    // Free allows `max_habits` (3) active habits. Archiving frees a slot;
+    // unarchiving must be refused once the slot is taken again (it used to
+    // bypass the cap).
+    const habits: Item[] = [];
+    for (let i = 1; i <= ent.limits.max_habits; i++) {
+      habits.push(
+        await api.post<Item>("/habits", {
+          name: uniqueName(`habit${i}`),
+          frequency: "daily",
+          targetCount: 1,
+        }),
+      );
+    }
+    await api.post(`/habits/${habits[0]!.id}/archive`);
+    await api.post<Item>("/habits", {
+      name: uniqueName("habit4"),
+      frequency: "daily",
+      targetCount: 1,
+    });
+    await expect(
+      api.post(`/habits/${habits[0]!.id}/unarchive`),
+    ).rejects.toThrow(limitReached);
+
+    for (const g of groups) await api.delete(`/habit-groups/${g.id}`);
+  });
+
   test("Hub webhook: signed → 200, forged → 401", async () => {
     const secret = webhookSecret();
     test.skip(!secret, "STAGEHOLDER_WEBHOOK_SECRET not set (apps/api/.env)");

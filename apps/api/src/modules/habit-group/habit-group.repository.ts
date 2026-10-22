@@ -50,9 +50,23 @@ export class HabitGroupRepository {
     return docs.map((doc) => this.toDomain(doc));
   }
 
-  /** Counts non-soft-deleted groups — used for entitlement enforcement. */
+  /** Counts non-soft-deleted groups. */
   async countForUser(userSub: string): Promise<number> {
     return this.model.countDocuments({ userSub, deleted_at: null });
+  }
+
+  /**
+   * Live groups the user CREATED — the four time-of-day seeds (deterministic
+   * `hg-seed-*` ids) are excluded. Used for `max_habit_groups` enforcement:
+   * like the system Inbox for todo lists, the seeds never eat a slot of the
+   * plan's allowance (on Free, 5 − 4 seeds left room for ONE custom group).
+   */
+  async countUserCreatedForUser(userSub: string): Promise<number> {
+    return this.model.countDocuments({
+      userSub,
+      deleted_at: null,
+      _id: { $not: /^hg-seed-/ },
+    });
   }
 
   /**

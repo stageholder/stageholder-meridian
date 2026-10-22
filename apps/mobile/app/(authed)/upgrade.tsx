@@ -102,6 +102,15 @@ export default function UpgradeScreen() {
   const [loadError, setLoadError] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
+  // Outcome feedback stays INLINE on this screen: it is presented as a native
+  // modal and the app's single <Toaster/> sits in the root layout underneath
+  // it, so a toast fired while the paywall is up is never seen. Only the
+  // paths that dismiss the paywall (purchase / restore success) toast.
+  const [notice, setNotice] = useState<{
+    intent: "danger" | "info";
+    title: string;
+    description: string;
+  } | null>(null);
 
   // Hub pricing catalog — feeds the feature-comparison section only (plan
   // LIMITS are Hub truth regardless of biller). Purchasable prices above it
@@ -126,10 +135,11 @@ export default function UpgradeScreen() {
   }, [load]);
 
   async function handlePurchase(pkg: IapPackage) {
+    setNotice(null);
     setBusyId(pkg.identifier);
     try {
       const bought = await purchase(pkg);
-      if (!bought) return; // user cancelled — no noise
+      if (!bought) return; // user cancelled — nothing to report
       // Entitlement flows store → RevenueCat webhook → Hub → session claim.
       // Poll the session a few times (detached) so the new plan lands as the
       // webhook arrives without the user refreshing; the toast covers the lag.
@@ -141,26 +151,42 @@ export default function UpgradeScreen() {
       if (router.canGoBack()) router.back();
       else router.replace("/billing");
     } catch {
-      toast.error("Purchase failed");
+      setNotice({
+        intent: "danger",
+        title: "Purchase failed",
+        description:
+          "The store didn't complete the purchase and you weren't charged. Try again.",
+      });
     } finally {
       setBusyId(null);
     }
   }
 
   async function handleRestore() {
+    setNotice(null);
     setRestoring(true);
     try {
       const restored = await restorePurchases();
       if (restored) {
         void reconcileEntitlement(refreshSession);
-        toast.success("Purchases restored");
+        toast.success("Purchases restored", {
+          description: "Your plan is activating — this can take a moment.",
+        });
+        if (router.canGoBack()) router.back();
+        else router.replace("/billing");
       } else {
-        toast.info("No purchases to restore", {
+        setNotice({
+          intent: "info",
+          title: "No purchases to restore",
           description: "This store account has no active Meridian plan.",
         });
       }
     } catch {
-      toast.error("Couldn't reach the store. Try again.");
+      setNotice({
+        intent: "danger",
+        title: "Couldn't reach the store",
+        description: "Check your connection and try again.",
+      });
     } finally {
       setRestoring(false);
     }
@@ -204,6 +230,15 @@ export default function UpgradeScreen() {
               Billed through your app store account.
             </Paragraph>
           </YStack>
+
+          {notice ? (
+            <Banner intent={notice.intent}>
+              <Banner.Body>
+                <Banner.Title>{notice.title}</Banner.Title>
+                <Banner.Description>{notice.description}</Banner.Description>
+              </Banner.Body>
+            </Banner>
+          ) : null}
 
           {polarManaged ? (
             // Active plan is web-billed (Polar) — don't sell a second,

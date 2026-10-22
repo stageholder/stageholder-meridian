@@ -170,6 +170,29 @@ if (android) {
       spawnSync(adb, ["shell", "pm", "clear", pkg]);
     }
   }
+} else {
+  // iOS: pin the booted simulator. Without --device Maestro picks ANY
+  // connected target, and an Android emulator left running wins silently.
+  const udid = process.env.E2E_IOS_UDID ?? bootedSimulator();
+  if (!udid)
+    fail("No booted iOS simulator (xcrun simctl list devices booted).");
+  deviceArgs = ["--device", udid];
+}
+
+function bootedSimulator(): string | undefined {
+  const out = spawnSync("xcrun", [
+    "simctl",
+    "list",
+    "devices",
+    "booted",
+    "-j",
+  ]).stdout?.toString();
+  if (!out) return undefined;
+  const devices = Object.values(
+    (JSON.parse(out) as { devices: Record<string, { udid: string }[]> })
+      .devices,
+  ).flat();
+  return devices[0]?.udid;
 }
 
 const targets = passthrough.filter((a) => !a.startsWith("-"));

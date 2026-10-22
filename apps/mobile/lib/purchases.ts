@@ -23,6 +23,8 @@
 
 import { Platform } from "react-native";
 
+import { openURL } from "@repo/core/platform/linking";
+
 /** Minimal structural slice of RevenueCat's types — local so importing
  *  this module never pulls the real package at type-eval time. */
 export interface IapPackage {
@@ -181,6 +183,29 @@ export function storeManagementUrl(): string {
   return Platform.OS === "ios"
     ? "https://apps.apple.com/account/subscriptions"
     : "https://play.google.com/store/account/subscriptions";
+}
+
+/**
+ * Open subscription management for a STORE-billed plan the way the platforms
+ * intend: StoreKit's in-app manage-subscriptions sheet on iOS 15+ (Play's
+ * subscription screen on Android) via the RevenueCat SDK, so the user
+ * cancels / changes the plan without leaving the app. Falls back to the
+ * store's web management page when the SDK has no key, isn't configured, or
+ * the sheet can't be presented (older iOS, simulator without StoreKit).
+ */
+export async function openStoreSubscriptions(
+  sub: string | undefined,
+): Promise<void> {
+  if (iapEnabled() && sub) {
+    try {
+      await configurePurchases(sub);
+      await loadPurchases().showManageSubscriptions();
+      return;
+    } catch {
+      // Fall through to the web management page.
+    }
+  }
+  openURL(storeManagementUrl());
 }
 
 // Legal links required on the paywall for auto-renewable subscriptions.

@@ -23,7 +23,7 @@
 // for plain members. Registered as a hidden tab (`href: null`); reached from
 // the Profile sheet and Settings → Account.
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   Badge,
   Banner,
@@ -47,11 +47,11 @@ import {
   useOrg,
   useStageholder,
   useSubscription,
+  useUser,
 } from "@stageholder/sdk/react-native";
 import { Download } from "@tamagui/lucide-icons-2/icons/Download";
 import { ExternalLink } from "@tamagui/lucide-icons-2/icons/ExternalLink";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Platform } from "react-native";
 
 import { ScreenScroll } from "@/components/screen-scroll";
 import {
@@ -61,7 +61,7 @@ import {
   useInvoices,
   type HubInvoice,
 } from "@/lib/api/hub";
-import { iapEnabled, storeManagementUrl } from "@/lib/purchases";
+import { iapEnabled, openStoreSubscriptions } from "@/lib/purchases";
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -95,28 +95,43 @@ export default function BillingScreen() {
 
   const sub = useSubscription();
   const enterprise = useEnterprise();
+  const { user } = useUser();
   const { org, activeOrgId } = useOrg();
   const { refreshSession } = useStageholder();
   const canManage = canManageBilling(org?.role);
 
-  // Re-pull the session whenever this screen regains focus — catches the
-  // entitlement landing after a store purchase (the /upgrade poll + the
-  // navigation here) or after an app background-return, so the plan card and
-  // provider branch are never stale.
+  // Re-pull the session ONCE per focus — catches the entitlement landing
+  // after a store purchase (the /upgrade poll + the navigation here) or after
+  // an app background-return, so the plan card and provider branch are never
+  // stale. Read `refreshSession` through a ref: the SDK rebuilds that
+  // function after every refresh (it closes over the auth state), so listing
+  // it as a dependency re-ran this effect after each refresh — an unbounded
+  // refresh loop (~2/s) that rotated the refresh token until the Hub rejected
+  // one and the app was signed out.
+  const refreshSessionRef = useRef(refreshSession);
+  refreshSessionRef.current = refreshSession;
   useFocusEffect(
     useCallback(() => {
-      void refreshSession().catch(() => {});
-    }, [refreshSession]),
+      void refreshSessionRef.current().catch(() => {});
+    }, []),
   );
-
-  const invoicesQuery = useInvoices(canManage ? activeOrgId : undefined);
-  const portal = useBillingPortal();
 
   // Which biller owns the active subscription (SDK `provider` claim). Drives
   // where plan management lives. Default to "polar" when absent (older Hub
   // tokens predate the field, and a missing provider means web-billed).
   const provider = sub?.provider ?? "polar";
   const storeBilled = provider === "app_store" || provider === "play";
+  const storeName = provider === "play" ? "Google Play" : "App Store";
+  // A PAID store plan. A lapsed store subscription is downgraded by the Hub
+  // to the free plan but keeps its provider, so gate the store-management
+  // affordances on the plan being paid, not just on the provider.
+  const storePaid = storeBilled && !!sub && !sub.isFreeTier;
+  // Apple / Google are the merchant of record for store plans: they bill the
+  // customer and hold the receipts; the Hub ledger only has Polar invoices.
+  const invoicesQuery = useInvoices(
+    canManage && !storePaid ? activeOrgId : undefined,
+  );
+  const portal = useBillingPortal();
   // Is this a store-distributed build (RevenueCat key present)? On store builds
   // we must not surface external payment links (App Store guideline 3.1.1).
   const storeBuild = iapEnabled();
@@ -150,7 +165,9 @@ export default function BillingScreen() {
               Your subscription
             </Text>
             <Paragraph fontSize="$3" color="$mutedForeground">
-              Manage your plan, payment method, and invoices.
+              {storePaid
+                ? `Billed through your ${storeName} account.`
+                : "Manage your plan, payment method, and invoices."}
             </Paragraph>
           </YStack>
 
@@ -190,7 +207,7 @@ export default function BillingScreen() {
                   Trial ends {formatDate(sub.trialEndsAt)}
                 </Text>
               ) : null}
-              {sub?.currentPeriodEnd ? (
+              {sub?.currentPeriodEnd && !sub.isFreeTier ? (
                 <Text fontSize="$3" color="$mutedForeground">
                   {sub.cancelAtPeriodEnd ? "Ends" : "Renews"}{" "}
                   {formatDate(sub.currentPeriodEnd)}
@@ -213,26 +230,28 @@ export default function BillingScreen() {
                 storeBilled ? (
                   // STORE-BILLED sub (provider app_store|play): bought via
                   // StoreKit / Play Billing. Payment, cancel, and plan
-                  // changes live in the OS subscription settings — the Polar
-                  // portal can't touch these. On a store build we also offer
-                  // an in-app plan change through the store paywall.
+                  // changes live in the store's subscription management —
+                  // presented IN-APP (StoreKit sheet / Play screen) — the
+                  // Polar portal can't touch these. On a store build we also
+                  // offer an in-app plan change through the store paywall.
+                  // A lapsed (now free) store row only gets the upgrade path.
                   <YStack gap="$2">
                     {storeBuild ? (
                       <Button
                         intent="primary"
                         onPress={() => router.push("/upgrade")}
                       >
-                        Change plan
+                        {storePaid ? "Change plan" : "Upgrade plan"}
                       </Button>
                     ) : null}
-                    <Button
-                      intent={storeBuild ? "outline" : "primary"}
-                      iconAfter={<ExternalLink size={14} opacity={0.7} />}
-                      onPress={() => openURL(storeManagementUrl())}
-                    >
-                      Manage in{" "}
-                      {Platform.OS === "ios" ? "App Store" : "Google Play"}
-                    </Button>
+                    {storePaid ? (
+                      <Button
+                        intent={storeBuild ? "outline" : "primary"}
+                        onPress={() => void openStoreSubscriptions(user?.sub)}
+                      >
+                        {`Manage in ${storeName}`}
+                      </Button>
+                    ) : null}
                   </YStack>
                 ) : storeBuild ? (
                   // STORE BUILD, web-billed (Polar) or free plan. Guideline
@@ -276,13 +295,22 @@ export default function BillingScreen() {
             </Card.Body>
           </Card>
 
-          {/* ---- Invoices (the PWA ledger) ---- */}
+          {/* ---- Invoices (the PWA ledger) / store receipts ---- */}
           <YStack gap="$2">
             <Text fontSize="$5" fontWeight="600" color="$color">
-              Invoices
+              {storePaid ? "Receipts" : "Invoices"}
             </Text>
 
-            {!canManage ? (
+            {storePaid ? (
+              // Store plans are billed by Apple / Google, who email a receipt
+              // for every charge and keep the purchase history — no invoice
+              // ever reaches the Hub ledger. Point at the store's history.
+              <Paragraph fontSize="$3" color="$mutedForeground">
+                {provider === "play"
+                  ? "Google Play bills this plan and emails a receipt for every charge. Your full history is in the Play Store under Payments & subscriptions."
+                  : "Apple bills this plan and emails a receipt for every charge. Your full history is in Settings → your Apple Account → Media & Purchases → Purchase History."}
+              </Paragraph>
+            ) : !canManage ? (
               <Paragraph fontSize="$3" color="$mutedForeground">
                 Invoices are visible to organization owners and admins.
               </Paragraph>

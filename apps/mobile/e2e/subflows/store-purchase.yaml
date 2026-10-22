@@ -1,0 +1,127 @@
+# RevenueCat Test Store journey, run on the open paywall ("Choose your plan"
+# with the Monthly package visible). The Test Store dialog offers "Test valid
+# purchase" / "Test failed purchase" / "Cancel" instead of StoreKit.
+appId: com.stageholder.meridian
+---
+# 1. Failed purchase → inline error on the paywall (it is a native modal, so
+#    a toast would be hidden underneath it), paywall stays open.
+- tapOn:
+    text: "Continue"
+    index: 0
+- extendedWaitUntil:
+    visible: "Test failed purchase"
+    timeout: 15000
+- tapOn: "Test failed purchase"
+- extendedWaitUntil:
+    visible: "Purchase failed"
+    timeout: 10000
+- assertVisible: "Choose your plan"
+# 2. Cancel → silent: the previous error is cleared, nothing new appears.
+- tapOn:
+    text: "Continue"
+    index: 0
+- extendedWaitUntil:
+    visible: "Test valid purchase"
+    timeout: 15000
+- tapOn: "Cancel"
+- extendedWaitUntil:
+    notVisible: "Purchase failed"
+    timeout: 5000
+- assertVisible: "Choose your plan"
+- assertNotVisible: "Purchase complete"
+# 3. Valid purchase → paywall closes (the "Purchase complete" toast lasts
+#    4 s and is usually gone before Maestro's post-tap settle ends, so the
+#    outcome is asserted, not the toast); the plan flips to Unlimited once
+#    RevenueCat's webhook reaches the Hub and the session claim refreshes
+#    (seconds; polled by the app for ~20 s).
+- tapOn:
+    text: "Continue"
+    index: 0
+- extendedWaitUntil:
+    visible: "Test valid purchase"
+    timeout: 15000
+- tapOn: "Test valid purchase"
+# The paywall returns to where it was opened: Settings (Free entry) or
+# Plans & billing ("Change plan" entry). Continue from Plans & billing.
+- extendedWaitUntil:
+    notVisible: "Choose your plan"
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: "settings-plan"
+    commands:
+      - assertNotVisible: "Upgrade to Unlimited"
+      - tapOn:
+          id: "settings-plan"
+- extendedWaitUntil:
+    visible: "Plans & billing"
+    timeout: 15000
+- extendedWaitUntil:
+    visible: "Unlimited"
+    timeout: 90000
+# 4. Plans & billing for a store-billed plan: receipts are Apple's / Google's
+#    (no Hub ledger), and "Manage in App Store" presents StoreKit's IN-APP
+#    manage-subscriptions sheet. The simulator has no Apple Account, so the
+#    sheet asks to sign in; it is a system sheet outside the app's
+#    accessibility tree, dismissed by its Cancel button's position. If the
+#    SDK can't show the sheet the app falls back to the store web page
+#    (Safari → "Return to Meridian").
+- extendedWaitUntil:
+    visible: "Receipts"
+    timeout: 15000
+- assertNotVisible: "No invoices yet."
+- extendedWaitUntil:
+    visible: "Manage in App Store|Manage in Google Play"
+    timeout: 15000
+- tapOn: "Manage in App Store|Manage in Google Play"
+- extendedWaitUntil:
+    visible: "never-matches-sleep"
+    timeout: 5000
+    optional: true
+- runFlow:
+    when:
+      visible: "Return to Meridian"
+    commands:
+      - tapOn: "Return to Meridian"
+# The system sheet covers the app but the app's own tree still reports its
+# buttons visible, so the dismissal is unconditional: Cancel the Apple
+# Account prompt (its button position; lands on plan-card text when no
+# sheet is up), then swipe the remaining StoreKit sheet ("Loading…" without
+# an account; the subscription list on a device) down.
+- runFlow:
+    when:
+      platform: iOS
+      notVisible: "Return to Meridian"
+    commands:
+      - tapOn:
+          point: "50%,49%"
+      - extendedWaitUntil:
+          visible: "never-matches-sleep"
+          timeout: 2000
+          optional: true
+      - swipe:
+          start: 50%, 20%
+          end: 50%, 95%
+          duration: 400
+- runFlow:
+    when:
+      platform: Android
+      notVisible: "Change plan"
+    commands:
+      - back
+- extendedWaitUntil:
+    visible: "Change plan"
+    timeout: 15000
+# 5. Restore purchases with an active store entitlement → the paywall
+#    closes back to billing (a restore with nothing to restore stays on the
+#    paywall with an inline notice instead).
+- tapOn: "Change plan"
+- extendedWaitUntil:
+    visible: "Restore purchases"
+    timeout: 15000
+- tapOn: "Restore purchases"
+- extendedWaitUntil:
+    visible: "Plans & billing"
+    timeout: 20000
+- assertNotVisible: "Choose your plan"

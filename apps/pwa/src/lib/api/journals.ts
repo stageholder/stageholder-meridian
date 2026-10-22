@@ -30,7 +30,13 @@ import {
 import type { Journal, JournalContent, JournalStats } from "@repo/core/types";
 import type { PaginatedJournals } from "@repo/core/api/journals";
 import { tryGetCurrentUserSub } from "@/lib/current-user-sub";
-import { writeEntityToLists } from "./optimistic";
+import {
+  type CacheSnapshot,
+  patchLists,
+  rollback,
+  snapshotAndCancel,
+  writeEntityToLists,
+} from "./optimistic";
 import { lightKeys } from "./light";
 import { todayLocal } from "@/lib/date";
 import { useEncryptionStore } from "@/lib/crypto/encryption-store";
@@ -168,8 +174,7 @@ export function useCreateJournal() {
       tags?: string[];
       date?: string;
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    any
+    { previous: CacheSnapshot; tempId: string }
   >({
     mutationFn: async (data) => {
       // Never write plaintext when encryption is set up but locked — gate on
@@ -182,16 +187,14 @@ export function useCreateJournal() {
       if (dek) return decryptJournalResponse(journal, dek);
       return journal;
     },
+    // Optimistic contract (see ./optimistic.ts): placeholder in → server
+    // record swapped in by temp id → only AGGREGATES refetched. The journal
+    // lists are never re-fetched wholesale for a create.
     onMutate: async (newData) => {
-      await queryClient.cancelQueries({ queryKey: ["journals"] });
-
-      const previousQueries = queryClient.getQueriesData<Journal[]>({
-        queryKey: ["journals"],
-        exact: false,
-      });
-
-      const optimisticJournal: Journal = {
-        id: `temp-${Date.now()}`,
+      const previous = await snapshotAndCancel(queryClient, [["journals"]]);
+      const tempId = `temp-${Date.now()}`;
+      const optimistic: Journal = {
+        id: tempId,
         userSub: tryGetCurrentUserSub() ?? "",
         authorId: "",
         title: newData.title,
@@ -203,27 +206,30 @@ export function useCreateJournal() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-
-      for (const [queryKey, data] of previousQueries) {
-        if (Array.isArray(data)) {
-          queryClient.setQueryData<Journal[]>(queryKey, [
-            optimisticJournal,
-            ...data,
-          ]);
-        }
-      }
-
-      return { previousQueries };
+      patchLists<Journal>(queryClient, [["journals"]], (list) => [
+        optimistic,
+        ...list,
+      ]);
+      return { previous, tempId };
     },
-    onError: (_err, _data, context) => {
-      if (context?.previousQueries) {
-        for (const [queryKey, data] of context.previousQueries) {
-          queryClient.setQueryData(queryKey, data);
-        }
-      }
+    onError: (_err, _data, ctx) => rollback(queryClient, ctx?.previous),
+    onSuccess: (serverJournal, _data, ctx) => {
+      // Swap the placeholder for the authoritative (decrypted) record in
+      // every array list (the detail key carries the DEK epoch, so it is
+      // left to its own fetch).
+      writeEntityToLists(
+        queryClient,
+        [["journals"]],
+        serverJournal,
+        ctx?.tempId,
+      );
     },
     onSettled: (data) => {
-      void queryClient.invalidateQueries({ queryKey: ["journals"] });
+      // The paginated (infinite) list isn't an array, so it can't be patched
+      // in place — refetch just that variant, plus the derived aggregates.
+      void queryClient.invalidateQueries({
+        queryKey: ["journals", "paginated"],
+      });
       void queryClient.invalidateQueries({ queryKey: lightKeys.me });
       void queryClient.invalidateQueries({ queryKey: lightKeys.stats });
       // Scope the calendar refetch to the new entry's month.

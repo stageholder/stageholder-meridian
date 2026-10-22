@@ -10,3 +10,4 @@ executionOrder:
     - todos
     - journal
     - settings
+    - billing

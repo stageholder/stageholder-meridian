@@ -1,0 +1,67 @@
+# Store billing (RevenueCat): paywall entry from Settings, then — when the
+# Test Store is live for this build and account — failed / cancelled / valid
+# purchase, App Store management handoff and restore (subflows/store-purchase).
+#
+# Needs: a bundle with EXPO_PUBLIC_REVENUECAT_IOS_KEY set to the Test Store
+# key, the local Hub reachable by RevenueCat's webhook (ngrok) with the Test
+# Store product ids mapped in store_products, and an account on the FREE plan
+# (the shared e2e owner is web-billed, so for it this journey only checks the
+# "billed on the web" state). See e2e/README.md → "Store billing".
+appId: com.stageholder.meridian
+name: billing
+---
+- runFlow: ../subflows/launch-signed-in.yaml
+- runFlow:
+    file: ../subflows/tab.yaml
+    env:
+      TAB_LABEL: "Settings"
+      TAB_ID: "tab-settings"
+- assertVisible:
+    id: "settings-plan"
+# Free plan: the Upgrade row opens the paywall directly.
+- runFlow:
+    when:
+      visible: "Upgrade to Unlimited"
+    commands:
+      - tapOn: "Upgrade to Unlimited"
+# Paid plan: go through Plans & billing. A store-billed plan offers "Change
+# plan"; a web-billed (Polar) one only says where it is managed.
+- runFlow:
+    when:
+      visible:
+        id: "settings-plan"
+      notVisible: "Upgrade to Unlimited"
+    commands:
+      - tapOn:
+          id: "settings-plan"
+      - extendedWaitUntil:
+          visible: "Change plan|This plan is billed on the web.*"
+          timeout: 15000
+      - runFlow:
+          when:
+            visible: "Change plan"
+          commands:
+            - tapOn: "Change plan"
+- runFlow:
+    when:
+      visible: "Choose your plan"
+    commands:
+      - extendedWaitUntil:
+          visible: "Monthly|Your plan is managed on the web|Purchases aren't live yet|Couldn't load plans"
+          timeout: 20000
+      - runFlow:
+          when:
+            visible: "Monthly"
+          file: ../subflows/store-purchase.yaml
+# Leave the app on Settings whatever branch ran.
+- runFlow:
+    when:
+      visible: "Choose your plan"
+    commands:
+      - tapOn: "Close"
+- runFlow:
+    when:
+      visible: "Plans & billing"
+    file: ../subflows/go-back.yaml
+- assertVisible:
+    id: "settings-plan"

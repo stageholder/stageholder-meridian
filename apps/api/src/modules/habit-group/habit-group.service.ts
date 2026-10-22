@@ -52,8 +52,10 @@ export class HabitGroupService {
     // Provision the time-of-day seeds first so a first-ever create (before any
     // group fetch) doesn't suppress the seed and doesn't collide at order 0.
     await this.ensureSeed(userSub);
+    // Only user-created groups count — the time-of-day seeds never eat a
+    // slot of the plan's `max_habit_groups` (same rule as the todo Inbox).
     await enforceLimit(user, "max_habit_groups", () =>
-      this.repository.countForUser(userSub),
+      this.repository.countUserCreatedForUser(userSub),
     );
     // Land at the end of the ordering; max+1 stays stable even if a seed was
     // soft-deleted (a bare count could dip below the max and collide).

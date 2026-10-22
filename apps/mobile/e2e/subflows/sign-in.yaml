@@ -2,7 +2,7 @@
 # iOS, Custom Tabs on Android). Credentials come from --env; never logged.
 appId: com.stageholder.meridian
 ---
-- tapOn: "Sign in with Stageholder"
+- tapOn: ".*Sign in with Stageholder.*"
 # iOS asks before handing the auth session to the browser sheet.
 - runFlow:
     when:
@@ -67,12 +67,29 @@ appId: com.stageholder.meridian
       platform: iOS
       visible: "Email address"
     commands:
-      - tapOn: "you@example.com"
-      - inputText: ${E2E_EMAIL}
-      - tapOn: "Enter your password"
-      - inputText: ${E2E_PASSWORD}
-      # Submit with Enter — the page shows "Sign in" twice (heading + button).
-      - pressKey: Enter
+      # Focus through the field LABELS (htmlFor): tapping the placeholder
+      # text under a raised keyboard has landed keystrokes in the wrong
+      # field. Verify the typed email and redo the entry until the Hub
+      # accepts it (the login page goes away).
+      - retry:
+          maxRetries: 2
+          commands:
+            - tapOn:
+                text: "Email address"
+                index: 0
+            - eraseText: 120
+            - inputText: ${E2E_EMAIL}
+            - assertVisible: ${E2E_EMAIL}
+            - tapOn:
+                text: "Password"
+                index: 0
+            - eraseText: 120
+            - inputText: ${E2E_PASSWORD}
+            # Submit with Enter — the page shows "Sign in" twice (heading + button).
+            - pressKey: Enter
+            - extendedWaitUntil:
+                notVisible: "Email address"
+                timeout: 30000
 # First sign-in on a fresh Hub may show an OIDC consent screen.
 - runFlow:
     when:

@@ -4,6 +4,7 @@ import {
   useCanManageBilling,
   useInvoices,
   useStageholder,
+  useSubscription,
 } from "@stageholder/sdk/spa";
 import { openURL } from "@repo/core/platform/linking";
 import { Download, Loader2 } from "lucide-react";
@@ -35,7 +36,18 @@ export function InvoiceLedger({
   const { canManage } = useCanManageBilling();
   const orgId =
     state.status === "authenticated" ? state.data.activeOrgId : undefined;
-  const { data, isLoading, isError } = useInvoices(orgId);
+  // A PAID plan bought in the mobile app is billed by Apple / Google, who
+  // email the receipts and keep the purchase history — nothing ever reaches
+  // the Hub's (Polar) invoice ledger, so don't fetch it or claim "no invoices".
+  const sub = useSubscription();
+  const storePaid =
+    !!sub &&
+    !sub.isFreeTier &&
+    (sub.provider === "app_store" || sub.provider === "play");
+  const storeName = sub?.provider === "play" ? "Google Play" : "the App Store";
+  const { data, isLoading, isError } = useInvoices(
+    storePaid ? undefined : orgId,
+  );
 
   return (
     <View
@@ -85,7 +97,12 @@ export function InvoiceLedger({
       </XStack>
 
       {/* Body branches */}
-      {!canManage && state.status === "authenticated" ? (
+      {storePaid ? (
+        <NoticePanel
+          headline={`Receipts come from ${sub?.provider === "play" ? "Google Play" : "Apple"}`}
+          body={`This plan is billed through ${storeName} in the Meridian mobile app. ${sub?.provider === "play" ? "Google Play" : "Apple"} emails a receipt for every charge and keeps your full purchase history in your ${sub?.provider === "play" ? "Google Play" : "Apple"} account.`}
+        />
+      ) : !canManage && state.status === "authenticated" ? (
         <NoticePanel
           headline="Only admins can view invoices"
           body="Ask an owner or admin in your organization for a copy of any invoice."

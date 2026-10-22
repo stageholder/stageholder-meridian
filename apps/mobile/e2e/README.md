@@ -109,3 +109,33 @@ refuses to run unless `E2E_EMAIL` is a `jevb+…` account) → runs the journeys
 - Every flow starts with `subflows/launch-signed-in.yaml`, so any one of them
   runs on its own.
 - Never complete a purchase or change the plan from a flow.
+
+## Store billing (`flows/billing.yaml`)
+
+The paywall talks to RevenueCat, so this journey only exercises purchases when
+three things line up; otherwise it just verifies the entry points and the
+"billed on the web" / "not live yet" states and passes.
+
+1. **Test Store key in the bundle**: `EXPO_PUBLIC_REVENUECAT_IOS_KEY=test_… bun run e2e:metro`
+   (the script ignores `.env.local`, so export the key). The Test Store
+   replaces StoreKit with a "Test valid / failed purchase / Cancel" dialog.
+2. **Webhook to the local Hub**: RevenueCat → `https://<ngrok>/api/billing/revenuecat-webhook`
+   (`ngrok http 4828`) with the Hub's `REVENUECAT_WEBHOOK_SECRET`, and the
+   Test Store product ids mapped in the Hub's `store_products` table
+   (`monthly` / `yearly` → `unlimited`, platform `app_store`). Without the
+   mapping the Hub answers 503 and the plan never flips.
+3. **A Free account**: the shared e2e owner is web-billed (Polar), so run
+   this journey with a store test account that uses the same password:
+   `E2E_EMAIL=jevb+rc-<ts>@e2e.stageholder.com bun run e2e -- flows/billing.yaml`.
+
+Test Store subscriptions renew every few minutes and expire on their own
+(~30 min), after which the Hub downgrades the row to Free again — so the
+journey can be rerun on the same account. Covered: failed purchase shows an
+inline error (the paywall is a native modal, toasts underneath it are
+invisible), Cancel is silent, a valid purchase closes the paywall and flips
+Settings → Plan to Unlimited via the webhook, Plans & billing shows Apple's
+receipts note instead of the (Polar-only) invoice ledger, "Manage in App
+Store" presents StoreKit's in-app manage-subscriptions sheet (a system sheet
+Maestro cannot read: on the simulator it asks for an Apple Account, so the
+journey cancels it by position and swipes it down), Restore purchases
+returns the active entitlement.

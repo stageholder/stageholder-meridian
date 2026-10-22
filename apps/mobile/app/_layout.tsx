@@ -49,7 +49,7 @@ import {
 } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as WebBrowser from "expo-web-browser";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -145,6 +145,20 @@ function ThemedStack({ resolvedTheme }: { resolvedTheme: "light" | "dark" }) {
 
 export default function RootLayout() {
   const router = useRouter();
+  // ONE stable teardown for both SDK exits. `onSignedOut` = explicit sign-out.
+  // `onAuthError` = terminal session death: the SDK's token refresh got a
+  // 400/401 (a dead / rotated-away refresh token — the "logged out after a
+  // while" case). DISTINCT from a transient network/5xx refresh failure,
+  // which the SDK rides out on stale claims and never surfaces here. Since
+  // @stageholder/sdk alpha.60 this callback is the AUTHORITATIVE terminal
+  // signal (`getAccessToken()` is null for both transient and terminal, so
+  // teardown must not be inferred from a 401 / null token). Memoized because
+  // the SDK's refresh callback lists `onAuthError` in its deps: a fresh arrow
+  // per render rebuilt `refreshSession` on every render.
+  const onSessionEnded = useCallback(() => {
+    purgeSessionState();
+    router.replace("/sign-in");
+  }, [router]);
   const { resolvedTheme } = useAppTheme();
 
   const [fontsLoaded, fontError] = useAppFonts();
@@ -266,28 +280,8 @@ export default function RootLayout() {
               audience: "meridian-api",
               biometric: "off",
             }}
-            onSignedOut={() => {
-              purgeSessionState();
-              router.replace("/sign-in");
-            }}
-            onAuthError={() => {
-              // Terminal session death: the SDK's token refresh got
-              // `invalid_grant` (a dead / rotated-away refresh token — e.g.
-              // the "logged out after a while" case). This is DISTINCT from a
-              // transient network/5xx refresh failure, which the SDK keeps the
-              // session alive through (stale claims) and never surfaces here.
-              // Same teardown as an explicit sign-out.
-              //
-              // This is the AUTHORITATIVE terminal signal as of
-              // @stageholder/sdk alpha.60: `getAccessToken()` now returns null
-              // for BOTH "temporarily unavailable, retry" and terminal death,
-              // so teardown must NOT be inferred from a 401 / a null token
-              // anymore (doing so forced a spurious re-login on any network
-              // blip). The API 401 interceptor is now non-destructive — it lets
-              // React Query retry, and death arrives here instead.
-              purgeSessionState();
-              router.replace("/sign-in");
-            }}
+            onSignedOut={onSessionEnded}
+            onAuthError={onSessionEnded}
           >
             <QueryProvider>
               <DayRollover />

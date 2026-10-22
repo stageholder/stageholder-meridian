@@ -76,7 +76,7 @@ export class MeController {
     const plan =
       req.user.subscriptions?.find(
         (s) => s.orgId === orgId && s.product === PRODUCT_SLUG,
-      )?.plan ?? "meridian-free";
+      )?.plan ?? "free"; // the Hub catalog's free-plan slug
     return {
       plan,
       entitled: true,

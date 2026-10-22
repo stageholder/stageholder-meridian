@@ -154,8 +154,18 @@ export class HabitService {
     return habit;
   }
 
-  async unarchive(userSub: string, id: string): Promise<Habit> {
+  async unarchive(
+    userSub: string,
+    id: string,
+    user: StageholderUser,
+  ): Promise<Habit> {
     const habit = await this.findById(userSub, id);
+    // Unarchiving brings a habit back into the active set, so it is subject
+    // to the same cap as creating one (archive → unarchive used to bypass
+    // `max_habits`).
+    await enforceLimit(user, "max_habits", () =>
+      this.repository.countActiveForUser(userSub),
+    );
     habit.unarchive();
     await this.repository.save(habit);
     return habit;

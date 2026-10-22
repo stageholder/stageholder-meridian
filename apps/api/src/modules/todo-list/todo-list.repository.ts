@@ -45,8 +45,12 @@ export class TodoListRepository implements OnApplicationBootstrap {
       { name: data.name },
       ENCRYPTED_FIELDS,
     );
+    // Scope the upsert to the owner (defense-in-depth, same as journals): a
+    // raw/foreign id can never overwrite or flip ownership of another user's
+    // row. Legitimate writes always carry the owner's sub, so no behavior
+    // change for them.
     await this.model.updateOne(
-      { _id: data.id },
+      { _id: data.id, userSub: data.userSub },
       {
         $set: {
           name: enc.name,
