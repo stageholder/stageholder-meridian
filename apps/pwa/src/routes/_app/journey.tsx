@@ -10,7 +10,8 @@ import {
   JourneyStats,
 } from "@repo/features/light";
 import { useLevelUp } from "@/lib/hooks/use-level-up";
-import { LIGHT_TIERS } from "@repo/core/types/light";
+import { LIGHT_TIERS, getLightPace } from "@repo/core/types/light";
+import { useLightTrend } from "@/lib/hooks/use-light-trend";
 import { JourneyFeed } from "@/components/light/journey-feed";
 import { JourneyLightChart } from "@/components/light/journey-light-chart";
 import { Card, H1, H2, Paragraph, View, XStack, YStack } from "@stageholder/ui";
@@ -23,6 +24,10 @@ export const Route = createFileRoute("/_app/journey")({
 function JourneyPage() {
   const { data: userLight, isLoading } = useUserLight();
   const { levelUpTier, dismiss } = useLevelUp(userLight);
+  // Average Light/day over the 7-day trend — one number behind every
+  // "at your pace" ETA on this page (hero bar + tier map).
+  const lightTrend = useLightTrend();
+  const pace = getLightPace(lightTrend.data);
   const today = useLocalDayKey();
 
   if (isLoading || !userLight) {
@@ -111,7 +116,7 @@ function JourneyPage() {
           </Paragraph>
           {/* mt-5 / w-full → Tamagui margin + width on a wrapping View. */}
           <View mt="$5" width="100%">
-            <LevelProgress userLight={userLight} />
+            <LevelProgress userLight={userLight} paceLightPerDay={pace} />
           </View>
         </YStack>
 
@@ -182,7 +187,11 @@ function JourneyPage() {
         >
           Tier Map
         </H2>
-        <JourneyTierMap currentTier={userLight.currentTier} />
+        <JourneyTierMap
+          currentTier={userLight.currentTier}
+          totalLight={userLight.totalLight}
+          paceLightPerDay={pace}
+        />
       </View>
 
       {/* Recent Light Feed */}

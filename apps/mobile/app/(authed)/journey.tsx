@@ -39,7 +39,11 @@ import {
   StarVisual,
 } from "@repo/features/light";
 import { JourneyLightChart } from "@repo/features/charts";
-import { LIGHT_TIERS, type UserLight } from "@repo/core/types/light";
+import {
+  LIGHT_TIERS,
+  getLightPace,
+  type UserLight,
+} from "@repo/core/types/light";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 
@@ -71,6 +75,9 @@ export default function JourneyScreen() {
     }, []),
   );
   const lightTrend = useLightTrend();
+  // Average Light/day over the 7-day trend — drives every "at your pace" ETA
+  // on this screen (hero + path) from one number.
+  const pace = getLightPace(lightTrend.data);
   // Array.isArray (not just ?? []): the query cache is PERSISTED to
   // AsyncStorage, so a stale entry written by an older hook version can
   // rehydrate with a different shape and render before the refetch lands.
@@ -130,7 +137,7 @@ export default function JourneyScreen() {
                 {userLight.totalLight.toLocaleString()} Light earned
               </Text>
               <View mt="$5" width="100%">
-                <LevelProgress userLight={userLight} />
+                <LevelProgress userLight={userLight} paceLightPerDay={pace} />
               </View>
             </YStack>
 
@@ -171,6 +178,7 @@ export default function JourneyScreen() {
                 currentTier={userLight.currentTier}
                 totalLight={userLight.totalLight}
                 animateStars={focused}
+                paceLightPerDay={pace}
               />
             </YStack>
 

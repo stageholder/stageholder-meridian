@@ -53,8 +53,16 @@ export interface LightTier {
   tier: number;
   title: string;
   lightRequired: number;
+  /** One line, grounded in time ("Two weeks in"), shown on the path. */
   shortDescription: string;
+  /** The tier note — what this stretch of the journey actually looks like. */
   description: string;
+  /**
+   * When a typical daily user reaches this tier ("About a month"). A static
+   * hint for people without enough history for a pace estimate; surfaces
+   * swap it for the live ETA once `getLightPace` has data.
+   */
+  typicalWindow: string;
 }
 
 export const LIGHT_TIERS: LightTier[] = [
@@ -62,91 +70,91 @@ export const LIGHT_TIERS: LightTier[] = [
     tier: 1,
     title: "Stargazer",
     lightRequired: 0,
-    shortDescription:
-      "You're looking up and dreaming big \u2014 every great journey starts with a single step.",
+    shortDescription: "Day one. You showed up.",
+    typicalWindow: "Day one",
     description:
-      "You've taken the first and most important step: showing up. Like a stargazer mapping the night sky, you're beginning to chart your own path. Most people only dream of changing their lives \u2014 you're actually doing it. Keep going, each small action is a point of light guiding your way forward.",
+      "Everything starts here. There is nothing to prove yet: add a task, check a habit, write a few lines. Light counts every one of them, and the first tiers arrive quickly on purpose.",
   },
   {
     tier: 2,
     title: "Spark",
     lightRequired: 50,
-    shortDescription:
-      "Something's igniting inside you \u2014 your consistency is turning intention into action.",
+    shortDescription: "A couple of good days in a row.",
+    typicalWindow: "The first few days",
     description:
-      "That initial curiosity has caught fire. You're no longer just thinking about productivity \u2014 you're living it. A spark is fragile, but yours is growing stronger with every completed task, every journal entry, every habit checked off. You're proving to yourself that you can follow through. That's rare and powerful.",
+      "Fifty Light is about two days of using Meridian the way you meant to. It is early, and that is fine. Sparks go out easily, so the whole job right now is small: do tomorrow what you did today.",
   },
   {
     tier: 3,
     title: "Ember",
     lightRequired: 150,
-    shortDescription:
-      "You're building real momentum \u2014 your dedication is starting to glow.",
+    shortDescription: "The routine is starting to hold.",
+    typicalWindow: "The first week",
     description:
-      "Embers don't burn out easily. You've moved past the excitement of starting and into the quiet strength of continuing. Your habits are taking root, your routines are shaping your days, and the results are starting to show. You're the kind of person who keeps the fire alive when others let it fade.",
+      "Roughly a week of steady days. You have found a rhythm that fits your life instead of a plan copied from someone else. Embers do not flare up, they stay lit, and staying lit is exactly what this tier rewards.",
   },
   {
     tier: 4,
     title: "Flame",
     lightRequired: 400,
-    shortDescription:
-      "You're on fire \u2014 discipline has become your superpower.",
+    shortDescription: "Two weeks of showing up.",
+    typicalWindow: "Two weeks in",
     description:
-      "You've built something real. Your daily rhythm is no longer forced \u2014 it's natural. Like a steady flame, your consistency lights up everything around you. Tasks get done, habits stick, and your journal captures a life being lived with intention. People around you are starting to notice the change.",
+      "A lot of people stop before this point. You did not. Your rings close more days than they miss, your habits have real streaks behind them, and the journal has entries you would actually reread. From here, perfect-day streaks multiply everything you earn.",
   },
   {
     tier: 5,
     title: "Radiant",
     lightRequired: 800,
-    shortDescription:
-      "Your energy is contagious \u2014 you're shining brighter than ever.",
+    shortDescription: "About a month of consistency.",
+    typicalWindow: "About a month",
     description:
-      "You radiate purpose. At this level, productivity isn't something you do \u2014 it's who you are. Your streaks speak for themselves, your perfect days stack up, and your goals feel within reach because you've proven you can show up, day after day. You're not just managing your life \u2014 you're mastering it.",
+      "Around a month of steady work. The habit is no longer the app, it is the days themselves. Your own history shows the pattern now: slow weeks, strong weeks, and the fact that you kept going through both.",
   },
   {
     tier: 6,
     title: "Flare",
     lightRequired: 1500,
-    shortDescription:
-      "You're making an impact that can't be ignored \u2014 pure brilliance.",
+    shortDescription: "Six to eight weeks. It is how you live now.",
+    typicalWindow: "Six to eight weeks",
     description:
-      "A flare is impossible to miss, and so is your transformation. You've reached a level most people never see because it demands real, sustained effort. Your habits are deeply embedded, your journal is rich with reflection, and your task completion rate is extraordinary. You're an inspiration in motion.",
+      "Two months in, the streak multiplier is doing real work and your streaks are measured in weeks. Missing a day still happens. What changed is that it no longer ends anything. You come back the next morning.",
   },
   {
     tier: 7,
     title: "Nova",
     lightRequired: 2800,
-    shortDescription:
-      "You've broken through every barrier \u2014 this is what excellence looks like.",
+    shortDescription: "A full season of steady days.",
+    typicalWindow: "Around three months",
     description:
-      "A nova is a star that suddenly shines thousands of times brighter. That's you right now. You've pushed past plateaus, built unshakable routines, and turned your ambitions into daily practice. Your consistency isn't luck \u2014 it's the result of hundreds of deliberate choices. You're operating at a level few ever reach.",
+      "A season. Three months of tasks finished, habits kept and thoughts written down. Read your first entries again: the person who wrote them would be surprised by the one reading them now.",
   },
   {
     tier: 8,
     title: "Pulsar",
     lightRequired: 5000,
-    shortDescription:
-      "Relentless, rhythmic, unstoppable \u2014 you pulse with purpose.",
+    shortDescription: "Five months. Clockwork.",
+    typicalWindow: "Around five months",
     description:
-      "Like a pulsar beaming light across the cosmos with perfect precision, your rhythm is unbreakable. You don't skip days. You don't make excuses. Your productivity system runs like clockwork, and your growth is measurable, visible, and undeniable. You've turned self-improvement from a goal into a lifestyle.",
+      "Pulsars are known for one thing: they keep time. Your days have that quality now. The system runs without you thinking about it, which leaves you free to think about what the tasks are for.",
   },
   {
     tier: 9,
     title: "Supernova",
     lightRequired: 8500,
-    shortDescription:
-      "You're a force of nature \u2014 your dedication rewrites what's possible.",
+    shortDescription: "Most of a year, and it shows.",
+    typicalWindow: "Eight or nine months",
     description:
-      "A supernova is the most powerful event in the universe, and your journey mirrors that intensity. You've accumulated thousands of light points through sheer will and consistency. Your perfect day streaks, your completed tasks, your rich journal entries \u2014 they tell the story of someone who refused to settle for average. You are extraordinary.",
+      "Most of a year of showing up. The streaks, the perfect days and the thousands of small choices behind them add up to something other people can see. This is the tier where they start asking what you have been doing differently.",
   },
   {
     tier: 10,
     title: "Meridian",
     lightRequired: 13000,
-    shortDescription:
-      "You've reached the peak \u2014 the highest point of your journey. Legendary.",
+    shortDescription: "The highest point. Keep it there.",
+    typicalWindow: "About a year",
     description:
-      "You've arrived at the Meridian \u2014 the highest point the sky can offer. This isn't just a tier; it's a testament to an extraordinary commitment to growth. Every light point represents a moment you chose discipline over distraction, progress over comfort. You've journeyed from a single star in the night sky to the brightest force in the cosmos. You are the Meridian.",
+      "The meridian is the highest point the sun reaches in the sky, and you have reached yours: a year or more of deliberate days. There is no next tier. There is only the next day, and you already know how to do that.",
   },
 ];
 
@@ -254,4 +262,47 @@ export function getMultiplier(perfectDayStreak: number): number {
 /** Display label for the multiplier, e.g. `"2.5x"`. */
 export function getMultiplierLabel(perfectDayStreak: number): string {
   return `${getMultiplier(perfectDayStreak)}x`;
+}
+
+// ---------------------------------------------------------------------------
+// Pace — "how long until the next tier at the rate you're actually going".
+// Every surface that shows an ETA derives it from these so the Journey hero,
+// the path and the web rail never disagree.
+// ---------------------------------------------------------------------------
+
+/**
+ * Average Light earned per day over a recent window (typically the 7-day
+ * trend). Days with nothing earned count as zero — the estimate should
+ * reflect real life, not best days only. Returns 0 with no data.
+ */
+export function getLightPace(days: ReadonlyArray<{ earned: number }>): number {
+  if (days.length === 0) return 0;
+  const total = days.reduce((sum, d) => sum + Math.max(0, d.earned), 0);
+  return total / days.length;
+}
+
+/**
+ * Whole days from `totalLight` to `targetLight` at `pace` Light/day.
+ * `null` when there is no pace to project from (new accounts, idle weeks),
+ * 0 once the target is already met.
+ */
+export function estimateDaysToLight(
+  totalLight: number,
+  targetLight: number,
+  pace: number,
+): number | null {
+  if (targetLight <= totalLight) return 0;
+  if (!(pace > 0)) return null;
+  return Math.ceil((targetLight - totalLight) / pace);
+}
+
+/** Human label for an ETA in days: "today", "2 days", "3 weeks", "4 months". */
+export function formatDaysEta(days: number): string {
+  if (days <= 0) return "today";
+  if (days === 1) return "1 day";
+  if (days < 14) return `${days} days`;
+  if (days < 60) return `${Math.round(days / 7)} weeks`;
+  if (days < 365) return `${Math.round(days / 30)} months`;
+  const years = Math.round((days / 365) * 10) / 10;
+  return years === 1 ? "1 year" : `${years} years`;
 }

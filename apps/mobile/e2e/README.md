@@ -99,6 +99,7 @@ refuses to run unless `E2E_EMAIL` is a `jevb+…` account) → runs the journeys
 | `todos`      | Quick-add → swipe-right complete → shows under the Done filter                                                                                               |
 | `journal`    | Unlock the encrypted journal → write → header shows "Saved" → Done waits for the save → entry listed                                                         |
 | `settings`   | Plan row, Appearance switch, Sign out asks for confirmation                                                                                                  |
+| `first-run`  | Sign up a throwaway account on the local Hub → onboarding wizard exactly once → Today (relaunch stays past it) → back to the shared account                  |
 
 ## Conventions
 

@@ -53,7 +53,9 @@ test.describe("auth", () => {
       page.getByRole("button", { name: "Add a todo…" }),
     ).toBeVisible();
 
-    await page.getByText("JM", { exact: true }).first().click();
+    // The avatar shows the account's initials, which change with the display
+    // name, so target its accessible label instead.
+    await page.getByLabel("User menu").first().click();
     await page.getByRole("menuitem", { name: "Sign out" }).click();
     await expect(page).not.toHaveURL(/localhost:4001\/todos/, {
       timeout: 30_000,

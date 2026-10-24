@@ -3,6 +3,8 @@ import { Flame } from "@tamagui/lucide-icons-2/icons/Flame";
 import { GradientSurface, Text, View, XStack, YStack } from "@stageholder/ui";
 import type { UserLight } from "@repo/core/types/light";
 import {
+  estimateDaysToLight,
+  formatDaysEta,
   getNextTier,
   getTierProgressDetail,
   getMultiplierLabel,
@@ -17,11 +19,18 @@ interface LevelProgressProps {
    * flashing the finished bar first.
    */
   parked?: boolean;
+  /**
+   * Average Light/day (`getLightPace`). When > 0 and a next tier exists, a
+   * third line projects when it lands ("Radiant in ~3 days at your pace").
+   * Omitted on compact hosts like the Today card.
+   */
+  paceLightPerDay?: number;
 }
 
 export function LevelProgress({
   userLight,
   parked = false,
+  paceLightPerDay = 0,
 }: LevelProgressProps) {
   const { totalLight, currentTier, currentTitle, perfectDayStreak } = userLight;
   const nextTier = getNextTier(currentTier);
@@ -32,6 +41,9 @@ export function LevelProgress({
     totalLight,
     currentTier,
   );
+  const eta = nextTier
+    ? estimateDaysToLight(totalLight, nextTier.lightRequired, paceLightPerDay)
+    : null;
   const [fill, setFill] = useState(0);
   useEffect(() => {
     if (parked) {
@@ -102,6 +114,13 @@ export function LevelProgress({
           </XStack>
         )}
       </XStack>
+      {nextTier && eta !== null ? (
+        <Text fontSize="$1" color="$mutedForeground" style={tabularNums}>
+          {eta === 0
+            ? `${nextTier.title} is within reach today.`
+            : `${nextTier.title} in about ${formatDaysEta(eta)} at your pace.`}
+        </Text>
+      ) : null}
     </YStack>
   );
 }

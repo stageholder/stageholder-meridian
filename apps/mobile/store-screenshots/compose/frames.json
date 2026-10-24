@@ -1,0 +1,58 @@
+[
+  {
+    "id": "01-today",
+    "shot": "01-today.png",
+    "accent": "#f59e0b",
+    "kicker": "Today",
+    "title": "Your whole day, at a glance.",
+    "subtitle": "Tasks, habits and journal in one set of rings. Close them and the streak grows."
+  },
+  {
+    "id": "02-journey",
+    "shot": "02-journey.png",
+    "accent": "#fbbf24",
+    "kicker": "Journey",
+    "title": "Every good day earns Light.",
+    "subtitle": "Ten levels from Stargazer to Meridian. Streaks multiply what you earn, and you can see when the next one lands."
+  },
+  {
+    "id": "03-path",
+    "shot": "03-path.png",
+    "accent": "#fbbf24",
+    "kicker": "The path",
+    "title": "See exactly how far you've come.",
+    "subtitle": "Levels you have reached, the one you are on, and the rest timed at your own pace."
+  },
+  {
+    "id": "04-habits",
+    "shot": "04-habits.png",
+    "accent": "#f97316",
+    "kicker": "Habits",
+    "title": "Build habits that actually stick.",
+    "subtitle": "One tap to check in. A week view and streaks keep you honest without nagging."
+  },
+  {
+    "id": "05-todos",
+    "shot": "05-todos.png",
+    "accent": "#ef4444",
+    "kicker": "Todos",
+    "title": "Tasks without the noise.",
+    "subtitle": "Do-dates, deadlines and priorities. Today first, the rest when it is due."
+  },
+  {
+    "id": "06-journal",
+    "shot": "06-journal.png",
+    "accent": "#facc15",
+    "kicker": "Journal",
+    "title": "A journal only you can read.",
+    "subtitle": "Every entry is encrypted on your phone with a passphrase only you know. We cannot read it either."
+  },
+  {
+    "id": "07-calendar",
+    "shot": "07-calendar.png",
+    "accent": "#3b82f6",
+    "kicker": "Calendar",
+    "title": "Watch the month take shape.",
+    "subtitle": "Every day gets its own rings. Spot the gaps early and keep the chain going."
+  }
+]

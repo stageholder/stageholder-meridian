@@ -11,3 +11,4 @@ executionOrder:
     - journal
     - settings
     - billing
+    - first-run

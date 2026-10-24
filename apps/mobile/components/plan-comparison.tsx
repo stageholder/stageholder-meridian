@@ -1,10 +1,12 @@
 // apps/mobile/components/plan-comparison.tsx
 //
-// "Compare all features" — native port of the PWA ComparisonSheet's STACKED
-// variant (apps/pwa/src/components/billing/comparison-sheet.tsx): one card
-// per plan, features grouped by category, the value right-aligned on each
-// row. The desktop side-by-side spec table isn't ported — a phone is always
-// the PWA's `< md` case.
+// "Compare all features" — a compact SIDE-BY-SIDE table: one column per plan,
+// one row per feature, grouped by category. Replaces the earlier stacked
+// one-card-per-plan port of the PWA ComparisonSheet (which repeated every
+// feature row per plan and ran several screens tall on a phone). A phone
+// comfortably fits a label column plus two narrow value columns, which is
+// what Meridian sells (Free vs Unlimited); the value columns shrink to fit
+// if the catalog ever grows a third plan.
 //
 // Data comes from the Hub's pricing catalog (useHubPricing) — plan feature
 // LIMITS are Hub truth regardless of biller. The purchasable prices above
@@ -17,6 +19,9 @@ import { Text, View, XStack, YStack } from "@stageholder/ui";
 import { Check } from "@tamagui/lucide-icons-2/icons/Check";
 import { Minus } from "@tamagui/lucide-icons-2/icons/Minus";
 
+/** Width of each plan column (two of them must fit beside the label). */
+const PLAN_COL_WIDTH = 84;
+
 export function PlanComparison({
   plans,
   features,
@@ -28,16 +33,16 @@ export function PlanComparison({
 
   const ordered = orderPlans(plans);
   const grouped = groupByCategory(features);
+  // Three or more plans: narrow the columns so the label keeps room.
+  const colWidth =
+    ordered.length > 2
+      ? Math.floor((PLAN_COL_WIDTH * 2) / ordered.length)
+      : PLAN_COL_WIDTH;
 
   return (
     <YStack gap="$4">
       {/* Section heading (mirrors the PWA's editorial header). */}
-      <YStack
-        gap="$1.5"
-        borderBottomWidth={1}
-        borderColor="$borderColor"
-        pb="$3"
-      >
+      <YStack gap="$1.5">
         <Text
           fontSize="$6"
           fontWeight="700"
@@ -51,42 +56,58 @@ export function PlanComparison({
         </Text>
       </YStack>
 
-      {ordered.map((p) => (
-        <YStack
-          key={p.id}
-          gap="$4"
-          rounded={20}
-          borderWidth={1}
-          borderColor={p.isFeatured ? "$color" : "$borderColor"}
-          bg="$card"
-          p="$4"
+      <YStack
+        rounded={20}
+        borderWidth={1}
+        borderColor="$borderColor"
+        bg="$card"
+        overflow="hidden"
+      >
+        {/* Header row: plan names over their columns. */}
+        <XStack
+          items="flex-end"
+          px="$4"
+          pt="$4"
+          pb="$3"
+          borderBottomWidth={1}
+          borderColor="$borderColor"
+          gap="$2"
         >
-          <YStack gap="$1">
-            <Text
-              fontSize="$6"
-              fontWeight="600"
-              letterSpacing={-0.4}
-              color="$color"
-            >
-              {p.displayName}
-            </Text>
-            {p.isFeatured ? (
+          <View flex={1} minW={0} />
+          {ordered.map((p) => (
+            <YStack key={p.id} width={colWidth} items="center" gap="$0.5">
               <Text
-                fontSize="$1"
-                fontWeight="500"
-                color="$mutedForeground"
-                textTransform="uppercase"
-                letterSpacing={0.5}
+                fontSize="$3"
+                fontWeight="600"
+                color="$color"
+                text="center"
+                numberOfLines={1}
               >
-                Most popular
+                {p.displayName}
               </Text>
-            ) : null}
-          </YStack>
+              {p.isFeatured ? (
+                <Text
+                  fontSize={10}
+                  fontWeight="500"
+                  color="$mutedForeground"
+                  textTransform="uppercase"
+                  letterSpacing={0.5}
+                >
+                  Popular
+                </Text>
+              ) : null}
+            </YStack>
+          ))}
+        </XStack>
 
-          {grouped.map(([category, group]) => (
-            <YStack key={category ?? "_uncat"} gap="$1">
+        {grouped.map(([category, group], gi) => (
+          <YStack key={category ?? "_uncat"}>
+            {/* An uncategorised catalog is one flat list — no "Other" label. */}
+            {category !== null || grouped.length > 1 ? (
               <Text
-                mb="$1"
+                px="$4"
+                pt={gi === 0 ? "$3" : "$4"}
+                pb="$1"
                 fontSize="$1"
                 fontWeight="600"
                 color="$mutedForeground"
@@ -95,35 +116,45 @@ export function PlanComparison({
               >
                 {category ?? "Other"}
               </Text>
-              {group.map((f) => (
-                <XStack
-                  key={f.id}
-                  gap="$3"
-                  py="$2.5"
-                  borderTopWidth={1}
-                  borderColor="$borderColor"
-                  items="center"
-                  justify="space-between"
-                >
-                  <YStack flex={1} minW={0} gap="$0.5">
-                    <Text fontSize="$3" fontWeight="500" color="$color">
-                      {f.displayName}
+            ) : (
+              <View height="$2" />
+            )}
+            {group.map((f, i) => (
+              <XStack
+                key={f.id}
+                px="$4"
+                py="$2.5"
+                gap="$2"
+                items="center"
+                borderTopWidth={i === 0 ? 0 : 1}
+                borderColor="$borderColor"
+              >
+                <YStack flex={1} minW={0} gap="$0.5">
+                  <Text fontSize="$3" fontWeight="500" color="$color">
+                    {f.displayName}
+                  </Text>
+                  {f.description ? (
+                    <Text fontSize="$1" color="$mutedForeground">
+                      {f.description}
                     </Text>
-                    {f.description ? (
-                      <Text fontSize="$1" color="$mutedForeground">
-                        {f.description}
-                      </Text>
-                    ) : null}
-                  </YStack>
-                  <View shrink={0} items="flex-end">
+                  ) : null}
+                </YStack>
+                {ordered.map((p) => (
+                  <View
+                    key={p.id}
+                    width={colWidth}
+                    items="center"
+                    justify="center"
+                  >
                     <Cell plan={p} feature={f} />
                   </View>
-                </XStack>
-              ))}
-            </YStack>
-          ))}
-        </YStack>
-      ))}
+                ))}
+              </XStack>
+            ))}
+          </YStack>
+        ))}
+        <View height="$2" />
+      </YStack>
     </YStack>
   );
 }
@@ -142,14 +173,14 @@ function Cell({
     if (value === true) {
       return (
         <View
-          width={16}
-          height={16}
+          width={18}
+          height={18}
           items="center"
           justify="center"
           rounded={9999}
           bg="$color"
         >
-          <Check size={10} strokeWidth={3} color="$background" />
+          <Check size={11} strokeWidth={3} color="$background" />
         </View>
       );
     }
@@ -166,7 +197,7 @@ function Cell({
     }
     if (typeof value === "number") {
       return (
-        <Text fontSize="$3" fontWeight="500" color="$color">
+        <Text fontSize="$3" fontWeight="500" color="$color" text="center">
           {value.toLocaleString()}
           {feature.unit ? (
             <Text fontSize="$1" color="$mutedForeground">
@@ -185,7 +216,7 @@ function Cell({
     value.length > 0
   ) {
     return (
-      <Text fontSize="$3" color="$color">
+      <Text fontSize="$3" color="$color" text="center">
         {value}
       </Text>
     );
@@ -194,7 +225,7 @@ function Cell({
 }
 
 /** Free first, then ascending price — same ordering as the PWA upgrade page,
- *  so the stacked cards read cheapest → most expensive. */
+ *  so the columns read cheapest → most expensive left to right. */
 function orderPlans(plans: PricingPlan[]): PricingPlan[] {
   return [...plans].sort((a, b) => {
     if (a.isFreeTier && !b.isFreeTier) return -1;

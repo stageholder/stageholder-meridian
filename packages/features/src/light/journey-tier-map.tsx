@@ -10,7 +10,11 @@
 import { useRef, useEffect } from "react";
 import { Text, View, XStack, YStack } from "@stageholder/ui";
 import { StarVisual } from "./star-visual";
-import { LIGHT_TIERS } from "@repo/core/types/light";
+import {
+  LIGHT_TIERS,
+  estimateDaysToLight,
+  formatDaysEta,
+} from "@repo/core/types/light";
 import { tabularNums } from "../_internal/text-styles";
 
 interface JourneyTierMapProps {
@@ -27,9 +31,15 @@ interface JourneyTierMapProps {
    * the host screen is blurred. Accepted-unused here (see totalLight).
    */
   animateStars?: boolean;
+  /** Average Light/day (`getLightPace`) — future cards show "~3 weeks". */
+  paceLightPerDay?: number;
 }
 
-export function JourneyTierMap({ currentTier }: JourneyTierMapProps) {
+export function JourneyTierMap({
+  currentTier,
+  totalLight,
+  paceLightPerDay = 0,
+}: JourneyTierMapProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentRef = useRef<HTMLDivElement>(null);
 
@@ -141,6 +151,21 @@ export function JourneyTierMap({ currentTier }: JourneyTierMapProps) {
                 >
                   {tier.lightRequired.toLocaleString()} Light
                 </Text>
+                {isFuture ? (
+                  <Text
+                    mt={1}
+                    fontSize={10}
+                    color="$mutedForeground"
+                    text="center"
+                  >
+                    {futureHint(
+                      tier.lightRequired,
+                      tier.typicalWindow,
+                      totalLight,
+                      paceLightPerDay,
+                    )}
+                  </Text>
+                ) : null}
               </YStack>
               {isCurrent && (
                 // "YOU" badge — gold marker, no token (style hatch).
@@ -168,4 +193,18 @@ export function JourneyTierMap({ currentTier }: JourneyTierMapProps) {
       </XStack>
     </View>
   );
+}
+
+/** Live ETA at the user's pace, else the tier's typical window. */
+function futureHint(
+  lightRequired: number,
+  typicalWindow: string,
+  totalLight: number | undefined,
+  pace: number,
+): string {
+  if (totalLight !== undefined) {
+    const eta = estimateDaysToLight(totalLight, lightRequired, pace);
+    if (eta !== null) return `~${formatDaysEta(eta)} at your pace`;
+  }
+  return `Usually ${typicalWindow.charAt(0).toLowerCase()}${typicalWindow.slice(1)}`;
 }

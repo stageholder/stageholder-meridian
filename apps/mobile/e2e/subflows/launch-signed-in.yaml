@@ -43,15 +43,27 @@ appId: com.stageholder.meridian
             notVisible: "http://localhost:8081"
           commands:
             - openLink: "meridian://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
-            - extendedWaitUntil:
-                visible:
-                  text: "Open|This is the developer menu.*|.*Sign in with Stageholder.*|Today"
-                timeout: 15000
             - runFlow:
                 when:
                   visible: "Open"
                 commands:
                   - tapOn: "Open"
+            # Opening the link can leave the app in the background (iOS lands
+            # on the home screen) — bring it forward WITHOUT restarting; the
+            # launcher now knows localhost:8081 and reconnects, or lists it.
+            - launchApp:
+                appId: com.stageholder.meridian
+                stopApp: false
+            - runFlow:
+                when:
+                  visible: "http://localhost:8081"
+                commands:
+                  - tapOn: "http://localhost:8081"
+            # Metro may be building the bundle (cold cache: ~1 min).
+            - extendedWaitUntil:
+                visible:
+                  text: "This is the developer menu.*|.*Sign in with Stageholder.*|Today"
+                timeout: 120000
       - extendedWaitUntil:
           visible:
             text: "This is the developer menu.*|.*Sign in with Stageholder.*|Today"

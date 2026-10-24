@@ -28,6 +28,18 @@ function keyFor(sub: string): string {
 // a dead-end. Cleared naturally when the process restarts.
 const onboardedThisSession = new Set<string>();
 
+/**
+ * Synchronous read of the in-memory flag only. The (authed) gate consults this
+ * at RENDER time: when the wizard calls markOnboarded() and replaces the route,
+ * the gate's async `isOnboarded` state is still the stale `false` it resolved
+ * while the wizard was open, and the one render before its effect re-reads
+ * SecureStore used to fire the onboarding redirect again (a brand-new account
+ * went through the wizard twice — the server flag was still in flight too).
+ */
+export function isOnboardedThisSession(sub: string): boolean {
+  return onboardedThisSession.has(sub);
+}
+
 export async function isOnboarded(sub: string): Promise<boolean> {
   if (onboardedThisSession.has(sub)) return true;
   try {

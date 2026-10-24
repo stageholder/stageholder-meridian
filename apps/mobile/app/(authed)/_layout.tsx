@@ -41,7 +41,7 @@ import { useTheme } from "tamagui";
 
 import { useMeridianMe } from "@/lib/api";
 import { useJournalAutoLock } from "@/lib/hooks/use-journal-auto-lock";
-import { isOnboarded } from "@/lib/onboarding";
+import { isOnboarded, isOnboardedThisSession } from "@/lib/onboarding";
 import { configurePurchases } from "@/lib/purchases";
 
 export default function AuthedLayout() {
@@ -212,7 +212,12 @@ function OnboardingGate({ sub }: { sub: string | undefined }) {
   // flag: EITHER being true means done. The local flag is the instant/offline
   // path; the server flag catches cross-device completion.
   const meQuery = useMeridianMe(!!sub);
-  const localDone = onboarded === true;
+  // The in-memory flag is read synchronously on EVERY render: `onboarded` is
+  // only re-resolved by the effect above, so on the render right after the
+  // wizard's replace("/") it is still the stale `false` from before
+  // markOnboarded() — acting on that bounced new accounts back into the wizard.
+  const localDone =
+    onboarded === true || (!!sub && isOnboardedThisSession(sub));
   const serverDone = meQuery.data?.hasCompletedOnboarding === true;
   const anyDone = localDone || serverDone;
   const localResolved = onboarded !== null;

@@ -1,0 +1,136 @@
+# A brand-new person on mobile: Sign up (Hub register page inside the system
+# auth session) → the onboarding wizard exactly ONCE → Today. Registers a
+# throwaway `jevb+meridian-new-<ts>@…` account on the LOCAL Hub (no email
+# verification there), then signs out and restores the shared test account so
+# the journeys after this one keep their session.
+#
+# Regression guard (2026-10-24): finishing the wizard used to bounce a new
+# account straight back into it — the (authed) gate acted on a stale local
+# completion flag for one render while the server flag was still in flight.
+appId: com.stageholder.meridian
+tags:
+  - first-run
+---
+- runFlow:
+    file: ../subflows/launch-signed-in.yaml
+- evalScript: ${output.ts = String(Date.now())}
+- tapOn:
+    id: tab-settings
+- scrollUntilVisible:
+    element:
+      id: settings-sign-out
+    direction: DOWN
+- tapOn:
+    id: settings-sign-out
+- assertVisible: "Sign out?"
+# The confirm button shares its label with the settings row beneath the dialog.
+- tapOn:
+    text: "Sign out"
+    rightOf: "Cancel"
+- extendedWaitUntil:
+    visible: ".*Sign in with Stageholder.*"
+    timeout: 30000
+- tapOn: "Sign up"
+- runFlow:
+    when:
+      visible: "Continue"
+      platform: iOS
+    commands:
+      - tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "(?i)(stay signed out|accept & continue|use without an account|no thanks)|Full name"
+    timeout: 45000
+- runFlow:
+    when:
+      platform: Android
+      visible: "(?i)(stay signed out|accept & continue|use without an account|no thanks)"
+    commands:
+      - repeat:
+          times: 3
+          commands:
+            - runFlow:
+                when:
+                  visible: "(?i)(stay signed out|accept & continue|use without an account|no thanks)"
+                commands:
+                  - tapOn: "(?i)(stay signed out|accept & continue|use without an account|no thanks)"
+                  - waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: "Full name"
+    timeout: 45000
+# iOS Safari exposes the labels; Android Custom Tabs expose the HTML ids.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: "Full name"
+      - inputText: "JEVB E2E Newcomer"
+      - tapOn: "Email address"
+      - inputText: "jevb+meridian-new-${output.ts}@e2e.stageholder.com"
+      - tapOn: "Password"
+      - inputText: "Jevb-${output.ts}-Aa1!"
+      - hideKeyboard
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          id: name
+      - inputText: "JEVB E2E Newcomer"
+      - hideKeyboard
+      - tapOn:
+          id: email
+      - inputText: "jevb+meridian-new-${output.ts}@e2e.stageholder.com"
+      - hideKeyboard
+      - tapOn:
+          id: password
+      - inputText: "Jevb-${output.ts}-Aa1!"
+      - hideKeyboard
+- tapOn: "Create account"
+# Hub sign-up provisions the user + org, then the OIDC round-trip lands in the
+# wizard. Nothing is typed: the name is seeded from the account.
+- extendedWaitUntil:
+    visible: "Welcome to Meridian.*"
+    timeout: 120000
+- tapOn: "Continue"
+- waitForAnimationToEnd
+- tapOn: "Continue"
+- waitForAnimationToEnd
+- tapOn: "Continue"
+- waitForAnimationToEnd
+- tapOn: "Continue"
+- waitForAnimationToEnd
+- tapOn: "Go to Dashboard"
+- extendedWaitUntil:
+    visible:
+      id: today-greeting
+    timeout: 30000
+- assertNotVisible: "Welcome to Meridian.*"
+- waitForAnimationToEnd
+- assertVisible:
+    id: today-greeting
+# Relaunch: still past the wizard (the local + server flags both hold).
+- launchApp:
+    appId: com.stageholder.meridian
+    stopApp: true
+- extendedWaitUntil:
+    visible:
+      id: today-greeting
+    timeout: 120000
+- assertNotVisible: "Welcome to Meridian.*"
+# Hand the device back to the shared test account.
+- tapOn:
+    id: tab-settings
+- scrollUntilVisible:
+    element:
+      id: settings-sign-out
+    direction: DOWN
+- tapOn:
+    id: settings-sign-out
+- tapOn:
+    text: "Sign out"
+    rightOf: "Cancel"
+- extendedWaitUntil:
+    visible: ".*Sign in with Stageholder.*"
+    timeout: 30000
+- runFlow:
+    file: ../subflows/launch-signed-in.yaml

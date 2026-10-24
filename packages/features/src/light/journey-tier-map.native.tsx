@@ -36,7 +36,12 @@
 import { Check } from "@tamagui/lucide-icons-2/icons/Check";
 import { GradientSurface, Text, View, XStack, YStack } from "@stageholder/ui";
 import { StarVisual } from "./star-visual";
-import { LIGHT_TIERS, getTierProgressDetail } from "@repo/core/types/light";
+import {
+  LIGHT_TIERS,
+  estimateDaysToLight,
+  formatDaysEta,
+  getTierProgressDetail,
+} from "@repo/core/types/light";
 import { tabularNums } from "../_internal/text-styles";
 
 interface JourneyTierMapProps {
@@ -52,6 +57,12 @@ interface JourneyTierMapProps {
    * screen is blurred (the app's only recurring timer). Default true.
    */
   animateStars?: boolean;
+  /**
+   * Average Light/day over the recent trend (`getLightPace`). When > 0, future
+   * levels show "~3 weeks at your pace" instead of the static typical window,
+   * and the current card gets a live ETA to the next tier.
+   */
+  paceLightPerDay?: number;
 }
 
 // Gold path + amber chrome — deliberately theme-independent (the journey's
@@ -66,6 +77,7 @@ export function JourneyTierMap({
   currentTier,
   totalLight,
   animateStars = true,
+  paceLightPerDay = 0,
 }: JourneyTierMapProps) {
   return (
     <YStack enterStyle={{ opacity: 0 }} transition="medium">
@@ -171,6 +183,7 @@ export function JourneyTierMap({
                   <CurrentTierProgress
                     currentTier={tier.tier}
                     totalLight={totalLight}
+                    paceLightPerDay={paceLightPerDay}
                   />
                 </YStack>
               ) : (
@@ -203,6 +216,11 @@ export function JourneyTierMap({
                         ? "Reached"
                         : `Unlocks at ${tier.lightRequired.toLocaleString()} Light`}
                     </Text>
+                    {isFuture ? (
+                      <Text fontSize={11} color="$mutedForeground">
+                        {futureHint(tier, totalLight, paceLightPerDay)}
+                      </Text>
+                    ) : null}
                   </YStack>
                   {isCompleted ? (
                     <View
@@ -240,15 +258,20 @@ export function JourneyTierMap({
 function CurrentTierProgress({
   currentTier,
   totalLight,
+  paceLightPerDay,
 }: {
   currentTier: number;
   totalLight?: number;
+  paceLightPerDay: number;
 }) {
   if (totalLight === undefined) return null;
   const { percent, earnedInTier, tierSize, next } = getTierProgressDetail(
     totalLight,
     currentTier,
   );
+  const eta = next
+    ? estimateDaysToLight(totalLight, next.lightRequired, paceLightPerDay)
+    : null;
   if (!next) {
     return (
       <Text fontSize={11} color="$mutedForeground">
@@ -281,9 +304,25 @@ function CurrentTierProgress({
           {earnedInTier.toLocaleString()} / {tierSize.toLocaleString()} Light
         </Text>
         <Text fontSize={11} color="$mutedForeground">
-          Next: {next.title}
+          {eta !== null
+            ? `${next.title} in ~${formatDaysEta(eta)}`
+            : `Next: ${next.title}`}
         </Text>
       </XStack>
     </YStack>
   );
+}
+
+/** Second line on a future level: the live ETA when there is a pace, else the
+ *  tier's typical window so a brand-new account still sees a sense of scale. */
+function futureHint(
+  tier: (typeof LIGHT_TIERS)[number],
+  totalLight: number | undefined,
+  pace: number,
+): string {
+  if (totalLight !== undefined) {
+    const eta = estimateDaysToLight(totalLight, tier.lightRequired, pace);
+    if (eta !== null) return `~${formatDaysEta(eta)} at your pace`;
+  }
+  return `Usually ${tier.typicalWindow.charAt(0).toLowerCase()}${tier.typicalWindow.slice(1)}`;
 }
