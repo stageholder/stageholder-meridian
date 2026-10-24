@@ -51,7 +51,7 @@
     "@repo/crypto": "workspace:*",
     "@repo/features": "workspace:*",
     "@shopify/flash-list": "2.0.2",
-    "@stageholder/sdk": "1.0.0-alpha.71",
+    "@stageholder/sdk": "1.0.0-alpha.73",
     "@stageholder/ui": "^0.4.0-alpha.2",
     "@tamagui/config": "^2.3.2",
     "@tamagui/core": "^2.3.2",

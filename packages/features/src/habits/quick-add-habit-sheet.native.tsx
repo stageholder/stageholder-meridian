@@ -29,6 +29,7 @@ import {
 import {
   ColorPickerSheet,
   FrequencyPickerSheet,
+  frequencyLabel,
   NO_GROUP_VALUE,
   TargetPickerSheet,
 } from "./habit-pickers.native";
@@ -147,12 +148,7 @@ function HabitQuickAdd({
     refocus();
   };
 
-  const freqLabel =
-    frequency === "daily"
-      ? "Every day"
-      : frequency === "weekly"
-        ? "Specific days"
-        : "Times / week";
+  const freqLabel = frequencyLabel(frequency, scheduledDays, weeklyTarget);
   const targetLabel = `${targetCount}×${unit.trim() ? ` ${unit.trim()}` : ""}`;
   const activeGroupName = groups?.find((g) => g.id === groupId)?.name;
   const groupOptions: PillPickerOption[] = [

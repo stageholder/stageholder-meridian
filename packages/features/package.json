@@ -35,7 +35,9 @@
     "react": "^19.0.0",
     "@repo/core": "*",
     "@stageholder/ui": ">=0.4.0-alpha.2",
-    "@tamagui/lucide-icons-2": "^2.3.2"
+    "@tamagui/lucide-icons-2": "^2.3.2",
+    "react-native-keyboard-controller": ">=1.18.0",
+    "react-native-reanimated": ">=3.10.0"
   },
   "devDependencies": {
     "@repo/core": "*",

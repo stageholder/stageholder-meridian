@@ -25,7 +25,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { useAndroidBackClose } from "../_internal/use-android-back-close";
-import { Keyboard, ScrollView, TextInput, View as RNView } from "react-native";
+import { Keyboard, ScrollView, TextInput } from "react-native";
 import { format } from "date-fns";
 import { CalendarDays } from "@tamagui/lucide-icons-2/icons/CalendarDays";
 import { Check } from "@tamagui/lucide-icons-2/icons/Check";
@@ -41,7 +41,6 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
-import { QuickDatePicker } from "@stageholder/ui/pickers";
 import { useTheme } from "tamagui";
 import type { Todo } from "@repo/core/types";
 import {
@@ -50,6 +49,7 @@ import {
   useSheetSession,
   type PillPickerOption,
 } from "../_internal/quick-add-sheet.native";
+import { DatePill, DatePickerSheet } from "../_internal/date-pill.native";
 import type { TodoDetailSheetProps } from "./todo-detail-sheet.types";
 
 /** Priority dot colors — fixed brand swatches (from todo-form.tsx). */
@@ -138,6 +138,8 @@ function TodoDetail({
   const [heavyReady, setHeavyReady] = useState(false);
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
+  const [doOpen, setDoOpen] = useState(false);
+  const [dueOpen, setDueOpen] = useState(false);
 
   // Keyboard with the slide: when the sheet opens, focus the field one
   // animation frame later (the kit mounts the field at open and attaches it
@@ -371,33 +373,23 @@ function TodoDetail({
                 onPress={() => openPicker(setListOpen)}
               />
             ) : null}
-            {/* Dates = the kit QuickDatePicker (same control as the quick-add
-                and the web form). Touch-down drops the keyboard so the
-                picker's sheet isn't hidden behind the keys. */}
-            <RNView onTouchStart={() => Keyboard.dismiss()}>
-              <QuickDatePicker
-                size="sm"
-                placeholder="Do"
-                value={
-                  todo.doDate ? parseLocalDay(todo.doDate.slice(0, 10)) : null
-                }
-                onChange={(d) =>
-                  onPatch({ doDate: d ? format(d, "yyyy-MM-dd") : null })
-                }
-              />
-            </RNView>
-            <RNView onTouchStart={() => Keyboard.dismiss()}>
-              <QuickDatePicker
-                size="sm"
-                placeholder="Deadline"
-                value={
-                  todo.dueDate ? parseLocalDay(todo.dueDate.slice(0, 10)) : null
-                }
-                onChange={(d) =>
-                  onPatch({ dueDate: d ? format(d, "yyyy-MM-dd") : null })
-                }
-              />
-            </RNView>
+            {/* Dates = the app's DatePill + nested DatePickerSheet (below),
+                same pattern as the quick-add. The pill drops the keyboard
+                before its sheet opens. */}
+            <DatePill
+              placeholder="Do"
+              value={
+                todo.doDate ? parseLocalDay(todo.doDate.slice(0, 10)) : null
+              }
+              onPress={() => setDoOpen(true)}
+            />
+            <DatePill
+              placeholder="Deadline"
+              value={
+                todo.dueDate ? parseLocalDay(todo.dueDate.slice(0, 10)) : null
+              }
+              onPress={() => setDueOpen(true)}
+            />
           </FormSheet.HorizontalScroll>
 
           {/* Notes — ghost field, commits on blur. */}
@@ -473,6 +465,30 @@ function TodoDetail({
             options={listOptions}
             value={todo.listId}
             onSelect={(v) => onPatch({ listId: v })}
+          />
+        ) : null}
+        {heavyReady || doOpen ? (
+          <DatePickerSheet
+            open={doOpen}
+            onOpenChange={setDoOpen}
+            title="Do date"
+            value={todo.doDate ? parseLocalDay(todo.doDate.slice(0, 10)) : null}
+            onChange={(d) =>
+              onPatch({ doDate: d ? format(d, "yyyy-MM-dd") : null })
+            }
+          />
+        ) : null}
+        {heavyReady || dueOpen ? (
+          <DatePickerSheet
+            open={dueOpen}
+            onOpenChange={setDueOpen}
+            title="Deadline"
+            value={
+              todo.dueDate ? parseLocalDay(todo.dueDate.slice(0, 10)) : null
+            }
+            onChange={(d) =>
+              onPatch({ dueDate: d ? format(d, "yyyy-MM-dd") : null })
+            }
           />
         ) : null}
       </FormSheet>

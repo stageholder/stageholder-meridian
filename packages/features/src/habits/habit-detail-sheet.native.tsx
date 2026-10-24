@@ -47,6 +47,7 @@ import {
 import {
   ColorPickerSheet,
   FrequencyPickerSheet,
+  frequencyLabel,
   NO_GROUP_VALUE,
   TargetPickerSheet,
 } from "./habit-pickers.native";
@@ -174,12 +175,7 @@ function HabitDetail({
     ...(groups ?? []).map((g) => ({ value: g.id, label: g.name })),
   ];
 
-  const freqLabel =
-    frequency === "daily"
-      ? "Every day"
-      : frequency === "weekly"
-        ? "Specific days"
-        : "Times / week";
+  const freqLabel = frequencyLabel(frequency, scheduledDays, weeklyTarget);
   const targetLabel = `${habit.targetCount}×${unit.trim() ? ` ${unit.trim()}` : ""}`;
   const created = fmtStamp(habit.createdAt);
 

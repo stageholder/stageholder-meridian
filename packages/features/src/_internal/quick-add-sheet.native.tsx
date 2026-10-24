@@ -1,13 +1,14 @@
 // packages/features/src/_internal/quick-add-sheet.native.tsx  (NATIVE)
 //
 // Compact "quick-add" shell for the native create flows (todo + habit).
-// Wraps the kit FormSheet for its keyboard-stretch handling, but renders a
-// MINIMAL body: a primary field + a horizontally-scrolling pill row with a
+// Wraps the app-owned ComposerSheet (kit Sheet + a keyboard spacer that
+// tracks the keyboard from the first frame), and renders a MINIMAL body: a primary field + a horizontally-scrolling pill row with a
 // pinned accent send button. Todoist-style quick capture — one thing to type,
 // everything else a pill. Reset is by state (the host owns it); no
 // LazyBody / skeleton / epoch keys / mountChildren juggling here.
 import { useCallback, useState, type ReactNode } from "react";
 
+import { ComposerSheet } from "./composer-sheet.native";
 import { useAndroidBackClose } from "./use-android-back-close";
 import { ArrowUp } from "@tamagui/lucide-icons-2/icons/ArrowUp";
 import { Check } from "@tamagui/lucide-icons-2/icons/Check";
@@ -34,7 +35,7 @@ export interface QuickAddSheetProps {
   submitDisabled?: boolean;
   /** Primary field slot (smart title / icon+name) + any inline-expanded Note. */
   field: ReactNode;
-  /** Pill row content (Select pills, QuickDatePicker, QuickAddPill…). */
+  /** Pill row content (QuickAddPill, DatePill…). */
   pills: ReactNode;
   /**
    * Kit FormSheet `onSettled`: fires once per open when the slide has landed
@@ -67,23 +68,10 @@ export function QuickAddSheet({
 }: QuickAddSheetProps) {
   useAndroidBackClose(open, () => onOpenChange(false));
   return (
-    <FormSheet
+    <ComposerSheet
       open={open}
       onOpenChange={onOpenChange}
       {...(onSettled ? { onSettled } : {})}
-      // No title/header — the field's placeholder carries the prompt. The create
-      // action is a send button pinned bottom-right (iOS compose style).
-      hideFooter
-      // Children mount at open and UNMOUNT at close: the field goes with the
-      // sheet, so the keyboard drops by itself — no blur/dismiss calls.
-      mountChildren="open"
-      // COMPACT frame (2026-10-20): the stock FormSheet frame (p $5, pt $4
-      // without a grabber) plus the old body `pb $6` left ~60 px of air above
-      // the field and ~50 px between the pills and the keyboard. pt $3 puts
-      // the field right under the sheet edge; pb $4 + the frame's default gap
-      // $4 = 32 px of bottom chrome, which is what the kit's keyboard spacer
-      // trims (FRAME_BOTTOM_CHROME 28) → the pills sit ~4 px above the keys.
-      frameProps={{ pt: "$3", pb: "$4" }}
     >
       <YStack gap="$2">
         {/* Primary field — the placeholder is the only prompt now. */}
@@ -135,7 +123,7 @@ export function QuickAddSheet({
         </XStack>
       </YStack>
       {children}
-    </FormSheet>
+    </ComposerSheet>
   );
 }
 

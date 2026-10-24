@@ -355,13 +355,14 @@ function JournalScreen() {
               </Banner>
             ) : null}
 
-            {/* Loading — first fetch / first decrypt, before any rows. */}
-            {!bodyMounted ? (
+            {/* Loading — first fetch / first decrypt, before any rows. ONE
+                skeleton for both the staged-mount beat and the query wait:
+                the first open used to paint the list skeleton, swap to a
+                centred spinner while the lock status + first page loaded,
+                then the rows — three different frames that read as two
+                blinks. Later opens hit the cache and never showed either. */}
+            {!bodyMounted || (listLoading && sorted.length === 0) ? (
               <JournalList journals={[]} isLoading />
-            ) : listLoading && sorted.length === 0 ? (
-              <View py="$10" items="center" justify="center">
-                <Spinner size="large" />
-              </View>
             ) : !listError && sorted.length === 0 ? (
               /* Empty — distinguish "no entries at all" from "filters matched
                  nothing" so an active filter never reads like data loss. */

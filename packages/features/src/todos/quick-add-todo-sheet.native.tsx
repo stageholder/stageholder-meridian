@@ -10,7 +10,7 @@
 // the reset, `autoFocus` raises the keyboard with the slide, and the keyboard
 // drops because the field is gone.
 import { useEffect, useRef, useState } from "react";
-import { Keyboard, View as RNView } from "react-native";
+import { Keyboard } from "react-native";
 import { format } from "date-fns";
 import { Inbox } from "@tamagui/lucide-icons-2/icons/Inbox";
 import { StickyNote } from "@tamagui/lucide-icons-2/icons/StickyNote";
@@ -20,7 +20,6 @@ import {
 } from "@repo/core/todos/smart-parse";
 import { resolveSmartLocale } from "@repo/core/todos/date-parse";
 import { TextArea, View } from "@stageholder/ui";
-import { QuickDatePicker } from "@stageholder/ui/pickers";
 import {
   QuickAddSheet,
   QuickAddPill,
@@ -28,6 +27,7 @@ import {
   useSheetSession,
   type PillPickerOption,
 } from "../_internal/quick-add-sheet.native";
+import { DatePill, DatePickerSheet } from "../_internal/date-pill.native";
 import { SmartTodoInput } from "./smart-todo-input";
 import type { SmartTodoInputHandle } from "./smart-todo-input.types";
 import { makeTodoFormDefaults } from "./todo-form";
@@ -109,6 +109,8 @@ function TodoQuickAdd({
   const [listId, setListId] = useState(defaultListId);
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
+  const [doOpen, setDoOpen] = useState(false);
+  const [dueOpen, setDueOpen] = useState(false);
   // Picker sheets mount once the slide has settled (kit `onSettled`) —
   // mounting them in the open commit delayed the slide itself.
   const [settled, setSettled] = useState(false);
@@ -249,31 +251,19 @@ function TodoQuickAdd({
               onPress={() => openPicker(setListOpen)}
             />
           ) : null}
-          {/* Dates = the kit QuickDatePicker (the same control as the web
-              form). Touch-down drops the keyboard so its sheet isn't hidden
-              behind the keys; a pick closes it and the title refocuses. */}
-          <RNView onTouchStart={() => Keyboard.dismiss()}>
-            <QuickDatePicker
-              size="sm"
-              placeholder="Do"
-              value={doDate ? parseLocalDay(doDate) : null}
-              onChange={(d) => {
-                setDoDate(d ? format(d, "yyyy-MM-dd") : "");
-                refocus();
-              }}
-            />
-          </RNView>
-          <RNView onTouchStart={() => Keyboard.dismiss()}>
-            <QuickDatePicker
-              size="sm"
-              placeholder="Deadline"
-              value={dueDate ? parseLocalDay(dueDate) : null}
-              onChange={(d) => {
-                setDueDate(d ? format(d, "yyyy-MM-dd") : "");
-                refocus();
-              }}
-            />
-          </RNView>
+          {/* Dates = the app's DatePill + nested DatePickerSheet (below) —
+              same pattern as Priority/List. The pill drops the keyboard
+              before its sheet opens; a pick closes it and the title refocuses. */}
+          <DatePill
+            placeholder="Do"
+            value={doDate ? parseLocalDay(doDate) : null}
+            onPress={() => setDoOpen(true)}
+          />
+          <DatePill
+            placeholder="Deadline"
+            value={dueDate ? parseLocalDay(dueDate) : null}
+            onPress={() => setDueOpen(true)}
+          />
           {/* Note: the field mounts with `autoFocus`; closing it hands the
               keyboard back to the title. */}
           <QuickAddPill
@@ -311,6 +301,30 @@ function TodoQuickAdd({
           options={listOptions}
           value={listId || defaultListId}
           onSelect={setListId}
+        />
+      ) : null}
+      {settled || doOpen ? (
+        <DatePickerSheet
+          open={doOpen}
+          onOpenChange={(o) => {
+            setDoOpen(o);
+            if (!o) refocus();
+          }}
+          title="Do date"
+          value={doDate ? parseLocalDay(doDate) : null}
+          onChange={(d) => setDoDate(d ? format(d, "yyyy-MM-dd") : "")}
+        />
+      ) : null}
+      {settled || dueOpen ? (
+        <DatePickerSheet
+          open={dueOpen}
+          onOpenChange={(o) => {
+            setDueOpen(o);
+            if (!o) refocus();
+          }}
+          title="Deadline"
+          value={dueDate ? parseLocalDay(dueDate) : null}
+          onChange={(d) => setDueDate(d ? format(d, "yyyy-MM-dd") : "")}
         />
       ) : null}
     </QuickAddSheet>
