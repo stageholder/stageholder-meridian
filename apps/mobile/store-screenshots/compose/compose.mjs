@@ -1,7 +1,9 @@
 // Store marketing frames from real app screenshots.
 //   node compose.mjs            → App Store 6.9" (1320×2868) into out/ios/
+//   node compose.mjs ios63      → App Store medium display (1206×2622) into out/ios63/
 //   node compose.mjs play       → Google Play phone (1080×2160, 1:2) into out/play/
 //   node compose.mjs feature    → Google Play feature graphic (1024×500) into out/play/
+//   node compose.mjs header     → App Store product-page header (3840×1646) into out/ios/
 import { chromium } from "/Users/garda_dafi/Project/stageholder-meridian/node_modules/@playwright/test/index.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -12,6 +14,8 @@ const frames = JSON.parse(readFileSync(join(here, "frames.json"), "utf8"));
 const SHOTS = process.env.SHOTS_DIR ?? join(here, "..", "raw-6.3");
 const PRESETS = {
   ios:  { W: 1320, H: 2868, out: "ios",  k: 1,     top: 1010, scale: 0.90 },
+  // "iPhone with Dynamic Island (medium display)" slot in App Store Connect.
+  ios63: { W: 1206, H: 2622, out: "ios63", k: 0.9136, top: 923, scale: 0.82 },
   play: { W: 1080, H: 2160, out: "play", k: 0.82,  top: 760,  scale: 0.74 },
 };
 const FONT = `-apple-system,"SF Pro Display","SF Pro Text","Helvetica Neue",Inter,sans-serif`;
@@ -50,8 +54,40 @@ const featureHtml = (icon) => `<!doctype html><html><head><meta charset="utf-8">
 <div class="rings"><i style="background:#facc15"></i><i style="background:#f97316"></i><i style="background:#ef4444"></i></div>
 </body></html>`;
 
+
+const headerHtml = (icon, shotA, shotB) => `<!doctype html><html><head><meta charset="utf-8"><style>
+  /* Safe zone: the iPhone product page shows roughly the centre 70% of the width and
+     overlays nav buttons on the top ~22%, so copy sits centred in the middle band and
+     the devices live at the edges where cropping is harmless. */
+  html,body{margin:0;width:3840px;height:1646px;overflow:hidden;background:#07090d;font-family:${FONT};-webkit-font-smoothing:antialiased;color:#fff}
+  .bg{position:absolute;inset:0;background:radial-gradient(1400px 900px at 50% 60%,#13192a 0%,#07090d 70%)}
+  .copy{position:absolute;left:50%;top:430px;transform:translateX(-50%);width:1800px;text-align:center}
+  .icon{width:170px;height:170px;border-radius:40px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.6);margin:0 auto 54px}
+  .icon img{width:100%;height:100%;display:block}
+  h1{margin:0;font-size:138px;line-height:1.04;font-weight:700;letter-spacing:-.03em}
+  p{margin:36px 0 0;font-size:54px;line-height:1.3;color:rgba(255,255,255,.74)}
+  .device{position:absolute;top:150px;width:1206px;height:2622px;border-radius:148px;overflow:hidden;background:#000;box-shadow:0 0 0 12px #16191f,0 0 0 15px rgba(255,255,255,.10),0 60px 140px rgba(0,0,0,.6);transform-origin:top center}
+  .device img{display:block;width:1206px;height:2622px}
+  .a{left:-80px;transform:scale(.82) rotate(-4deg)}
+  .b{left:2710px;transform:scale(.82) rotate(4deg)}
+  .island{position:absolute;left:50%;top:40px;transform:translateX(-50%);width:372px;height:112px;border-radius:60px;background:#000}
+</style></head><body><div class="bg"></div>
+<div class="device a"><img src="file://${shotA}"><div class="island"></div></div>
+<div class="device b"><img src="file://${shotB}"><div class="island"></div></div>
+<div class="copy"><div class="icon"><img src="file://${icon}"></div><h1>Tasks, habits and<br>a private journal.</h1><p>Close your rings every day and level up from Stargazer to Meridian.</p></div>
+</body></html>`;
+
 const browser = await chromium.launch();
-if (mode === "feature") {
+if (mode === "header") {
+  const icon = process.env.ICON ?? "/Users/garda_dafi/Project/stageholder-meridian/apps/mobile/assets/icon.png";
+  const page = await browser.newPage({ viewport: { width: 3840, height: 1646 }, deviceScaleFactor: 1 });
+  const file = join(here, "frame-header.html");
+  writeFileSync(file, headerHtml(icon, join(SHOTS, "01-today.png"), join(SHOTS, "02-journey.png")));
+  await page.goto(`file://${file}`); await page.waitForTimeout(300);
+  mkdirSync(join(here, "out", "ios"), { recursive: true });
+  await page.screenshot({ path: join(here, "out", "ios", "header-3840x1646.png") }); console.log("wrote header");
+  await page.screenshot({ path: join(here, "out", "ios", "header-phone-crop-preview.png"), clip: { x: 576, y: 0, width: 2688, height: 1646 } });
+} else if (mode === "feature") {
   const icon = process.env.ICON ?? "/Users/garda_dafi/Project/stageholder-meridian/apps/mobile/assets/icon.png";
   const page = await browser.newPage({ viewport: { width: 1024, height: 500 }, deviceScaleFactor: 1 });
   const file = join(here, "frame-feature.html"); writeFileSync(file, featureHtml(icon));
