@@ -17,6 +17,8 @@
 // Fit-sized, drag-to-close from the grabber strip, keyboard-first on drag —
 // the todo detail sheet's rules, see todo-detail-sheet.native.tsx.
 import { useEffect, useRef, useState } from "react";
+
+import { useAndroidBackClose } from "../_internal/use-android-back-close";
 import { Keyboard, TextInput } from "react-native";
 import { format } from "date-fns";
 import { Folder } from "@tamagui/lucide-icons-2/icons/Folder";
@@ -186,20 +188,24 @@ function HabitDetail({
     setIconOpen(false);
   };
 
+  function handleOpenChange(next: boolean) {
+    if (!next) {
+      // Commit the drafts (unmounting a field fires no blur) and drop the
+      // keyboard before the close slide.
+      commitName();
+      commitNotes();
+      Keyboard.dismiss();
+    }
+    onOpenChange(next);
+  }
+  // Android hardware back closes this sheet (not the navigator beneath it).
+  useAndroidBackClose(open, () => handleOpenChange(false));
+
   return (
     <>
       <FormSheet
         open={open}
-        onOpenChange={(next) => {
-          if (!next) {
-            // Commit the drafts (unmounting a field fires no blur) and drop
-            // the keyboard before the close slide.
-            commitName();
-            commitNotes();
-            Keyboard.dismiss();
-          }
-          onOpenChange(next);
-        }}
+        onOpenChange={handleOpenChange}
         hideFooter
         mountChildren="open"
         disableDrag={false}

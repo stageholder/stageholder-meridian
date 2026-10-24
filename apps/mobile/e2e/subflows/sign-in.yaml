@@ -43,25 +43,54 @@ appId: com.stageholder.meridian
       platform: Android
       visible: "Email address"
     commands:
-      # A loaded emulator's keyboard can double keystrokes ("jejevb+…"):
-      # check the typed email, and redo the whole entry until the Hub accepts
-      # it (the login page goes away).
+      # A loaded emulator's keyboard can double keystrokes ("jejevb+…"), and
+      # `eraseText` only deletes BEFORE the cursor, so retyping into a dirty
+      # field just appends. Each attempt therefore closes the Custom Tab and
+      # opens a FRESH login page (a Hub session from a half-successful
+      # attempt is reused via SSO and lands on Today directly).
       - retry:
           maxRetries: 3
           commands:
-            - tapOn:
-                id: "email"
-            - eraseText: 80
-            - inputText: ${E2E_EMAIL}
-            - assertVisible: ${E2E_EMAIL}
-            - tapOn:
-                id: "password"
-            - eraseText: 80
-            - inputText: ${E2E_PASSWORD}
-            - pressKey: Enter
-            - extendedWaitUntil:
-                notVisible: "Email address"
-                timeout: 30000
+            - runFlow:
+                when:
+                  visible: "Email address"
+                commands:
+                  - back
+                  - extendedWaitUntil:
+                      visible: ".*Sign in with Stageholder.*|Today"
+                      timeout: 20000
+            - runFlow:
+                when:
+                  visible: ".*Sign in with Stageholder.*"
+                commands:
+                  - tapOn: ".*Sign in with Stageholder.*"
+                  - extendedWaitUntil:
+                      visible: "Email address|Today"
+                      timeout: 45000
+            - runFlow:
+                when:
+                  visible: "Email address"
+                commands:
+                  - tapOn:
+                      id: "email"
+                  - inputText: ${E2E_EMAIL}
+                  - assertVisible: ${E2E_EMAIL}
+                  # Drop the keyboard before reaching for the password input:
+                  # with it up, the input (and its label) sit UNDER the keys,
+                  # the tap never reached them (and Tab just typed a space),
+                  # focus stayed on the email field and the password was typed
+                  # into it.
+                  - hideKeyboard
+                  - tapOn:
+                      id: "password"
+                  - inputText: ${E2E_PASSWORD}
+                  # The email must still read exactly as typed; if the password
+                  # landed in it, this fails and the retry opens a fresh page.
+                  - assertVisible: ${E2E_EMAIL}
+                  - pressKey: Enter
+                  - extendedWaitUntil:
+                      notVisible: "Email address"
+                      timeout: 30000
 - runFlow:
     when:
       platform: iOS

@@ -23,6 +23,8 @@
 // red button in the body. Pickers are SIBLING sheets mounted once the slide
 // has settled (kit `onSettled`), the same open choreography as quick-add.
 import { useEffect, useRef, useState } from "react";
+
+import { useAndroidBackClose } from "../_internal/use-android-back-close";
 import { Keyboard, ScrollView, TextInput, View as RNView } from "react-native";
 import { format } from "date-fns";
 import { CalendarDays } from "@tamagui/lucide-icons-2/icons/CalendarDays";
@@ -213,20 +215,24 @@ function TodoDetail({
   const created = fmtStamp(todo.createdAt);
   const completed = done ? fmtStamp(todo.completedAt) : null;
 
+  function handleOpenChange(next: boolean) {
+    if (!next) {
+      // Commit the drafts (unmounting a field fires no blur) and drop the
+      // keyboard before the close slide.
+      commitTitle();
+      commitNotes();
+      Keyboard.dismiss();
+    }
+    onOpenChange(next);
+  }
+  // Android hardware back closes this sheet (not the navigator beneath it).
+  useAndroidBackClose(open, () => handleOpenChange(false));
+
   return (
     <>
       <FormSheet
         open={open}
-        onOpenChange={(next) => {
-          if (!next) {
-            // Commit the drafts (unmounting a field fires no blur) and drop
-            // the keyboard before the close slide.
-            commitTitle();
-            commitNotes();
-            Keyboard.dismiss();
-          }
-          onOpenChange(next);
-        }}
+        onOpenChange={handleOpenChange}
         // No header, no footer: the title row IS the header and nothing needs
         // submitting. FIT-sized (not `scrollable`): the scrollable mode pins
         // the body between two edge dividers (the stray lines at the top and

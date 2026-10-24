@@ -13,7 +13,14 @@ name: navigation
     visible: "Search commands…"
     timeout: 4000
 - assertVisible: "Navigation"
-- tapOn: "Today"
+# The palette is a sheet: on Android the tab bar underneath stays in the
+# tree, so a bare "Today" can resolve to the tab label (and the tap lands on
+# the palette row covering it — "Journey"). The palette row is the "Today"
+# that sits ABOVE the palette's "Todos" row; tab-bar items share a row.
+- tapOn:
+    text: "Today"
+    above:
+      text: "Todos"
 - assertVisible:
     id: "today-greeting"
 # Today → Calendar → back to Today

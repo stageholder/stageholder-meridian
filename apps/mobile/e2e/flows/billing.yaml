@@ -34,8 +34,11 @@ name: billing
     commands:
       - tapOn:
           id: "settings-plan"
+      # Store build: "Change plan" (store-billed) or the web-billed note.
+      # Keyless build (no RevenueCat key, e.g. the Android e2e APK): the
+      # Polar portal button instead.
       - extendedWaitUntil:
-          visible: "Change plan|This plan is billed on the web.*"
+          visible: "Change plan|This plan is billed on the web.*|Manage plan & payment"
           timeout: 15000
       - runFlow:
           when:

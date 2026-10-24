@@ -107,9 +107,23 @@ function HabitQuickAdd({
   // Bring the keyboard back to the name after a picker closes.
   const refocus = () => nameRef.current?.focus();
 
+  // One submit at a time (Android can echo `onSubmitEditing`; see the todo
+  // quick-add). Released only when the host's `isSubmitting` falls again
+  // (a failed create); a successful one closes the sheet.
+  const submitLock = useRef(false);
+  const wasSubmitting = useRef(false);
+  useEffect(() => {
+    if (isSubmitting) wasSubmitting.current = true;
+    else if (wasSubmitting.current) {
+      wasSubmitting.current = false;
+      submitLock.current = false;
+    }
+  }, [isSubmitting]);
   function handleSubmit() {
+    if (submitLock.current) return;
     const name = nameText.current.trim();
     if (!name) return;
+    submitLock.current = true;
     void onSubmit({
       name,
       description: description.trim() || undefined,

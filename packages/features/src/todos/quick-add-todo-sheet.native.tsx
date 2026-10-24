@@ -133,13 +133,32 @@ function TodoQuickAdd({
     if (r.listId) setListId(r.listId);
   }
 
+  // One submit at a time. Android fires `onSubmitEditing` TWICE for a single
+  // Enter on a multiline input with `submitBehavior="submit"` (editor action
+  // + key event), which created every todo twice. The lock is taken
+  // synchronously on the first event and released only when the host's
+  // `isSubmitting` falls again (a FAILED create — a successful one closes
+  // the sheet, and the next open is a fresh instance). The host's mutate is
+  // fire-and-forget, so a promise-based release would reopen the window
+  // before the echo arrives.
+  const submitLock = useRef(false);
+  const wasSubmitting = useRef(false);
+  useEffect(() => {
+    if (isSubmitting) wasSubmitting.current = true;
+    else if (wasSubmitting.current) {
+      wasSubmitting.current = false;
+      submitLock.current = false;
+    }
+  }, [isSubmitting]);
   function handleSubmit() {
+    if (submitLock.current) return;
     const cleanTitle = parseSmartTodo(title, {
       lists: listRefs,
       now: new Date(),
       locale: smartLocale,
     }).title;
     if (!cleanTitle) return;
+    submitLock.current = true;
     void onSubmit({
       title: cleanTitle,
       description: description.trim() || undefined,

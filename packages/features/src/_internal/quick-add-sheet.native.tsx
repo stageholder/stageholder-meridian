@@ -7,6 +7,8 @@
 // everything else a pill. Reset is by state (the host owns it); no
 // LazyBody / skeleton / epoch keys / mountChildren juggling here.
 import { useCallback, useState, type ReactNode } from "react";
+
+import { useAndroidBackClose } from "./use-android-back-close";
 import { ArrowUp } from "@tamagui/lucide-icons-2/icons/ArrowUp";
 import { Check } from "@tamagui/lucide-icons-2/icons/Check";
 import {
@@ -63,6 +65,7 @@ export function QuickAddSheet({
   onSettled,
   children,
 }: QuickAddSheetProps) {
+  useAndroidBackClose(open, () => onOpenChange(false));
   return (
     <FormSheet
       open={open}
@@ -202,6 +205,7 @@ export function PillPickerSheet({
   value: string;
   onSelect: (value: string) => void;
 }) {
+  useAndroidBackClose(open, () => onOpenChange(false));
   return (
     <Sheet
       modal

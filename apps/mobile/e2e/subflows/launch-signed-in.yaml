@@ -29,7 +29,29 @@ appId: com.stageholder.meridian
     when:
       visible: "Development Build"
     commands:
-      - tapOn: "http://localhost:8081"
+      - runFlow:
+          when:
+            visible: "http://localhost:8081"
+          commands:
+            - tapOn: "http://localhost:8081"
+      # The launcher lists only servers it discovered or opened before. After a
+      # `bun run ios` ("Recently opened" holds the LAN URL) or a fresh install
+      # there is no localhost entry, so connect through the dev-client deep
+      # link; iOS confirms it with an "Open in Meridian?" alert.
+      - runFlow:
+          when:
+            notVisible: "http://localhost:8081"
+          commands:
+            - openLink: "meridian://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+            - extendedWaitUntil:
+                visible:
+                  text: "Open|This is the developer menu.*|.*Sign in with Stageholder.*|Today"
+                timeout: 15000
+            - runFlow:
+                when:
+                  visible: "Open"
+                commands:
+                  - tapOn: "Open"
       - extendedWaitUntil:
           visible:
             text: "This is the developer menu.*|.*Sign in with Stageholder.*|Today"
