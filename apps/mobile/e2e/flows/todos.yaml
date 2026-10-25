@@ -71,11 +71,16 @@ name: todos
 - assertVisible: "What needs to be done?"
 - tapOn:
     id: "quick-add-todo-title"
-- inputText: ${output.todo2}
+# Smart parse: a date phrase in the title highlights inline and sets the Do
+# pill; the phrase is stripped from the saved title.
+- inputText: ${output.todo2 + ' tomorrow'}
 - waitForAnimationToEnd
 - extendedWaitUntil:
-    visible: ${output.todo2}
+    visible: ${output.todo2 + ' tomorrow'}
     timeout: 10000
+- extendedWaitUntil:
+    visible: "Tomorrow"
+    timeout: 5000
 - tapOn: "Create New Todo"
 - waitForAnimationToEnd
 - extendedWaitUntil:

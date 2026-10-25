@@ -14,9 +14,9 @@
 //     simulator, 2026-10-20). Warming the WebView did not change that.
 // A native TextInput has none of those problems: it mounts in the sheet's open
 // commit for free, `focus()` raises the keyboard at once, and nothing blinks.
-// The highlight is now a SQUARE coloured run (nested <Text> with a background,
-// which RN does support) instead of a rounded pill — the pills row below the
-// field still shows every parsed value with the full treatment.
+// The highlight is a ROUNDED pill again, without a WebView: the field's own
+// text is transparent, a styled overlay Text paints the string on top, and
+// rounded pills are drawn under the overlay from measured text geometry.
 //
 // The public contract (props, `onParse`, `onSubmit`, ref `focus`/`blur`) is
 // identical to the web sibling, so the host `QuickAddTodoSheet` is unchanged
@@ -31,10 +31,13 @@ import {
   type ReactNode,
 } from "react";
 import {
+  View as RNView,
   Text as RNText,
   TextInput,
+  type LayoutChangeEvent,
   type NativeSyntheticEvent,
   type TextInputSelectionChangeEventData,
+  type TextLayoutEventData,
 } from "react-native";
 import { useTheme } from "tamagui";
 import { Flag } from "@tamagui/lucide-icons-2/icons/Flag";
@@ -110,6 +113,23 @@ function detectTrigger(value: string, caret: number): ActiveTrigger | null {
 const FIELD_MIN_HEIGHT = 44;
 const FONT_SIZE = 16;
 const LINE_HEIGHT = 22;
+// Field insets — shared by the TextInput and its invisible mirror so the
+// measured token boxes land exactly under the typed glyphs.
+const PAD_X = 12;
+const PAD_TOP = 10;
+const PAD_BOTTOM = 12;
+// Token pill: corner radius, extra width past the glyphs, vertical inset
+// from the line box.
+const PILL_RADIUS = 7;
+const PILL_PAD_X = 3;
+const PILL_INSET_Y = 1;
+interface TextLine {
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 export const SmartTodoInput = forwardRef<
   SmartTodoInputHandle,
@@ -160,13 +180,16 @@ export const SmartTodoInput = forwardRef<
     if (parse) onParseRef.current?.(result);
   }, [result, parse]);
 
-  // ── Inline highlight: the value as nested <Text> runs inside the TextInput ──
-  // RN paints a nested run's `backgroundColor` (square — no radius on inline
-  // text, react-native#10807). Rendered as CHILDREN (not `value`) so the runs
-  // carry style; the string the user sees is byte-identical to `value`, which
-  // is what keeps the caret in place across re-renders.
-  const runs = useMemo(() => {
-    if (!parse || result.tokens.length === 0) return null;
+  // ── Inline highlight: a styled OVERLAY over a transparent-text field ──
+  // The TextInput keeps the caret, selection and keyboard but draws its text
+  // transparent; a pointer-less Text with the same font, insets and width
+  // paints the string on top, so it wraps identically. Tokens are COLOURED
+  // runs (nested Text — no inline Views: on the new architecture a Text with
+  // inline views re-laid out in a loop once it wrapped, 2026-10-25). Regular
+  // weight on purpose: bold glyphs are wider and would push the overlay out
+  // of step with the caret.
+  const overlay = useMemo(() => {
+    if (!parse || result.tokens.length === 0) return value;
     const out: ReactNode[] = [];
     let cursor = 0;
     result.tokens.forEach((t, i) => {
@@ -174,7 +197,7 @@ export const SmartTodoInput = forwardRef<
       out.push(
         <RNText
           key={`${t.kind}-${t.start}-${i}`}
-          style={{ backgroundColor: tokenColor(t, lists), color: "#ffffff" }}
+          style={{ color: tokenColor(t, lists) }}
         >
           {value.slice(t.start, t.end)}
         </RNText>,
@@ -184,6 +207,102 @@ export const SmartTodoInput = forwardRef<
     if (cursor < value.length) out.push(value.slice(cursor));
     return out;
   }, [parse, result.tokens, value, lists]);
+
+  // ── Rounded pills behind the tokens ──
+  // Geometry without inline views: the overlay's `onTextLayout` gives the
+  // line boxes; the horizontal extent of a token on a line is the width of
+  // "line start → token end" minus the width of the token itself (measured
+  // on the same string, so kerning and trailing spaces cancel out), each
+  // measured once by a hidden single-line Text keyed on that string. Every
+  // value depends only on the text, never on previous layout, so the state
+  // converges after one pass — no measure/re-render loop.
+  const [lines, setLines] = useState<TextLine[]>([]);
+  const linesKey = useRef("");
+  const onOverlayTextLayout = (
+    e: NativeSyntheticEvent<TextLayoutEventData>,
+  ) => {
+    const next = e.nativeEvent.lines.map((l) => ({
+      text: l.text,
+      x: l.x,
+      y: l.y,
+      width: l.width,
+      height: l.height,
+    }));
+    const key = JSON.stringify(next);
+    if (key === linesKey.current) return;
+    linesKey.current = key;
+    setLines(next);
+  };
+  const [widths, setWidths] = useState<Record<string, number>>({});
+  const onMeasure = (str: string) => (e: LayoutChangeEvent) => {
+    const w = e.nativeEvent.layout.width;
+    setWidths((prev) => (prev[str] === w ? prev : { ...prev, [str]: w }));
+  };
+  // Token segments per line: [lineIndex, lineStart, segStart, segEnd, token].
+  const segments = useMemo(() => {
+    if (!parse || result.tokens.length === 0 || lines.length === 0) return [];
+    // Map each line to its character range in `value` (line texts may drop
+    // the wrap whitespace, so locate them rather than summing lengths).
+    const ranges: { start: number; end: number }[] = [];
+    let from = 0;
+    for (const l of lines) {
+      const at = l.text.length ? value.indexOf(l.text, from) : from;
+      if (at < 0) return [];
+      ranges.push({ start: at, end: at + l.text.length });
+      from = at + l.text.length;
+    }
+    const segs: {
+      line: number;
+      lineStart: number;
+      start: number;
+      end: number;
+      token: SmartToken;
+    }[] = [];
+    result.tokens.forEach((t) => {
+      ranges.forEach((r, li) => {
+        const a = Math.max(t.start, r.start);
+        const b = Math.min(t.end, r.end);
+        if (a < b)
+          segs.push({
+            line: li,
+            lineStart: r.start,
+            start: a,
+            end: b,
+            token: t,
+          });
+      });
+    });
+    return segs;
+  }, [parse, result.tokens, lines, value]);
+  const measureStrings = useMemo(() => {
+    const set = new Set<string>();
+    for (const sg of segments) {
+      set.add(value.slice(sg.lineStart, sg.end));
+      set.add(value.slice(sg.start, sg.end));
+    }
+    return [...set];
+  }, [segments, value]);
+  const pills = segments.map((sg, i) => {
+    const line = lines[sg.line];
+    const full = widths[value.slice(sg.lineStart, sg.end)];
+    const tok = widths[value.slice(sg.start, sg.end)];
+    if (!line || full === undefined || tok === undefined) return null;
+    return (
+      <RNView
+        key={`pill-${i}`}
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          left: PAD_X + line.x + (full - tok) - PILL_PAD_X,
+          top: PAD_TOP + line.y + PILL_INSET_Y,
+          width: tok + PILL_PAD_X * 2,
+          height: Math.max(0, line.height - PILL_INSET_Y * 2),
+          borderRadius: PILL_RADIUS,
+          backgroundColor: tint(tokenColor(sg.token, lists)),
+        }}
+      />
+    );
+  });
 
   // ── `!` / `#` trigger picker ──
   // The live caret comes from onSelectionChange; the text is `value`. Together
@@ -236,9 +355,7 @@ export const SmartTodoInput = forwardRef<
       <View minHeight={FIELD_MIN_HEIGHT}>
         <TextInput
           ref={inputRef}
-          // `value` drives the plain field; the highlighted field passes the
-          // same string as styled children instead (never both).
-          {...(runs ? {} : { value })}
+          value={value}
           onChangeText={(t) => onValueChange(t.replace(/\n+/g, " "))}
           onSelectionChange={onSelectionChange}
           {...(selection ? { selection } : {})}
@@ -251,23 +368,60 @@ export const SmartTodoInput = forwardRef<
           autoFocus={!!autoFocus}
           autoCapitalize="sentences"
           autoCorrect
+          // The system spell underline would show through the transparent text.
+          spellCheck={false}
           selectionColor={TODO_RED}
           cursorColor={TODO_RED}
           scrollEnabled={false}
           style={{
-            paddingHorizontal: 12,
-            paddingTop: 10,
-            paddingBottom: 12,
+            paddingHorizontal: PAD_X,
+            paddingTop: PAD_TOP,
+            paddingBottom: PAD_BOTTOM,
             fontSize: FONT_SIZE,
             lineHeight: LINE_HEIGHT,
-            color: fg,
+            // The overlay below draws the text (and the pills).
+            color: "transparent",
             textAlignVertical: "top",
           }}
-        >
-          {runs}
-        </TextInput>
+        />
+        {pills}
+        {value ? (
+          <RNText
+            pointerEvents="none"
+            onTextLayout={onOverlayTextLayout}
+            style={{
+              position: "absolute",
+              left: PAD_X,
+              right: PAD_X,
+              top: PAD_TOP,
+              fontSize: FONT_SIZE,
+              lineHeight: LINE_HEIGHT,
+              color: fg,
+            }}
+          >
+            {overlay}
+          </RNText>
+        ) : null}
+        {/* Hidden width measurers, one per unique string (see pills). */}
+        {measureStrings.map((str) => (
+          <RNText
+            key={`m-${str}`}
+            pointerEvents="none"
+            numberOfLines={1}
+            onLayout={onMeasure(str)}
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              opacity: 0,
+              fontSize: FONT_SIZE,
+              lineHeight: LINE_HEIGHT,
+            }}
+          >
+            {str}
+          </RNText>
+        ))}
       </View>
-
       {/* Trigger suggestions — tap to insert. Shown while the caret sits in an
           unfinished `!…`/`#…` token. */}
       {hasSuggestions ? (
