@@ -10,7 +10,7 @@
     "scheme": "meridian",
     "ios": {
       "bundleIdentifier": "com.stageholder.meridian",
-      "supportsTablet": true,
+      "supportsTablet": false,
       "infoPlist": {
         "NSFaceIDUsageDescription": "Meridian uses Face ID to keep your sign-in secure on this device.",
         "ITSAppUsesNonExemptEncryption": false

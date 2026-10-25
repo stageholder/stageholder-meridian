@@ -7,11 +7,11 @@
 //
 // Technique: a transparent-background <textarea> sits on top of a "backdrop"
 // <div> that mirrors the exact same text (with identical font metrics) and
-// paints a rounded tinted background behind each token range. The backdrop text
-// is transparent, so what you see is the textarea's real, editable text over the
-// backdrop's highlight boxes. Pills use box-shadow (not padding) to gain visual
-// breathing room WITHOUT changing character advance, so the highlight stays
-// pixel-aligned with the text above it.
+// paints a rounded tinted pill behind each token range, colouring the token
+// words. The textarea's text is transparent while a backdrop is shown, so what
+// you see is the backdrop's copy under a normal caret/selection. Pills use
+// box-shadow (not padding) to gain visual breathing room WITHOUT changing
+// character advance, so the highlight stays pixel-aligned with the caret.
 import {
   forwardRef,
   useEffect,
@@ -56,6 +56,25 @@ const MUTED_TINT = "color-mix(in srgb, currentColor 12%, transparent)";
 /** 6-digit hex → ~20% alpha tint; anything else → a neutral tint. */
 function hexTint(hex?: string): string {
   return hex && /^#[0-9a-f]{6}$/i.test(hex) ? `${hex}33` : MUTED_TINT;
+}
+/** Backdrop pill colours per token: the todo accent for dates, the priority
+ *  swatch, the list colour. `text` tints the glyphs, `bg` the pill. */
+function tokenPaint(
+  token: SmartToken,
+  lists: SmartListOption[],
+): { text: string; bg: string } {
+  switch (token.kind) {
+    case "priority": {
+      const c = PRIORITY_COLOR[token.value] ?? "#ef4444";
+      return { text: c, bg: hexTint(c) };
+    }
+    case "list": {
+      const c = lists.find((l) => l.id === token.value)?.color;
+      return { text: c ?? "inherit", bg: hexTint(c) };
+    }
+    default:
+      return { text: "var(--ring-todo)", bg: DATE_TINT };
+  }
 }
 
 // Text metrics for the textarea.
@@ -151,6 +170,40 @@ export const SmartTodoInput = forwardRef<
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [value, lists, parse, loc],
   );
+
+  // Backdrop: the same string with each token wrapped in a rounded, tinted
+  // span, painted BEHIND the textarea (which keeps a transparent background).
+  // Spans add no padding — a box-shadow ring gives the pill its breathing
+  // room without changing character advance, so it stays under the glyphs.
+  // The textarea's own text is drawn transparent and the backdrop's is the
+  // visible copy, so the token words can take the pill colour.
+  const backdrop = useMemo(() => {
+    if (!parse || result.tokens.length === 0) return null;
+    const out: ReactNode[] = [];
+    let cursor = 0;
+    result.tokens.forEach((t, i) => {
+      if (t.start > cursor) out.push(value.slice(cursor, t.start));
+      const paint = tokenPaint(t, lists);
+      out.push(
+        <span
+          key={`${t.kind}-${t.start}-${i}`}
+          style={{
+            color: paint.text,
+            backgroundColor: paint.bg,
+            borderRadius: 6,
+            boxShadow: `0 0 0 3px ${paint.bg}`,
+          }}
+        >
+          {value.slice(t.start, t.end)}
+        </span>,
+      );
+      cursor = t.end;
+    });
+    if (cursor < value.length) out.push(value.slice(cursor));
+    // A trailing newline would collapse without a final line box.
+    out.push("\u200b");
+    return out;
+  }, [parse, result.tokens, value, lists]);
 
   // Let a host form sync its own controls (date/priority/list) to what the user
   // typed — fires on every parse change without re-subscribing on identity.
@@ -284,9 +337,24 @@ export const SmartTodoInput = forwardRef<
         borderColor={focused ? "$primary" : "$borderColor"}
         transition="quick"
       >
-        {/* Plain editable field. Recognized tokens show as removable rounded
-            BADGE chips below (tag-input / combobox pattern) — no in-field
-            highlight, so this is byte-simple and identical to native. */}
+        {/* Backdrop with the in-field pills (see `backdrop`); the textarea
+            overlays it with transparent text, so the caret and selection
+            behave normally while the words take the pill colours. The chips
+            below the field stay as the removable summary. */}
+        {backdrop ? (
+          <div
+            aria-hidden
+            style={{
+              ...FIELD_METRICS,
+              position: "absolute",
+              inset: 0,
+              pointerEvents: "none",
+              overflow: "hidden",
+            }}
+          >
+            {backdrop}
+          </div>
+        ) : null}
         <textarea
           ref={taRef}
           value={value}
@@ -322,12 +390,14 @@ export const SmartTodoInput = forwardRef<
           onBlur={() => setFocused(false)}
           style={{
             ...FIELD_METRICS,
+            position: "relative",
             display: "block",
             width: "100%",
             resize: "none",
             outline: "none",
             background: "transparent",
-            color: "inherit",
+            // With a backdrop the visible text is the backdrop's copy.
+            color: backdrop ? "transparent" : "inherit",
             caretColor: "var(--ring-todo)",
           }}
         />

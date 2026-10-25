@@ -494,7 +494,21 @@ export function HabitForm({
                 <Select.Item value={NO_GROUP_VALUE}>Ungrouped</Select.Item>
                 {groups!.map((g) => (
                   <Select.Item key={g.id} value={g.id}>
-                    {g.name}
+                    <XStack items="center" gap="$2">
+                      <MediaGlyph
+                        value={parseMediaIcon(g.icon)}
+                        size={16}
+                        fallback={
+                          <View
+                            width={10}
+                            height={10}
+                            rounded={9999}
+                            style={{ backgroundColor: g.color ?? "#6b7280" }}
+                          />
+                        }
+                      />
+                      <Select.ItemText>{g.name}</Select.ItemText>
+                    </XStack>
                   </Select.Item>
                 ))}
               </Select.Content>
