@@ -1,14 +1,13 @@
 // packages/features/src/_internal/quick-add-sheet.native.tsx  (NATIVE)
 //
-// Compact "quick-add" shell for the native create flows (todo + habit).
-// Wraps the app-owned ComposerSheet (kit Sheet + a keyboard spacer that
-// tracks the keyboard from the first frame), and renders a MINIMAL body: a primary field + a horizontally-scrolling pill row with a
-// pinned accent send button. Todoist-style quick capture — one thing to type,
-// everything else a pill. Reset is by state (the host owns it); no
-// LazyBody / skeleton / epoch keys / mountChildren juggling here.
-import { useCallback, useState, type ReactNode } from "react";
+// Compact "quick-add" BODY for the native create flows (todo + habit): a
+// primary field + a horizontally-scrolling pill row with a pinned accent send
+// button. Todoist-style quick capture — one thing to type, everything else a
+// pill. The hosts render it inside the app-owned ComposerSheet (kit Sheet + a
+// keyboard spacer); the sheet's `open` policy unmounts this body at close, so
+// the state components that render it start fresh on every open.
+import type { ReactNode } from "react";
 
-import { ComposerSheet } from "./composer-sheet.native";
 import { useAndroidBackClose } from "./use-android-back-close";
 import { ArrowUp } from "@tamagui/lucide-icons-2/icons/ArrowUp";
 import { Check } from "@tamagui/lucide-icons-2/icons/Check";
@@ -22,10 +21,9 @@ import {
   XStack,
   YStack,
 } from "@stageholder/ui";
+import { KeyboardSpacer } from "./composer-sheet.native";
 
-export interface QuickAddSheetProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+export interface QuickAddBodyProps {
   title: string;
   /** Category accent (todo-orange / habit-color) — resolved hex on native. */
   accentColor: string;
@@ -38,24 +36,16 @@ export interface QuickAddSheetProps {
   /** Pill row content (QuickAddPill, DatePill…). */
   pills: ReactNode;
   /**
-   * Kit FormSheet `onSettled`: fires once per open when the slide has landed
-   * (spring complete or the kit's 350 ms cap). Hosts mount their nested
-   * picker sheets / heavy fields from here — never from a timer.
-   */
-  onSettled?: () => void;
-  /**
-   * Picker sheets, rendered INSIDE the FormSheet (not as siblings): Tamagui
-   * gives a sheet nested in another sheet `parentSheet.zIndex + 1`, so they
-   * stack above this frame by contract. As siblings they relied on portal
-   * insertion order and rendered BEHIND the create sheet — the pills looked
-   * dead and the calendar peeked out half-hidden (2026-10-21).
+   * Picker sheets, rendered INSIDE the composer sheet (not as siblings):
+   * Tamagui gives a sheet nested in another sheet `parentSheet.zIndex + 1`,
+   * so they stack above this frame by contract. As siblings they relied on
+   * portal insertion order and rendered BEHIND the create sheet — the pills
+   * looked dead and the calendar peeked out half-hidden (2026-10-21).
    */
   children?: ReactNode;
 }
 
-export function QuickAddSheet({
-  open,
-  onOpenChange,
+export function QuickAddBody({
   title,
   accentColor,
   onSubmit,
@@ -63,16 +53,10 @@ export function QuickAddSheet({
   submitDisabled,
   field,
   pills,
-  onSettled,
   children,
-}: QuickAddSheetProps) {
-  useAndroidBackClose(open, () => onOpenChange(false));
+}: QuickAddBodyProps) {
   return (
-    <ComposerSheet
-      open={open}
-      onOpenChange={onOpenChange}
-      {...(onSettled ? { onSettled } : {})}
-    >
+    <>
       <YStack gap="$2">
         {/* Primary field — the placeholder is the only prompt now. */}
         {field}
@@ -123,24 +107,8 @@ export function QuickAddSheet({
         </XStack>
       </YStack>
       {children}
-    </ComposerSheet>
+    </>
   );
-}
-
-/**
- * Fresh instance per use. Hosts key their sheet on `session` and call
- * `onClosed` from the sheet's close settle (kit `onSettled` while `!open`):
- * the finished instance is replaced by a brand-new CLOSED one, so initial
- * state is the reset, nothing carries over between opens or screens, the
- * close animation is untouched, and every open is a plain open on a mounted
- * sheet (mounting a sheet already open left it closed on a pushed screen's
- * first tap, 2026-10-21). Replaces reset-by-state effects, open/closed refs
- * and imperative focus/blur choreography.
- */
-export function useSheetSession(): { session: number; onClosed: () => void } {
-  const [session, setSession] = useState(0);
-  const onClosed = useCallback(() => setSession((n) => n + 1), []);
-  return { session, onClosed };
 }
 
 export interface QuickAddPillProps {
@@ -202,6 +170,12 @@ export function PillPickerSheet({
       snapPointsMode="fit"
       dismissOnSnapToBottom
       transition="medium"
+      // Root mounted while closed (`open` policy): a nested sheet whose root
+      // mounts in the same commit it opens sometimes showed its overlay but
+      // never its frame (second "⋯" open, 2026-10-25) — the kit's lazy root
+      // isn't reliable for sheets nested in another sheet. Children still
+      // unmount at close, so a closed picker costs only its root.
+      mountChildren="open"
     >
       <Sheet.Overlay />
       <Sheet.Frame pt={0} pb="$6" px="$4" gap="$1">
@@ -232,6 +206,8 @@ export function PillPickerSheet({
             {o.value === value ? <Check size={16} color="$primary" /> : null}
           </XStack>
         ))}
+        {/* Rises above a keyboard the host leaves up (see KeyboardSpacer). */}
+        <KeyboardSpacer />
       </Sheet.Frame>
     </Sheet>
   );

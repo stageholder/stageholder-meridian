@@ -13,16 +13,18 @@ export type SheetAction = {
   destructive?: boolean;
 };
 
-export function showActionSheet({
-  title,
-  message,
-  actions,
-}: {
+export type ActionSheetOptions = {
   title?: string;
   message?: string;
   /** Android shows at most three actions; keep lists short. */
   actions: SheetAction[];
-}) {
+};
+
+export function showActionSheet({
+  title,
+  message,
+  actions,
+}: ActionSheetOptions) {
   if (Platform.OS === "ios") {
     const labels = [...actions.map((a) => a.label), "Cancel"];
     const destructiveButtonIndex = actions

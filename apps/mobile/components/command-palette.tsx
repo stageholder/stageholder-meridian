@@ -123,16 +123,24 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   });
 
   // Closing resets the search and re-arms the settle gate for the next open.
-  // The search field is blurred explicitly: the kit keeps the body mounted
-  // after the first open, so nothing unmounts the focused TextInput on a
-  // swipe-down / overlay tap and the keyboard would linger over the page.
+  // The body unmounts with the sheet (`mountChildren="open"` below), so the
+  // search field cannot keep or regain focus once the sheet is gone; the
+  // explicit blur + dismiss cover the close commit itself.
   useEffect(() => {
     if (!open) {
       setQuery("");
       settledSV.value = 0;
       inputRef.current?.blur();
+      Keyboard.dismiss();
     }
   }, [open, settledSV]);
+  // The kit calls the settle callback for the OPEN spring only, but a sheet
+  // dragged down and released can re-settle — focusing the field then raised
+  // a keyboard over the page with no sheet under it ("keyboard opens out of
+  // nowhere after swiping the search down", device feedback 2026-10-25).
+  // Read `open` through a ref: the kit keeps the callback it was given.
+  const openRef = useRef(open);
+  openRef.current = open;
 
   // Row tap: hand the keyboard off BEFORE the action runs. "New Todo" opens
   // the quick-add whose title is a WebView editor that focuses itself once
@@ -268,7 +276,13 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         transition="medium"
         dismissOnSnapToBottom
         snapPointsMode="fit"
+        // Body mounted per open, unmounted at close: a search field that
+        // stayed mounted behind a closed sheet could be focused by the swipe
+        // that closed it (the touch-up lands on the field) and raise the
+        // keyboard over the page. Twelve rows — the mount is cheap.
+        mountChildren="open"
         onSettled={() => {
+          if (!openRef.current) return;
           settledSV.value = 1;
           // Focus AFTER the slide lands (not `autoFocus` on mount) so the
           // keyboard rises once the sheet is in place rather than mid-slide.

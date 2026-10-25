@@ -36,6 +36,7 @@ import {
   type CalendarDayData,
 } from "@/lib/api/hooks/calendar";
 import { useDeleteTodo, useToggleTodo, useTodos } from "@/lib/api";
+import { TodoActionsSheet } from "@/components/todo-actions-sheet";
 import { TodoDetailSheet } from "@/components/todo-detail-sheet";
 import { HabitCheckInRow } from "./habit-check-in-row";
 import { IGNITION } from "@/lib/ignition-palette";
@@ -62,6 +63,8 @@ export function CalendarDayAgenda({
   // `dayData.todos` status could be stale between refetches.
   const { data: allTodos } = useTodos();
   const [editing, setEditing] = useState<Todo | null>(null);
+  // Long-press → the todo actions menu (same as the Todos tab).
+  const [actionsTodo, setActionsTodo] = useState<Todo | null>(null);
 
   const dayTodos = dayData.todos
     .map((t) => allTodos?.find((a) => a.id === t.id))
@@ -169,6 +172,7 @@ export function CalendarDayAgenda({
                       }
                       onDelete={() => deleteTodo.mutate(todo.id)}
                       onOpenDetail={() => setEditing(todo)}
+                      onLongPress={() => setActionsTodo(todo)}
                     />
                   ))}
                 </AnimatePresence>
@@ -184,6 +188,7 @@ export function CalendarDayAgenda({
                   }
                   onDelete={() => deleteTodo.mutate(todo.id)}
                   onOpenDetail={() => setEditing(todo)}
+                  onLongPress={() => setActionsTodo(todo)}
                 />
               ))}
             </CollapsibleGroup>
@@ -258,6 +263,14 @@ export function CalendarDayAgenda({
           if (!next) setEditing(null);
         }}
         todo={editing}
+      />
+      <TodoActionsSheet
+        open={actionsTodo !== null}
+        onOpenChange={(next) => {
+          if (!next) setActionsTodo(null);
+        }}
+        todo={actionsTodo}
+        onEdit={setEditing}
       />
     </>
   );

@@ -19,12 +19,12 @@
 //   Subtasks (host slot — instant commit)
 //   Created 20 Oct · Completed 21 Oct           ← muted meta
 //
-// Destructive actions live behind "⋯" (native action sheet), never as a big
-// red button in the body. Pickers are SIBLING sheets mounted once the slide
-// has settled (kit `onSettled`), the same open choreography as quick-add.
+// Destructive actions live behind "⋯" (an in-app menu sheet), never as a big
+// red button in the body. Pickers and the menu are sheets NESTED in this one,
+// always mounted: a closed kit Sheet renders nothing (lazy root), and a sheet
+// first mounted in the same commit it opens stayed closed (2026-10-25).
 import { useEffect, useRef, useState } from "react";
 
-import { useAndroidBackClose } from "../_internal/use-android-back-close";
 import { Keyboard, ScrollView, TextInput } from "react-native";
 import { format } from "date-fns";
 import { CalendarDays } from "@tamagui/lucide-icons-2/icons/CalendarDays";
@@ -34,7 +34,6 @@ import { Inbox } from "@tamagui/lucide-icons-2/icons/Inbox";
 import { MoreHorizontal } from "@tamagui/lucide-icons-2/icons/MoreHorizontal";
 import {
   FormSheet,
-  IconButton,
   Separator,
   Text,
   View,
@@ -46,10 +45,11 @@ import type { Todo } from "@repo/core/types";
 import {
   QuickAddPill,
   PillPickerSheet,
-  useSheetSession,
   type PillPickerOption,
 } from "../_internal/quick-add-sheet.native";
+import { ComposerSheet } from "../_internal/composer-sheet.native";
 import { DatePill, DatePickerSheet } from "../_internal/date-pill.native";
+import { MoreActionsSheet } from "../_internal/more-actions-sheet.native";
 import type { TodoDetailSheetProps } from "./todo-detail-sheet.types";
 
 /** Priority dot colors — fixed brand swatches (from todo-form.tsx). */
@@ -91,35 +91,41 @@ const SUBTASKS_MAX_HEIGHT = 280;
 const TITLE_FONT = 20;
 const TITLE_LINE = 26;
 
-/** Picker sheets slide up from the screen bottom — under an open keyboard
- *  they'd be hidden behind the keys (2026-10-21). Drop the keyboard first. */
+/** Open a nested picker/menu sheet. The keyboard (if up) STAYS up: the
+ *  nested sheet carries its own keyboard spacer and opens above it. Dismissing
+ *  the keyboard here collapsed the parent sheet mid-open and the nested frame
+ *  never placed (2026-10-25). */
 function openPicker(set: (open: boolean) => void) {
-  Keyboard.dismiss();
   set(true);
 }
 
 /**
- * Every open is a FRESH instance (keyed on `useSheetSession`) and the sheet
- * unmounts its children at close — same rule as the quick-add: initial state
- * is the reset, the keyboard drops with the fields, no open/closed refs.
+ * Stable shell + per-open body. `TodoDetail` (the drafts, the pickers, the
+ * menu) is a CHILD of the sheet: the kit's `open` policy unmounts it at close
+ * and mounts it fresh at open, so initial state is the reset — a tap on
+ * another todo can never show (or autosave) the previous one's title. Keyed
+ * on the todo id as well, for a different todo tapped before the close
+ * unmount has run.
  */
 export function TodoDetailSheet(props: TodoDetailSheetProps) {
-  const { session, onClosed } = useSheetSession();
-  return <TodoDetail key={session} {...props} onClosed={onClosed} />;
+  return (
+    <ComposerSheet open={props.open} onOpenChange={props.onOpenChange}>
+      {props.todo ? <TodoDetail key={props.todo.id} {...props} /> : null}
+    </ComposerSheet>
+  );
 }
 
 function TodoDetail({
   open,
   onOpenChange,
-  onClosed,
   todo,
   lists,
   accentColor,
   onPatch,
   onToggleStatus,
-  onMore,
+  moreActions,
   subtasks,
-}: TodoDetailSheetProps & { onClosed: () => void }) {
+}: TodoDetailSheetProps) {
   const theme = useTheme();
   const fg = theme.color?.val ?? "#000";
   const muted = theme.mutedForeground?.val ?? "#888";
@@ -134,21 +140,16 @@ function TodoDetail({
   const [title, setTitle] = useState(todo?.title ?? "");
   const [notes, setNotes] = useState(todo?.description ?? "");
 
-  // Picker sheets mount once the slide has settled (kit `onSettled`).
-  const [heavyReady, setHeavyReady] = useState(false);
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [doOpen, setDoOpen] = useState(false);
   const [dueOpen, setDueOpen] = useState(false);
 
-  // Keyboard with the slide: when the sheet opens, focus the field one
-  // animation frame later (the kit mounts the field at open and attaches it
-  // a beat after; the frame callback is cancelled on close/unmount).
-  useEffect(() => {
-    if (!open) return;
-    const id = requestAnimationFrame(() => titleRef.current?.focus());
-    return () => cancelAnimationFrame(id);
-  }, [open]);
+  // No autofocus: a DETAIL sheet is for reading and tapping pills; raising
+  // the keyboard on every open lifted the frame mid-slide and made the first
+  // tap on "⋯"/pills land on a frame still moving (2026-10-25). Tap the
+  // title or notes to edit.
 
   // Debounced autosave for the two text drafts. Blur is not a reliable
   // commit point on native: tapping a pill, the status circle or plain text
@@ -217,281 +218,273 @@ function TodoDetail({
   const created = fmtStamp(todo.createdAt);
   const completed = done ? fmtStamp(todo.completedAt) : null;
 
-  function handleOpenChange(next: boolean) {
-    if (!next) {
-      // Commit the drafts (unmounting a field fires no blur) and drop the
-      // keyboard before the close slide.
-      commitTitle();
-      commitNotes();
-      Keyboard.dismiss();
-    }
-    onOpenChange(next);
+  // Close from the handle: commit the drafts (unmounting a field fires no
+  // blur) and drop the keyboard before the close slide. Other close paths
+  // (overlay tap, Android back, the host) unmount this body — the cleanup
+  // below commits whatever is still uncommitted.
+  function closeSheet() {
+    commitTitle();
+    commitNotes();
+    Keyboard.dismiss();
+    onOpenChange(false);
   }
-  // Android hardware back closes this sheet (not the navigator beneath it).
-  useAndroidBackClose(open, () => handleOpenChange(false));
+  const latest = useRef({ title, notes, todo, onPatch });
+  latest.current = { title, notes, todo, onPatch };
+  useEffect(
+    () => () => {
+      const { title: t, notes: n, todo: cur, onPatch: patch } = latest.current;
+      if (!cur) return;
+      const nextTitle = t.trim();
+      if (nextTitle && nextTitle !== cur.title) patch({ title: nextTitle });
+      const nextNotes = n.trim();
+      if (nextNotes !== (cur.description ?? ""))
+        patch({ description: nextNotes || null });
+    },
+    [],
+  );
 
   return (
     <>
-      <FormSheet
-        open={open}
-        onOpenChange={handleOpenChange}
-        // No header, no footer: the title row IS the header and nothing needs
-        // submitting. FIT-sized (not `scrollable`): the scrollable mode pins
-        // the body between two edge dividers (the stray lines at the top and
-        // bottom of the sheet, 2026-10-20) and makes a downward drag scroll
-        // instead of dismiss. In fit mode the whole frame is the drag surface
-        // — swipe down anywhere to close, like the quick-add — and the kit's
-        // keyboard spacer grows the frame with the keyboard. Long subtask
-        // lists scroll inside their own capped region below.
-        hideFooter
-        mountChildren="open"
-        onSettled={() => (open ? setHeavyReady(true) : onClosed())}
-        // The kit FormSheet defaults to `disableDrag` (a form should not be
-        // swiped away mid-edit). Nothing here is lost on close — every field
-        // commits on its own — so swipe-to-dismiss is the right affordance.
-        disableDrag={false}
-        // Our own grabber below (a plain View the sheet's pan responder can
-        // own) instead of the kit's hairline handle.
-        hideHandle
-        frameProps={{ pt: "$2", pb: "$4" }}
-      >
-        <YStack gap="$2.5">
-          {/* DRAG ZONE. Tamagui's sheet only claims a pan that starts on a
-              view nothing else wants — a TextInput (title, notes) or a
-              ScrollView (pills, subtasks) takes the touch first, so with the
-              title autofocused most of this sheet can't be dragged. This
-              full-width strip is plain, so a swipe that starts here always
-              drags the sheet down to dismiss; tapping the dimmed page above
-              is the other way out. */}
+      {/* Shell = app-owned ComposerSheet (see TodoDetailSheet above): keyboard
+          spacer from frame one and NO self-dismiss. The kit FormSheet's
+          spacer collapse on a fit sheet raced Tamagui's re-measure and
+          sometimes closed the sheet (2026-10-25). Close = overlay tap or the
+          handle below. */}
+      <YStack gap="$2.5">
+        {/* CLOSE HANDLE: a tap commits the drafts and closes (the shell has
+              no drag; tapping the dimmed page above closes too). */}
+        <View
+          role="button"
+          aria-label="Close"
+          height={22}
+          mt={-4}
+          items="center"
+          justify="center"
+          hitSlop={8}
+          onPress={closeSheet}
+        >
           <View
-            aria-label="Drag to close"
-            height={22}
-            mt={-4}
-            items="center"
-            justify="center"
-            // KEYBOARD FIRST, THEN DRAG. A finger landing on the grabber while
-            // the keyboard is up drops the keyboard (touch-start runs before
-            // the pan); the kit's keyboard spacer then collapses the frame
-            // under the finger, which cancels that gesture — so the first
-            // swipe clears the keyboard and the next one closes the sheet.
-            // Dragging through the collapse instead raced the re-measure and
-            // sometimes closed the sheet with the keyboard left standing
-            // over the list (2026-10-20). Tapping the dimmed page above always
-            // closes in one go.
-            onTouchStart={() => {
-              if (Keyboard.isVisible()) Keyboard.dismiss();
-            }}
-          >
-            <View
-              width={36}
-              height={4}
-              rounded={9999}
-              bg="$mutedForeground"
-              opacity={0.35}
-            />
-          </View>
-          {/* Status circle + bare title + more. The circle mirrors the row's
+            width={36}
+            height={4}
+            rounded={9999}
+            bg="$mutedForeground"
+            opacity={0.35}
+          />
+        </View>
+        {/* Status circle + bare title + more. The circle mirrors the row's
               checkbox (accent fill when done) so the sheet reads as the row,
               expanded. */}
-          <XStack items="flex-start" gap="$3">
-            <View
-              role="checkbox"
-              aria-checked={done}
-              aria-label={done ? "Mark as not done" : "Mark as done"}
-              hitSlop={8}
-              mt={(TITLE_LINE - 24) / 2}
-              width={24}
-              height={24}
-              rounded={9999}
-              items="center"
-              justify="center"
-              borderWidth={2}
+        <XStack items="flex-start" gap="$3">
+          <View
+            role="checkbox"
+            aria-checked={done}
+            aria-label={done ? "Mark as not done" : "Mark as done"}
+            hitSlop={8}
+            mt={(TITLE_LINE - 24) / 2}
+            width={24}
+            height={24}
+            rounded={9999}
+            items="center"
+            justify="center"
+            borderWidth={2}
+            style={{
+              borderColor: done ? accentColor : border,
+              backgroundColor: done ? accentColor : "transparent",
+            }}
+            pressStyle={{ scale: 0.9, opacity: 0.85 }}
+            transition="quick"
+            onPress={onToggleStatus}
+          >
+            {done ? <Check size={14} color="#ffffff" /> : null}
+          </View>
+          <View flex={1} minW={0}>
+            <TextInput
+              ref={titleRef}
+              value={title}
+              onChangeText={(t) => setTitle(t.replace(/\n+/g, " "))}
+              onBlur={commitTitle}
+              onSubmitEditing={commitTitle}
+              multiline
+              submitBehavior="blurAndSubmit"
+              placeholder="Untitled"
+              placeholderTextColor={muted}
+              scrollEnabled={false}
               style={{
-                borderColor: done ? accentColor : border,
-                backgroundColor: done ? accentColor : "transparent",
+                paddingVertical: 0,
+                paddingHorizontal: 0,
+                fontSize: TITLE_FONT,
+                lineHeight: TITLE_LINE,
+                fontWeight: "600",
+                color: done ? muted : fg,
+                textDecorationLine: done ? "line-through" : "none",
               }}
-              pressStyle={{ scale: 0.9, opacity: 0.85 }}
-              transition="quick"
-              onPress={onToggleStatus}
-            >
-              {done ? <Check size={14} color="#ffffff" /> : null}
-            </View>
-            <View flex={1} minW={0}>
-              <TextInput
-                ref={titleRef}
-                value={title}
-                onChangeText={(t) => setTitle(t.replace(/\n+/g, " "))}
-                onBlur={commitTitle}
-                onSubmitEditing={commitTitle}
-                multiline
-                submitBehavior="blurAndSubmit"
-                placeholder="Untitled"
-                placeholderTextColor={muted}
-                scrollEnabled={false}
-                style={{
-                  paddingVertical: 0,
-                  paddingHorizontal: 0,
-                  fontSize: TITLE_FONT,
-                  lineHeight: TITLE_LINE,
-                  fontWeight: "600",
-                  color: done ? muted : fg,
-                  textDecorationLine: done ? "line-through" : "none",
-                }}
-              />
-            </View>
-            <IconButton
-              variant="ghost"
-              size="sm"
-              aria-label="More actions"
-              onPress={onMore}
-            >
-              <MoreHorizontal size={18} />
-            </IconButton>
-          </XStack>
+            />
+          </View>
+          {/* Tamagui-pressable View, not the kit IconButton: the kit's RN
+                Pressable intermittently gets no touch inside this portaled
+                sheet (same class as the composer's send button). */}
+          <View
+            role="button"
+            aria-label="More actions"
+            width={32}
+            height={32}
+            rounded={9999}
+            items="center"
+            justify="center"
+            hitSlop={6}
+            pressStyle={{ bg: "$secondary", opacity: 0.8 }}
+            onPress={() => openPicker(setMoreOpen)}
+          >
+            <MoreHorizontal size={18} color="$color" />
+          </View>
+        </XStack>
 
-          {/* Attribute pills — the quick-add row, now live: each pick commits. */}
-          <FormSheet.HorizontalScroll keyboardShouldPersistTaps="always">
+        {/* Attribute pills — the quick-add row, now live: each pick commits. */}
+        <FormSheet.HorizontalScroll keyboardShouldPersistTaps="always">
+          <QuickAddPill
+            icon={
+              todo.priority !== "none" ? (
+                <Dot tint={PRIORITY_DOT[todo.priority]} />
+              ) : undefined
+            }
+            label={todo.priority === "none" ? "Priority" : cap(todo.priority)}
+            onPress={() => openPicker(setPriorityOpen)}
+          />
+          {showListPill ? (
             <QuickAddPill
               icon={
-                todo.priority !== "none" ? (
-                  <Dot tint={PRIORITY_DOT[todo.priority]} />
+                selectedList?.isDefault ? (
+                  <Inbox size={13} color="$primary" />
+                ) : selectedList ? (
+                  <Dot tint={selectedList.color || "#6b7280"} />
                 ) : undefined
               }
-              label={todo.priority === "none" ? "Priority" : cap(todo.priority)}
-              onPress={() => openPicker(setPriorityOpen)}
+              label={selectedList?.name ?? "List"}
+              onPress={() => openPicker(setListOpen)}
             />
-            {showListPill ? (
-              <QuickAddPill
-                icon={
-                  selectedList?.isDefault ? (
-                    <Inbox size={13} color="$primary" />
-                  ) : selectedList ? (
-                    <Dot tint={selectedList.color || "#6b7280"} />
-                  ) : undefined
-                }
-                label={selectedList?.name ?? "List"}
-                onPress={() => openPicker(setListOpen)}
-              />
-            ) : null}
-            {/* Dates = the app's DatePill + nested DatePickerSheet (below),
+          ) : null}
+          {/* Dates = the app's DatePill + nested DatePickerSheet (below),
                 same pattern as the quick-add. The pill drops the keyboard
                 before its sheet opens. */}
-            <DatePill
-              placeholder="Do"
-              value={
-                todo.doDate ? parseLocalDay(todo.doDate.slice(0, 10)) : null
-              }
-              onPress={() => setDoOpen(true)}
-            />
-            <DatePill
-              placeholder="Deadline"
-              value={
-                todo.dueDate ? parseLocalDay(todo.dueDate.slice(0, 10)) : null
-              }
-              onPress={() => setDueOpen(true)}
-            />
-          </FormSheet.HorizontalScroll>
-
-          {/* Notes — ghost field, commits on blur. */}
-          <TextInput
-            ref={notesRef}
-            value={notes}
-            onChangeText={setNotes}
-            onBlur={commitNotes}
-            multiline
-            placeholder="Add notes…"
-            placeholderTextColor={muted}
-            scrollEnabled={false}
-            style={{
-              paddingVertical: 4,
-              paddingHorizontal: 0,
-              fontSize: 15,
-              lineHeight: 21,
-              color: fg,
-              minHeight: 29,
-              textAlignVertical: "top",
-            }}
+          <DatePill
+            placeholder="Do"
+            value={todo.doDate ? parseLocalDay(todo.doDate.slice(0, 10)) : null}
+            onPress={() => setDoOpen(true)}
           />
+          <DatePill
+            placeholder="Deadline"
+            value={
+              todo.dueDate ? parseLocalDay(todo.dueDate.slice(0, 10)) : null
+            }
+            onPress={() => setDueOpen(true)}
+          />
+        </FormSheet.HorizontalScroll>
 
-          {subtasks ? (
-            <>
-              <Separator />
-              {/* Capped so a long subtask list scrolls here instead of pushing
+        {/* Notes — ghost field, commits on blur. */}
+        <TextInput
+          ref={notesRef}
+          value={notes}
+          onChangeText={setNotes}
+          onBlur={commitNotes}
+          multiline
+          placeholder="Add notes…"
+          placeholderTextColor={muted}
+          scrollEnabled={false}
+          style={{
+            paddingVertical: 4,
+            paddingHorizontal: 0,
+            fontSize: 15,
+            lineHeight: 21,
+            color: fg,
+            minHeight: 29,
+            textAlignVertical: "top",
+          }}
+        />
+
+        {subtasks ? (
+          <>
+            <Separator />
+            {/* Capped so a long subtask list scrolls here instead of pushing
                   the fit-sized frame past the top of the screen. Plain RN
                   ScrollView (not Sheet.ScrollView): it must not bridge its
                   drag into the sheet. */}
-              <ScrollView
-                style={{ maxHeight: SUBTASKS_MAX_HEIGHT }}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-              >
-                {subtasks}
-              </ScrollView>
-            </>
-          ) : null}
+            <ScrollView
+              style={{ maxHeight: SUBTASKS_MAX_HEIGHT }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {subtasks}
+            </ScrollView>
+          </>
+        ) : null}
 
-          {created || completed ? (
-            <Text fontSize="$1" color="$mutedForeground" pt="$1">
-              {[
-                created ? `Created ${created}` : null,
-                completed ? `Completed ${completed}` : null,
-              ]
-                .filter(Boolean)
-                .join("  ·  ")}
-            </Text>
-          ) : null}
-        </YStack>
+        {created || completed ? (
+          <Text fontSize="$1" color="$mutedForeground" pt="$1">
+            {[
+              created ? `Created ${created}` : null,
+              completed ? `Completed ${completed}` : null,
+            ]
+              .filter(Boolean)
+              .join("  ·  ")}
+          </Text>
+        ) : null}
+      </YStack>
 
-        {/* Pickers NESTED in the sheet (not siblings): Tamagui gives a sheet
+      {/* Pickers NESTED in the sheet (not siblings): Tamagui gives a sheet
             rendered inside another sheet `parentSheet.zIndex + 1`, so they
             stack above this frame by contract. As siblings they relied on
             portal insertion order and, hosted on the Habits tab, rendered
             BEHIND this frame (overlay above, frame hidden; 2026-10-21). */}
-        {heavyReady || priorityOpen ? (
-          <PillPickerSheet
-            open={priorityOpen}
-            onOpenChange={setPriorityOpen}
-            title="Priority"
-            options={priorityOptions}
-            value={todo.priority}
-            onSelect={(v) => onPatch({ priority: v as Todo["priority"] })}
-          />
-        ) : null}
-        {heavyReady || listOpen ? (
-          <PillPickerSheet
-            open={listOpen}
-            onOpenChange={setListOpen}
-            title="List"
-            options={listOptions}
-            value={todo.listId}
-            onSelect={(v) => onPatch({ listId: v })}
-          />
-        ) : null}
-        {heavyReady || doOpen ? (
-          <DatePickerSheet
-            open={doOpen}
-            onOpenChange={setDoOpen}
-            title="Do date"
-            value={todo.doDate ? parseLocalDay(todo.doDate.slice(0, 10)) : null}
-            onChange={(d) =>
-              onPatch({ doDate: d ? format(d, "yyyy-MM-dd") : null })
-            }
-          />
-        ) : null}
-        {heavyReady || dueOpen ? (
-          <DatePickerSheet
-            open={dueOpen}
-            onOpenChange={setDueOpen}
-            title="Deadline"
-            value={
-              todo.dueDate ? parseLocalDay(todo.dueDate.slice(0, 10)) : null
-            }
-            onChange={(d) =>
-              onPatch({ dueDate: d ? format(d, "yyyy-MM-dd") : null })
-            }
-          />
-        ) : null}
-      </FormSheet>
+      {
+        <MoreActionsSheet
+          open={moreOpen}
+          onOpenChange={setMoreOpen}
+          title={todo.title}
+          actions={moreActions}
+        />
+      }
+      {
+        <PillPickerSheet
+          open={priorityOpen}
+          onOpenChange={setPriorityOpen}
+          title="Priority"
+          options={priorityOptions}
+          value={todo.priority}
+          onSelect={(v) => onPatch({ priority: v as Todo["priority"] })}
+        />
+      }
+      {
+        <PillPickerSheet
+          open={listOpen}
+          onOpenChange={setListOpen}
+          title="List"
+          options={listOptions}
+          value={todo.listId}
+          onSelect={(v) => onPatch({ listId: v })}
+        />
+      }
+      {
+        <DatePickerSheet
+          open={doOpen}
+          onOpenChange={setDoOpen}
+          title="Do date"
+          value={todo.doDate ? parseLocalDay(todo.doDate.slice(0, 10)) : null}
+          onChange={(d) =>
+            onPatch({ doDate: d ? format(d, "yyyy-MM-dd") : null })
+          }
+        />
+      }
+      {
+        <DatePickerSheet
+          open={dueOpen}
+          onOpenChange={setDueOpen}
+          title="Deadline"
+          value={todo.dueDate ? parseLocalDay(todo.dueDate.slice(0, 10)) : null}
+          onChange={(d) =>
+            onPatch({ dueDate: d ? format(d, "yyyy-MM-dd") : null })
+          }
+        />
+      }
     </>
   );
 }

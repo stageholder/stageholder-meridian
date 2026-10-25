@@ -11,8 +11,8 @@
 //                "This week: X/Y" line.
 //   DAY EDITOR — kit EventCalendar month grid (cross-platform; tinted day
 //                cells: solid orange = complete, faint = partial/today,
-//                red = failed/missed, dashed = skipped) + the selected-day
-//                action panel (Record / Undo / Skip / Fail / clear).
+//                red = failed/missed, dashed = skipped); a day tap opens the
+//                HabitDaySheet (Record / Undo / Skip / Fail / clear).
 //   RECENT     — last 20 entries with status glyphs.
 //
 // All streak/stat computations are ported VERBATIM from the PWA page (same
@@ -25,7 +25,6 @@
 // of the web AlertDialog.
 
 import {
-  Button,
   Skeleton,
   Stat,
   StreakBadge,
@@ -47,8 +46,6 @@ import {
 } from "@repo/core/habits/entry-resolution";
 import { Check } from "@tamagui/lucide-icons-2/icons/Check";
 import { Minus } from "@tamagui/lucide-icons-2/icons/Minus";
-import { SkipForward } from "@tamagui/lucide-icons-2/icons/SkipForward";
-import { Undo2 } from "@tamagui/lucide-icons-2/icons/Undo2";
 import { X } from "@tamagui/lucide-icons-2/icons/X";
 import {
   format,
@@ -64,6 +61,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Alert } from "react-native";
 
+import { HabitDaySheet } from "@/components/habit-day-sheet";
 import { HabitDetailSheet } from "@/components/habit-detail-sheet";
 import { HabitMoveToGroupSheet } from "@/components/habit-move-to-group-sheet";
 import { HeaderActions } from "@/components/header-actions";
@@ -115,6 +113,9 @@ export default function HabitDetailScreen() {
   const [editOpen, setEditOpen] = useState(false);
   const [moveToGroupOpen, setMoveToGroupOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  // Day sheet: a tap on the month grid opens the day's actions (see
+  // HabitDaySheet); `selectedDate` stays so the grid keeps the day marked.
+  const [dayOpen, setDayOpen] = useState(false);
 
   const today = format(new Date(), "yyyy-MM-dd");
   const yearAgo = format(subDays(new Date(), 365), "yyyy-MM-dd");
@@ -386,7 +387,15 @@ export default function HabitDetailScreen() {
       toast.info("Already completed for this date");
       return;
     }
-    const onSuccess = () => toast.success(`Recorded for ${dateStr}`);
+    const isNonCompletion =
+      currentEntry?.type === "skip" || currentEntry?.type === "fail";
+    // The sheet stays open while a multi-count day is still in progress
+    // ("Record 2 / 3"), and closes once the day is done.
+    const nextVal = isNonCompletion ? 1 : currentVal + 1;
+    const onSuccess = () => {
+      toast.success(`Recorded for ${dateStr}`);
+      if (nextVal >= checkTarget) setDayOpen(false);
+    };
     const onError = () => toast.error("Failed to record");
 
     if (!existing) {
@@ -396,8 +405,6 @@ export default function HabitDetailScreen() {
       );
       return;
     }
-    const isNonCompletion =
-      currentEntry?.type === "skip" || currentEntry?.type === "fail";
     updateEntry.mutate(
       {
         habitId: habit.id,
@@ -429,7 +436,10 @@ export default function HabitDetailScreen() {
         patch: { value: currentEntry.value - 1 },
       },
       {
-        onSuccess: () => toast.success(`Undid for ${dateStr}`),
+        onSuccess: () => {
+          toast.success(`Undid for ${dateStr}`);
+          setDayOpen(false);
+        },
         onError: () => toast.error("Failed to undo"),
       },
     );
@@ -438,7 +448,10 @@ export default function HabitDetailScreen() {
   function handleDateFail(dateStr: string) {
     if (!habit) return;
     const existing = monthEntryObjMap.get(dateStr);
-    const onSuccess = () => toast.success(`Marked failed for ${dateStr}`);
+    const onSuccess = () => {
+      toast.success(`Marked failed for ${dateStr}`);
+      setDayOpen(false);
+    };
     const onError = () => toast.error("Failed to update");
     if (!existing) {
       failEntry.mutate(
@@ -460,7 +473,10 @@ export default function HabitDetailScreen() {
   function handleDateSkip(dateStr: string) {
     if (!habit) return;
     const existing = monthEntryObjMap.get(dateStr);
-    const onSuccess = () => toast.success(`Skipped ${dateStr}`);
+    const onSuccess = () => {
+      toast.success(`Skipped ${dateStr}`);
+      setDayOpen(false);
+    };
     const onError = () => toast.error("Failed to skip");
     if (!existing) {
       skipEntry.mutate(
@@ -499,8 +515,10 @@ export default function HabitDetailScreen() {
         patch: { type: "completion", value: 0 },
       },
       {
-        onSuccess: () =>
-          toast.success(wasFail ? "Cleared fail" : "Cleared skip"),
+        onSuccess: () => {
+          toast.success(wasFail ? "Cleared fail" : "Cleared skip");
+          setDayOpen(false);
+        },
         onError: () => toast.error("Failed to undo"),
       },
     );
@@ -728,9 +746,10 @@ export default function HabitDetailScreen() {
                 variant="month"
                 density="compact"
                 todayIndicator="none"
-                onDateClick={(date) =>
-                  setSelectedDate(format(date, "yyyy-MM-dd"))
-                }
+                onDateClick={(date) => {
+                  setSelectedDate(format(date, "yyyy-MM-dd"));
+                  setDayOpen(true);
+                }}
                 renderDayCell={({ date, isToday }) => (
                   <DayCell
                     date={date}
@@ -744,26 +763,9 @@ export default function HabitDetailScreen() {
                 )}
               />
 
-              {selectedDate ? (
-                <DayActionPanel
-                  selectedDate={selectedDate}
-                  today={today}
-                  habit={habit}
-                  isQuota={isQuota}
-                  isMutating={isMutating}
-                  monthEntryMap={monthEntryMap}
-                  monthEntryObjMap={monthEntryObjMap}
-                  onCheckIn={handleDateCheckIn}
-                  onUndo={handleDateUndo}
-                  onSkip={handleDateSkip}
-                  onFail={handleDateFail}
-                  onClear={handleClearNonCompletion}
-                />
-              ) : (
-                <Text fontSize="$1" color="$mutedForeground">
-                  Tap a day to record, skip, or fix it.
-                </Text>
-              )}
+              <Text fontSize="$1" color="$mutedForeground">
+                Tap a day to record, skip, or fix it.
+              </Text>
             </YStack>
 
             {/* ---- Recent entries ---- */}
@@ -794,6 +796,26 @@ export default function HabitDetailScreen() {
       {/* Always mounted while the habit is loaded (like the Habits tab host):
           `open` flips on a mounted sheet. Mounting the sheet already-open on
           the first Edit tap left it closed (2026-10-21). */}
+      {habit ? (
+        <HabitDaySheet
+          open={dayOpen}
+          onOpenChange={setDayOpen}
+          date={selectedDate}
+          today={today}
+          habit={habit}
+          isQuota={isQuota}
+          isMutating={isMutating}
+          entry={selectedDate ? monthEntryMap.get(selectedDate) : undefined}
+          entryObj={
+            selectedDate ? monthEntryObjMap.get(selectedDate) : undefined
+          }
+          onCheckIn={handleDateCheckIn}
+          onUndo={handleDateUndo}
+          onSkip={handleDateSkip}
+          onFail={handleDateFail}
+          onClear={handleClearNonCompletion}
+        />
+      ) : null}
       {habit ? (
         <HabitDetailSheet
           habit={habit}
@@ -860,6 +882,8 @@ function DayCell({
   return (
     <YStack flex={1} items="center" justify="center" py="$1">
       <View
+        testID={`habit-day-${dateStr}`}
+        aria-label={format(date, "EEEE, MMMM d")}
         width={32}
         height={32}
         rounded={9999}
@@ -881,188 +905,6 @@ function DayCell({
         </Text>
       </View>
     </YStack>
-  );
-}
-
-/* -------------------------- Selected-day panel ----------------------------- */
-
-function DayActionPanel({
-  selectedDate,
-  today,
-  habit,
-  isQuota,
-  isMutating,
-  monthEntryMap,
-  monthEntryObjMap,
-  onCheckIn,
-  onUndo,
-  onSkip,
-  onFail,
-  onClear,
-}: {
-  selectedDate: string;
-  today: string;
-  habit: Habit;
-  isQuota: boolean;
-  isMutating: boolean;
-  monthEntryMap: Map<string, { value: number; type?: string }>;
-  monthEntryObjMap: Map<string, HabitEntry>;
-  onCheckIn: (d: string) => void;
-  onUndo: (d: string) => void;
-  onSkip: (d: string) => void;
-  onFail: (d: string) => void;
-  onClear: (d: string) => void;
-}) {
-  const selEntry = monthEntryMap.get(selectedDate);
-  const selValue = selEntry?.value ?? 0;
-  const selIsSkipped = selEntry?.type === "skip";
-  const selIsFailed = selEntry?.type === "fail";
-  const selEntryObj = monthEntryObjMap.get(selectedDate);
-  const selEffectiveTarget = selEntryObj
-    ? resolveTargetCount(selEntryObj, habit)
-    : habit.targetCount;
-  const selComplete =
-    !selIsSkipped &&
-    !selIsFailed &&
-    selEffectiveTarget > 0 &&
-    selValue >= selEffectiveTarget;
-  const selDow = getDay(parseDateLocal(selectedDate));
-  const hasSchedule = habit.scheduledDays && habit.scheduledDays.length > 0;
-  const selScheduled = !hasSchedule || habit.scheduledDays!.includes(selDow);
-
-  return (
-    <YStack
-      rounded="$5"
-      borderWidth={1}
-      borderColor="$borderColor"
-      bg="$muted"
-      px="$3"
-      py="$2.5"
-      gap="$2"
-    >
-      <XStack items="center" gap="$2">
-        <Text fontSize="$2" fontWeight="600" color="$color">
-          {format(parseDateLocal(selectedDate), "MMM d, yyyy")}
-        </Text>
-        <Text
-          fontSize={11}
-          color={selIsFailed ? "$destructive" : "$mutedForeground"}
-        >
-          {selIsFailed
-            ? "Failed — streak reset"
-            : selIsSkipped
-              ? "Skipped"
-              : `${selValue}/${selEffectiveTarget}`}
-          {!selScheduled && " · Rest day"}
-        </Text>
-      </XStack>
-      <XStack items="center" flexWrap="wrap" gap="$1.5">
-        {selValue > 0 && !selIsSkipped && !selIsFailed ? (
-          <Button
-            intent="outline"
-            size="sm"
-            icon={<Undo2 size={12} />}
-            disabled={isMutating}
-            onPress={() => onUndo(selectedDate)}
-          >
-            Undo
-          </Button>
-        ) : null}
-        {selIsSkipped || selIsFailed ? (
-          <Button
-            intent="outline"
-            size="sm"
-            icon={<Undo2 size={12} />}
-            disabled={isMutating}
-            onPress={() => onClear(selectedDate)}
-          >
-            Undo {selIsFailed ? "fail" : "skip"}
-          </Button>
-        ) : null}
-        {selIsFailed ? (
-          <StatusChip
-            icon={<X size={12} color="$destructive" />}
-            label="Failed"
-            bg="$destructiveMuted"
-            color="$destructive"
-          />
-        ) : selIsSkipped ? (
-          <StatusChip
-            icon={<SkipForward size={12} color="$mutedForeground" />}
-            label="Skipped"
-            bg="$muted"
-            color="$mutedForeground"
-          />
-        ) : selComplete ? (
-          <StatusChip
-            icon={<Check size={12} color="$success" />}
-            label="Done"
-            bg="$successMuted"
-            color="$success"
-          />
-        ) : (
-          <>
-            {!isQuota && selScheduled && selectedDate <= today ? (
-              <>
-                <Button
-                  intent="outline"
-                  size="sm"
-                  disabled={isMutating}
-                  onPress={() => onSkip(selectedDate)}
-                >
-                  Skip
-                </Button>
-                <Button
-                  intent="outline"
-                  size="sm"
-                  disabled={isMutating}
-                  onPress={() => onFail(selectedDate)}
-                >
-                  Fail
-                </Button>
-              </>
-            ) : null}
-            <Button
-              size="sm"
-              disabled={isMutating}
-              loading={isMutating}
-              loadingText="…"
-              onPress={() => onCheckIn(selectedDate)}
-            >
-              Record
-            </Button>
-          </>
-        )}
-      </XStack>
-    </YStack>
-  );
-}
-
-function StatusChip({
-  icon,
-  label,
-  bg,
-  color,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  bg: string;
-  color: string;
-}) {
-  return (
-    <XStack
-      items="center"
-      gap="$1"
-      rounded="$3"
-      bg={bg as never}
-      px="$2.5"
-      py="$1"
-    >
-      {icon}
-      <Text fontSize="$1" fontWeight="500" color={color as never}>
-        {label}
-      </Text>
-    </XStack>
   );
 }
 

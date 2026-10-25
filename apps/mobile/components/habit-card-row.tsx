@@ -18,7 +18,7 @@
 
 import { memo, useMemo } from "react";
 import { toast } from "@stageholder/ui";
-import { HabitCard, RadianceBurst } from "@repo/features/habits";
+import { HabitCard, RadianceBurst, habitTint } from "@repo/features/habits";
 import type { Habit, HabitEntry } from "@repo/core/types";
 
 import { useDeleteHabit, useSharedHabitEntries } from "@/lib/api";
@@ -106,7 +106,8 @@ export const HabitCardRow = memo(function HabitCardRow({
       // hatch (`backgroundColor`), so raw colors are required (tokens / CSS
       // vars wouldn't resolve on native).
       accentColor={IGNITION.habit.base}
-      accentTrackColor={IGNITION.habit.track}
+      // Icon tile: the habit's OWN color (soft), category orange when unset.
+      accentTrackColor={habitTint(habit.color) ?? IGNITION.habit.track}
       // Sunburst ANCHORED to the check-in control (PWA RadianceBurst parity),
       // fires once per completion — NOT the full-screen kit Celebration.
       renderCompletionEffect={(active) => (

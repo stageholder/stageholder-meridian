@@ -4,12 +4,12 @@
 // (frequency / target / color / group / note) and an accent send button.
 // Create-only; editing is the habit detail sheet.
 //
-// Same ONE RULE as the todo quick-add: every open is a FRESH instance (keyed
-// on `useSheetSession`) and the sheet unmounts its children at close — initial
+// Same ONE RULE as the todo quick-add: every open is a FRESH instance (a child of
+// the sheet, which unmounts it at close) — initial
 // state is the reset, `autoFocus` raises the keyboard with the slide, and the
 // keyboard drops because the field is gone. No effects, no refs for focus.
 import { useEffect, useRef, useState } from "react";
-import { Keyboard, TextInput } from "react-native";
+import { TextInput } from "react-native";
 import { Folder } from "@tamagui/lucide-icons-2/icons/Folder";
 import { Repeat } from "@tamagui/lucide-icons-2/icons/Repeat";
 import { Smile } from "@tamagui/lucide-icons-2/icons/Smile";
@@ -18,14 +18,14 @@ import { Target } from "@tamagui/lucide-icons-2/icons/Target";
 import { Input, View, XStack } from "@stageholder/ui";
 import { useTheme } from "tamagui";
 import type { MediaValue } from "@stageholder/ui/pickers";
-import { MediaGlyph, MediaPickerSheet } from "@stageholder/ui/pickers";
+import { MediaGlyph } from "@stageholder/ui/pickers";
 import {
-  QuickAddSheet,
+  QuickAddBody,
   QuickAddPill,
   PillPickerSheet,
-  useSheetSession,
   type PillPickerOption,
 } from "../_internal/quick-add-sheet.native";
+import { ComposerSheet } from "../_internal/composer-sheet.native";
 import {
   ColorPickerSheet,
   FrequencyPickerSheet,
@@ -33,20 +33,29 @@ import {
   NO_GROUP_VALUE,
   TargetPickerSheet,
 } from "./habit-pickers.native";
-import { encodeMediaIcon, parseMediaIcon } from "./icon-value";
+import { IconPickerSheet } from "../_internal/icon-picker-sheet.native";
+import { openAfterKeyboard } from "../_internal/open-after-keyboard.native";
+import { encodeMediaIcon, habitTint, parseMediaIcon } from "./icon-value";
 import { HABIT_FORM_DEFAULTS, type HabitFormValues } from "./habit-form";
 import type { QuickAddHabitSheetProps } from "./quick-add-habit-sheet.types";
 
-/** Picker sheets slide up from the screen bottom — under an open keyboard
- *  they'd be hidden behind the keys. Drop the keyboard first. */
+/** Open a nested picker/menu sheet. The keyboard (if up) STAYS up: the
+ *  nested sheet carries its own keyboard spacer and opens above it. Dismissing
+ *  the keyboard here collapsed the parent sheet mid-open and the nested frame
+ *  never placed (2026-10-25). */
 function openPicker(set: (open: boolean) => void) {
-  Keyboard.dismiss();
   set(true);
 }
 
 export function QuickAddHabitSheet(props: QuickAddHabitSheetProps) {
-  const { session, onClosed } = useSheetSession();
-  return <HabitQuickAdd key={session} {...props} onClosed={onClosed} />;
+  // Stable shell; the state component below is a CHILD of the sheet, so the
+  // kit's `open` policy unmounts it at close and mounts it fresh at open —
+  // initial state is the reset.
+  return (
+    <ComposerSheet open={props.open} onOpenChange={props.onOpenChange}>
+      <HabitQuickAdd {...props} />
+    </ComposerSheet>
+  );
 }
 
 function HabitQuickAdd({
@@ -57,8 +66,7 @@ function HabitQuickAdd({
   accentColor,
   isSubmitting,
   onSubmit,
-  onClosed,
-}: QuickAddHabitSheetProps & { onClosed: () => void }) {
+}: QuickAddHabitSheetProps) {
   const hasGroups = !!groups && groups.length > 0;
   const nameRef = useRef<TextInput>(null);
   const theme = useTheme();
@@ -93,8 +101,6 @@ function HabitQuickAdd({
   const [targetOpen, setTargetOpen] = useState(false);
   const [colorOpen, setColorOpen] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
-  // Picker sheets mount once the slide has settled (kit `onSettled`).
-  const [settled, setSettled] = useState(false);
 
   // Keyboard with the slide: when the sheet opens, focus the field one
   // animation frame later (the kit mounts the field at open and attaches it
@@ -158,22 +164,19 @@ function HabitQuickAdd({
 
   return (
     <>
-      <QuickAddSheet
-        open={open}
-        onOpenChange={onOpenChange}
+      <QuickAddBody
         title="New Habit"
         accentColor={accentColor}
         onSubmit={handleSubmit}
         submitting={isSubmitting}
         submitDisabled={!hasName}
-        onSettled={() => (open ? setSettled(true) : onClosed())}
         field={
           <>
             <XStack gap="$2" items="center">
               <View
                 role="button"
                 aria-label="Pick an icon"
-                onPress={() => openPicker(setIconOpen)}
+                onPress={() => openAfterKeyboard(setIconOpen)}
                 width={40}
                 height={40}
                 rounded="$3"
@@ -181,6 +184,9 @@ function HabitQuickAdd({
                 borderColor="$borderColor"
                 items="center"
                 justify="center"
+                // The picked color tints the tile at once (the same tint the
+                // card will show), so "Color" visibly applies.
+                style={{ backgroundColor: habitTint(color) }}
               >
                 <MediaGlyph
                   value={parseMediaIcon(icon)}
@@ -266,7 +272,7 @@ function HabitQuickAdd({
           </>
         }
       >
-        {settled || freqOpen ? (
+        {
           <FrequencyPickerSheet
             open={freqOpen}
             onOpenChange={(o) => {
@@ -280,8 +286,8 @@ function HabitQuickAdd({
             weeklyTarget={weeklyTarget}
             setWeeklyTarget={setWeeklyTarget}
           />
-        ) : null}
-        {settled || targetOpen ? (
+        }
+        {
           <TargetPickerSheet
             open={targetOpen}
             onOpenChange={(o) => {
@@ -294,8 +300,8 @@ function HabitQuickAdd({
             unit={unit}
             setUnit={setUnit}
           />
-        ) : null}
-        {settled || colorOpen ? (
+        }
+        {
           <ColorPickerSheet
             open={colorOpen}
             onOpenChange={(o) => {
@@ -305,8 +311,8 @@ function HabitQuickAdd({
             color={color}
             setColor={setColor}
           />
-        ) : null}
-        {settled || groupOpen ? (
+        }
+        {
           <PillPickerSheet
             open={groupOpen}
             onOpenChange={(o) => {
@@ -318,23 +324,23 @@ function HabitQuickAdd({
             value={groupId ?? NO_GROUP_VALUE}
             onSelect={(v) => setGroupId(v === NO_GROUP_VALUE ? null : v)}
           />
-        ) : null}
-      </QuickAddSheet>
+        }
+      </QuickAddBody>
 
       {/* The 560 px media picker stays a SIBLING: nested inside a fit-sized
           sheet it stopped that sheet's frame from appearing. */}
-      {settled || iconOpen ? (
-        <MediaPickerSheet
+      {
+        <IconPickerSheet
           open={iconOpen}
-          onClose={() => {
-            setIconOpen(false);
-            refocus();
+          onOpenChange={(o) => {
+            setIconOpen(o);
+            if (!o) refocus();
           }}
           tabs={["emoji", "icon"]}
           value={parseMediaIcon(icon)}
           onChange={handlePickIcon}
         />
-      ) : null}
+      }
     </>
   );
 }

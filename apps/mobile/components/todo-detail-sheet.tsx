@@ -7,7 +7,7 @@
 // a body-level Delete button, 2026-10-20) — the hosts (todos tab, Today
 // widget, calendar agenda) keep the same `open / onOpenChange / todo` props.
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Alert } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "@stageholder/ui";
@@ -16,7 +16,6 @@ import type { TodoDetailPatch } from "@repo/features/todos";
 import type { Todo } from "@repo/core/types";
 
 import { SubtaskSection } from "@/components/subtask-section";
-import { showActionSheet } from "@/lib/action-sheet";
 import {
   useDeleteTodo,
   useTodo,
@@ -51,13 +50,23 @@ export function TodoDetailSheet({
   // flips on the tap frame instead of showing the stale snapshot. Seeded from
   // the snapshot on each open; `useUpdateTodo` mirrors its patches + the
   // server echo into the same key. `enabled: false` = no GET per open.
+  //
+  // Until THIS snapshot has been seeded, the snapshot wins over the mirror:
+  // the key may still hold an older copy of the same todo from an earlier
+  // open (another tab, a refetch since), and the fresh sheet instance seeds
+  // its title/notes drafts from its first render — a stale mirror there was
+  // autosaved back over the todo.
+  const seededFor = useRef<Todo | null>(null);
   useEffect(() => {
-    if (open && todo) qc.setQueryData<Todo>(todoKeys.detail(todo.id), todo);
+    if (open && todo) {
+      qc.setQueryData<Todo>(todoKeys.detail(todo.id), todo);
+      seededFor.current = todo;
+    }
   }, [open, todo, qc]);
   const live = useTodo(todo?.id, { enabled: false }).data;
 
   if (!todo) return null;
-  const current = live ?? todo;
+  const current = seededFor.current === todo && live ? live : todo;
 
   // Each field commits on its own (the hook patches every cached list
   // optimistically, so the sheet — which reads off `todo` — flips at once).
@@ -98,19 +107,15 @@ export function TodoDetailSheet({
     );
   }
 
-  function handleMore() {
-    showActionSheet({
-      title: current.title,
-      actions: [
-        {
-          label:
-            current.status === "done" ? "Mark as not done" : "Mark as done",
-          onPress: handleToggleStatus,
-        },
-        { label: "Delete todo", destructive: true, onPress: confirmDelete },
-      ],
-    });
-  }
+  // "⋯" rows — an in-app sheet nested in the detail sheet (see
+  // features/_internal/more-actions-sheet.native.tsx), not ActionSheetIOS.
+  const moreActions = [
+    {
+      label: current.status === "done" ? "Mark as not done" : "Mark as done",
+      onPress: handleToggleStatus,
+    },
+    { label: "Delete todo", destructive: true, onPress: confirmDelete },
+  ];
 
   return (
     <TodoDetailSheetView
@@ -122,7 +127,7 @@ export function TodoDetailSheet({
       accentColor={IGNITION.todo.base}
       onPatch={handlePatch}
       onToggleStatus={handleToggleStatus}
-      onMore={handleMore}
+      moreActions={moreActions}
       // Keyed per todo so the local subtask list re-seeds when switching.
       subtasks={<SubtaskSection key={`sub-${current.id}`} todo={current} />}
     />

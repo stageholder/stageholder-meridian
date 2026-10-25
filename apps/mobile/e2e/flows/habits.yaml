@@ -1,4 +1,5 @@
-# Create a habit, check it in, undo, open its detail, come back.
+# Create a habit, check it in, open its detail, edit today from the month
+# grid's day sheet (undo, record again), come back.
 appId: com.stageholder.meridian
 name: habits
 ---
@@ -54,6 +55,34 @@ name: habits
 # Detail is a pushed screen with a native header
 - tapOn: ${output.habit}
 - assertVisible: "Edit"
+# Day sheet: tapping today on the month grid opens the day's actions as a
+# sheet (2026-10-25; the old inline panel sat below the fold). Today is done
+# from the check-in above → Undo; then Record again.
+- evalScript: ${output.today = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0')}
+- scrollUntilVisible:
+    element:
+      id: ${'habit-day-' + output.today}
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: ${'habit-day-' + output.today}
+- extendedWaitUntil:
+    visible: "Done"
+    timeout: 8000
+- tapOn: "Undo"
+# The sheet closes once the day is settled.
+- extendedWaitUntil:
+    notVisible: "Removes the last check-in for this day"
+    timeout: 10000
+- tapOn:
+    id: ${'habit-day-' + output.today}
+- extendedWaitUntil:
+    visible: "Not recorded"
+    timeout: 8000
+- tapOn: "Record"
+- extendedWaitUntil:
+    notVisible: "Counts this day toward the habit"
+    timeout: 10000
 - runFlow: ../subflows/go-back.yaml
 - assertVisible:
     id: "fab-new-habit"

@@ -170,6 +170,9 @@ export interface TodoItemProps {
   onDelete: () => void;
   /** Called when the user taps the row (anywhere but the checkbox/trash). */
   onOpenDetail: () => void;
+  /** Long-press on the row body (native hosts open the todo actions menu —
+   *  the touch counterpart of the web right-click). */
+  onLongPress?: () => void;
   /**
    * List name — rendered as a badge in the meta row. The host resolves it
    * (the `Todo` only carries `listId`); omit it on single-list views where
@@ -221,6 +224,7 @@ export function TodoItem({
   onToggle,
   onDelete,
   onOpenDetail,
+  onLongPress,
   listName,
   listColor,
   renderActions,
@@ -438,6 +442,7 @@ export function TodoItem({
         onPress={() => {
           if (!burning) onOpenDetail();
         }}
+        {...(onLongPress ? { onLongPress } : {})}
         cursor="pointer"
         pressStyle={{ opacity: 0.6 }}
         role="button"

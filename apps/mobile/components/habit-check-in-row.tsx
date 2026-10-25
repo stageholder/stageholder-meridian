@@ -15,6 +15,7 @@ import { memo, useCallback } from "react";
 import {
   HabitCheckInRow as SharedHabitCheckInRow,
   RadianceBurst,
+  habitTint,
 } from "@repo/features/habits";
 import { resolveTargetCount } from "@repo/core/habits/entry-resolution";
 import type { Habit, HabitEntry } from "@repo/core/types";
@@ -86,7 +87,7 @@ export const HabitCheckInRow = memo(function HabitCheckInRow({
       // Resolved hex (IGNITION.habit) — the shared row applies these raw, since
       // tokens/CSS vars wouldn't resolve on native.
       accentColor={IGNITION.habit.base}
-      accentTrackColor={IGNITION.habit.track}
+      accentTrackColor={habitTint(habit.color) ?? IGNITION.habit.track}
       onOpenDetail={onOpenDetail ? openDetail : undefined}
       onCheckIn={actions.checkIn}
       onSkip={actions.skip}

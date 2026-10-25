@@ -57,6 +57,18 @@ bun run e2e -- flows/habits.yaml     # one journey
 bun run e2e:studio                   # Maestro Studio: inspect the screen, record steps
 ```
 
+If another Metro already owns `:8081` (a `bun run ios` session), run the E2E
+Metro on a second port and point both the runner and the dev client at it:
+
+```bash
+bun run e2e:metro -- --port 8082
+E2E_METRO_URL=http://localhost:8082 bun run e2e -- -eMETRO_HOST=localhost:8082 flows/todos.yaml
+```
+
+The `dev` bundle a `bun run ios` Metro serves is NOT a valid target: the
+todos journey's overlay-tap close fails on dev bundles only (known since
+2026-10-24), so only the `e2e:metro` bundle counts.
+
 Use an emulator with **≥4 GB RAM and several cores** (`emulator -avd <name>
 -memory 4096 -cores 4` — the stock AVD config is 1 core); on 2 GB the UI stalls
 and taps get lost. Only one Maestro run per machine: two CLIs kill each other's

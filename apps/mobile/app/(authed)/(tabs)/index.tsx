@@ -75,6 +75,7 @@ import {
 } from "@/lib/api";
 import { useDashboardToday } from "@/lib/api/hooks/dashboard";
 import { HabitCheckInRow } from "@/components/habit-check-in-row";
+import { TodoActionsSheet } from "@/components/todo-actions-sheet";
 import { TodoDetailSheet } from "@/components/todo-detail-sheet";
 import { useDayActivityCounts } from "@/lib/api/hooks/calendar";
 import { IGNITION } from "@/lib/ignition-palette";
@@ -367,6 +368,14 @@ export default function TodayScreen() {
     setEditingTodo(todo);
     setEditTodoOpen(true);
   }
+  // Long-press → the todo actions menu (same as the Todos tab).
+  const [actionsTodo, setActionsTodo] = useState<Todo | null>(null);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const actionsHost = useMountOnOpen(actionsOpen);
+  function openTodoActions(todo: Todo) {
+    setActionsTodo(todo);
+    setActionsOpen(true);
+  }
 
   return (
     <YStack flex={1} bg="$background">
@@ -585,6 +594,7 @@ export default function TodayScreen() {
                           onToggle={() => handleToggleTodo(todo)}
                           onDelete={() => deleteTodo.mutate(todo.id)}
                           onOpenDetail={() => openTodoEdit(todo)}
+                          onLongPress={() => openTodoActions(todo)}
                         />
                       ))}
                     </AnimatePresence>
@@ -661,6 +671,14 @@ export default function TodayScreen() {
           open={editTodoOpen}
           onOpenChange={setEditTodoOpen}
           todo={editingTodo}
+        />
+      ) : null}
+      {actionsHost ? (
+        <TodoActionsSheet
+          open={actionsOpen}
+          onOpenChange={setActionsOpen}
+          todo={actionsTodo}
+          onEdit={openTodoEdit}
         />
       ) : null}
 

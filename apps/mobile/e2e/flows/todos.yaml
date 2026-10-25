@@ -1,9 +1,14 @@
-# Quick-add a todo, complete it, find it under Done.
+# Quick-add a todo, open its detail, create a second one from a CLEAN
+# composer, delete the right one, complete the first, find it under Done.
 appId: com.stageholder.meridian
 name: todos
 ---
 - runFlow: ../subflows/launch-signed-in.yaml
 - evalScript: ${output.todo = 'JEVB E2E Todo ' + String(Date.now()).slice(-8)}
+- evalScript: ${output.todo2 = 'JEVB E2E Second ' + String(Date.now()).slice(-8)}
+# Alert titles are regexes: escape the trailing "?".
+- evalScript: ${output.del2 = 'Delete "' + output.todo2 + '"\\?'}
+- evalScript: ${output.del1 = 'Delete "' + output.todo + '"\\?'}
 - runFlow:
     file: ../subflows/tab.yaml
     env:
@@ -40,8 +45,130 @@ name: todos
     visible: "Add notes…"
     timeout: 10000
 - assertVisible: "Priority|Low|Medium|High|Urgent"
+# Close via the sheet's handle. A tap that lands while the sheet is still
+# settling is swallowed (nothing sticks — the next tap closes), so retry once.
+- waitForAnimationToEnd
+- tapOn: "Close"
+- runFlow:
+    when:
+      visible: "Add notes…"
+    commands:
+      - waitForAnimationToEnd
+      - tapOn: "Close"
+- extendedWaitUntil:
+    notVisible: "Add notes…"
+    timeout: 8000
+# SECOND todo from the FAB: the composer must come back EMPTY (regression
+# 2026-10-25: the sheet kept its first instance, so the previous title was
+# still in the field). The placeholder only shows while the field is empty.
 - tapOn:
-    point: "50%,9%"
+    id: "fab-new-todo"
+- extendedWaitUntil:
+    visible:
+      id: "quick-add-todo-title"
+    timeout: 20000
+- waitForAnimationToEnd
+- assertVisible: "What needs to be done?"
+- tapOn:
+    id: "quick-add-todo-title"
+- inputText: ${output.todo2}
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ${output.todo2}
+    timeout: 10000
+- tapOn: "Create New Todo"
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: ${output.todo2}
+    timeout: 15000
+# Open the SECOND todo's detail and delete it through "⋯": the confirm alert
+# must name THIS todo (regression 2026-10-25: the detail sheet opened on todo
+# B with todo A's title still in its field and autosaved it over B, so the
+# delete alert — and the list — showed the wrong todo).
+- tapOn: ${output.todo2}
+- extendedWaitUntil:
+    visible: "Add notes…"
+    timeout: 10000
+# Taps during the open slide are swallowed (nothing sticks — the next tap
+# works), so let it land first and retry once if the menu did not open.
+- waitForAnimationToEnd
+- tapOn: "More actions"
+- runFlow:
+    when:
+      notVisible: "Delete todo"
+    commands:
+      - waitForAnimationToEnd
+      - tapOn: "More actions"
+- extendedWaitUntil:
+    visible: "Delete todo"
+    timeout: 5000
+- tapOn: "Delete todo"
+- extendedWaitUntil:
+    visible: ${output.del2}
+    timeout: 5000
+- tapOn: "Delete"
+- extendedWaitUntil:
+    notVisible: ${output.todo2}
+    timeout: 15000
+- extendedWaitUntil:
+    notVisible: "Add notes…"
+    timeout: 8000
+# Long-press menu (web right-click parity): Do-date presets, Edit, Done,
+# Duplicate, Delete. Move the first todo to Tomorrow, then open Delete and
+# cancel — the alert must name THIS todo.
+- longPressOn: ${output.todo}
+- extendedWaitUntil:
+    visible: "Duplicate"
+    timeout: 8000
+- tapOn: "Tomorrow"
+- extendedWaitUntil:
+    notVisible: "Duplicate"
+    timeout: 8000
+- waitForAnimationToEnd
+- longPressOn: ${output.todo}
+- extendedWaitUntil:
+    visible: "Duplicate"
+    timeout: 8000
+- tapOn: "Delete"
+- extendedWaitUntil:
+    visible: ${output.del1}
+    timeout: 5000
+- tapOn: "Cancel"
+- waitForAnimationToEnd
+# And the FIRST todo's detail still names the first todo.
+- tapOn: ${output.todo}
+- extendedWaitUntil:
+    visible: "Add notes…"
+    timeout: 10000
+# Taps during the open slide are swallowed (nothing sticks — the next tap
+# works), so let it land first and retry once if the menu did not open.
+- waitForAnimationToEnd
+- tapOn: "More actions"
+- runFlow:
+    when:
+      notVisible: "Delete todo"
+    commands:
+      - waitForAnimationToEnd
+      - tapOn: "More actions"
+- extendedWaitUntil:
+    visible: "Delete todo"
+    timeout: 5000
+- tapOn: "Delete todo"
+- extendedWaitUntil:
+    visible: ${output.del1}
+    timeout: 5000
+- tapOn: "Cancel"
+- waitForAnimationToEnd
+# Close via the sheet's handle. A tap that lands while the sheet is still
+# settling is swallowed (nothing sticks — the next tap closes), so retry once.
+- waitForAnimationToEnd
+- tapOn: "Close"
+- runFlow:
+    when:
+      visible: "Add notes…"
+    commands:
+      - waitForAnimationToEnd
+      - tapOn: "Close"
 - extendedWaitUntil:
     notVisible: "Add notes…"
     timeout: 8000

@@ -4,13 +4,12 @@
 // smart parsing, a pill row (priority / list / do / deadline / note) and an
 // accent send button. Create-only; editing is the detail sheet.
 //
-// ONE RULE keeps it predictable: every open is a FRESH instance (keyed on
-// `useSheetSession`), and the sheet unmounts its children at close. So there
+// ONE RULE keeps it predictable: every open is a FRESH instance (a child of
+// the sheet, which unmounts it at close). So there
 // is no reset code, no open/closed refs, no focus timers — initial state is
 // the reset, `autoFocus` raises the keyboard with the slide, and the keyboard
 // drops because the field is gone.
 import { useEffect, useRef, useState } from "react";
-import { Keyboard } from "react-native";
 import { format } from "date-fns";
 import { Inbox } from "@tamagui/lucide-icons-2/icons/Inbox";
 import { StickyNote } from "@tamagui/lucide-icons-2/icons/StickyNote";
@@ -21,12 +20,12 @@ import {
 import { resolveSmartLocale } from "@repo/core/todos/date-parse";
 import { TextArea, View } from "@stageholder/ui";
 import {
-  QuickAddSheet,
+  QuickAddBody,
   QuickAddPill,
   PillPickerSheet,
-  useSheetSession,
   type PillPickerOption,
 } from "../_internal/quick-add-sheet.native";
+import { ComposerSheet } from "../_internal/composer-sheet.native";
 import { DatePill, DatePickerSheet } from "../_internal/date-pill.native";
 import { SmartTodoInput } from "./smart-todo-input";
 import type { SmartTodoInputHandle } from "./smart-todo-input.types";
@@ -64,16 +63,23 @@ function parseLocalDay(input: string): Date {
   return new Date(input + "T00:00:00");
 }
 
-/** Picker sheets slide up from the screen bottom — under an open keyboard
- *  they'd be hidden behind the keys. Drop the keyboard first. */
+/** Open a nested picker/menu sheet. The keyboard (if up) STAYS up: the
+ *  nested sheet carries its own keyboard spacer and opens above it. Dismissing
+ *  the keyboard here collapsed the parent sheet mid-open and the nested frame
+ *  never placed (2026-10-25). */
 function openPicker(set: (open: boolean) => void) {
-  Keyboard.dismiss();
   set(true);
 }
 
 export function QuickAddTodoSheet(props: QuickAddTodoSheetProps) {
-  const { session, onClosed } = useSheetSession();
-  return <TodoQuickAdd key={session} {...props} onClosed={onClosed} />;
+  // Stable shell; the state component below is a CHILD of the sheet, so the
+  // kit's `open` policy unmounts it at close and mounts it fresh at open —
+  // initial state is the reset.
+  return (
+    <ComposerSheet open={props.open} onOpenChange={props.onOpenChange}>
+      <TodoQuickAdd {...props} />
+    </ComposerSheet>
+  );
 }
 
 function TodoQuickAdd({
@@ -84,8 +90,7 @@ function TodoQuickAdd({
   accentColor,
   isSubmitting,
   onSubmit,
-  onClosed,
-}: QuickAddTodoSheetProps & { onClosed: () => void }) {
+}: QuickAddTodoSheetProps) {
   const smartLocale = useRef(resolveSmartLocale()).current;
   const titleRef = useRef<SmartTodoInputHandle>(null);
 
@@ -111,9 +116,6 @@ function TodoQuickAdd({
   const [listOpen, setListOpen] = useState(false);
   const [doOpen, setDoOpen] = useState(false);
   const [dueOpen, setDueOpen] = useState(false);
-  // Picker sheets mount once the slide has settled (kit `onSettled`) —
-  // mounting them in the open commit delayed the slide itself.
-  const [settled, setSettled] = useState(false);
 
   // Keyboard with the slide: when the sheet opens, focus the field one
   // animation frame later (the kit mounts the field at open and attaches it
@@ -189,15 +191,12 @@ function TodoQuickAdd({
   }));
 
   return (
-    <QuickAddSheet
-      open={open}
-      onOpenChange={onOpenChange}
+    <QuickAddBody
       title="New Todo"
       accentColor={accentColor}
       onSubmit={handleSubmit}
       submitting={isSubmitting}
       submitDisabled={!title.trim()}
-      onSettled={() => (open ? setSettled(true) : onClosed())}
       field={
         <>
           {/* testID wrapper kept for the E2E flows (Maestro taps it). */}
@@ -277,7 +276,7 @@ function TodoQuickAdd({
         </>
       }
     >
-      {settled || priorityOpen ? (
+      {
         <PillPickerSheet
           open={priorityOpen}
           onOpenChange={(o) => {
@@ -289,8 +288,8 @@ function TodoQuickAdd({
           value={priority}
           onSelect={setPriority}
         />
-      ) : null}
-      {settled || listOpen ? (
+      }
+      {
         <PillPickerSheet
           open={listOpen}
           onOpenChange={(o) => {
@@ -302,8 +301,8 @@ function TodoQuickAdd({
           value={listId || defaultListId}
           onSelect={setListId}
         />
-      ) : null}
-      {settled || doOpen ? (
+      }
+      {
         <DatePickerSheet
           open={doOpen}
           onOpenChange={(o) => {
@@ -314,8 +313,8 @@ function TodoQuickAdd({
           value={doDate ? parseLocalDay(doDate) : null}
           onChange={(d) => setDoDate(d ? format(d, "yyyy-MM-dd") : "")}
         />
-      ) : null}
-      {settled || dueOpen ? (
+      }
+      {
         <DatePickerSheet
           open={dueOpen}
           onOpenChange={(o) => {
@@ -326,7 +325,7 @@ function TodoQuickAdd({
           value={dueDate ? parseLocalDay(dueDate) : null}
           onChange={(d) => setDueDate(d ? format(d, "yyyy-MM-dd") : "")}
         />
-      ) : null}
-    </QuickAddSheet>
+      }
+    </QuickAddBody>
   );
 }

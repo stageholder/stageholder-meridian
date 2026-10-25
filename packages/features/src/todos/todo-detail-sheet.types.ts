@@ -1,3 +1,4 @@
+import type { MoreAction } from "../_internal/more-actions.types";
 import type { ReactNode } from "react";
 import type { Todo } from "@repo/core/types";
 import type { TodoListChoice } from "./todo-form";
@@ -32,7 +33,8 @@ export interface TodoDetailSheetProps {
   /** The status circle was tapped (done ↔ todo). */
   onToggleStatus: () => void;
   /** The "⋯" button — the host opens its native action sheet (Delete…). */
-  onMore: () => void;
+  /** Rows of the "⋯" menu (an in-app sheet nested in the detail sheet). */
+  moreActions: MoreAction[];
   /** Instant-commit subtasks block (host-owned data wiring). */
   subtasks?: ReactNode;
 }

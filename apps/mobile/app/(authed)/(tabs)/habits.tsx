@@ -43,7 +43,14 @@ import {
 import { weeklyCompletions } from "@repo/core/habits/entry-resolution";
 import { addDays, format, startOfWeek } from "date-fns";
 import { useRouter } from "expo-router";
-import { useCallback, useDeferredValue, useMemo, useState } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type { ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { CreateFab } from "@/components/create-fab";
@@ -157,6 +164,11 @@ function HabitsScreen() {
   const [reorderGroupsOpen, setReorderGroupsOpen] = useState(false);
   // Sheet hosts mount on FIRST open only (use-mount-on-open).
   const createHost = useMountOnOpen(createOpen);
+  // New-habit reveal (see CreateHabitDialog.onCreated below).
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollOffset = useRef(0);
+  const [revealId, setRevealId] = useState<string | null>(null);
+  const clearReveal = useCallback(() => setRevealId(null), []);
   const groupSheetHost = useMountOnOpen(groupSheet !== false);
   const moveHost = useMountOnOpen(movingHabit !== null);
   const reorderGroupsHost = useMountOnOpen(reorderGroupsOpen);
@@ -455,6 +467,11 @@ function HabitsScreen() {
             column, not a nested ScrollView. Sortable.native drag activates on
             long-press, so it coexists with the scroll gesture. */}
         <ScreenScroll
+          ref={scrollRef}
+          onScroll={(e) => {
+            scrollOffset.current = e.nativeEvent.contentOffset.y;
+          }}
+          scrollEventThrottle={32}
           refreshing={refreshing}
           onRefresh={handleRefresh}
           bottomGap={FAB_CLEARANCE}
@@ -620,6 +637,10 @@ function HabitsScreen() {
                         onOpenDetail={openDetail}
                         onArchive={archive}
                         onMoveToGroup={setMovingHabit}
+                        revealId={revealId}
+                        scrollRef={scrollRef}
+                        scrollOffset={scrollOffset}
+                        onRevealed={clearReveal}
                       />
                     ))}
                   </>
@@ -644,6 +665,10 @@ function HabitsScreen() {
         <CreateHabitDialog
           open={createOpen}
           onOpenChange={setCreateOpen}
+          // Scroll the new card into view once the list refetch lands — a
+          // new habit joins Ungrouped, the LAST section, so without this it
+          // was created out of sight (device feedback 2026-10-25).
+          onCreated={(h) => setRevealId(h.id)}
           // When a real group is the active filter, new habits land in it.
           groupId={
             activeChip && activeChip !== ARCHIVED_CHIP ? activeChip : undefined

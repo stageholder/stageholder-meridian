@@ -16,12 +16,17 @@ import {
   type HabitFormValues,
 } from "@repo/features/habits";
 
+import type { Habit } from "@repo/core/types";
+
 import { useCreateHabit, useHabitGroups } from "@/lib/api";
 import { IGNITION } from "@/lib/ignition-palette";
 
 interface CreateHabitDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Fires with the created habit once the server has it (the sheet has
+   *  closed by then) — the Habits tab scrolls the new card into view. */
+  onCreated?: (habit: Habit) => void;
   /** Pre-select a group (e.g. the active group chip on the habits screen). */
   groupId?: string;
 }
@@ -30,6 +35,7 @@ export function CreateHabitDialog({
   open,
   onOpenChange,
   groupId,
+  onCreated,
 }: CreateHabitDialogProps) {
   const createHabit = useCreateHabit();
   const groupsQuery = useHabitGroups();
@@ -55,9 +61,10 @@ export function CreateHabitDialog({
         groupId: values.groupId ?? null,
       },
       {
-        onSuccess: () => {
+        onSuccess: (habit) => {
           toast.success("Habit created");
           onOpenChange(false);
+          onCreated?.(habit);
         },
         onError: () => {
           toast.error("Failed to create habit");

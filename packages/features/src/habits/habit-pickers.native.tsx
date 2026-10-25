@@ -8,6 +8,7 @@
 // (extracted from quick-add-habit-sheet.native.tsx, 2026-10-21).
 import { Input, Sheet, Text, View, XStack, YStack } from "@stageholder/ui";
 import type { HabitFormValues } from "./habit-form";
+import { KeyboardSpacer } from "../_internal/composer-sheet.native";
 
 // Kept in sync with habit-form.tsx (stable brand constants). Verbatim values —
 // Mon-first day order, the 9-swatch habit palette.
@@ -117,6 +118,12 @@ export function FrequencyPickerSheet({
       snapPointsMode="fit"
       dismissOnSnapToBottom
       transition="medium"
+      // Root mounted while closed (`open` policy): a nested sheet whose root
+      // mounts in the same commit it opens sometimes showed its overlay but
+      // never its frame (second "⋯" open, 2026-10-25) — the kit's lazy root
+      // isn't reliable for sheets nested in another sheet. Children still
+      // unmount at close, so a closed picker costs only its root.
+      mountChildren="open"
     >
       <Sheet.Overlay />
       <Sheet.Frame pt={0} pb="$6" px="$4" gap="$1">
@@ -247,6 +254,8 @@ export function FrequencyPickerSheet({
             </YStack>
           );
         })}
+        {/* Rises above a keyboard the host leaves up (see KeyboardSpacer). */}
+        <KeyboardSpacer />
       </Sheet.Frame>
     </Sheet>
   );
@@ -313,6 +322,12 @@ export function TargetPickerSheet({
       snapPointsMode="fit"
       dismissOnSnapToBottom
       transition="medium"
+      // Root mounted while closed (`open` policy): a nested sheet whose root
+      // mounts in the same commit it opens sometimes showed its overlay but
+      // never its frame (second "⋯" open, 2026-10-25) — the kit's lazy root
+      // isn't reliable for sheets nested in another sheet. Children still
+      // unmount at close, so a closed picker costs only its root.
+      mountChildren="open"
     >
       <Sheet.Overlay />
       <Sheet.Frame pt={0} pb="$6" px="$4" gap="$3">
@@ -333,6 +348,8 @@ export function TargetPickerSheet({
             placeholder="Unit (e.g. minutes)"
           />
         </XStack>
+        {/* Rises above a keyboard the host leaves up (see KeyboardSpacer). */}
+        <KeyboardSpacer />
       </Sheet.Frame>
     </Sheet>
   );
@@ -357,6 +374,12 @@ export function ColorPickerSheet({
       snapPointsMode="fit"
       dismissOnSnapToBottom
       transition="medium"
+      // Root mounted while closed (`open` policy): a nested sheet whose root
+      // mounts in the same commit it opens sometimes showed its overlay but
+      // never its frame (second "⋯" open, 2026-10-25) — the kit's lazy root
+      // isn't reliable for sheets nested in another sheet. Children still
+      // unmount at close, so a closed picker costs only its root.
+      mountChildren="open"
     >
       <Sheet.Overlay />
       <Sheet.Frame pt={0} pb="$6" px="$4" gap="$3">
@@ -383,6 +406,8 @@ export function ColorPickerSheet({
             />
           ))}
         </XStack>
+        {/* Rises above a keyboard the host leaves up (see KeyboardSpacer). */}
+        <KeyboardSpacer />
       </Sheet.Frame>
     </Sheet>
   );

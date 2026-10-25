@@ -9,7 +9,8 @@
 // sparse update carrying {id, order, groupId} — the server keeps the habit in
 // this group while applying the new order.
 
-import { memo } from "react";
+import { memo, useRef, type RefObject } from "react";
+import type { ScrollView, View as RNView } from "react-native";
 import { Sortable, Text, View, XStack, YStack } from "@stageholder/ui";
 import { MediaGlyph } from "@stageholder/ui/pickers";
 import { parseMediaIcon } from "@repo/features/habits";
@@ -45,6 +46,15 @@ interface HabitGroupSectionProps {
   onOpenDetail: (habit: Habit) => void;
   onArchive: (habit: Habit) => void;
   onMoveToGroup: (habit: Habit) => void;
+  /** A habit to scroll into view once its card lays out (a just-created
+   *  habit lands in Ungrouped, LAST on the screen — invisible otherwise). */
+  revealId?: string | null;
+  /** The screen scroller the reveal measures against, and its current offset
+   *  (the host tracks it via `onScroll`). */
+  scrollRef?: RefObject<ScrollView | null>;
+  scrollOffset?: RefObject<number>;
+  /** Called after the reveal scroll so the host clears `revealId`. */
+  onRevealed?: () => void;
 }
 
 // PERF: memoized — the habits screen re-renders on every sheet open / filter
@@ -66,8 +76,32 @@ export const HabitGroupSection = memo(function HabitGroupSection({
   onOpenDetail,
   onArchive,
   onMoveToGroup,
+  revealId,
+  scrollRef,
+  scrollOffset,
+  onRevealed,
 }: HabitGroupSectionProps) {
   const reorderHabits = useReorderHabits();
+
+  // Reveal: once the new card has a layout, measure it against the scroller's
+  // viewport (its native host ref — the new architecture rejects the inner
+  // content node handle) and scroll so it sits just under the top edge.
+  const revealRef = useRef<RNView | null>(null);
+  const handleRevealLayout = () => {
+    const node = revealRef.current;
+    const scroller = scrollRef?.current;
+    const host = scroller?.getNativeScrollRef?.();
+    if (!node || !scroller || !host) return;
+    node.measureLayout(
+      host,
+      (_x, y) => {
+        const current = scrollOffset?.current ?? 0;
+        scroller.scrollTo({ y: Math.max(0, current + y - 12), animated: true });
+        onRevealed?.();
+      },
+      () => onRevealed?.(),
+    );
+  };
   const activeDate = selectedDate ?? localDateKey();
 
   function handleReorder(from: number, to: number) {
@@ -115,7 +149,13 @@ export const HabitGroupSection = memo(function HabitGroupSection({
         onReorder={handleReorder}
         disabled={reorderDisabled}
         renderItem={(habit) => (
-          <View width="100%" pb="$2">
+          <View
+            width="100%"
+            pb="$2"
+            {...(habit.id === revealId
+              ? { ref: revealRef as never, onLayout: handleRevealLayout }
+              : {})}
+          >
             {viewMode === "list" ? (
               // Compact list view — inline check-in; management (edit / archive
               // / move / delete) is via the detail screen on tap.

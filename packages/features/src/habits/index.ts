@@ -16,7 +16,7 @@ export {
   type HabitFormValues,
 } from "./habit-form";
 export * from "./habit-group-form";
-export { encodeMediaIcon, parseMediaIcon } from "./icon-value";
+export { encodeMediaIcon, habitTint, parseMediaIcon } from "./icon-value";
 
 // Compact Todoist-style quick-add create sheet — native-only behavior; the web
 // build resolves the null stub (`.tsx`), RN resolves `.native.tsx`.

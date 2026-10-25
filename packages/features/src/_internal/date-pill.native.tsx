@@ -8,14 +8,12 @@
 // presets + calendar in ("blank, then blink", device feedback 2026-10-25); and
 // the kit Calendar's header controls are dead inside a nested sheet on native
 // (month could not be changed) — hence the app-owned MonthGrid.
-// This sheet keeps the kit's `mountChildren="idle"` policy — the body warms
-// one idle slot after the host mounts it, so every open is a plain slide on
-// an already-rendered calendar — and nests inside the composer like the
-// priority/list pickers (`PillPickerSheet`), so it stacks above it by the
-// kit's parent-sheet contract.
+// This sheet keeps its root mounted while closed (`mountChildren="open"`,
+// see below) and nests inside the composer like the priority/list pickers
+// (`PillPickerSheet`), so it stacks above it by the kit's parent-sheet
+// contract.
 
 import type { ReactNode } from "react";
-import { Keyboard } from "react-native";
 import {
   addDays,
   differenceInCalendarDays,
@@ -30,6 +28,7 @@ import { MonthGrid } from "./month-grid.native";
 
 import { QuickAddPill } from "./quick-add-sheet.native";
 import { useAndroidBackClose } from "./use-android-back-close";
+import { KeyboardSpacer } from "./composer-sheet.native";
 
 /** Short, human label for a picked day — the kit picker's wording. */
 export function dateLabel(value: Date | null, placeholder: string): string {
@@ -47,8 +46,7 @@ export function dateLabel(value: Date | null, placeholder: string): string {
 export interface DatePillProps {
   placeholder: string;
   value: Date | null;
-  /** Opens the paired `DatePickerSheet`. Drops the keyboard first — a sheet
-   *  sliding up under an open keyboard is hidden behind the keys. */
+  /** Opens the paired `DatePickerSheet` (which rises above an open keyboard). */
   onPress: () => void;
 }
 
@@ -57,10 +55,7 @@ export function DatePill({ placeholder, value, onPress }: DatePillProps) {
     <QuickAddPill
       icon={<CalendarDays size={13} color={value ? "$primary" : undefined} />}
       label={dateLabel(value, placeholder)}
-      onPress={() => {
-        Keyboard.dismiss();
-        onPress();
-      }}
+      onPress={onPress}
     />
   );
 }
@@ -121,9 +116,11 @@ export function DatePickerSheet({
       snapPointsMode="fit"
       dismissOnSnapToBottom
       transition="medium"
-      // Warm-mount the body while closed so the first open is a pure slide —
-      // the whole point of this component (see header).
-      mountChildren="idle"
+      // Root mounted while closed (`open` policy; was `idle`): the idle warm
+      // covers ONE sheet app-wide, so the second date sheet stayed on the
+      // lazy root and sometimes opened as an overlay with no frame
+      // (2026-10-25). The month grid is light enough to mount at open.
+      mountChildren="open"
     >
       <Sheet.Overlay />
       <Sheet.Frame pt={0} pb="$6" px="$4" gap="$2">
@@ -176,6 +173,8 @@ export function DatePickerSheet({
           />
         </View>
         {footer}
+        {/* Rises above a keyboard the host leaves up (see KeyboardSpacer). */}
+        <KeyboardSpacer />
       </Sheet.Frame>
     </Sheet>
   );

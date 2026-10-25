@@ -18,7 +18,6 @@
 // the todo detail sheet's rules, see todo-detail-sheet.native.tsx.
 import { useEffect, useRef, useState } from "react";
 
-import { useAndroidBackClose } from "../_internal/use-android-back-close";
 import { Keyboard, TextInput } from "react-native";
 import { format } from "date-fns";
 import { Folder } from "@tamagui/lucide-icons-2/icons/Folder";
@@ -26,22 +25,14 @@ import { MoreHorizontal } from "@tamagui/lucide-icons-2/icons/MoreHorizontal";
 import { Repeat } from "@tamagui/lucide-icons-2/icons/Repeat";
 import { Smile } from "@tamagui/lucide-icons-2/icons/Smile";
 import { Target } from "@tamagui/lucide-icons-2/icons/Target";
-import {
-  FormSheet,
-  IconButton,
-  Text,
-  View,
-  XStack,
-  YStack,
-} from "@stageholder/ui";
+import { FormSheet, Text, View, XStack, YStack } from "@stageholder/ui";
 import type { MediaValue } from "@stageholder/ui/pickers";
-import { MediaGlyph, MediaPickerSheet } from "@stageholder/ui/pickers";
+import { MediaGlyph } from "@stageholder/ui/pickers";
 import { useTheme } from "tamagui";
 import type { Habit } from "@repo/core/types";
 import {
   QuickAddPill,
   PillPickerSheet,
-  useSheetSession,
   type PillPickerOption,
 } from "../_internal/quick-add-sheet.native";
 import {
@@ -52,7 +43,11 @@ import {
   TargetPickerSheet,
 } from "./habit-pickers.native";
 import type { HabitFormValues } from "./habit-form";
-import { encodeMediaIcon, parseMediaIcon } from "./icon-value";
+import { ComposerSheet } from "../_internal/composer-sheet.native";
+import { MoreActionsSheet } from "../_internal/more-actions-sheet.native";
+import { IconPickerSheet } from "../_internal/icon-picker-sheet.native";
+import { openAfterKeyboard } from "../_internal/open-after-keyboard.native";
+import { encodeMediaIcon, habitTint, parseMediaIcon } from "./icon-value";
 import type { HabitDetailSheetProps } from "./habit-detail-sheet.types";
 
 const TITLE_FONT = 20;
@@ -64,32 +59,33 @@ function fmtStamp(iso: string | undefined): string | null {
   return Number.isNaN(d.getTime()) ? null : format(d, "d MMM yyyy");
 }
 
-/** Picker sheets slide up from the screen bottom — under an open keyboard
- *  they'd be hidden behind the keys (2026-10-21). Drop the keyboard first. */
+/** Open a nested picker/menu sheet. The keyboard (if up) STAYS up: the
+ *  nested sheet carries its own keyboard spacer and opens above it. Dismissing
+ *  the keyboard here collapsed the parent sheet mid-open and the nested frame
+ *  never placed (2026-10-25). */
 function openPicker(set: (open: boolean) => void) {
-  Keyboard.dismiss();
   set(true);
 }
 
 /**
- * Every open is a FRESH instance (keyed on `useSheetSession`) and the sheet
- * unmounts its children at close — same rule as the quick-add: initial state
- * is the reset, the keyboard drops with the fields, no open/closed refs.
+ * Stable shell + per-open body — see todo-detail-sheet.native.tsx.
  */
 export function HabitDetailSheet(props: HabitDetailSheetProps) {
-  const { session, onClosed } = useSheetSession();
-  return <HabitDetail key={session} {...props} onClosed={onClosed} />;
+  return (
+    <ComposerSheet open={props.open} onOpenChange={props.onOpenChange}>
+      {props.habit ? <HabitDetail key={props.habit.id} {...props} /> : null}
+    </ComposerSheet>
+  );
 }
 
 function HabitDetail({
   open,
   onOpenChange,
-  onClosed,
   habit,
   groups,
   onPatch,
-  onMore,
-}: HabitDetailSheetProps & { onClosed: () => void }) {
+  moreActions,
+}: HabitDetailSheetProps) {
   const theme = useTheme();
   const fg = theme.color?.val ?? "#000";
   const muted = theme.mutedForeground?.val ?? "#888";
@@ -102,26 +98,17 @@ function HabitDetail({
   const [name, setName] = useState(habit?.name ?? "");
   const [notes, setNotes] = useState(habit?.description ?? "");
 
-  const [pickersReady, setPickersReady] = useState(false);
-  // The kit keeps the settle callback it was first given, so read `open`
-  // through a ref there (a stale `false` closure would treat the OPEN settle
-  // as a close and replace the instance mid-open).
-  const openRef = useRef(open);
-  openRef.current = open;
   const [iconOpen, setIconOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [freqOpen, setFreqOpen] = useState(false);
   const [targetOpen, setTargetOpen] = useState(false);
   const [colorOpen, setColorOpen] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
 
-  // Keyboard with the slide: when the sheet opens, focus the field one
-  // animation frame later (the kit mounts the field at open and attaches it
-  // a beat after; the frame callback is cancelled on close/unmount).
-  useEffect(() => {
-    if (!open) return;
-    const id = requestAnimationFrame(() => nameRef.current?.focus());
-    return () => cancelAnimationFrame(id);
-  }, [open]);
+  // No autofocus: a DETAIL sheet is for reading and tapping pills; raising
+  // the keyboard on every open lifted the frame mid-slide and made the first
+  // tap on "⋯"/pills land on a frame still moving (2026-10-25). Tap the
+  // title or notes to edit.
 
   // Debounced autosave for the drafts (blur is not a reliable commit point on
   // native — a pill tap does not blur a TextInput).
@@ -184,233 +171,251 @@ function HabitDetail({
     setIconOpen(false);
   };
 
-  function handleOpenChange(next: boolean) {
-    if (!next) {
-      // Commit the drafts (unmounting a field fires no blur) and drop the
-      // keyboard before the close slide.
-      commitName();
-      commitNotes();
-      Keyboard.dismiss();
-    }
-    onOpenChange(next);
+  // Close from the handle: commit the drafts and drop the keyboard before
+  // the close slide. Other close paths unmount this body — the cleanup below
+  // commits whatever is still uncommitted (see todo-detail-sheet.native.tsx).
+  function closeSheet() {
+    commitName();
+    commitNotes();
+    Keyboard.dismiss();
+    onOpenChange(false);
   }
-  // Android hardware back closes this sheet (not the navigator beneath it).
-  useAndroidBackClose(open, () => handleOpenChange(false));
+  const latest = useRef({ name, notes, habit, onPatch });
+  latest.current = { name, notes, habit, onPatch };
+  useEffect(
+    () => () => {
+      const { name: n, notes: d, habit: cur, onPatch: patch } = latest.current;
+      if (!cur) return;
+      const nextName = n.trim();
+      if (nextName && nextName !== cur.name) patch({ name: nextName });
+      const nextNotes = d.trim();
+      if (nextNotes !== (cur.description ?? ""))
+        patch({ description: nextNotes });
+    },
+    [],
+  );
 
   return (
     <>
-      <FormSheet
-        open={open}
-        onOpenChange={handleOpenChange}
-        hideFooter
-        mountChildren="open"
-        disableDrag={false}
-        hideHandle
-        onSettled={() => (openRef.current ? setPickersReady(true) : onClosed())}
-        frameProps={{ pt: "$2", pb: "$4" }}
-      >
-        <YStack gap="$2.5">
-          {/* Drag zone — see todo-detail-sheet.native.tsx. */}
+      <YStack gap="$2.5">
+        {/* Close handle — see todo-detail-sheet.native.tsx. */}
+        <View
+          role="button"
+          aria-label="Close"
+          height={22}
+          mt={-4}
+          items="center"
+          justify="center"
+          hitSlop={8}
+          onPress={closeSheet}
+        >
           <View
-            aria-label="Drag to close"
-            height={22}
-            mt={-4}
+            width={36}
+            height={4}
+            rounded={9999}
+            bg="$mutedForeground"
+            opacity={0.35}
+          />
+        </View>
+
+        {/* Icon + bare name + more. */}
+        <XStack items="flex-start" gap="$3">
+          <View
+            role="button"
+            aria-label="Pick an icon"
+            onPress={() => openAfterKeyboard(setIconOpen)}
+            width={36}
+            height={36}
+            rounded="$3"
+            borderWidth={1}
+            borderColor="$borderColor"
             items="center"
             justify="center"
-            onTouchStart={() => {
-              if (Keyboard.isVisible()) Keyboard.dismiss();
-            }}
+            pressStyle={{ opacity: 0.7 }}
+            style={{ backgroundColor: habitTint(habit.color) }}
           >
-            <View
-              width={36}
-              height={4}
-              rounded={9999}
-              bg="$mutedForeground"
-              opacity={0.35}
+            <MediaGlyph
+              value={parseMediaIcon(habit.icon ?? "")}
+              size={20}
+              fallback={<Smile size={18} color="$mutedForeground" />}
             />
           </View>
-
-          {/* Icon + bare name + more. */}
-          <XStack items="flex-start" gap="$3">
-            <View
-              role="button"
-              aria-label="Pick an icon"
-              onPress={() => openPicker(setIconOpen)}
-              width={36}
-              height={36}
-              rounded="$3"
-              borderWidth={1}
-              borderColor="$borderColor"
-              items="center"
-              justify="center"
-              pressStyle={{ opacity: 0.7 }}
-            >
-              <MediaGlyph
-                value={parseMediaIcon(habit.icon ?? "")}
-                size={20}
-                fallback={<Smile size={18} color="$mutedForeground" />}
-              />
-            </View>
-            <View flex={1} minW={0}>
-              <TextInput
-                ref={nameRef}
-                value={name}
-                onChangeText={(t) => setName(t.replace(/\n+/g, " "))}
-                onBlur={commitName}
-                onSubmitEditing={commitName}
-                multiline
-                submitBehavior="blurAndSubmit"
-                placeholder="Habit name"
-                placeholderTextColor={muted}
-                scrollEnabled={false}
-                style={{
-                  paddingVertical: 0,
-                  paddingHorizontal: 0,
-                  fontSize: TITLE_FONT,
-                  lineHeight: TITLE_LINE,
-                  fontWeight: "600",
-                  color: fg,
-                  marginTop: (36 - TITLE_LINE) / 2,
-                }}
-              />
-            </View>
-            <IconButton
-              variant="ghost"
-              size="sm"
-              aria-label="More actions"
-              onPress={onMore}
-            >
-              <MoreHorizontal size={18} />
-            </IconButton>
-          </XStack>
-
-          {/* The quick-add pills, now live. */}
-          <FormSheet.HorizontalScroll keyboardShouldPersistTaps="always">
-            <QuickAddPill
-              icon={<Repeat size={13} />}
-              label={freqLabel}
-              onPress={() => openPicker(setFreqOpen)}
+          <View flex={1} minW={0}>
+            <TextInput
+              ref={nameRef}
+              value={name}
+              onChangeText={(t) => setName(t.replace(/\n+/g, " "))}
+              onBlur={commitName}
+              onSubmitEditing={commitName}
+              multiline
+              submitBehavior="blurAndSubmit"
+              placeholder="Habit name"
+              placeholderTextColor={muted}
+              scrollEnabled={false}
+              style={{
+                paddingVertical: 0,
+                paddingHorizontal: 0,
+                fontSize: TITLE_FONT,
+                lineHeight: TITLE_LINE,
+                fontWeight: "600",
+                color: fg,
+                marginTop: (36 - TITLE_LINE) / 2,
+              }}
             />
-            <QuickAddPill
-              icon={<Target size={13} />}
-              label={targetLabel}
-              onPress={() => openPicker(setTargetOpen)}
-            />
-            <QuickAddPill
-              icon={
-                <View
-                  width={12}
-                  height={12}
-                  rounded={9999}
-                  style={{ backgroundColor: color }}
-                />
-              }
-              label="Color"
-              onPress={() => openPicker(setColorOpen)}
-            />
-            {hasGroups ? (
-              <QuickAddPill
-                icon={<Folder size={13} color="$mutedForeground" />}
-                label={activeGroupName ?? "Ungrouped"}
-                onPress={() => openPicker(setGroupOpen)}
-              />
-            ) : null}
-          </FormSheet.HorizontalScroll>
+          </View>
+          {/* Tamagui-pressable View, not the kit IconButton: the kit's RN
+                Pressable intermittently gets no touch inside this portaled
+                sheet (same class as the composer's send button). */}
+          <View
+            role="button"
+            aria-label="More actions"
+            width={32}
+            height={32}
+            rounded={9999}
+            items="center"
+            justify="center"
+            hitSlop={6}
+            pressStyle={{ bg: "$secondary", opacity: 0.8 }}
+            onPress={() => openPicker(setMoreOpen)}
+          >
+            <MoreHorizontal size={18} color="$color" />
+          </View>
+        </XStack>
 
-          <TextInput
-            ref={notesRef}
-            value={notes}
-            onChangeText={setNotes}
-            onBlur={commitNotes}
-            multiline
-            placeholder="Add notes…"
-            placeholderTextColor={muted}
-            scrollEnabled={false}
-            style={{
-              paddingVertical: 4,
-              paddingHorizontal: 0,
-              fontSize: 15,
-              lineHeight: 21,
-              color: fg,
-              minHeight: 29,
-              textAlignVertical: "top",
-            }}
+        {/* The quick-add pills, now live. */}
+        <FormSheet.HorizontalScroll keyboardShouldPersistTaps="always">
+          <QuickAddPill
+            icon={<Repeat size={13} />}
+            label={freqLabel}
+            onPress={() => openPicker(setFreqOpen)}
           />
-
-          {created ? (
-            <Text fontSize="$1" color="$mutedForeground" pt="$1">
-              {`Created ${created}`}
-            </Text>
+          <QuickAddPill
+            icon={<Target size={13} />}
+            label={targetLabel}
+            onPress={() => openPicker(setTargetOpen)}
+          />
+          <QuickAddPill
+            icon={
+              <View
+                width={12}
+                height={12}
+                rounded={9999}
+                style={{ backgroundColor: color }}
+              />
+            }
+            label="Color"
+            onPress={() => openPicker(setColorOpen)}
+          />
+          {hasGroups ? (
+            <QuickAddPill
+              icon={<Folder size={13} color="$mutedForeground" />}
+              label={activeGroupName ?? "Ungrouped"}
+              onPress={() => openPicker(setGroupOpen)}
+            />
           ) : null}
-        </YStack>
+        </FormSheet.HorizontalScroll>
 
-        {/* Pickers NESTED in the sheet (not siblings): Tamagui gives a sheet
+        <TextInput
+          ref={notesRef}
+          value={notes}
+          onChangeText={setNotes}
+          onBlur={commitNotes}
+          multiline
+          placeholder="Add notes…"
+          placeholderTextColor={muted}
+          scrollEnabled={false}
+          style={{
+            paddingVertical: 4,
+            paddingHorizontal: 0,
+            fontSize: 15,
+            lineHeight: 21,
+            color: fg,
+            minHeight: 29,
+            textAlignVertical: "top",
+          }}
+        />
+
+        {created ? (
+          <Text fontSize="$1" color="$mutedForeground" pt="$1">
+            {`Created ${created}`}
+          </Text>
+        ) : null}
+      </YStack>
+
+      {/* Pickers NESTED in the sheet (not siblings): Tamagui gives a sheet
             rendered inside another sheet `parentSheet.zIndex + 1`, so they
             stack above this frame by contract. As siblings they relied on
             portal insertion order and, hosted on the Habits tab, rendered
             BEHIND this frame (overlay above, frame hidden; 2026-10-21). */}
-        {pickersReady || freqOpen ? (
-          <FrequencyPickerSheet
-            open={freqOpen}
-            onOpenChange={setFreqOpen}
-            frequency={frequency}
-            setFrequency={(f) =>
-              onPatch({
-                frequency: f,
-                // Leaving "specific days" clears the schedule server-side.
-                ...(f !== "weekly" ? { scheduledDays: null } : {}),
-              })
-            }
-            scheduledDays={scheduledDays}
-            setScheduledDays={(d) => onPatch({ scheduledDays: d })}
-            weeklyTarget={weeklyTarget}
-            setWeeklyTarget={(n) => onPatch({ weeklyTarget: n })}
-          />
-        ) : null}
-        {pickersReady || targetOpen ? (
-          <TargetPickerSheet
-            open={targetOpen}
-            onOpenChange={setTargetOpen}
-            frequency={frequency}
-            targetCount={habit.targetCount}
-            setTargetCount={(n) => onPatch({ targetCount: n })}
-            unit={unit}
-            setUnit={(u) => onPatch({ unit: u })}
-          />
-        ) : null}
-        {pickersReady || colorOpen ? (
-          <ColorPickerSheet
-            open={colorOpen}
-            onOpenChange={setColorOpen}
-            color={color}
-            setColor={(c) => onPatch({ color: c })}
-          />
-        ) : null}
-        {pickersReady || groupOpen ? (
-          <PillPickerSheet
-            open={groupOpen}
-            onOpenChange={setGroupOpen}
-            title="Group"
-            options={groupOptions}
-            value={habit.groupId ?? NO_GROUP_VALUE}
-            onSelect={(v) =>
-              onPatch({ groupId: v === NO_GROUP_VALUE ? null : v })
-            }
-          />
-        ) : null}
-      </FormSheet>
+      {
+        <MoreActionsSheet
+          open={moreOpen}
+          onOpenChange={setMoreOpen}
+          title={habit.name}
+          actions={moreActions}
+        />
+      }
+      {
+        <FrequencyPickerSheet
+          open={freqOpen}
+          onOpenChange={setFreqOpen}
+          frequency={frequency}
+          setFrequency={(f) =>
+            onPatch({
+              frequency: f,
+              // Leaving "specific days" clears the schedule server-side.
+              ...(f !== "weekly" ? { scheduledDays: null } : {}),
+            })
+          }
+          scheduledDays={scheduledDays}
+          setScheduledDays={(d) => onPatch({ scheduledDays: d })}
+          weeklyTarget={weeklyTarget}
+          setWeeklyTarget={(n) => onPatch({ weeklyTarget: n })}
+        />
+      }
+      {
+        <TargetPickerSheet
+          open={targetOpen}
+          onOpenChange={setTargetOpen}
+          frequency={frequency}
+          targetCount={habit.targetCount}
+          setTargetCount={(n) => onPatch({ targetCount: n })}
+          unit={unit}
+          setUnit={(u) => onPatch({ unit: u })}
+        />
+      }
+      {
+        <ColorPickerSheet
+          open={colorOpen}
+          onOpenChange={setColorOpen}
+          color={color}
+          setColor={(c) => onPatch({ color: c })}
+        />
+      }
+      {
+        <PillPickerSheet
+          open={groupOpen}
+          onOpenChange={setGroupOpen}
+          title="Group"
+          options={groupOptions}
+          value={habit.groupId ?? NO_GROUP_VALUE}
+          onSelect={(v) =>
+            onPatch({ groupId: v === NO_GROUP_VALUE ? null : v })
+          }
+        />
+      }
       {/* The icon picker stays a SIBLING: it is a 560 px constant-snap sheet,
           and nesting it inside this fit-sized frame kept the frame from ever
           appearing (2026-10-21). Mount order puts it above us. */}
-      {pickersReady || iconOpen ? (
-        <MediaPickerSheet
+      {
+        <IconPickerSheet
           open={iconOpen}
-          onClose={() => setIconOpen(false)}
+          onOpenChange={setIconOpen}
           tabs={["emoji", "icon"]}
           value={parseMediaIcon(habit.icon ?? "")}
           onChange={handlePickIcon}
         />
-      ) : null}
+      }
     </>
   );
 }

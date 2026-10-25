@@ -26,7 +26,12 @@ export function encodeMediaIcon(
 ): string | undefined {
   if (!value) return undefined;
   if (value.type === "emoji") return value.emoji || undefined;
-  if (value.type === "icon") return `${ICON_PREFIX}${value.name}`;
+  // The kit icon picker also emits the chosen color (a theme token such as
+  // `$primary`); persisted after a second ":" so the glyph keeps its tint.
+  if (value.type === "icon")
+    return value.color
+      ? `${ICON_PREFIX}${value.name}:${value.color}`
+      : `${ICON_PREFIX}${value.name}`;
   if (value.type === "image") return `${IMAGE_PREFIX}${value.url}`;
   return undefined;
 }
@@ -37,8 +42,9 @@ export function parseMediaIcon(
 ): MediaValue | null {
   if (!raw) return null;
   if (raw.startsWith(ICON_PREFIX)) {
-    const name = raw.slice(ICON_PREFIX.length);
-    return name ? { type: "icon", name } : null;
+    const [name, color] = raw.slice(ICON_PREFIX.length).split(":");
+    if (!name) return null;
+    return color ? { type: "icon", name, color } : { type: "icon", name };
   }
   if (raw.startsWith(IMAGE_PREFIX)) {
     const url = raw.slice(IMAGE_PREFIX.length);
@@ -54,4 +60,31 @@ export function parseMediaIcon(
     return { type: "icon", name: raw };
   }
   return { type: "emoji", emoji: raw };
+}
+
+/**
+ * The habit's own color as a soft tile tint (16% alpha) for the icon tile on
+ * cards, rows and the composer — what makes a picked color actually SHOW
+ * (device feedback 2026-10-25: before this the habit color was stored but
+ * rendered nowhere; the tile always used the category orange). Accepts a
+ * `#rgb` / `#rrggbb` hex; anything else returns `undefined` so the host falls
+ * back to its category tint.
+ */
+export function habitTint(
+  color: string | null | undefined,
+  alpha = 0.16,
+): string | undefined {
+  if (!color) return undefined;
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim());
+  if (!m) return undefined;
+  let hex = m[1]!;
+  if (hex.length === 3)
+    hex = hex
+      .split("")
+      .map((c) => c + c)
+      .join("");
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }

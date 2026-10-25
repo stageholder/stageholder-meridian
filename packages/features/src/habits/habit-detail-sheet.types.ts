@@ -1,3 +1,4 @@
+import type { MoreAction } from "../_internal/more-actions.types";
 import type { Habit } from "@repo/core/types";
 import type { HabitFormGroupOption } from "./habit-form";
 
@@ -29,5 +30,6 @@ export interface HabitDetailSheetProps {
   /** One field changed — commit it (optimistic PATCH in the host). */
   onPatch: (patch: HabitDetailPatch) => void;
   /** The "⋯" button — the host opens its native action sheet. */
-  onMore: () => void;
+  /** Rows of the "⋯" menu (an in-app sheet nested in the detail sheet). */
+  moreActions: MoreAction[];
 }

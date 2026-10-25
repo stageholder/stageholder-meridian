@@ -32,7 +32,11 @@ import {
   YStack,
   toast,
 } from "@stageholder/ui";
-import { FlashList, type ListRenderItemInfo } from "@shopify/flash-list";
+import {
+  FlashList,
+  type FlashListRef,
+  type ListRenderItemInfo,
+} from "@shopify/flash-list";
 import {
   SectionHeader,
   TodoItem,
@@ -50,13 +54,22 @@ import { Plus } from "@tamagui/lucide-icons-2/icons/Plus";
 import { RotateCcw } from "@tamagui/lucide-icons-2/icons/RotateCcw";
 import { Trash2 } from "@tamagui/lucide-icons-2/icons/Trash2";
 import { format, subDays } from "date-fns";
-import { memo, useCallback, useDeferredValue, useMemo, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { RefreshControl, ScrollView as RNScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { FAB_CLEARANCE } from "@/components/screen-scroll";
 import { CreateFab } from "@/components/create-fab";
 import { CreateTodoDialog } from "@/components/create-todo-dialog";
+import { TodoActionsSheet } from "@/components/todo-actions-sheet";
 import { TodoDetailSheet } from "@/components/todo-detail-sheet";
 import { TodoListSheet } from "@/components/todo-list-sheet";
 import { TodoListReorderSheet } from "@/components/todo-list-reorder-sheet";
@@ -156,6 +169,7 @@ const TodoRow = memo(function TodoRow({
   onToggleTodo,
   onDeleteTodo,
   onOpenEdit,
+  onOpenActions,
 }: {
   todo: Todo;
   listName?: string;
@@ -163,6 +177,8 @@ const TodoRow = memo(function TodoRow({
   onToggleTodo: (todo: Todo) => void;
   onDeleteTodo: (id: string) => void;
   onOpenEdit: (todo: Todo) => void;
+  /** Long-press → the todo actions menu (web right-click parity). */
+  onOpenActions: (todo: Todo) => void;
 }) {
   const isDone = todo.status === "done";
   return (
@@ -202,6 +218,7 @@ const TodoRow = memo(function TodoRow({
         onToggle={() => onToggleTodo(todo)}
         onDelete={() => onDeleteTodo(todo.id)}
         onOpenDetail={() => onOpenEdit(todo)}
+        onLongPress={() => onOpenActions(todo)}
         animateEnter={false}
       />
     </SwipeableRow>
@@ -235,6 +252,14 @@ function TodosScreen() {
   // skip the exit animation.
   const [editing, setEditing] = useState<Todo | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  // Long-press actions menu (same split: content survives the close slide).
+  const [actionsTodo, setActionsTodo] = useState<Todo | null>(null);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const actionsHost = useMountOnOpen(actionsOpen);
+  const handleOpenActions = useCallback((todo: Todo) => {
+    setActionsTodo(todo);
+    setActionsOpen(true);
+  }, []);
   // List filter — null = All. Filtering is client-side over the one
   // all-todos cache (cheap at mobile scale; no per-list refetch churn).
   const [activeListId, setActiveListId] = useState<string | null>(null);
@@ -247,6 +272,11 @@ function TodosScreen() {
   const [reorderOpen, setReorderOpen] = useState(false);
   // Sheet hosts mount on FIRST open only (use-mount-on-open).
   const createHost = useMountOnOpen(createOpen);
+  // New-todo reveal: a created todo sorts to the TOP of its bucket, so with
+  // the list scrolled down it landed out of sight (device feedback
+  // 2026-10-25). Once the refetch puts its row in `rows`, scroll to it.
+  const listRef = useRef<FlashListRef<ListRow>>(null);
+  const [revealId, setRevealId] = useState<string | null>(null);
   const editHost = useMountOnOpen(editOpen);
   const listSheetHost = useMountOnOpen(listSheet !== false);
   const reorderHost = useMountOnOpen(reorderOpen);
@@ -364,6 +394,7 @@ function TodosScreen() {
         onToggleTodo={handleToggleTodo}
         onDeleteTodo={handleDeleteTodo}
         onOpenEdit={handleOpenEdit}
+        onOpenActions={handleOpenActions}
       />
     );
   }
@@ -481,6 +512,20 @@ function TodosScreen() {
     doneExpanded,
     doneRowsExpanded,
   ]);
+
+  useEffect(() => {
+    if (!revealId) return;
+    const index = rows.findIndex(
+      (r) => r.type === "todo" && r.key === revealId,
+    );
+    if (index < 0) return;
+    listRef.current?.scrollToIndex({
+      index,
+      animated: true,
+      viewPosition: 0.2,
+    });
+    setRevealId(null);
+  }, [revealId, rows]);
 
   const rowKey = useCallback((r: ListRow) => r.key, []);
   const rowType = useCallback((r: ListRow) => r.type, []);
@@ -609,6 +654,7 @@ function TodosScreen() {
       handleToggleTodo,
       handleDeleteTodo,
       handleOpenEdit,
+      handleOpenActions,
     ],
   );
 
@@ -697,6 +743,7 @@ function TodosScreen() {
         <View flex={1}>
           {bodyMounted ? (
             <FlashList
+              ref={listRef}
               data={rows}
               renderItem={renderRow}
               keyExtractor={rowKey}
@@ -747,6 +794,7 @@ function TodosScreen() {
           onOpenChange={setCreateOpen}
           // When a list filter is active, new todos land in that list.
           listId={activeListId ?? undefined}
+          onCreated={(t) => setRevealId(t.id)}
         />
       ) : null}
 
@@ -774,6 +822,16 @@ function TodosScreen() {
           open={editOpen}
           onOpenChange={handleEditOpenChange}
           todo={editing}
+        />
+      ) : null}
+
+      {/* Long-press menu: Do-date presets / Edit / Done / Duplicate / Delete. */}
+      {actionsHost ? (
+        <TodoActionsSheet
+          open={actionsOpen}
+          onOpenChange={setActionsOpen}
+          todo={actionsTodo}
+          onEdit={handleOpenEdit}
         />
       ) : null}
 

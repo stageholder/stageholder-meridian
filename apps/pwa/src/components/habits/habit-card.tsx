@@ -15,7 +15,7 @@ import {
 import { EditHabitSheet } from "./edit-habit-sheet";
 // Shared cross-platform burst (PWA + native, one source). Transform/opacity-only
 // so it stays cheap on native's Reanimated driver as well as the PWA's CSS driver.
-import { RadianceBurst } from "@repo/features/habits";
+import { RadianceBurst, habitTint } from "@repo/features/habits";
 import { useLocalDayKey } from "@/lib/hooks/use-local-day";
 import { parseDateLocal } from "@/lib/date";
 
@@ -221,7 +221,8 @@ export function HabitCard({
         // detail pages). The whole habit surface reads as orange, not the
         // per-habit blue. CSS vars defined in app/globals.css.
         accentColor="var(--ring-habit)"
-        accentTrackColor="var(--ring-habit-track)"
+        // Icon tile: the habit's own color (soft), category orange when unset.
+        accentTrackColor={habitTint(habit.color) ?? "var(--ring-habit-track)"}
         isPending={isSaving}
         onCheckIn={handleCheckIn}
         onSkip={handleSkip}

@@ -23,8 +23,15 @@ name: navigation
       text: "Todos"
 - assertVisible:
     id: "today-greeting"
-# Today → Calendar → back to Today
+# Today → Calendar → back to Today. The first tap right after the palette
+# closed is occasionally swallowed (nothing sticks) — retry once.
 - tapOn: "Open calendar"
+- runFlow:
+    when:
+      notVisible: "Calendar"
+    commands:
+      - waitForAnimationToEnd
+      - tapOn: "Open calendar"
 - assertVisible: "Calendar"
 - runFlow: ../subflows/go-back.yaml
 - assertVisible:
@@ -41,10 +48,13 @@ name: navigation
 - runFlow: ../subflows/go-back.yaml
 - assertVisible:
     id: "settings-plan"
-# Settings → Journey → back to Settings
+# Settings → Journey → back to Settings. Centre the row: "visible" can mean
+# peeking out under the floating tab bar, and a tap there lands on the
+# Habits tab item (observed 2026-10-25).
 - scrollUntilVisible:
     element: "Your journey"
     direction: DOWN
+    centerElement: true
 - tapOn: "Your journey"
 - assertVisible: "Journey"
 - runFlow: ../subflows/go-back.yaml

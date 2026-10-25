@@ -12,6 +12,8 @@ import { Keyboard } from "react-native";
 
 import { QuickAddTodoSheet, type TodoFormValues } from "@repo/features/todos";
 
+import type { Todo } from "@repo/core/types";
+
 import { useCreateTodo, useTodoLists, type TodoPriority } from "@/lib/api";
 import { IGNITION } from "@/lib/ignition-palette";
 
@@ -27,6 +29,9 @@ interface CreateTodoDialogProps {
    * on the form default and never shows up on the day the user tapped.
    */
   defaultDueDate?: string;
+  /** Fires with the created todo once the server has it (the sheet has
+   *  closed by then) — the Todos tab scrolls the new row into view. */
+  onCreated?: (todo: Todo) => void;
 }
 
 export function CreateTodoDialog({
@@ -34,6 +39,7 @@ export function CreateTodoDialog({
   onOpenChange,
   listId,
   defaultDueDate,
+  onCreated,
 }: CreateTodoDialogProps) {
   const createTodo = useCreateTodo();
   const { data: lists } = useTodoLists();
@@ -70,9 +76,10 @@ export function CreateTodoDialog({
         listId: destListId,
       },
       {
-        onSuccess: () => {
+        onSuccess: (todo) => {
           toast.success("Todo created");
           onOpenChange(false);
+          onCreated?.(todo);
         },
         onError: () => {
           toast.error("Failed to create todo");

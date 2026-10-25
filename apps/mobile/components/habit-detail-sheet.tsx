@@ -14,7 +14,6 @@ import { HabitDetailSheet as HabitDetailSheetView } from "@repo/features/habits"
 import type { HabitDetailPatch } from "@repo/features/habits";
 import type { Habit } from "@repo/core/types";
 
-import { showActionSheet } from "@/lib/action-sheet";
 import {
   habitKeys,
   useArchiveHabit,
@@ -92,35 +91,31 @@ export function HabitDetailSheet({
     );
   }
 
-  function handleMore() {
-    const archived = !!current.archivedAt;
-    showActionSheet({
-      title: current.name,
-      actions: [
-        archived
-          ? {
-              label: "Unarchive",
-              onPress: () =>
-                unarchiveHabit.mutate(current.id, {
-                  onSuccess: () => toast.success("Habit unarchived"),
-                  onError: () => toast.error("Couldn't unarchive habit"),
-                }),
-            }
-          : {
-              label: "Archive",
-              onPress: () =>
-                archiveHabit.mutate(current.id, {
-                  onSuccess: () => {
-                    toast.success("Habit archived");
-                    onOpenChange(false);
-                  },
-                  onError: () => toast.error("Couldn't archive habit"),
-                }),
-            },
-        { label: "Delete habit", destructive: true, onPress: confirmDelete },
-      ],
-    });
-  }
+  // "⋯" rows — an in-app sheet nested in the detail sheet, not ActionSheetIOS.
+  const archived = !!current.archivedAt;
+  const moreActions = [
+    archived
+      ? {
+          label: "Unarchive",
+          onPress: () =>
+            unarchiveHabit.mutate(current.id, {
+              onSuccess: () => toast.success("Habit unarchived"),
+              onError: () => toast.error("Couldn't unarchive habit"),
+            }),
+        }
+      : {
+          label: "Archive",
+          onPress: () =>
+            archiveHabit.mutate(current.id, {
+              onSuccess: () => {
+                toast.success("Habit archived");
+                onOpenChange(false);
+              },
+              onError: () => toast.error("Couldn't archive habit"),
+            }),
+        },
+    { label: "Delete habit", destructive: true, onPress: confirmDelete },
+  ];
 
   return (
     <HabitDetailSheetView
@@ -129,7 +124,7 @@ export function HabitDetailSheet({
       habit={current}
       groups={groupOptions}
       onPatch={handlePatch}
-      onMore={handleMore}
+      moreActions={moreActions}
     />
   );
 }

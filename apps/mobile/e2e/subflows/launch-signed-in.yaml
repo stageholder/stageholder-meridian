@@ -2,10 +2,31 @@
 # Keeps app state between flows (no clearState) so the session from the first
 # flow is reused; signs in through the Hub only when needed.
 appId: com.stageholder.meridian
+# Metro the dev client connects to. Override with `-eMETRO_HOST=localhost:8082`
+# (the runner passes flags through) to test against a second Metro while
+# another one owns 8081.
+env:
+  METRO_HOST: "localhost:8081"
 ---
+- evalScript: ${output.metroUrl = 'http://' + METRO_HOST}
+- evalScript: ${output.metroLink = 'meridian://expo-development-client/?url=' + encodeURIComponent('http://' + METRO_HOST)}
 - launchApp:
     appId: com.stageholder.meridian
     stopApp: true
+# ALWAYS point the dev client at the configured Metro: a relaunched dev
+# client silently reconnects to whatever it opened LAST (a `bun run ios`
+# dev bundle on the LAN, 2026-10-25), so the flow ran against the wrong
+# bundle without the launcher ever showing. The deep link reloads from
+# METRO_HOST; iOS confirms it with an "Open in Meridian?" alert.
+- openLink: ${output.metroLink}
+- runFlow:
+    when:
+      visible: "Open"
+    commands:
+      - tapOn: "Open"
+- launchApp:
+    appId: com.stageholder.meridian
+    stopApp: false
 # A loaded emulator can raise an OS "isn't responding" dialog — wait it out.
 - runFlow:
     when:
@@ -31,18 +52,18 @@ appId: com.stageholder.meridian
     commands:
       - runFlow:
           when:
-            visible: "http://localhost:8081"
+            visible: ${output.metroUrl}
           commands:
-            - tapOn: "http://localhost:8081"
+            - tapOn: ${output.metroUrl}
       # The launcher lists only servers it discovered or opened before. After a
       # `bun run ios` ("Recently opened" holds the LAN URL) or a fresh install
       # there is no localhost entry, so connect through the dev-client deep
       # link; iOS confirms it with an "Open in Meridian?" alert.
       - runFlow:
           when:
-            notVisible: "http://localhost:8081"
+            notVisible: ${output.metroUrl}
           commands:
-            - openLink: "meridian://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+            - openLink: ${output.metroLink}
             - runFlow:
                 when:
                   visible: "Open"
@@ -50,15 +71,15 @@ appId: com.stageholder.meridian
                   - tapOn: "Open"
             # Opening the link can leave the app in the background (iOS lands
             # on the home screen) — bring it forward WITHOUT restarting; the
-            # launcher now knows localhost:8081 and reconnects, or lists it.
+            # launcher now knows the Metro host and reconnects, or lists it.
             - launchApp:
                 appId: com.stageholder.meridian
                 stopApp: false
             - runFlow:
                 when:
-                  visible: "http://localhost:8081"
+                  visible: ${output.metroUrl}
                 commands:
-                  - tapOn: "http://localhost:8081"
+                  - tapOn: ${output.metroUrl}
             # Metro may be building the bundle (cold cache: ~1 min).
             - extendedWaitUntil:
                 visible:

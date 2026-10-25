@@ -16,11 +16,19 @@
 // at open and unmounted at close (the field goes with the sheet so the
 // keyboard drops by itself), and `onSettled` forwarded for the hosts' nested
 // pickers.
+//
+// RESET CONTRACT: this shell stays mounted for the host's lifetime; the
+// per-open state lives in its CHILDREN, which the `open` policy unmounts at
+// close and mounts fresh at open. Remounting the shell itself per open (a
+// keyed instance) left nested picker sheets with an overlay but no frame on
+// the second open (Tamagui portal order, 2026-10-25) — never key the shell.
 
 import type { ReactNode } from "react";
 import Animated, { useAnimatedStyle } from "react-native-reanimated";
 import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
 import { Sheet, YStack } from "@stageholder/ui";
+
+import { useAndroidBackClose } from "./use-android-back-close";
 
 /** Frame chrome below the content (pb $4 + the frame's gap) that the spacer
  *  trims, so the pill row sits a few px above the keys, not a full gap. */
@@ -29,9 +37,33 @@ const BOTTOM_CHROME = 28;
 export interface ComposerSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Kit Sheet `onSettled`: fires once per open AND once per close. */
+  /** Kit Sheet `onSettled`: fires once per OPEN (never on close — the kit's
+   *  settle store resets on close without firing). */
   onSettled?: () => void;
   children: ReactNode;
+}
+
+/**
+ * Bottom spacer that tracks the keyboard frame-by-frame (keyboard-controller's
+ * native frame on the UI thread, negative on iOS hence abs — not RN's
+ * `Keyboard` events, which go stale across a composer→detail focus handoff).
+ * Last child of a `fit` sheet frame: the sheet grows with the keyboard from
+ * the first frame and collapses as it falls. Nested picker/menu sheets use it
+ * too, so they open ABOVE a keyboard that stays up — dismissing the keyboard
+ * on the way to a nested sheet collapsed the parent mid-open and the nested
+ * frame never placed (2026-10-25).
+ */
+export function KeyboardSpacer({
+  chrome = BOTTOM_CHROME,
+}: {
+  chrome?: number;
+}) {
+  const { height: kbHeight } = useReanimatedKeyboardAnimation();
+  const spacerStyle = useAnimatedStyle(() => {
+    const h = Math.abs(kbHeight.value);
+    return { height: h > 0 ? Math.max(0, h - chrome) : 0 };
+  });
+  return <Animated.View style={spacerStyle} />;
 }
 
 export function ComposerSheet({
@@ -40,15 +72,8 @@ export function ComposerSheet({
   onSettled,
   children,
 }: ComposerSheetProps) {
-  // Keyboard height as a Reanimated shared value — tracks the keyboard
-  // frame-by-frame on the UI thread (negative on iOS, hence abs). The spacer
-  // grows the `fit` frame in lockstep with the keyboard rising, from the very
-  // first frame, and collapses as it falls.
-  const { height: kbHeight } = useReanimatedKeyboardAnimation();
-  const spacerStyle = useAnimatedStyle(() => {
-    const h = Math.abs(kbHeight.value);
-    return { height: h > 0 ? Math.max(0, h - BOTTOM_CHROME) : 0 };
-  });
+  // Android hardware back closes this sheet (not the navigator beneath it).
+  useAndroidBackClose(open, () => onOpenChange(false));
 
   return (
     <Sheet
@@ -77,7 +102,7 @@ export function ComposerSheet({
         disableHideBottomOverflow={false}
       >
         <YStack gap="$3">{children}</YStack>
-        <Animated.View style={spacerStyle} />
+        <KeyboardSpacer />
       </Sheet.Frame>
     </Sheet>
   );

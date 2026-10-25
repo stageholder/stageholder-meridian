@@ -16,7 +16,11 @@ import {
 } from "@stageholder/ui";
 // Shared cross-platform components. `RadianceBurst` is transform/opacity-only so
 // the same source stays cheap on native's Reanimated driver AND the PWA's CSS one.
-import { HabitCheckInRow, RadianceBurst } from "@repo/features/habits";
+import {
+  HabitCheckInRow,
+  RadianceBurst,
+  habitTint,
+} from "@repo/features/habits";
 import type { Habit, HabitEntry } from "@repo/core/types";
 import {
   useCreateHabitEntry,
@@ -397,7 +401,7 @@ export function HabitListItem({
         disabled={isSaving}
         // PWA accent = CSS vars (resolve in the theme cascade on web).
         accentColor="var(--ring-habit)"
-        accentTrackColor="var(--ring-habit-track)"
+        accentTrackColor={habitTint(habit.color) ?? "var(--ring-habit-track)"}
         minHeight={60}
         onOpenDetail={() =>
           void navigate({ to: "/habits/$id", params: { id: habit.id } })
