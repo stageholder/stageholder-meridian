@@ -49,6 +49,7 @@ import {
 } from "../_internal/quick-add-sheet.native";
 import { ComposerSheet } from "../_internal/composer-sheet.native";
 import { DatePill, DatePickerSheet } from "../_internal/date-pill.native";
+import { openAfterKeyboard } from "../_internal/open-after-keyboard.native";
 import { MoreActionsSheet } from "../_internal/more-actions-sheet.native";
 import type { TodoDetailSheetProps } from "./todo-detail-sheet.types";
 
@@ -90,14 +91,6 @@ function fmtStamp(iso: string | undefined): string | null {
 const SUBTASKS_MAX_HEIGHT = 280;
 const TITLE_FONT = 20;
 const TITLE_LINE = 26;
-
-/** Open a nested picker/menu sheet. The keyboard (if up) STAYS up: the
- *  nested sheet carries its own keyboard spacer and opens above it. Dismissing
- *  the keyboard here collapsed the parent sheet mid-open and the nested frame
- *  never placed (2026-10-25). */
-function openPicker(set: (open: boolean) => void) {
-  set(true);
-}
 
 /**
  * Stable shell + per-open body. `TodoDetail` (the drafts, the pickers, the
@@ -333,7 +326,7 @@ function TodoDetail({
             justify="center"
             hitSlop={6}
             pressStyle={{ bg: "$secondary", opacity: 0.8 }}
-            onPress={() => openPicker(setMoreOpen)}
+            onPress={() => openAfterKeyboard(setMoreOpen)}
           >
             <MoreHorizontal size={18} color="$color" />
           </View>
@@ -348,7 +341,7 @@ function TodoDetail({
               ) : undefined
             }
             label={todo.priority === "none" ? "Priority" : cap(todo.priority)}
-            onPress={() => openPicker(setPriorityOpen)}
+            onPress={() => openAfterKeyboard(setPriorityOpen)}
           />
           {showListPill ? (
             <QuickAddPill
@@ -360,7 +353,7 @@ function TodoDetail({
                 ) : undefined
               }
               label={selectedList?.name ?? "List"}
-              onPress={() => openPicker(setListOpen)}
+              onPress={() => openAfterKeyboard(setListOpen)}
             />
           ) : null}
           {/* Dates = the app's DatePill + nested DatePickerSheet (below),
@@ -369,14 +362,14 @@ function TodoDetail({
           <DatePill
             placeholder="Do"
             value={todo.doDate ? parseLocalDay(todo.doDate.slice(0, 10)) : null}
-            onPress={() => setDoOpen(true)}
+            onPress={() => openAfterKeyboard(setDoOpen)}
           />
           <DatePill
             placeholder="Deadline"
             value={
               todo.dueDate ? parseLocalDay(todo.dueDate.slice(0, 10)) : null
             }
-            onPress={() => setDueOpen(true)}
+            onPress={() => openAfterKeyboard(setDueOpen)}
           />
         </FormSheet.HorizontalScroll>
 

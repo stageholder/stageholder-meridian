@@ -27,6 +27,7 @@ import { Smile } from "@tamagui/lucide-icons-2/icons/Smile";
 import { Target } from "@tamagui/lucide-icons-2/icons/Target";
 import { FormSheet, Text, View, XStack, YStack } from "@stageholder/ui";
 import type { MediaValue } from "@stageholder/ui/pickers";
+import type { HabitFormGroupOption } from "./habit-form";
 import { MediaGlyph } from "@stageholder/ui/pickers";
 import { useTheme } from "tamagui";
 import type { Habit } from "@repo/core/types";
@@ -59,12 +60,28 @@ function fmtStamp(iso: string | undefined): string | null {
   return Number.isNaN(d.getTime()) ? null : format(d, "d MMM yyyy");
 }
 
-/** Open a nested picker/menu sheet. The keyboard (if up) STAYS up: the
- *  nested sheet carries its own keyboard spacer and opens above it. Dismissing
- *  the keyboard here collapsed the parent sheet mid-open and the nested frame
- *  never placed (2026-10-25). */
-function openPicker(set: (open: boolean) => void) {
-  set(true);
+/** A group's icon in picker rows / the Group pill: its emoji or lucide icon
+ *  (tinted with the group color when the icon carries none), a colored
+ *  folder when the group has no icon. */
+function GroupGlyph({
+  group,
+  size,
+}: {
+  group: HabitFormGroupOption;
+  size: number;
+}) {
+  return (
+    <MediaGlyph
+      value={parseMediaIcon(group.icon)}
+      size={size}
+      fallback={
+        <Folder
+          size={size - 2}
+          color={(group.color ?? "$mutedForeground") as never}
+        />
+      }
+    />
+  );
 }
 
 /**
@@ -156,10 +173,18 @@ function HabitDetail({
   const unit = habit.unit ?? "";
   const color = habit.color ?? "#3b82f6";
   const hasGroups = !!groups && groups.length > 0;
-  const activeGroupName = groups?.find((g) => g.id === habit.groupId)?.name;
+  const activeGroup = groups?.find((g) => g.id === habit.groupId);
   const groupOptions: PillPickerOption[] = [
-    { value: NO_GROUP_VALUE, label: "Ungrouped" },
-    ...(groups ?? []).map((g) => ({ value: g.id, label: g.name })),
+    {
+      value: NO_GROUP_VALUE,
+      label: "Ungrouped",
+      icon: <Folder size={16} color="$mutedForeground" />,
+    },
+    ...(groups ?? []).map((g) => ({
+      value: g.id,
+      label: g.name,
+      icon: <GroupGlyph group={g} size={16} />,
+    })),
   ];
 
   const freqLabel = frequencyLabel(frequency, scheduledDays, weeklyTarget);
@@ -276,7 +301,7 @@ function HabitDetail({
             justify="center"
             hitSlop={6}
             pressStyle={{ bg: "$secondary", opacity: 0.8 }}
-            onPress={() => openPicker(setMoreOpen)}
+            onPress={() => openAfterKeyboard(setMoreOpen)}
           >
             <MoreHorizontal size={18} color="$color" />
           </View>
@@ -287,12 +312,12 @@ function HabitDetail({
           <QuickAddPill
             icon={<Repeat size={13} />}
             label={freqLabel}
-            onPress={() => openPicker(setFreqOpen)}
+            onPress={() => openAfterKeyboard(setFreqOpen)}
           />
           <QuickAddPill
             icon={<Target size={13} />}
             label={targetLabel}
-            onPress={() => openPicker(setTargetOpen)}
+            onPress={() => openAfterKeyboard(setTargetOpen)}
           />
           <QuickAddPill
             icon={
@@ -304,13 +329,19 @@ function HabitDetail({
               />
             }
             label="Color"
-            onPress={() => openPicker(setColorOpen)}
+            onPress={() => openAfterKeyboard(setColorOpen)}
           />
           {hasGroups ? (
             <QuickAddPill
-              icon={<Folder size={13} color="$mutedForeground" />}
-              label={activeGroupName ?? "Ungrouped"}
-              onPress={() => openPicker(setGroupOpen)}
+              icon={
+                activeGroup ? (
+                  <GroupGlyph group={activeGroup} size={13} />
+                ) : (
+                  <Folder size={13} color="$mutedForeground" />
+                )
+              }
+              label={activeGroup?.name ?? "Ungrouped"}
+              onPress={() => openAfterKeyboard(setGroupOpen)}
             />
           ) : null}
         </FormSheet.HorizontalScroll>

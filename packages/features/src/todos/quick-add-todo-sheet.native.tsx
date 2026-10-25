@@ -27,6 +27,7 @@ import {
 } from "../_internal/quick-add-sheet.native";
 import { ComposerSheet } from "../_internal/composer-sheet.native";
 import { DatePill, DatePickerSheet } from "../_internal/date-pill.native";
+import { openAfterKeyboard } from "../_internal/open-after-keyboard.native";
 import { SmartTodoInput } from "./smart-todo-input";
 import type { SmartTodoInputHandle } from "./smart-todo-input.types";
 import { makeTodoFormDefaults } from "./todo-form";
@@ -61,14 +62,6 @@ function Dot({ tint }: { tint: string }) {
 /** Parse a `yyyy-MM-dd` string as the LOCAL day (the picker speaks `Date`). */
 function parseLocalDay(input: string): Date {
   return new Date(input + "T00:00:00");
-}
-
-/** Open a nested picker/menu sheet. The keyboard (if up) STAYS up: the
- *  nested sheet carries its own keyboard spacer and opens above it. Dismissing
- *  the keyboard here collapsed the parent sheet mid-open and the nested frame
- *  never placed (2026-10-25). */
-function openPicker(set: (open: boolean) => void) {
-  set(true);
 }
 
 export function QuickAddTodoSheet(props: QuickAddTodoSheetProps) {
@@ -235,7 +228,7 @@ function TodoQuickAdd({
               ) : undefined
             }
             label={priority === "none" ? "Priority" : cap(priority)}
-            onPress={() => openPicker(setPriorityOpen)}
+            onPress={() => openAfterKeyboard(setPriorityOpen)}
           />
           {showListPill ? (
             <QuickAddPill
@@ -247,7 +240,7 @@ function TodoQuickAdd({
                 ) : undefined
               }
               label={selectedList?.name ?? "List"}
-              onPress={() => openPicker(setListOpen)}
+              onPress={() => openAfterKeyboard(setListOpen)}
             />
           ) : null}
           {/* Dates = the app's DatePill + nested DatePickerSheet (below) —
@@ -256,12 +249,12 @@ function TodoQuickAdd({
           <DatePill
             placeholder="Do"
             value={doDate ? parseLocalDay(doDate) : null}
-            onPress={() => setDoOpen(true)}
+            onPress={() => openAfterKeyboard(setDoOpen)}
           />
           <DatePill
             placeholder="Deadline"
             value={dueDate ? parseLocalDay(dueDate) : null}
-            onPress={() => setDueOpen(true)}
+            onPress={() => openAfterKeyboard(setDueOpen)}
           />
           {/* Note: the field mounts with `autoFocus`; closing it hands the
               keyboard back to the title. */}

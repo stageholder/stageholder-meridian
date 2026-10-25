@@ -18,6 +18,7 @@ import { Target } from "@tamagui/lucide-icons-2/icons/Target";
 import { Input, View, XStack } from "@stageholder/ui";
 import { useTheme } from "tamagui";
 import type { MediaValue } from "@stageholder/ui/pickers";
+import type { HabitFormGroupOption } from "./habit-form";
 import { MediaGlyph } from "@stageholder/ui/pickers";
 import {
   QuickAddBody,
@@ -38,14 +39,6 @@ import { openAfterKeyboard } from "../_internal/open-after-keyboard.native";
 import { encodeMediaIcon, habitTint, parseMediaIcon } from "./icon-value";
 import { HABIT_FORM_DEFAULTS, type HabitFormValues } from "./habit-form";
 import type { QuickAddHabitSheetProps } from "./quick-add-habit-sheet.types";
-
-/** Open a nested picker/menu sheet. The keyboard (if up) STAYS up: the
- *  nested sheet carries its own keyboard spacer and opens above it. Dismissing
- *  the keyboard here collapsed the parent sheet mid-open and the nested frame
- *  never placed (2026-10-25). */
-function openPicker(set: (open: boolean) => void) {
-  set(true);
-}
 
 export function QuickAddHabitSheet(props: QuickAddHabitSheetProps) {
   // Stable shell; the state component below is a CHILD of the sheet, so the
@@ -156,10 +149,18 @@ function HabitQuickAdd({
 
   const freqLabel = frequencyLabel(frequency, scheduledDays, weeklyTarget);
   const targetLabel = `${targetCount}×${unit.trim() ? ` ${unit.trim()}` : ""}`;
-  const activeGroupName = groups?.find((g) => g.id === groupId)?.name;
+  const activeGroup = groups?.find((g) => g.id === groupId);
   const groupOptions: PillPickerOption[] = [
-    { value: NO_GROUP_VALUE, label: "Ungrouped" },
-    ...(groups ?? []).map((g) => ({ value: g.id, label: g.name })),
+    {
+      value: NO_GROUP_VALUE,
+      label: "Ungrouped",
+      icon: <Folder size={16} color="$mutedForeground" />,
+    },
+    ...(groups ?? []).map((g) => ({
+      value: g.id,
+      label: g.name,
+      icon: <GroupGlyph group={g} size={16} />,
+    })),
   ];
 
   return (
@@ -233,12 +234,12 @@ function HabitQuickAdd({
             <QuickAddPill
               icon={<Repeat size={13} />}
               label={freqLabel}
-              onPress={() => openPicker(setFreqOpen)}
+              onPress={() => openAfterKeyboard(setFreqOpen)}
             />
             <QuickAddPill
               icon={<Target size={13} />}
               label={targetLabel}
-              onPress={() => openPicker(setTargetOpen)}
+              onPress={() => openAfterKeyboard(setTargetOpen)}
             />
             <QuickAddPill
               icon={
@@ -250,13 +251,19 @@ function HabitQuickAdd({
                 />
               }
               label="Color"
-              onPress={() => openPicker(setColorOpen)}
+              onPress={() => openAfterKeyboard(setColorOpen)}
             />
             {hasGroups ? (
               <QuickAddPill
-                icon={<Folder size={13} color="$mutedForeground" />}
-                label={activeGroupName ?? "Group"}
-                onPress={() => openPicker(setGroupOpen)}
+                icon={
+                  activeGroup ? (
+                    <GroupGlyph group={activeGroup} size={13} />
+                  ) : (
+                    <Folder size={13} color="$mutedForeground" />
+                  )
+                }
+                label={activeGroup?.name ?? "Group"}
+                onPress={() => openAfterKeyboard(setGroupOpen)}
               />
             ) : null}
             {/* Note: the field mounts with `autoFocus`; closing it hands the
@@ -342,5 +349,27 @@ function HabitQuickAdd({
         />
       }
     </>
+  );
+} /** A group's icon in picker rows / the Group pill: its emoji or lucide icon
+ *  (tinted with the group color when the icon carries none), a colored
+ *  folder when the group has no icon. */
+function GroupGlyph({
+  group,
+  size,
+}: {
+  group: HabitFormGroupOption;
+  size: number;
+}) {
+  return (
+    <MediaGlyph
+      value={parseMediaIcon(group.icon)}
+      size={size}
+      fallback={
+        <Folder
+          size={size - 2}
+          color={(group.color ?? "$mutedForeground") as never}
+        />
+      }
+    />
   );
 }

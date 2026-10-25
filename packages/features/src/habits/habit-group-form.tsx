@@ -11,16 +11,14 @@ import {
   YStack,
 } from "@stageholder/ui";
 import type { MediaValue } from "@stageholder/ui/pickers";
-import {
-  MediaGlyph,
-  MediaPicker,
-  MediaPickerSheet,
-} from "@stageholder/ui/pickers";
+import { MediaGlyph, MediaPicker } from "@stageholder/ui/pickers";
 import {
   useSheetAutoFocus,
   type Focusable,
 } from "../_internal/use-sheet-autofocus";
 import { encodeMediaIcon, parseMediaIcon } from "./icon-value";
+import { IconPickerSheet } from "../_internal/icon-picker-sheet";
+import { openAfterKeyboard } from "../_internal/open-after-keyboard";
 
 /** Cross-platform create/edit-group form values. */
 export interface HabitGroupFormValues {
@@ -178,12 +176,17 @@ export function HabitGroupForm({
                   </Popover.Content>
                 </Popover>
               ) : (
-                // Mobile: modal Sheet (zIndex 1e5) stacks above the FormSheet.
+                // Mobile: modal sheet stacked above the FormSheet. Opened only
+                // once the name field's keyboard is down (native), in the
+                // app-owned shell that rises with the picker's own search
+                // keyboard — see _internal/icon-picker-sheet.native.tsx.
                 <>
-                  {renderIconTrigger(() => setIconPickerOpen(true))}
-                  <MediaPickerSheet
+                  {renderIconTrigger(() =>
+                    openAfterKeyboard(setIconPickerOpen),
+                  )}
+                  <IconPickerSheet
                     open={iconPickerOpen}
-                    onClose={() => setIconPickerOpen(false)}
+                    onOpenChange={setIconPickerOpen}
                     tabs={["emoji", "icon"]}
                     value={parseMediaIcon(icon)}
                     onChange={handlePickIcon}

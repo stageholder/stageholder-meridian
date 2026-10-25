@@ -59,6 +59,8 @@ export function HabitDetailSheet({
   const groupOptions = (groupsQuery.data ?? []).map((g) => ({
     id: g.id,
     name: g.name,
+    icon: g.icon,
+    color: g.color,
   }));
 
   function handlePatch(patch: HabitDetailPatch) {

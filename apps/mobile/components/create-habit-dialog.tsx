@@ -45,6 +45,8 @@ export function CreateHabitDialog({
   const groupOptions = (groupsQuery.data ?? []).map((g) => ({
     id: g.id,
     name: g.name,
+    icon: g.icon,
+    color: g.color,
   }));
 
   function handleSubmit(values: HabitFormValues) {

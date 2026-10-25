@@ -1,10 +1,12 @@
 // packages/features/src/_internal/open-after-keyboard.native.ts  (NATIVE)
 //
-// Open a FULL-HEIGHT picker (the kit MediaPickerSheet) only once the host's
-// keyboard is down. That sheet is the kit's own, so it cannot carry the app's
-// keyboard spacer like the nested pill/date/menu sheets do — opened under a
-// standing keyboard it was buried behind the keys (device feedback
-// 2026-10-25). It has its own search field for when the keyboard is wanted.
+// Open a picker / menu sheet only once the host's keyboard is down. The
+// pickers can rise above a keyboard (they carry the app's spacer), but a
+// keyboard standing behind an option list reads as unstable ("why is the
+// keyboard still up?", device feedback 2026-10-25), so every pill, date and
+// "⋯" opener goes through here. Opening AFTER `keyboardDidHide` (not in the
+// same tick as the dismiss) is what keeps the parent sheet's collapse and
+// the nested sheet's open from racing.
 //
 // The keyboard here was raised by the host's own field, so RN's keyboard
 // events are fresh (unlike a composer→detail focus handoff): wait for

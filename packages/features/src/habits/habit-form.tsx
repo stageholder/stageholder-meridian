@@ -64,6 +64,10 @@ export interface HabitFormValues {
 export interface HabitFormGroupOption {
   id: string;
   name: string;
+  /** The group's own icon (encoded like a habit icon) and color, for the
+   *  group pill + picker rows. */
+  icon?: string;
+  color?: string;
 }
 
 /** Sentinel Select value for "no group" — Select can't hold an empty string. */
