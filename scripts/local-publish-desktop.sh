@@ -97,8 +97,18 @@ if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   exit 1
 fi
 
-# Empty NOTES → publish-desktop.sh uses this version's section of
-# apps/desktop/CHANGELOG.md (shown in the app's update dialog).
+# Notes: an explicit NOTES arg wins; otherwise this version's section of
+# apps/desktop/CHANGELOG.md (shown in the app's update dialog before the user
+# downloads). Resolved and checked HERE, before the 10-minute build, so a
+# missing entry fails fast instead of shipping "Release vX.Y.Z".
+if [[ -z "$NOTES" ]]; then
+  if ! NOTES="$("${SCRIPT_DIR}/desktop-release-notes.sh" "$VERSION")"; then
+    echo "ERROR: no '## ${VERSION}' section in apps/desktop/CHANGELOG.md." >&2
+    echo "Add one (the bullets users see in the update dialog), or pass notes:" >&2
+    echo "  bun publish:desktop ${VERSION} \"Your notes\"" >&2
+    exit 1
+  fi
+fi
 
 # ---------------------------------------------------------------------------
 # Tooling pre-flight — fail fast before a 10-minute build.
@@ -166,7 +176,8 @@ fi
 echo "============================================================"
 echo "Meridian desktop release"
 echo "  Version : ${VERSION}"
-echo "  Notes   : ${NOTES:-(apps/desktop/CHANGELOG.md, section ${VERSION})}"
+echo "  Notes   :"
+printf '%s\n' "$NOTES" | sed 's/^/    /'
 echo "  Target  : ${TARGET}"
 echo "  Bump    : $([[ $DO_BUMP -eq 1 ]] && echo yes || echo no)"
 echo "  Upload  : $([[ $DO_UPLOAD -eq 1 ]] && echo yes || echo 'NO (dry run)')"
@@ -285,7 +296,7 @@ Open the .app to verify the build:
 
 When you're satisfied, re-run without --no-upload (and with
 --no-bump if you don't want to bump the version again):
-  ${SCRIPT_DIR}/$(basename "$0") ${VERSION} "${NOTES}" --no-bump
+  ${SCRIPT_DIR}/$(basename "$0") ${VERSION} --no-bump
 ============================================================
 EOF
 fi

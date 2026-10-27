@@ -40,21 +40,10 @@ fi
 VERSION="$1"
 NOTES="${2:-}"
 
-# No notes given: use this version's section of apps/desktop/CHANGELOG.md
-# (the `## X.Y.Z` heading down to the next `## `). The app shows it under
-# "What's new" in the update dialog before the user downloads.
+# No notes given: use this version's section of apps/desktop/CHANGELOG.md.
+# The app shows it under "What's new" in the update dialog before download.
 if [[ -z "$NOTES" ]]; then
-  CHANGELOG="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/apps/desktop/CHANGELOG.md"
-  if [[ -f "$CHANGELOG" ]]; then
-    NOTES="$(awk -v v="$VERSION" '
-      /^## / { if (p) exit; p = ($2 == v || $2 == "v" v); next }
-      p { buf[n++] = $0 }
-      END {
-        s = 0; while (s < n && buf[s] ~ /^[[:space:]]*$/) s++
-        e = n - 1; while (e >= s && buf[e] ~ /^[[:space:]]*$/) e--
-        for (i = s; i <= e; i++) print buf[i]
-      }' "$CHANGELOG")"
-  fi
+  NOTES="$("$(dirname "${BASH_SOURCE[0]}")/desktop-release-notes.sh" "$VERSION" || true)"
   if [[ -z "$NOTES" ]]; then
     echo "WARNING: no '## ${VERSION}' section in apps/desktop/CHANGELOG.md — users will see no release notes." >&2
     NOTES="Release v${VERSION}"

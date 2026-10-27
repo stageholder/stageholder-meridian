@@ -15,3 +15,4 @@ Write for users, not developers.
 - Habit cards show your last 7 days, so your progress doesn't start over every Monday.
 - The update prompt now shows what's new before you download.
 - Fixed the date highlight being cut off when typing a date at the start of a todo title.
+- Buttons in dialogs no longer show a focus outline when you use the mouse. Keyboard users still see it.
