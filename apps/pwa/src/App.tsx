@@ -64,6 +64,19 @@ function InnerApp() {
   if (!stillLoading) hasBootedRef.current = true;
   const blockInitialBoot = stillLoading && !hasBootedRef.current;
 
+  // Session lost AFTER boot (refresh token rejected, e.g. on wake from sleep):
+  // the SDK flips `user` to null, but route guards only run on navigation, so
+  // the `_app` guard never saw it and `AppShell` (which renders null without a
+  // user) left a blank screen. Re-run the guards on that transition so `_app`
+  // redirects to /auth/login with `returnTo`.
+  const isAuthenticated = !!user;
+  const wasAuthenticatedRef = useRef(isAuthenticated);
+  useEffect(() => {
+    const lostSession = wasAuthenticatedRef.current && !isAuthenticated;
+    wasAuthenticatedRef.current = isAuthenticated;
+    if (lostSession && hasBootedRef.current) void router.invalidate();
+  }, [isAuthenticated]);
+
   // Drive the splash crawl with real signals: SDK loading → "Restoring
   // session", post-user meta load → "Preparing workspace", everything
   // settled → "Almost ready" (the splash's RAF tween handles the last

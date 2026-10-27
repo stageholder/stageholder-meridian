@@ -1,10 +1,23 @@
 import { useCallback, useEffect, useState } from "react";
 import { isDesktop } from "@repo/core/platform";
 import { useUpdateStore } from "@/lib/update-store";
-import { AlertDialog, Button, toast, XStack, YStack } from "@stageholder/ui";
+import {
+  AlertDialog,
+  Button,
+  Text,
+  toast,
+  XStack,
+  YStack,
+} from "@stageholder/ui";
 
 interface PendingUpdate {
   version: string;
+  /**
+   * Release notes — `notes` in the release's latest.json, filled from
+   * `apps/desktop/CHANGELOG.md` by the publish script. Undefined when the
+   * release has none.
+   */
+  notes?: string;
   /**
    * Opaque install handle from the Tauri updater plugin. Kept behind a
    * function so this file doesn't pull the Tauri types into the web bundle.
@@ -57,6 +70,7 @@ export function UpdateChecker() {
         }
         setPendingUpdate({
           version: update.version,
+          notes: releaseNotes(update.body),
           install: () => update.downloadAndInstall(),
         });
       } catch (e) {
@@ -123,13 +137,16 @@ export function UpdateChecker() {
         if (!open && !isDownloading) setPendingUpdate(null);
       }}
     >
-      <AlertDialog.Content maxW={420}>
+      <AlertDialog.Content maxW={460}>
         <YStack gap="$3">
           <AlertDialog.Title>Update available</AlertDialog.Title>
           <AlertDialog.Description>
             Version {pendingUpdate.version} is ready to install. Meridian will
             restart after installing.
           </AlertDialog.Description>
+          {pendingUpdate.notes ? (
+            <ReleaseNotes notes={pendingUpdate.notes} />
+          ) : null}
           <XStack justify="flex-end" gap="$2" mt="$2">
             <Button
               intent="ghost"
@@ -149,5 +166,67 @@ export function UpdateChecker() {
         </YStack>
       </AlertDialog.Content>
     </AlertDialog>
+  );
+}
+
+/**
+ * The publish script falls back to "Release vX.Y.Z" when the changelog has no
+ * entry for a version — that says nothing, so it shows no "What's new" block.
+ */
+function releaseNotes(body: string | undefined): string | undefined {
+  const notes = body?.trim();
+  if (!notes || /^Release v\d+\.\d+\.\d+$/.test(notes)) return undefined;
+  return notes;
+}
+
+/**
+ * "What's new" — the version's CHANGELOG section. Renders the small Markdown
+ * subset the changelog uses: `### Heading`, `- bullet`, and plain lines;
+ * `**bold**` markers are stripped. Scrolls when long so the actions stay put.
+ */
+function ReleaseNotes({ notes }: { notes: string }) {
+  const lines = notes
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  return (
+    <YStack
+      gap="$1.5"
+      p="$3"
+      rounded="$md"
+      bg="$muted"
+      {...({ style: { maxHeight: 260, overflowY: "auto" } } as object)}
+    >
+      <Text fontSize="$2" fontWeight="600" color="$mutedForeground">
+        What&apos;s new
+      </Text>
+      {lines.map((line, i) => {
+        const text = line.replace(/\*\*(.+?)\*\*/g, "$1");
+        if (text.startsWith("#")) {
+          return (
+            <Text key={i} fontSize="$3" fontWeight="600" mt="$1">
+              {text.replace(/^#+\s*/, "")}
+            </Text>
+          );
+        }
+        if (/^[-*]\s/.test(text)) {
+          return (
+            <XStack key={i} gap="$2">
+              <Text fontSize="$3" color="$mutedForeground">
+                •
+              </Text>
+              <Text fontSize="$3" flex={1}>
+                {text.replace(/^[-*]\s+/, "")}
+              </Text>
+            </XStack>
+          );
+        }
+        return (
+          <Text key={i} fontSize="$3">
+            {text}
+          </Text>
+        );
+      })}
+    </YStack>
   );
 }

@@ -10,6 +10,7 @@ import "@fontsource/bricolage-grotesque/700.css";
 import { App } from "./App";
 import { dispatchLoadingProgress } from "./lib/loading-progress";
 import { initDesktopAuthDeepLinks } from "./lib/desktop-auth";
+import { initInputModality } from "./lib/input-modality";
 
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("Root element #root not found");
@@ -22,6 +23,9 @@ dispatchLoadingProgress(58, "Mounting interface");
 // Desktop: pick up the `meridian://auth/callback` deep link that the system
 // browser hands back after Hub sign-in. No-op on web and in `tauri dev`.
 initDesktopAuthDeepLinks();
+
+// Focus rings for keyboard users only (see lib/input-modality.ts).
+initInputModality();
 
 createRoot(rootEl).render(
   <StrictMode>

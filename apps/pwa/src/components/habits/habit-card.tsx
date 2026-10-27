@@ -119,10 +119,9 @@ export function HabitCard({
       }
       toast.success(`Checked in for ${dateLabel}`);
     } catch {
+      // No re-throw: the view fires `onCheckIn` without awaiting it (it
+      // animates on the tap frame), so a rejection here was always unhandled.
       toast.error("Failed to check in");
-      // Re-throw so the view's `onCheckIn` promise rejects and the
-      // post-success celebration animations are skipped.
-      throw new Error("check-in failed");
     }
   }
 

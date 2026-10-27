@@ -240,8 +240,15 @@ export function HabitListItem({
   // Current-week dot strip (M T W T F S S) — same data + status logic as the
   // card view's week strip, rendered as a compact inline run so the list row
   // gives the same at-a-glance streak read.
+  // Daily habits: rolling 7 days ending today (no Monday reset). Quota habits:
+  // the calendar week, matching their "this week" count.
   const isQuota = habit.frequency === "weekly_target";
-  const weekStart = startOfWeek(parseDateLocal(today), { weekStartsOn: 1 });
+  const weekStart = isQuota
+    ? startOfWeek(parseDateLocal(today), { weekStartsOn: 1 })
+    : subDays(parseDateLocal(today), 6);
+  const createdDay = habit.createdAt
+    ? format(new Date(habit.createdAt), "yyyy-MM-dd")
+    : "";
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const date = addDays(weekStart, i);
     const dateStr = format(date, "yyyy-MM-dd");
@@ -250,11 +257,13 @@ export function HabitListItem({
     );
     const dow = date.getDay();
     // Quota habits have no rest days — every day is schedulable/loggable.
+    // Days before the habit existed aren't scheduled (not "missed").
     const isScheduled =
-      isQuota ||
-      !habit.scheduledDays ||
-      habit.scheduledDays.length === 0 ||
-      habit.scheduledDays.includes(dow);
+      dateStr >= createdDay &&
+      (isQuota ||
+        !habit.scheduledDays ||
+        habit.scheduledDays.length === 0 ||
+        habit.scheduledDays.includes(dow));
     const effectiveTarget =
       (entry ? resolveTargetCount(entry, habit) : habit.targetCount) || 1;
     return {

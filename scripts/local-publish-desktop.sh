@@ -16,7 +16,7 @@ set -euo pipefail
 #   5. Upload to R2 and publish latest.json.
 #
 # Usage:
-#   bun publish:desktop                      # next PATCH (0.2.7 → 0.2.8), notes "Release vX.Y.Z"
+#   bun publish:desktop                      # next PATCH (0.2.7 → 0.2.8), notes from apps/desktop/CHANGELOG.md
 #   bun publish:desktop --minor              # next MINOR (0.2.7 → 0.3.0)
 #   bun publish:desktop --major              # next MAJOR
 #   bun publish:desktop 1.0.0 "Big release"  # explicit version + notes
@@ -97,7 +97,8 @@ if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   exit 1
 fi
 
-NOTES="${NOTES:-Release v${VERSION}}"
+# Empty NOTES → publish-desktop.sh uses this version's section of
+# apps/desktop/CHANGELOG.md (shown in the app's update dialog).
 
 # ---------------------------------------------------------------------------
 # Tooling pre-flight — fail fast before a 10-minute build.
@@ -165,7 +166,7 @@ fi
 echo "============================================================"
 echo "Meridian desktop release"
 echo "  Version : ${VERSION}"
-echo "  Notes   : ${NOTES}"
+echo "  Notes   : ${NOTES:-(apps/desktop/CHANGELOG.md, section ${VERSION})}"
 echo "  Target  : ${TARGET}"
 echo "  Bump    : $([[ $DO_BUMP -eq 1 ]] && echo yes || echo no)"
 echo "  Upload  : $([[ $DO_UPLOAD -eq 1 ]] && echo yes || echo 'NO (dry run)')"

@@ -94,6 +94,9 @@ const FIELD_METRICS: CSSProperties = {
   overflowWrap: "break-word",
 };
 
+// Room for the pill's 3px box-shadow ring past the field's left/right edge.
+const BACKDROP_BLEED = 4;
+
 // Labels are the app's semantic names (matching the Priority Select + chips);
 // the `!pN` code rides along as a muted hint so the shortcut stays discoverable.
 const PRIORITY_OPTIONS = [
@@ -347,7 +350,17 @@ export const SmartTodoInput = forwardRef<
             style={{
               ...FIELD_METRICS,
               position: "absolute",
-              inset: 0,
+              // Overhang the field by BACKDROP_BLEED on each side, padded back
+              // by the same amount: the glyphs stay aligned with the textarea's,
+              // but a pill on the first/last word keeps its box-shadow ring
+              // instead of being clipped flat by `overflow: hidden`.
+              top: 0,
+              bottom: 0,
+              left: -BACKDROP_BLEED,
+              right: -BACKDROP_BLEED,
+              width: "auto",
+              paddingLeft: BACKDROP_BLEED,
+              paddingRight: BACKDROP_BLEED,
               pointerEvents: "none",
               overflow: "hidden",
             }}

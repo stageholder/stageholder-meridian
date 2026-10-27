@@ -784,3 +784,14 @@ label[for] {
     padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
   }
 }
+
+/* Focus rings are for keyboard users. Programmatic focus (a dialog or popover
+   auto-focusing its first control after a menu click) inherits the browser's
+   focus-visible state and painted rings mouse users never asked for. While the
+   last input was the pointer, hide focus outlines app-wide; the first Tab or
+   arrow key flips <html data-input-modality> to "keyboard" and they return.
+   `!important` beats the inline outline Tamagui writes with extraction off.
+   See lib/input-modality.ts. */
+html[data-input-modality="pointer"] :focus {
+  outline: none !important;
+}

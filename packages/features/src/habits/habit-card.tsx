@@ -210,8 +210,17 @@ export function HabitCard({
         )
       : 0;
 
-    // Week dots data
-    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+    // Week dots data. Daily habits show a ROLLING 7 days ending today, so the
+    // run of filled dots carries across Monday instead of starting over every
+    // week. Quota habits keep the calendar week: their "N/target this week"
+    // count resets on Monday, and the strip has to agree with it.
+    const todayDate = new Date(today + "T00:00:00");
+    const weekStart = isQuota
+      ? startOfWeek(todayDate, { weekStartsOn: 1 })
+      : subDays(todayDate, 6);
+    const createdDay = habit.createdAt
+      ? format(new Date(habit.createdAt), "yyyy-MM-dd")
+      : "";
     const weekDays = Array.from({ length: 7 }, (_, i) => {
       const date = addDays(weekStart, i);
       const dateStr = format(date, "yyyy-MM-dd");
@@ -220,11 +229,13 @@ export function HabitCard({
       );
       const dow = date.getDay();
       // Quota habits have no rest days — every day is schedulable/loggable.
+      // Days before the habit existed aren't scheduled (not "missed").
       const isScheduled =
-        isQuota ||
-        !habit.scheduledDays ||
-        habit.scheduledDays.length === 0 ||
-        habit.scheduledDays.includes(dow);
+        dateStr >= createdDay &&
+        (isQuota ||
+          !habit.scheduledDays ||
+          habit.scheduledDays.length === 0 ||
+          habit.scheduledDays.includes(dow));
       // `|| 1` so a habit with a missing/0 targetCount still completes at value
       // 1 — matches the header's `isComplete` (which falls back to 1). Without
       // it, `ratio = value / undefined` left the dot empty even after a
